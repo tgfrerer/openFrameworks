@@ -8,7 +8,7 @@ ofPolyline::ofPolyline(){
 }
 
 //----------------------------------------------------------
-ofPolyline::ofPolyline(const vector<ofPoint>& verts){
+ofPolyline::ofPolyline(const std::vector<ofPoint>& verts){
     setRightVector();
 	clear();
 	addVertices(verts);
@@ -48,7 +48,7 @@ void ofPolyline::addVertex(float x, float y, float z) {
 }
 
 //----------------------------------------------------------
-void ofPolyline::addVertices(const vector<ofPoint>& verts) {
+void ofPolyline::addVertices(const std::vector<ofPoint>& verts) {
 	curveVertices.clear();
 	points.insert( points.end(), verts.begin(), verts.end() );
     flagHasChanged();
@@ -129,13 +129,13 @@ void ofPolyline::flagHasChanged() {
 }
 
 //----------------------------------------------------------
-vector<ofPoint> & ofPolyline::getVertices(){
+std::vector<ofPoint> & ofPolyline::getVertices(){
     flagHasChanged();
 	return points;
 }
 
 //----------------------------------------------------------
-const vector<ofPoint> & ofPolyline::getVertices() const {
+const std::vector<ofPoint> & ofPolyline::getVertices() const {
 	return points;
 }
 
@@ -419,7 +419,7 @@ ofPolyline ofPolyline::getSmoothed(int smoothingSize, float smoothingShape) cons
 	smoothingShape = ofClamp(smoothingShape, 0, 1);
 	
 	// precompute weights and normalization
-	vector<float> weights;
+	std::vector<float> weights;
 	weights.resize(smoothingSize);
 	// side weights
 	for(int i = 1; i < smoothingSize; i++) {
@@ -697,13 +697,13 @@ void ofPolyline::simplify(float tol){
 		return;
 	}
 
-	vector <ofPoint> sV;
+	std::vector <ofPoint> sV;
 	sV.resize(n);
     
     int    i, k, m, pv;            // misc counters
     float  tol2 = tol * tol;       // tolerance squared
-    vector<ofPoint> vt;
-    vector<int> mk;
+	std::vector<ofPoint> vt;
+	std::vector<int> mk;
     vt.resize(n);
 	mk.resize(n,0);
     
@@ -1014,42 +1014,42 @@ void ofPolyline::updateCache(bool bForceUpdate) const {
 
 
 //--------------------------------------------------
-vector<ofPoint>::iterator ofPolyline::begin(){
+std::vector<ofPoint>::iterator ofPolyline::begin(){
 	return points.begin();
 }
 
 //--------------------------------------------------
-vector<ofPoint>::iterator ofPolyline::end(){
+std::vector<ofPoint>::iterator ofPolyline::end(){
 	return points.end();
 }
 
 //--------------------------------------------------
-vector<ofPoint>::const_iterator ofPolyline::begin() const{
+std::vector<ofPoint>::const_iterator ofPolyline::begin() const{
 	return points.begin();
 }
 
 //--------------------------------------------------
-vector<ofPoint>::const_iterator ofPolyline::end() const{
+std::vector<ofPoint>::const_iterator ofPolyline::end() const{
 	return points.end();
 }
 
 //--------------------------------------------------
-vector<ofPoint>::reverse_iterator ofPolyline::rbegin(){
+std::vector<ofPoint>::reverse_iterator ofPolyline::rbegin(){
 	return points.rbegin();
 }
 
 //--------------------------------------------------
-vector<ofPoint>::reverse_iterator ofPolyline::rend(){
+std::vector<ofPoint>::reverse_iterator ofPolyline::rend(){
 	return points.rend();
 }
 
 //--------------------------------------------------
-vector<ofPoint>::const_reverse_iterator ofPolyline::rbegin() const{
+std::vector<ofPoint>::const_reverse_iterator ofPolyline::rbegin() const{
 	return points.rbegin();
 }
 
 //--------------------------------------------------
-vector<ofPoint>::const_reverse_iterator ofPolyline::rend() const{
+std::vector<ofPoint>::const_reverse_iterator ofPolyline::rend() const{
 	return points.rend();
 }
 

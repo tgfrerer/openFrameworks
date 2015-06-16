@@ -19,7 +19,7 @@ ofMesh::ofMesh(){
 }
 
 //--------------------------------------------------------------
-ofMesh::ofMesh(ofPrimitiveMode mode, const vector<ofVec3f>& verts){
+ofMesh::ofMesh(ofPrimitiveMode mode, const std::vector<ofVec3f>& verts){
 	setMode(mode);
 	addVertices(verts);
 }
@@ -139,7 +139,7 @@ void ofMesh::addVertex(const ofVec3f& v){
 }
 
 //--------------------------------------------------------------
-void ofMesh::addVertices(const vector<ofVec3f>& verts){
+void ofMesh::addVertices(const std::vector<ofVec3f>& verts){
 	vertices.insert(vertices.end(),verts.begin(),verts.end());
 	bVertsChanged = true;
 	bFacesDirty = true;
@@ -160,7 +160,7 @@ void ofMesh::addColor(const ofFloatColor& c){
 }
 
 //--------------------------------------------------------------
-void ofMesh::addColors(const vector<ofFloatColor>& cols){
+void ofMesh::addColors(const std::vector<ofFloatColor>& cols){
 	colors.insert(colors.end(),cols.begin(),cols.end());
 	bColorsChanged = true;
 	bFacesDirty = true;
@@ -181,7 +181,7 @@ void ofMesh::addNormal(const ofVec3f& n){
 }
 
 //--------------------------------------------------------------
-void ofMesh::addNormals(const vector<ofVec3f>& norms){
+void ofMesh::addNormals(const std::vector<ofVec3f>& norms){
 	normals.insert(normals.end(),norms.begin(),norms.end());
 	bNormalsChanged = true;
 	bFacesDirty = true;
@@ -203,7 +203,7 @@ void ofMesh::addTexCoord(const ofVec2f& t){
 }
 
 //--------------------------------------------------------------
-void ofMesh::addTexCoords(const vector<ofVec2f>& tCoords){
+void ofMesh::addTexCoords(const std::vector<ofVec2f>& tCoords){
 	texCoords.insert(texCoords.end(),tCoords.begin(),tCoords.end());
 	bTexCoordsChanged = true;
 	bFacesDirty = true;
@@ -229,7 +229,7 @@ void ofMesh::addIndex(ofIndexType i){
 }
 
 //--------------------------------------------------------------
-void ofMesh::addIndices(const vector<ofIndexType>& inds){
+void ofMesh::addIndices(const std::vector<ofIndexType>& inds){
 	indices.insert(indices.end(),inds.begin(),inds.end());
 	bIndicesChanged = true;
 	bFacesDirty = true;
@@ -460,53 +460,53 @@ const ofIndexType * ofMesh::getIndexPointer() const{
 #endif
 }
 
-vector<ofVec3f> & ofMesh::getVertices(){
+std::vector<ofVec3f> & ofMesh::getVertices(){
 	bVertsChanged = true;
 	bFacesDirty = true;
 	return vertices;
 }
 
-vector<ofFloatColor> & ofMesh::getColors(){
+std::vector<ofFloatColor> & ofMesh::getColors(){
 	bColorsChanged = true;
 	bFacesDirty = true;
 	return colors;
 }
 
-vector<ofVec3f> & ofMesh::getNormals(){
+std::vector<ofVec3f> & ofMesh::getNormals(){
 	bNormalsChanged = true;
 	bFacesDirty = true;
 	return normals;
 }
 
-vector<ofVec2f> & ofMesh::getTexCoords(){
+std::vector<ofVec2f> & ofMesh::getTexCoords(){
 	bTexCoordsChanged = true;
 	bFacesDirty = true;
 	return texCoords;
 }
 
-vector<ofIndexType> & ofMesh::getIndices(){
+std::vector<ofIndexType> & ofMesh::getIndices(){
 	bIndicesChanged = true;
 	bFacesDirty = true;
 	return indices;
 }
 
-const vector<ofVec3f> & ofMesh::getVertices() const{
+const std::vector<ofVec3f> & ofMesh::getVertices() const{
 	return vertices;
 }
 
-const vector<ofFloatColor> & ofMesh::getColors() const{
+const std::vector<ofFloatColor> & ofMesh::getColors() const{
 	return colors;
 }
 
-const vector<ofVec3f> & ofMesh::getNormals() const{
+const std::vector<ofVec3f> & ofMesh::getNormals() const{
 	return normals;
 }
 
-const vector<ofVec2f> & ofMesh::getTexCoords() const{
+const std::vector<ofVec2f> & ofMesh::getTexCoords() const{
 	return texCoords;
 }
 
-const vector<ofIndexType> & ofMesh::getIndices() const{
+const std::vector<ofIndexType> & ofMesh::getIndices() const{
 	return indices;
 }
 
@@ -769,12 +769,12 @@ void ofMesh::append(const ofMesh & mesh){
 
 
 //--------------------------------------------------------------
-void ofMesh::load(string path){
+void ofMesh::load(std::string path){
 	ofFile is(path, ofFile::ReadOnly);
 	ofMesh& data = *this;
 
 
-	string error;
+	std::string error;
 	ofBuffer buffer(is);
 	ofMesh backup = data;
 
@@ -821,7 +821,7 @@ void ofMesh::load(string path){
 
 	for(;line != lines.end(); ++line){
 		lineNum++;
-		string lineStr = *line;
+		std::string lineStr = *line;
 		if(lineStr.find("comment")==0 || lineStr.empty()){
 			continue;
 		}
@@ -904,7 +904,7 @@ void ofMesh::load(string path){
 				error = "found more vertices: " + ofToString(currentVertex+1) + " than specified in header: " + ofToString(data.getNumVertices());
 				goto clean;
 			}
-			stringstream sline(lineStr);
+			std::stringstream sline(lineStr);
 			sline >> data.getVertices()[currentVertex].x;
 			sline >> data.getVertices()[currentVertex].y;
 			if(vertexCoordsFound>2) sline >> data.getVertices()[currentVertex].z;
@@ -956,7 +956,7 @@ void ofMesh::load(string path){
 				error = "found more faces than specified in header";
 				goto clean;
 			}
-			stringstream sline(lineStr);
+			std::stringstream sline(lineStr);
 			int numV;
 			sline >> numV;
 			if(numV!=3){
@@ -991,49 +991,49 @@ void ofMesh::load(string path){
 	data = backup;
 }
 
-void ofMesh::save(string path, bool useBinary) const{
+void ofMesh::save(std::string path, bool useBinary) const{
 	ofFile os(path, ofFile::WriteOnly);
 	const ofMesh& data = *this;
 
-	os << "ply" << endl;
+	os << "ply" << std::endl;
 	if(useBinary) {
-		os << "format binary_little_endian 1.0" << endl;
+		os << "format binary_little_endian 1.0" << std::endl;
 	} else {
-		os << "format ascii 1.0" << endl;
+		os << "format ascii 1.0" << std::endl;
 	}
 
 	if(data.getNumVertices()){
-		os << "element vertex " << data.getNumVertices() << endl;
-		os << "property float x" << endl;
-		os << "property float y" << endl;
-		os << "property float z" << endl;
+		os << "element vertex " << data.getNumVertices() << std::endl;
+		os << "property float x" << std::endl;
+		os << "property float y" << std::endl;
+		os << "property float z" << std::endl;
 		if(data.getNumColors()){
-			os << "property uchar red" << endl;
-			os << "property uchar green" << endl;
-			os << "property uchar blue" << endl;
-			os << "property uchar alpha" << endl;
+			os << "property uchar red" << std::endl;
+			os << "property uchar green" << std::endl;
+			os << "property uchar blue" << std::endl;
+			os << "property uchar alpha" << std::endl;
 		}
 		if(data.getNumTexCoords()){
-			os << "property float u" << endl;
-			os << "property float v" << endl;
+			os << "property float u" << std::endl;
+			os << "property float v" << std::endl;
 		}
 		if(data.getNumNormals()){
-			os << "property float nx" << endl;
-			os << "property float ny" << endl;
-			os << "property float nz" << endl;
+			os << "property float nx" << std::endl;
+			os << "property float ny" << std::endl;
+			os << "property float nz" << std::endl;
 		}
 	}
 
 	std::size_t faceSize = 3;
 	if(data.getNumIndices()){
-		os << "element face " << data.getNumIndices() / faceSize << endl;
-		os << "property list uchar int vertex_indices" << endl;
+		os << "element face " << data.getNumIndices() / faceSize << std::endl;
+		os << "property list uchar int vertex_indices" << std::endl;
 	} else if(data.getMode() == OF_PRIMITIVE_TRIANGLES) {
-		os << "element face " << data.getNumVertices() / faceSize << endl;
-		os << "property list uchar int vertex_indices" << endl;
+		os << "element face " << data.getNumVertices() / faceSize << std::endl;
+		os << "property list uchar int vertex_indices" << std::endl;
 	}
 
-	os << "end_header" << endl;
+	os << "end_header" << std::endl;
 
 	for(std::size_t i = 0; i < data.getNumVertices(); i++){
 		if(useBinary) {
@@ -1065,7 +1065,7 @@ void ofMesh::save(string path, bool useBinary) const{
 			}
 		}
 		if(!useBinary) {
-			os << endl;
+			os << std::endl;
 		}
 	}
 
@@ -1078,7 +1078,7 @@ void ofMesh::save(string path, bool useBinary) const{
 					os.write((char*) &curIndex, sizeof(std::size_t));
 				}
 			} else {
-				os << (std::size_t) faceSize << " " << data.getIndex(i) << " " << data.getIndex(i+1) << " " << data.getIndex(i+2) << endl;
+				os << (std::size_t) faceSize << " " << data.getIndex(i) << " " << data.getIndex(i+1) << " " << data.getIndex(i+2) << std::endl;
 			}
 		}
 	} else if(data.getMode() == OF_PRIMITIVE_TRIANGLES) {
@@ -1090,7 +1090,7 @@ void ofMesh::save(string path, bool useBinary) const{
 					os.write((char*) &indices[j], sizeof(std::size_t));
 				}
 			} else {
-				os << (std::size_t) faceSize << " " << indices[0] << " " << indices[1] << " " << indices[2] << endl;
+				os << (std::size_t) faceSize << " " << indices[0] << " " << indices[1] << " " << indices[2] << std::endl;
 			}
 		}
 	}
@@ -1139,7 +1139,7 @@ ofMesh ofMesh::getMeshForIndices( ofIndexType startIndex, ofIndexType endIndex, 
     mesh.getVertices().assign( getVertices().begin()+startVertIndex, getVertices().begin()+endVertIndex );
 
     if( hasColors() ) {
-        vector<ofFloatColor> colors;
+		std::vector<ofFloatColor> colors;
         mesh.getColors().assign( getColors().begin()+startVertIndex, getColors().begin()+endVertIndex );
         if( usingColors()) mesh.enableColors();
         else mesh.disableColors();
@@ -1176,8 +1176,8 @@ ofMesh ofMesh::getMeshForIndices( ofIndexType startIndex, ofIndexType endIndex, 
 //----------------------------------------------------------
 void ofMesh::mergeDuplicateVertices() {
     
-    vector<ofVec3f> verts         = getVertices();
-    vector<ofIndexType> indices   = getIndices();
+	std::vector<ofVec3f> verts         = getVertices();
+	std::vector<ofIndexType> indices   = getIndices();
     
     //get indexes to share single point - TODO: try j < i
     for(ofIndexType i = 0; i < indices.size(); i++) {
@@ -1199,17 +1199,17 @@ void ofMesh::mergeDuplicateVertices() {
     //indices array now has list of unique points we need
     //but we need to delete the old points we're not using and that means the index values will change
     //so we are going to create a new list of points and new indexes - we will use a map to map old index values to the new ones
-    vector <ofPoint> newPoints;
-    vector <ofIndexType> newIndexes;
-    map <ofIndexType, bool> ptCreated;
-    map <ofIndexType, ofIndexType> oldIndexNewIndex;
+	std::vector <ofPoint> newPoints;
+	std::vector <ofIndexType> newIndexes;
+	std::map <ofIndexType, bool> ptCreated;
+	std::map <ofIndexType, ofIndexType> oldIndexNewIndex;
     
-    vector<ofFloatColor> newColors;
-    vector<ofFloatColor>& colors    = getColors();
-    vector<ofVec2f> newTCoords;
-    vector<ofVec2f>& tcoords        = getTexCoords();
-    vector<ofVec3f> newNormals;
-    vector<ofVec3f>& normals        = getNormals();
+	std::vector<ofFloatColor> newColors;
+	std::vector<ofFloatColor>& colors    = getColors();
+	std::vector<ofVec2f> newTCoords;
+	std::vector<ofVec2f>& tcoords        = getTexCoords();
+	std::vector<ofVec3f> newNormals;
+	std::vector<ofVec3f>& normals        = getNormals();
     
     for(ofIndexType i = 0; i < indices.size(); i++){
         ptCreated[i] = false;
@@ -1269,7 +1269,7 @@ void ofMesh::mergeDuplicateVertices() {
 
 //----------------------------------------------------------
 ofMeshFace ofMesh::getFace(ofIndexType faceId) const{
-	const vector<ofMeshFace> & faces = getUniqueFaces();
+	const std::vector<ofMeshFace> & faces = getUniqueFaces();
 	if(faces.size()>faceId){
 		return faces[faceId];
 	}else{
@@ -1279,7 +1279,7 @@ ofMeshFace ofMesh::getFace(ofIndexType faceId) const{
 }
 
 //----------------------------------------------------------
-const vector<ofMeshFace> & ofMesh::getUniqueFaces() const{
+const std::vector<ofMeshFace> & ofMesh::getUniqueFaces() const{
     if(bFacesDirty){
 		// if we are doing triangles, we have to use a vert and normal for each triangle
 		// that way we can calculate face normals and use getFaceNormal();
@@ -1320,9 +1320,9 @@ const vector<ofMeshFace> & ofMesh::getUniqueFaces() const{
 }
 
 //----------------------------------------------------------
-vector<ofVec3f> ofMesh::getFaceNormals( bool perVertex ) const{
+std::vector<ofVec3f> ofMesh::getFaceNormals( bool perVertex ) const{
     // default for ofPrimitiveBase is vertex normals //
-    vector<ofVec3f> faceNormals;
+	std::vector<ofVec3f> faceNormals;
     
     if( hasVertices() ) {
         if(vertices.size() > 3 && indices.size() > 3) {
@@ -1354,16 +1354,14 @@ vector<ofVec3f> ofMesh::getFaceNormals( bool perVertex ) const{
 }
 
 //----------------------------------------------------------
-void ofMesh::setFromTriangles( const vector<ofMeshFace>& tris, bool bUseFaceNormal ) {
+void ofMesh::setFromTriangles( const std::vector<ofMeshFace>& tris, bool bUseFaceNormal ) {
     if(tris.empty()) {
         ofLogWarning("ofMesh") << "setFromTriangles(): ignoring empty tris vector";
         return;
     }
     
-    vector<ofMeshFace>::const_iterator it;
-    
     vertices.resize(tris.size()*3 );
-    it = tris.begin();
+    auto it = tris.begin();
     // if the first tri has data, assume the rest do as well //
     if(it->hasNormals()){
     	normals.resize(tris.size()*3);
@@ -1412,15 +1410,15 @@ void ofMesh::setFromTriangles( const vector<ofMeshFace>& tris, bool bUseFaceNorm
 void ofMesh::smoothNormals( float angle ) {
     
     if( getMode() == OF_PRIMITIVE_TRIANGLES) {
-        vector<ofMeshFace> triangles = getUniqueFaces();
-        vector<ofVec3f> verts;
+        std::vector<ofMeshFace> triangles = getUniqueFaces();
+		std::vector<ofVec3f> verts;
         for(ofIndexType i = 0; i < triangles.size(); i++) {
             for(ofIndexType j = 0; j < 3; j++) {
                 verts.push_back( triangles[i].getVertex(j) );
             }
         }
         
-        map<int, int> removeIds;
+		std::map<int, int> removeIds;
         
         float epsilon = .01f;
         for(ofIndexType i = 0; i < verts.size()-1; i++) {
@@ -1439,17 +1437,17 @@ void ofMesh::smoothNormals( float angle ) {
         }
         
         // string of vertex in 3d space to triangle index //
-        map<string, vector<int> > vertHash;
+		std::map<std::string, std::vector<int> > vertHash;
         
 		//ofLogNotice("ofMesh") << "smoothNormals(): num verts = " << verts.size() << " tris size = " << triangles.size();
         
-        string xStr, yStr, zStr;
+		std::string xStr, yStr, zStr;
         
         for(ofIndexType i = 0; i < verts.size(); i++ ) {
             xStr = "x"+ofToString(verts[i].x==-0?0:verts[i].x);
             yStr = "y"+ofToString(verts[i].y==-0?0:verts[i].y);
             zStr = "z"+ofToString(verts[i].z==-0?0:verts[i].z);
-            string vstring = xStr+yStr+zStr;
+			std::string vstring = xStr+yStr+zStr;
             if(vertHash.find(vstring) == vertHash.end()) {
                 for(ofIndexType j = 0; j < triangles.size(); j++) {
                     for(ofIndexType k = 0; k < 3; k++) {
@@ -1484,7 +1482,7 @@ void ofMesh::smoothNormals( float angle ) {
                 yStr = "y"+ofToString(vert.y==-0?0:vert.y);
                 zStr = "z"+ofToString(vert.z==-0?0:vert.z);
                 
-                string vstring = xStr+yStr+zStr;
+				std::string vstring = xStr+yStr+zStr;
                 numNormals=0;
                 normal.set(0,0,0);
                 if(vertHash.find(vstring) != vertHash.end()) {
@@ -1766,8 +1764,8 @@ ofMesh ofMesh::icosphere(float radius, std::size_t iterations) {
     
     //ofMesh icosahedron = ofGetIcosahedronMesh( 1.f );
     ofMesh icosahedron = ofMesh::icosahedron( 1.f );
-    vector<ofVec3f> vertices = icosahedron.getVertices();
-    vector<ofIndexType> faces = icosahedron.getIndices();
+	std::vector<ofVec3f> vertices = icosahedron.getVertices();
+	std::vector<ofIndexType> faces = icosahedron.getIndices();
     
     ofIndexType size = faces.size();
     
@@ -1775,7 +1773,7 @@ ofMesh ofMesh::icosphere(float radius, std::size_t iterations) {
     for (ofIndexType iteration = 0; iteration < iterations; iteration++)
     {
         size*=4;
-        vector<ofIndexType> newFaces;
+		std::vector<ofIndexType> newFaces;
         newFaces.clear();
         //newFaces.resize(size);
         for (ofIndexType i=0; i<size/12; i++)
@@ -1811,7 +1809,7 @@ ofMesh ofMesh::icosphere(float radius, std::size_t iterations) {
     }
     
     /// Step 3 : generate texcoords
-    vector<ofVec2f> texCoords;
+	std::vector<ofVec2f> texCoords;
     for (ofIndexType i=0;i<vertices.size();i++)
     {
         const ofVec3f& vec = vertices[i];

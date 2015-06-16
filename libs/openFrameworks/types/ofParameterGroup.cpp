@@ -38,7 +38,7 @@ ofParameterGroup & ofParameterGroup::operator=(const ofParameterGroup& mom){
 }
 
 void ofParameterGroup::add(ofAbstractParameter & parameter){
-	shared_ptr<ofAbstractParameter> param = parameter.newReference();
+	std::shared_ptr<ofAbstractParameter> param = parameter.newReference();
 	obj->parameters.push_back(param);
 	obj->parametersIndex[param->getEscapedName()] = obj->parameters.size()-1;
 	param->setParent(this);
@@ -49,55 +49,55 @@ void ofParameterGroup::clear(){
 	obj->parametersIndex.clear();
 }
 
-ofParameter<bool> ofParameterGroup::getBool(string name) const	{
+ofParameter<bool> ofParameterGroup::getBool(std::string name) const	{
 	return get<bool>(name);
 }
 
-ofParameter<int> ofParameterGroup::getInt(string name) const{
+ofParameter<int> ofParameterGroup::getInt(std::string name) const{
 	return get<int>(name);
 }
 
-ofParameter<float> ofParameterGroup::getFloat(string name) const{
+ofParameter<float> ofParameterGroup::getFloat(std::string name) const{
 	return get<float>(name);
 }
 
-ofParameter<char> ofParameterGroup::getChar(string name) const{
+ofParameter<char> ofParameterGroup::getChar(std::string name) const{
 	return get<char>(name);
 }
 
-ofParameter<string> ofParameterGroup::getString(string name) const{
-	return get<string>(name);
+ofParameter<std::string> ofParameterGroup::getString(std::string name) const{
+	return get<std::string>(name);
 }
 
-ofParameter<ofPoint> ofParameterGroup::getPoint(string name) const{
+ofParameter<ofPoint> ofParameterGroup::getPoint(std::string name) const{
 	return get<ofPoint>(name);
 }
 
-ofParameter<ofVec2f> ofParameterGroup::getVec2f(string name) const{
+ofParameter<ofVec2f> ofParameterGroup::getVec2f(std::string name) const{
 	return get<ofVec2f>(name);
 }
 
-ofParameter<ofVec3f> ofParameterGroup::getVec3f(string name) const{
+ofParameter<ofVec3f> ofParameterGroup::getVec3f(std::string name) const{
 	return get<ofVec3f>(name);
 }
 
-ofParameter<ofVec4f> ofParameterGroup::getVec4f(string name) const{
+ofParameter<ofVec4f> ofParameterGroup::getVec4f(std::string name) const{
 	return get<ofVec4f>(name);
 }
 
-ofParameter<ofColor> ofParameterGroup::getColor(string name) const{
+ofParameter<ofColor> ofParameterGroup::getColor(std::string name) const{
 	return get<ofColor>(name);
 }
 
-ofParameter<ofShortColor> ofParameterGroup::getShortColor(string name) const{
+ofParameter<ofShortColor> ofParameterGroup::getShortColor(std::string name) const{
 	return get<ofShortColor>(name);
 }
 
-ofParameter<ofFloatColor> ofParameterGroup::getFloatColor(string name) const{
+ofParameter<ofFloatColor> ofParameterGroup::getFloatColor(std::string name) const{
 	return get<ofFloatColor>(name);
 }
 
-ofParameterGroup ofParameterGroup::getGroup(string name) const{
+ofParameterGroup ofParameterGroup::getGroup(std::string name) const{
 	return static_cast<ofParameterGroup& >(get(name));
 }
 
@@ -117,8 +117,8 @@ ofParameter<char> ofParameterGroup::getChar(int pos) const{
 	return get<char>(pos);
 }
 
-ofParameter<string> ofParameterGroup::getString(int pos) const{
-	return get<string>(pos);
+ofParameter<std::string> ofParameterGroup::getString(int pos) const{
+	return get<std::string>(pos);
 }
 
 ofParameter<ofPoint> ofParameterGroup::getPoint(int pos)	 const{
@@ -168,7 +168,7 @@ int ofParameterGroup::size() const{
 	return obj->parameters.size();
 }
 
-string ofParameterGroup::getName(int position) const{
+std::string ofParameterGroup::getName(int position) const{
 	if(position>=size()){
 		return "";
 	}else{
@@ -176,27 +176,27 @@ string ofParameterGroup::getName(int position) const{
 	}
 }
 
-string ofParameterGroup::getType(int position) const{
+std::string ofParameterGroup::getType(int position) const{
 	if(position>=size()) return "";
 	else return obj->parameters[position]->type();
 }
 
 
-int ofParameterGroup::getPosition(string name) const{
+int ofParameterGroup::getPosition(std::string name) const{
 	if(obj->parametersIndex.find(escape(name))!=obj->parametersIndex.end())
 		return obj->parametersIndex.find(escape(name))->second;
 	return -1;
 }
 
-string ofParameterGroup::getName() const{
+std::string ofParameterGroup::getName() const{
 	return obj->name;
 }
 
-void ofParameterGroup::setName(string _name){
+void ofParameterGroup::setName(std::string _name){
 	obj->name = _name;
 }
 
-string ofParameterGroup::getEscapedName() const{
+std::string ofParameterGroup::getEscapedName() const{
 	if(getName()==""){
 		return "group";
 	}else{
@@ -204,15 +204,15 @@ string ofParameterGroup::getEscapedName() const{
 	}
 }
 
-string ofParameterGroup::toString() const{
-	stringstream out;
+std::string ofParameterGroup::toString() const{
+	std::stringstream out;
 	out << *this;
 	return out.str();
 }
 
 
-ofAbstractParameter & ofParameterGroup::get(string name) const{
-	map<string,int>::const_iterator it = obj->parametersIndex.find(escape(name));
+ofAbstractParameter & ofParameterGroup::get(std::string name) const{
+	std::map<std::string,int>::const_iterator it = obj->parametersIndex.find(escape(name));
 	int index = it->second;
 	return get(index);
 }
@@ -222,7 +222,7 @@ ofAbstractParameter & ofParameterGroup::get(int pos) const{
 }
 
 
-ofAbstractParameter & ofParameterGroup::operator[](string name) const{
+ofAbstractParameter & ofParameterGroup::operator[](std::string name) const{
 	return get(name);
 }
 
@@ -230,22 +230,22 @@ ofAbstractParameter & ofParameterGroup::operator[](int pos) const{
 	return get(pos);
 }
 
-ostream& operator<<(ostream& os, const ofParameterGroup& group) {
+std::ostream& operator<<(std::ostream& os, const ofParameterGroup& group) {
 	std::streamsize width = os.width();
 	for(int i=0;i<group.size();i++){
 		if(group.getType(i)==typeid(ofParameterGroup).name()){
-			os << group.getName(i) << ":" << endl;
-			os << setw(width+4);
+			os << group.getName(i) << ":" << std::endl;
+			os << std::setw(width+4);
 			os << group.getGroup(i);
 		}else{
-			os << group.getName(i) << ":" << group.get(i) << endl;
-			os << setw(width);
+			os << group.getName(i) << ":" << group.get(i) << std::endl;
+			os << std::setw(width);
 		}
 	}
 	return os;
 }
 
-bool ofParameterGroup::contains(string name){
+bool ofParameterGroup::contains(std::string name){
 	return obj->parametersIndex.find(escape(name))!=obj->parametersIndex.end();
 }
 
@@ -278,8 +278,8 @@ bool ofParameterGroup::isSerializable() const{
 	return obj->serializable;
 }
 
-shared_ptr<ofAbstractParameter> ofParameterGroup::newReference() const{
-	return shared_ptr<ofAbstractParameter>(new ofParameterGroup(*this));
+std::shared_ptr<ofAbstractParameter> ofParameterGroup::newReference() const{
+	return std::shared_ptr<ofAbstractParameter>(new ofParameterGroup(*this));
 }
 
 void ofParameterGroup::setParent(ofParameterGroup * _parent){
@@ -294,35 +294,35 @@ ofParameterGroup * ofParameterGroup::getParent(){
 	return obj->parent;
 }
 
-vector<shared_ptr<ofAbstractParameter> >::iterator ofParameterGroup::begin(){
+std::vector<std::shared_ptr<ofAbstractParameter> >::iterator ofParameterGroup::begin(){
 	return obj->parameters.begin();
 }
 
-vector<shared_ptr<ofAbstractParameter> >::iterator ofParameterGroup::end(){
+std::vector<std::shared_ptr<ofAbstractParameter> >::iterator ofParameterGroup::end(){
 	return obj->parameters.end();
 }
 
-vector<shared_ptr<ofAbstractParameter> >::const_iterator ofParameterGroup::begin() const{
+std::vector<std::shared_ptr<ofAbstractParameter> >::const_iterator ofParameterGroup::begin() const{
 	return obj->parameters.begin();
 }
 
-vector<shared_ptr<ofAbstractParameter> >::const_iterator ofParameterGroup::end() const{
+std::vector<std::shared_ptr<ofAbstractParameter> >::const_iterator ofParameterGroup::end() const{
 	return obj->parameters.end();
 }
 
-vector<shared_ptr<ofAbstractParameter> >::reverse_iterator ofParameterGroup::rbegin(){
+std::vector<std::shared_ptr<ofAbstractParameter> >::reverse_iterator ofParameterGroup::rbegin(){
 	return obj->parameters.rbegin();
 }
 
-vector<shared_ptr<ofAbstractParameter> >::reverse_iterator ofParameterGroup::rend(){
+std::vector<std::shared_ptr<ofAbstractParameter> >::reverse_iterator ofParameterGroup::rend(){
 	return obj->parameters.rend();
 }
 
-vector<shared_ptr<ofAbstractParameter> >::const_reverse_iterator ofParameterGroup::rbegin() const{
+std::vector<std::shared_ptr<ofAbstractParameter> >::const_reverse_iterator ofParameterGroup::rbegin() const{
 	return obj->parameters.rbegin();
 }
 
-vector<shared_ptr<ofAbstractParameter> >::const_reverse_iterator ofParameterGroup::rend() const{
+std::vector<std::shared_ptr<ofAbstractParameter> >::const_reverse_iterator ofParameterGroup::rend() const{
 	return obj->parameters.rend();
 }
 

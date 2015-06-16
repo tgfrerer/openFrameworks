@@ -451,7 +451,7 @@ ofPolyline & ofPath::lastPolyline(){
 }
 
 //----------------------------------------------------------
-vector<ofPath::Command> & ofPath::getCommands(){
+std::vector<ofPath::Command> & ofPath::getCommands(){
 	if(mode==POLYLINES){
 		ofLogWarning("ofPath") << "getCommands(): trying to get path commands from shape with polylines only";
 	}
@@ -459,7 +459,7 @@ vector<ofPath::Command> & ofPath::getCommands(){
 }
 
 //----------------------------------------------------------
-const vector<ofPath::Command> & ofPath::getCommands() const{
+const std::vector<ofPath::Command> & ofPath::getCommands() const{
 	if(mode==POLYLINES){
 		ofLogWarning("ofPath") << "getCommands(): trying to get path commands from shape with polylines only";
 	}
@@ -552,7 +552,7 @@ void ofPath::tessellate(){
 }
 
 //----------------------------------------------------------
-vector<ofPolyline> & ofPath::getOutline() {
+std::vector<ofPolyline> & ofPath::getOutline() {
 	if(windingMode!=OF_POLY_WINDING_ODD){
 		tessellate();
 		return tessellatedContour;
@@ -563,7 +563,7 @@ vector<ofPolyline> & ofPath::getOutline() {
 }
 
 //----------------------------------------------------------
-const vector<ofPolyline> & ofPath::getOutline() const{
+const std::vector<ofPolyline> & ofPath::getOutline() const{
 	if(windingMode!=OF_POLY_WINDING_ODD){
 		const_cast<ofPath*>(this)->tessellate();
 		return tessellatedContour;

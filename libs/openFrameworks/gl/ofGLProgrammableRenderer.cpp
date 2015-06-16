@@ -15,19 +15,19 @@
 #include "ofNode.h"
 
 
-static const string VIEW_MATRIX_UNIFORM="viewMatrix";
-static const string MODELVIEW_MATRIX_UNIFORM="modelViewMatrix";
-static const string PROJECTION_MATRIX_UNIFORM="projectionMatrix";
-static const string MODELVIEW_PROJECTION_MATRIX_UNIFORM="modelViewProjectionMatrix";
-static const string TEXTURE_MATRIX_UNIFORM="textureMatrix";
-static const string COLOR_UNIFORM="globalColor";
+static const std::string VIEW_MATRIX_UNIFORM="viewMatrix";
+static const std::string MODELVIEW_MATRIX_UNIFORM="modelViewMatrix";
+static const std::string PROJECTION_MATRIX_UNIFORM="projectionMatrix";
+static const std::string MODELVIEW_PROJECTION_MATRIX_UNIFORM="modelViewProjectionMatrix";
+static const std::string TEXTURE_MATRIX_UNIFORM="textureMatrix";
+static const std::string COLOR_UNIFORM="globalColor";
 
-static const string USE_TEXTURE_UNIFORM="usingTexture";
-static const string USE_COLORS_UNIFORM="usingColors";
-static const string BITMAP_STRING_UNIFORM="bitmapText";
+static const std::string USE_TEXTURE_UNIFORM="usingTexture";
+static const std::string USE_COLORS_UNIFORM="usingColors";
+static const std::string BITMAP_STRING_UNIFORM="bitmapText";
 
 
-const string ofGLProgrammableRenderer::TYPE="ProgrammableGL";
+const std::string ofGLProgrammableRenderer::TYPE="ProgrammableGL";
 static bool programmableRendererCreated = false;
 
 bool ofIsGLProgrammableRenderer(){
@@ -341,7 +341,7 @@ void ofGLProgrammableRenderer::draw(const ofPath & shape) const{
 			mut_this->setColor( shape.getStrokeColor(), shape.getStrokeColor().a);
 		}
 		mut_this->setLineWidth( shape.getStrokeWidth() );
-		const vector<ofPolyline> & outlines = shape.getOutline();
+		const std::vector<ofPolyline> & outlines = shape.getOutline();
 		for(int i=0; i<(int)outlines.size(); i++)
 			draw(outlines[i]);
 		mut_this->setLineWidth(lineWidth);
@@ -1567,7 +1567,7 @@ void ofGLProgrammableRenderer::drawTriangle(float x1, float y1, float z1, float 
 //----------------------------------------------------------
 void ofGLProgrammableRenderer::drawCircle(float x, float y, float z,  float radius) const{
 	ofGLProgrammableRenderer * mutThis = const_cast<ofGLProgrammableRenderer*>(this);
-	const vector<ofPoint> & circleCache = circlePolyline.getVertices();
+	const std::vector<ofPoint> & circleCache = circlePolyline.getVertices();
 	for(int i=0;i<(int)circleCache.size();i++){
 		circleMesh.getVertices()[i].set(radius*circleCache[i].x+x,radius*circleCache[i].y+y,z);
 	}
@@ -1587,7 +1587,7 @@ void ofGLProgrammableRenderer::drawEllipse(float x, float y, float z, float widt
 	ofGLProgrammableRenderer * mutThis = const_cast<ofGLProgrammableRenderer*>(this);
 	float radiusX = width*0.5;
 	float radiusY = height*0.5;
-	const vector<ofPoint> & circleCache = circlePolyline.getVertices();
+	const std::vector<ofPoint> & circleCache = circlePolyline.getVertices();
 	for(int i=0;i<(int)circleCache.size();i++){
 		circleMesh.getVertices()[i].set(radiusX*circlePolyline[i].x+x,radiusY*circlePolyline[i].y+y,z);
 	}
@@ -1603,7 +1603,7 @@ void ofGLProgrammableRenderer::drawEllipse(float x, float y, float z, float widt
 }
 
 //----------------------------------------------------------
-void ofGLProgrammableRenderer::drawString(string textString, float x, float y, float z) const{
+void ofGLProgrammableRenderer::drawString(std::string textString, float x, float y, float z) const{
 	ofGLProgrammableRenderer * mutThis = const_cast<ofGLProgrammableRenderer*>(this);
 	float sx = 0;
 	float sy = 0;
@@ -1754,7 +1754,7 @@ void ofGLProgrammableRenderer::drawString(string textString, float x, float y, f
 
 
 //----------------------------------------------------------
-void ofGLProgrammableRenderer::drawString(const ofTrueTypeFont & font, string text, float x, float y) const{
+void ofGLProgrammableRenderer::drawString(const ofTrueTypeFont & font, std::string text, float x, float y) const{
 	ofGLProgrammableRenderer * mutThis = const_cast<ofGLProgrammableRenderer*>(this);
 	ofBlendMode blendMode = currentStyle.blendingMode;
 
@@ -1775,13 +1775,13 @@ void ofGLProgrammableRenderer::drawString(const ofTrueTypeFont & font, string te
 // http://www.opengl.org/registry/doc/GLSLangSpec.1.50.09.pdf
 
 #ifdef TARGET_OPENGLES
-static const string vertex_shader_header =
+static const std::string vertex_shader_header =
 		"precision mediump float;\n"
 		"#define IN attribute\n"
 		"#define OUT varying\n"
 		"#define TEXTURE texture2D\n"
 		"#define TARGET_OPENGLES\n";
-static const string fragment_shader_header =
+static const std::string fragment_shader_header =
 		"precision mediump float;\n"
 		"#define IN varying\n"
 		"#define OUT\n"
@@ -1789,13 +1789,13 @@ static const string fragment_shader_header =
 		"#define FRAG_COLOR gl_FragColor\n"
 		"#define TARGET_OPENGLES\n";
 #else
-static const string vertex_shader_header =
+static const std::string vertex_shader_header =
 		"#version %glsl_version%\n"
 		"%extensions%\n"
 		"#define IN in\n"
 		"#define OUT out\n"
 		"#define TEXTURE texture\n";
-static const string fragment_shader_header =
+static const std::string fragment_shader_header =
 		"#version %glsl_version%\n"
 		"%extensions%\n"
 		"#define IN in\n"
@@ -1805,7 +1805,7 @@ static const string fragment_shader_header =
 		"out vec4 fragColor;\n";
 #endif
 
-static const string defaultVertexShader = vertex_shader_header + STRINGIFY(
+static const std::string defaultVertexShader = vertex_shader_header + STRINGIFY(
 	uniform mat4 projectionMatrix;
 	uniform mat4 modelViewMatrix;
 	uniform mat4 textureMatrix;
@@ -1830,7 +1830,7 @@ static const string defaultVertexShader = vertex_shader_header + STRINGIFY(
 
 // ----------------------------------------------------------------------
 
-static const string defaultFragmentShaderTexRectColor = fragment_shader_header + STRINGIFY(
+static const std::string defaultFragmentShaderTexRectColor = fragment_shader_header + STRINGIFY(
 
 	uniform sampler2DRect src_tex_unit0;
 	uniform float usingTexture;
@@ -1849,7 +1849,7 @@ static const string defaultFragmentShaderTexRectColor = fragment_shader_header +
 
 // ----------------------------------------------------------------------
 
-static const string defaultFragmentShaderTexRectNoColor = fragment_shader_header + STRINGIFY(
+static const std::string defaultFragmentShaderTexRectNoColor = fragment_shader_header + STRINGIFY(
 
 	uniform sampler2DRect src_tex_unit0;
 	uniform float usingTexture;
@@ -1867,7 +1867,7 @@ static const string defaultFragmentShaderTexRectNoColor = fragment_shader_header
 
 // ----------------------------------------------------------------------
 
-static const string alphaMaskFragmentShaderTexRectNoColor = fragment_shader_header + STRINGIFY(
+static const std::string alphaMaskFragmentShaderTexRectNoColor = fragment_shader_header + STRINGIFY(
 
 	uniform sampler2DRect src_tex_unit0;
 	uniform sampler2DRect src_tex_unit1;
@@ -1886,7 +1886,7 @@ static const string alphaMaskFragmentShaderTexRectNoColor = fragment_shader_head
 
 // ----------------------------------------------------------------------
 
-static const string alphaMaskFragmentShaderTex2DNoColor = fragment_shader_header + STRINGIFY(
+static const std::string alphaMaskFragmentShaderTex2DNoColor = fragment_shader_header + STRINGIFY(
 
 	uniform sampler2D src_tex_unit0;
 	uniform sampler2D src_tex_unit1;
@@ -1905,7 +1905,7 @@ static const string alphaMaskFragmentShaderTex2DNoColor = fragment_shader_header
 
 // ----------------------------------------------------------------------
 
-static const string defaultFragmentShaderTex2DColor = fragment_shader_header + STRINGIFY(
+static const std::string defaultFragmentShaderTex2DColor = fragment_shader_header + STRINGIFY(
 
 	uniform sampler2D src_tex_unit0;
 	uniform float usingTexture;
@@ -1923,7 +1923,7 @@ static const string defaultFragmentShaderTex2DColor = fragment_shader_header + S
 
 // ----------------------------------------------------------------------
 
-static const string defaultFragmentShaderTex2DNoColor = fragment_shader_header + STRINGIFY(
+static const std::string defaultFragmentShaderTex2DNoColor = fragment_shader_header + STRINGIFY(
 
 	uniform sampler2D src_tex_unit0;
 	uniform float usingTexture;
@@ -1941,7 +1941,7 @@ static const string defaultFragmentShaderTex2DNoColor = fragment_shader_header +
 
 // ----------------------------------------------------------------------
 
-static const string defaultFragmentShaderNoTexColor = fragment_shader_header + STRINGIFY (
+static const std::string defaultFragmentShaderNoTexColor = fragment_shader_header + STRINGIFY (
 
 	uniform float usingTexture;
 	uniform float usingColors;
@@ -1958,7 +1958,7 @@ static const string defaultFragmentShaderNoTexColor = fragment_shader_header + S
 
 // ----------------------------------------------------------------------
 
-static const string defaultFragmentShaderNoTexNoColor = fragment_shader_header + STRINGIFY(
+static const std::string defaultFragmentShaderNoTexNoColor = fragment_shader_header + STRINGIFY(
 
 	uniform float usingTexture;
 	uniform float usingColors;
@@ -1975,7 +1975,7 @@ static const string defaultFragmentShaderNoTexNoColor = fragment_shader_header +
 
 // ----------------------------------------------------------------------
 
-static const string bitmapStringVertexShader = vertex_shader_header + STRINGIFY(
+static const std::string bitmapStringVertexShader = vertex_shader_header + STRINGIFY(
 
 	uniform mat4 projectionMatrix;
 	uniform mat4 modelViewMatrix;
@@ -1997,7 +1997,7 @@ static const string bitmapStringVertexShader = vertex_shader_header + STRINGIFY(
 
 // ----------------------------------------------------------------------
 
-static const string bitmapStringFragmentShader = fragment_shader_header + STRINGIFY(
+static const std::string bitmapStringFragmentShader = fragment_shader_header + STRINGIFY(
 
 	uniform sampler2D src_tex_unit0;
 	uniform vec4 globalColor;
@@ -2019,7 +2019,7 @@ static const string bitmapStringFragmentShader = fragment_shader_header + STRING
 // changing shaders in raspberry pi is very expensive so we use only one shader there
 // in desktop openGL these are not used but we declare it to avoid more ifdefs
 
-static const string uniqueVertexShader = vertex_shader_header + STRINGIFY(
+static const std::string uniqueVertexShader = vertex_shader_header + STRINGIFY(
         
 	uniform mat4 modelViewMatrix;
 	uniform mat4 projectionMatrix;
@@ -2046,7 +2046,7 @@ static const string uniqueVertexShader = vertex_shader_header + STRINGIFY(
 );
 
 // ----------------------------------------------------------------------
-static const string uniqueFragmentShader = fragment_shader_header + STRINGIFY(
+static const std::string uniqueFragmentShader = fragment_shader_header + STRINGIFY(
         
 	uniform sampler2D src_tex_unit0;
 	uniform float usingTexture;
@@ -2072,7 +2072,7 @@ static const string uniqueFragmentShader = fragment_shader_header + STRINGIFY(
 
 // ----------------------------------------------------------------------
 // video color space conversion shaders
-static const string FRAGMENT_SHADER_YUY2 = STRINGIFY(
+static const std::string FRAGMENT_SHADER_YUY2 = STRINGIFY(
 	uniform SAMPLER src_tex_unit0;\n
 	uniform vec4 globalColor;\n
 
@@ -2107,7 +2107,7 @@ static const string FRAGMENT_SHADER_YUY2 = STRINGIFY(
 );
 
 // ----------------------------------------------------------------------
-static const string FRAGMENT_SHADER_NV12_NV21 = STRINGIFY(
+static const std::string FRAGMENT_SHADER_NV12_NV21 = STRINGIFY(
 	uniform SAMPLER Ytex;\n
 	uniform SAMPLER UVtex;\n
 	uniform vec4 globalColor;\n
@@ -2135,7 +2135,7 @@ static const string FRAGMENT_SHADER_NV12_NV21 = STRINGIFY(
 );
 
 // ----------------------------------------------------------------------
-static const string FRAGMENT_SHADER_PLANAR_YUV = STRINGIFY(
+static const std::string FRAGMENT_SHADER_PLANAR_YUV = STRINGIFY(
 	uniform SAMPLER Ytex;\n
 	uniform SAMPLER Utex;\n
 	uniform SAMPLER Vtex;\n
@@ -2166,7 +2166,7 @@ static const string FRAGMENT_SHADER_PLANAR_YUV = STRINGIFY(
 	}\n
 );
 
-static string defaultShaderHeader(string header, GLenum textureTarget, int major, int minor){
+static std::string defaultShaderHeader(std::string header, GLenum textureTarget, int major, int minor){
 	ofStringReplace(header,"%glsl_version%",ofGLSLVersionFromGL(major,minor));
 #ifndef TARGET_OPENGLES
 	if(major<4 && minor<2){
@@ -2184,8 +2184,8 @@ static string defaultShaderHeader(string header, GLenum textureTarget, int major
 }
 
 
-static string shaderSource(const string & src, int major, int minor){
-	string shaderSrc = src;
+static std::string shaderSource(const std::string & src, int major, int minor){
+	std::string shaderSrc = src;
 	ofStringReplace(shaderSrc,"%glsl_version%",ofGLSLVersionFromGL(major,minor));
 #ifndef TARGET_OPENGLES
 	if(major<4 && minor<2){
@@ -2197,8 +2197,8 @@ static string shaderSource(const string & src, int major, int minor){
 	return shaderSrc;
 }
 
-static string videoFragmentShaderSource(const ofBaseVideoDraws & video, int major, int minor){
-	string src;
+static std::string videoFragmentShaderSource(const ofBaseVideoDraws & video, int major, int minor){
+	std::string src;
 	switch(video.getPixelFormat()){
 		case OF_PIXELS_YUY2:
 			src = FRAGMENT_SHADER_YUY2;
@@ -2238,7 +2238,7 @@ static string videoFragmentShaderSource(const ofBaseVideoDraws & video, int majo
 			break;
 	}
 
-	string header = fragment_shader_header;
+	std::string header = fragment_shader_header;
 	GLenum textureTarget = video.getTexture().getTextureData().textureTarget;
 	if(textureTarget==GL_TEXTURE_2D){
 		header += "#define SAMPLER sampler2D\n";
@@ -2251,11 +2251,11 @@ static string videoFragmentShaderSource(const ofBaseVideoDraws & video, int majo
 	return shaderSource(header + src, major, minor);
 }
 
-string ofGLProgrammableRenderer::defaultVertexShaderHeader(GLenum textureTarget){
+std::string ofGLProgrammableRenderer::defaultVertexShaderHeader(GLenum textureTarget){
 	return defaultShaderHeader(vertex_shader_header,textureTarget,major,minor);
 }
 
-string ofGLProgrammableRenderer::defaultFragmentShaderHeader(GLenum textureTarget){
+std::string ofGLProgrammableRenderer::defaultFragmentShaderHeader(GLenum textureTarget){
 	return defaultShaderHeader(fragment_shader_header,textureTarget,major,minor);
 }
 

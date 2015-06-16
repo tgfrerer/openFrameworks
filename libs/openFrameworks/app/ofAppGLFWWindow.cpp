@@ -151,9 +151,9 @@ void ofAppGLFWWindow::setup(const ofGLFWWindowSettings & _settings){
 		glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
 		glfwWindowHint(GLFW_CLIENT_API,GLFW_OPENGL_ES_API);
 		if(settings.glesVersion>=1){
-			currentRenderer = shared_ptr<ofBaseRenderer>(new ofGLProgrammableRenderer);
+			currentRenderer = std::shared_ptr<ofBaseRenderer>(new ofGLProgrammableRenderer);
 		}else{
-			currentRenderer = shared_ptr<ofBaseRenderer>(new ofGLRenderer);
+			currentRenderer = std::shared_ptr<ofBaseRenderer>(new ofGLRenderer);
 		}
 	#else
 		glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_API);
@@ -164,9 +164,9 @@ void ofAppGLFWWindow::setup(const ofGLFWWindowSettings & _settings){
 		}
 		if(settings.glVersionMajor>=3){
 			glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
-			currentRenderer = shared_ptr<ofBaseRenderer>(new ofGLProgrammableRenderer(this));
+			currentRenderer = std::shared_ptr<ofBaseRenderer>(new ofGLProgrammableRenderer(this));
 		}else{
-			currentRenderer = shared_ptr<ofBaseRenderer>(new ofGLRenderer(this));
+			currentRenderer = std::shared_ptr<ofBaseRenderer>(new ofGLRenderer(this));
 		}
 	#endif
 
@@ -282,7 +282,7 @@ void ofAppGLFWWindow::setup(const ofGLFWWindowSettings & _settings){
 
 #ifdef TARGET_LINUX
 //------------------------------------------------------------
-void ofAppGLFWWindow::setWindowIcon(const string & path){
+void ofAppGLFWWindow::setWindowIcon(const std::string & path){
     ofPixels iconPixels;
 	ofLoadImage(iconPixels,path);
 	setWindowIcon(iconPixels);
@@ -314,7 +314,7 @@ ofCoreEvents & ofAppGLFWWindow::events(){
 }
 
 //--------------------------------------------
-shared_ptr<ofBaseRenderer> & ofAppGLFWWindow::renderer(){
+std::shared_ptr<ofBaseRenderer> & ofAppGLFWWindow::renderer(){
 	return currentRenderer;
 }
 
@@ -381,7 +381,7 @@ void ofAppGLFWWindow::setWindowShouldClose(){
 }
 
 //------------------------------------------------------------
-void ofAppGLFWWindow::setWindowTitle(string title){
+void ofAppGLFWWindow::setWindowTitle(std::string title){
 	glfwSetWindowTitle(windowP,title.c_str());
 }
 
@@ -768,13 +768,13 @@ void ofAppGLFWWindow::setFullscreen(bool fullscreen){
 			for(int i = 0; i < monitorCount; i++){
 				const GLFWvidmode * desktopMode = glfwGetVideoMode(monitors[i]);
 				glfwGetMonitorPos(monitors[i], &tempXPos, &tempYPos);
-				minX = min(tempXPos,minX);
-				minY = min(tempYPos,minY);
-				maxX = max(maxX,tempXPos + desktopMode->width);
-				maxY = max(maxY,tempYPos + desktopMode->height);
+				minX = std::min<int>(tempXPos,minX);
+				minY = std::min<int>(tempYPos,minY);
+				maxX = std::max<int>(maxX,tempXPos + desktopMode->width);
+				maxY = std::max<int>(maxY,tempYPos + desktopMode->height);
 
-				xpos = min(xpos,tempXPos);
-				ypos = min(ypos,tempYPos);
+				xpos = std::min<int>(xpos,tempXPos);
+				ypos = std::min<int>(ypos,tempYPos);
 			}
 
 			fullscreenW = maxX-minX;
@@ -866,7 +866,7 @@ static void rotateMouseXY(ofOrientation orientation, int w, int h, double &x, do
 //------------------------------------------------------------
 ofAppGLFWWindow * ofAppGLFWWindow::setCurrent(GLFWwindow* windowP){
 	ofAppGLFWWindow * instance = static_cast<ofAppGLFWWindow *>(glfwGetWindowUserPointer(windowP));
-	shared_ptr<ofMainLoop> mainLoop = ofGetMainLoop();
+	std::shared_ptr<ofMainLoop> mainLoop = ofGetMainLoop();
 	if(mainLoop){
 		mainLoop->setCurrentWindow(instance);
 	}
@@ -1105,12 +1105,12 @@ void ofAppGLFWWindow::setVerticalSync(bool bVerticalSync){
 }
 
 //------------------------------------------------------------
-void ofAppGLFWWindow::setClipboardString(const string& text) {
+void ofAppGLFWWindow::setClipboardString(const std::string& text) {
     glfwSetClipboardString(ofAppGLFWWindow::windowP, text.c_str());
 }
 
 //------------------------------------------------------------
-string ofAppGLFWWindow::getClipboardString() {
+std::string ofAppGLFWWindow::getClipboardString() {
 	const char* clipboard = glfwGetClipboardString(ofAppGLFWWindow::windowP);
 
 	if (clipboard) {

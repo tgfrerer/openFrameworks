@@ -15,21 +15,21 @@ ofVideoPlayer::ofVideoPlayer (){
 }
 
 //---------------------------------------------------------------------------
-void ofVideoPlayer::setPlayer(shared_ptr<ofBaseVideoPlayer> newPlayer){
+void ofVideoPlayer::setPlayer(std::shared_ptr<ofBaseVideoPlayer> newPlayer){
 	player = newPlayer;
 	setPixelFormat(internalPixelFormat);	//this means that it will try to set the pixel format you have been using before. 
 											//if the format is not supported ofVideoPlayer's internalPixelFormat will be updated to that of the player's
 }
 
 //---------------------------------------------------------------------------
-shared_ptr<ofBaseVideoPlayer> ofVideoPlayer::getPlayer(){
+std::shared_ptr<ofBaseVideoPlayer> ofVideoPlayer::getPlayer(){
 	if( !player ){
-		setPlayer( shared_ptr<OF_VID_PLAYER_TYPE>(new OF_VID_PLAYER_TYPE) );
+		setPlayer(std::shared_ptr<OF_VID_PLAYER_TYPE>(new OF_VID_PLAYER_TYPE) );
 	}
 	return player;
 }
 
-const shared_ptr<ofBaseVideoPlayer>	ofVideoPlayer::getPlayer() const{
+const std::shared_ptr<ofBaseVideoPlayer>	ofVideoPlayer::getPlayer() const{
 	return player;
 }
 
@@ -66,9 +66,9 @@ ofPixelFormat ofVideoPlayer::getPixelFormat() const{
 }
 
 //---------------------------------------------------------------------------
-bool ofVideoPlayer::load(string name){
+bool ofVideoPlayer::load(std::string name){
 	if( !player ){
-		setPlayer( shared_ptr<OF_VID_PLAYER_TYPE>(new OF_VID_PLAYER_TYPE) );
+		setPlayer(std::shared_ptr<OF_VID_PLAYER_TYPE>(new OF_VID_PLAYER_TYPE) );
 		player->setPixelFormat(internalPixelFormat);
 	}
 	
@@ -81,7 +81,7 @@ bool ofVideoPlayer::load(string name){
         if(bUseTexture){
         	if(player->getTexturePtr()==NULL){
 				if(width!=0 && height!=0) {
-					tex.resize(max(player->getPixels().getNumPlanes(),1));
+					tex.resize(std::max<int>(player->getPixels().getNumPlanes(),1));
 					for(int i=0;i<player->getPixels().getNumPlanes();i++){
 						ofPixels plane = player->getPixels().getPlane(i);
 						tex[i].allocate(plane);
@@ -100,9 +100,9 @@ bool ofVideoPlayer::load(string name){
 }
 
 //---------------------------------------------------------------------------
-void ofVideoPlayer::loadAsync(string name){
+void ofVideoPlayer::loadAsync(std::string name){
 	if( !player ){
-		setPlayer( shared_ptr<OF_VID_PLAYER_TYPE>(new OF_VID_PLAYER_TYPE) );
+		setPlayer(std::shared_ptr<OF_VID_PLAYER_TYPE>(new OF_VID_PLAYER_TYPE) );
 		player->setPixelFormat(internalPixelFormat);
 	}
 	
@@ -111,12 +111,12 @@ void ofVideoPlayer::loadAsync(string name){
 }
 
 //---------------------------------------------------------------------------
-bool ofVideoPlayer::loadMovie(string name){
+bool ofVideoPlayer::loadMovie(std::string name){
 	return load(name);
 }
 
 //---------------------------------------------------------------------------
-string ofVideoPlayer::getMoviePath() const{
+std::string ofVideoPlayer::getMoviePath() const{
     return moviePath;	
 }
 
@@ -169,7 +169,7 @@ const ofTexture & ofVideoPlayer::getTextureReference() const{
 }
 
 //---------------------------------------------------------------------------
-vector<ofTexture> & ofVideoPlayer::getTexturePlanes(){
+std::vector<ofTexture> & ofVideoPlayer::getTexturePlanes(){
 	if(playerTex != NULL){
 		tex.clear();
 		tex.push_back(*playerTex);
@@ -178,7 +178,7 @@ vector<ofTexture> & ofVideoPlayer::getTexturePlanes(){
 }
 
 //---------------------------------------------------------------------------
-const vector<ofTexture> & ofVideoPlayer::getTexturePlanes() const{
+const std::vector<ofTexture> & ofVideoPlayer::getTexturePlanes() const{
 	if(playerTex != NULL){
 		ofVideoPlayer * mutThis = const_cast<ofVideoPlayer*>(this);
 		mutThis->tex.clear();
@@ -209,7 +209,7 @@ void ofVideoPlayer::update(){
 			
 			if(playerTex == NULL){
 				if(int(tex.size())!=player->getPixels().getNumPlanes()){
-					tex.resize(max(player->getPixels().getNumPlanes(),1));
+					tex.resize(std::max<int>(player->getPixels().getNumPlanes(),1));
 				}
 				if(player->getWidth() != 0 && player->getHeight() != 0) {
 					for(int i=0;i<player->getPixels().getNumPlanes();i++){
@@ -425,7 +425,7 @@ void ofVideoPlayer::draw(float _x, float _y) const{
 
 //------------------------------------
 void ofVideoPlayer::bind() const{
-	shared_ptr<ofBaseGLRenderer> renderer = ofGetGLRenderer();
+	std::shared_ptr<ofBaseGLRenderer> renderer = ofGetGLRenderer();
 	if(renderer){
 		renderer->bind(*this);
 	}
@@ -433,7 +433,7 @@ void ofVideoPlayer::bind() const{
 
 //------------------------------------
 void ofVideoPlayer::unbind() const{
-	shared_ptr<ofBaseGLRenderer> renderer = ofGetGLRenderer();
+	std::shared_ptr<ofBaseGLRenderer> renderer = ofGetGLRenderer();
 	if(renderer){
 		renderer->unbind(*this);
 	}

@@ -47,7 +47,7 @@ void ofEasyCam::update(ofEventArgs & args){
 	}
 	if(bMouseInputEnabled){
 
-		rotationFactor = sensitivityRot * 180 / min(viewport.width, viewport.height);
+		rotationFactor = sensitivityRot * 180 / std::min<float>(viewport.width, viewport.height);
 
 		if(events->getMousePressed()) prevMouse = ofVec2f(events->getMouseX(),events->getMouseY());
 
@@ -286,7 +286,7 @@ void ofEasyCam::mousePressed(ofMouseEventArgs & mouse){
 		}else if(mouse.button == OF_MOUSE_BUTTON_LEFT){
 			bDoTranslate = false;
 			bDoRotate = true;
-			if(ofVec2f(mouse.x - viewport.x - (viewport.width/2), mouse.y - viewport.y - (viewport.height/2)).length() < min(viewport.width/2, viewport.height/2)){
+			if(ofVec2f(mouse.x - viewport.x - (viewport.width/2), mouse.y - viewport.y - (viewport.height/2)).length() < std::min<float>(viewport.width/2, viewport.height/2)){
 				bInsideArcball = true;
 			}else{
 				bInsideArcball = false;

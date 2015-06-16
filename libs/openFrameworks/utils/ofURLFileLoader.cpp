@@ -43,10 +43,10 @@ ofEvent<ofHttpResponse> & ofURLResponseEvent(){
 class ofURLFileLoaderImpl: public ofThread, public ofBaseURLFileLoader{
 public:
 	ofURLFileLoaderImpl();
-    ofHttpResponse get(string url);
-    int getAsync(string url, string name=""); // returns id
-    ofHttpResponse saveTo(string url, string path);
-    int saveAsync(string url, string path);
+    ofHttpResponse get(std::string url);
+    int getAsync(std::string url, std::string name=""); // returns id
+    ofHttpResponse saveTo(std::string url, std::string path);
+    int saveAsync(std::string url, std::string path);
 	void remove(int id);
 	void clear();
     void stop();
@@ -64,7 +64,7 @@ private:
 	ofThreadChannel<ofHttpRequest> requests;
 	ofThreadChannel<ofHttpResponse> responses;
 	ofThreadChannel<int> cancelRequestQueue;
-	set<int> cancelledRequests;
+	std::set<int> cancelledRequests;
 };
 
 ofURLFileLoaderImpl::ofURLFileLoaderImpl() {
@@ -87,13 +87,13 @@ ofURLFileLoaderImpl::ofURLFileLoaderImpl() {
 	}
 }
 
-ofHttpResponse ofURLFileLoaderImpl::get(string url) {
+ofHttpResponse ofURLFileLoaderImpl::get(std::string url) {
     ofHttpRequest request(url,url);
     return handleRequest(request);
 }
 
 
-int ofURLFileLoaderImpl::getAsync(string url, string name){
+int ofURLFileLoaderImpl::getAsync(std::string url, std::string name){
 	if(name=="") name=url;
 	ofHttpRequest request(url,name);
 	requests.send(request);
@@ -102,12 +102,12 @@ int ofURLFileLoaderImpl::getAsync(string url, string name){
 }
 
 
-ofHttpResponse ofURLFileLoaderImpl::saveTo(string url, string path){
+ofHttpResponse ofURLFileLoaderImpl::saveTo(std::string url, std::string path){
     ofHttpRequest request(url,path,true);
     return handleRequest(request);
 }
 
-int ofURLFileLoaderImpl::saveAsync(string url, string path){
+int ofURLFileLoaderImpl::saveAsync(std::string url, std::string path){
 	ofHttpRequest request(url,path,true);
 	requests.send(request);
 	start();
@@ -151,7 +151,7 @@ void ofURLFileLoaderImpl::threadedFunction() {
 			if(cancelledRequests.find(request.getID())==cancelledRequests.end()){
 				ofHttpResponse response(handleRequest(request));
 				int status = response.status;
-				if(!responses.send(move(response))){
+				if(!responses.send(std::move(response))){
 					break;
 				}
 				if(status==-1){
@@ -174,25 +174,25 @@ ofHttpResponse ofURLFileLoaderImpl::handleRequest(ofHttpRequest request) {
 		if (path.empty()) path = "/";
 
 		HTTPRequest req(HTTPRequest::HTTP_GET, path, HTTPMessage::HTTP_1_1);
-		for(map<string,string>::iterator it = request.headers.begin(); it!=request.headers.end(); it++){
+		for(auto it = request.headers.begin(); it!=request.headers.end(); it++){
 			req.add(it->first,it->second);
 		}
 		HTTPResponse res;
-		shared_ptr<HTTPSession> session;
-		istream * rs;
+		std::shared_ptr<HTTPSession> session;
+		std::istream * rs;
 		if(uri.getScheme()=="https"){
 			 //const Poco::Net::Context::Ptr context( new Poco::Net::Context( Poco::Net::Context::CLIENT_USE, "", "", "rootcert.pem" ) );
 			HTTPSClientSession * httpsSession = new HTTPSClientSession(uri.getHost(), uri.getPort());//,context);
 			httpsSession->setTimeout(Poco::Timespan(120,0));
 			httpsSession->sendRequest(req);
 			rs = &httpsSession->receiveResponse(res);
-			session = shared_ptr<HTTPSession>(httpsSession);
+			session = std::shared_ptr<HTTPSession>(httpsSession);
 		}else{
 			HTTPClientSession * httpSession = new HTTPClientSession(uri.getHost(), uri.getPort());
 			httpSession->setTimeout(Poco::Timespan(120,0));
 			httpSession->sendRequest(req);
 			rs = &httpSession->receiveResponse(res);
-			session = shared_ptr<HTTPSession>(httpSession);
+			session = std::shared_ptr<HTTPSession>(httpSession);
 		}
 		if(!request.saveTo){
 			return ofHttpResponse(request,*rs,res.getStatus(),res.getReason());
@@ -243,19 +243,19 @@ ofURLFileLoader::ofURLFileLoader()
 :impl(new ofxEmscriptenURLFileLoader){}
 #endif
 
-ofHttpResponse ofURLFileLoader::get(string url){
+ofHttpResponse ofURLFileLoader::get(std::string url){
 	return impl->get(url);
 }
 
-int ofURLFileLoader::getAsync(string url, string name){
+int ofURLFileLoader::getAsync(std::string url, std::string name){
 	return impl->getAsync(url,name);
 }
 
-ofHttpResponse ofURLFileLoader::saveTo(string url, string path){
+ofHttpResponse ofURLFileLoader::saveTo(std::string url, std::string path){
 	return impl->saveTo(url,path);
 }
 
-int ofURLFileLoader::saveAsync(string url, string path){
+int ofURLFileLoader::saveAsync(std::string url, std::string path){
 	return impl->saveAsync(url,path);
 }
 
@@ -282,19 +282,19 @@ static ofURLFileLoader & getFileLoader(){
 	return *fileLoader;
 }
 
-ofHttpResponse ofLoadURL(string url){
+ofHttpResponse ofLoadURL(std::string url){
 	return getFileLoader().get(url);
 }
 
-int ofLoadURLAsync(string url, string name){
+int ofLoadURLAsync(std::string url, std::string name){
 	return getFileLoader().getAsync(url,name);
 }
 
-ofHttpResponse ofSaveURLTo(string url, string path){
+ofHttpResponse ofSaveURLTo(std::string url, std::string path){
 	return getFileLoader().saveTo(url,path);
 }
 
-int ofSaveURLAsync(string url, string path){
+int ofSaveURLAsync(std::string url, std::string path){
 	return getFileLoader().saveAsync(url,path);
 }
 

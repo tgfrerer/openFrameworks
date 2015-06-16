@@ -238,7 +238,7 @@ ofRectangle ofCamera::getViewport(const ofRectangle & viewport) const{
 	}
 }
 
-shared_ptr<ofBaseRenderer> ofCamera::getRenderer() const{
+std::shared_ptr<ofBaseRenderer> ofCamera::getRenderer() const{
 	if(!renderer){
 		return ofGetCurrentRenderer();
 	}else{
@@ -246,6 +246,6 @@ shared_ptr<ofBaseRenderer> ofCamera::getRenderer() const{
 	}
 }
 
-void ofCamera::setRenderer(shared_ptr<ofBaseRenderer> _renderer){
+void ofCamera::setRenderer(std::shared_ptr<ofBaseRenderer> _renderer){
 	renderer = _renderer;
 }

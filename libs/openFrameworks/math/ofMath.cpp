@@ -51,9 +51,9 @@ float ofRandom(float max) {
 
 //--------------------------------------------------
 float ofRandom(float x, float y) {
-	float high = MAX(x, y);
-	float low = MIN(x, y);
-	return max(low, (low + ((high - low) * rand() / float(RAND_MAX))) * (1.0f - std::numeric_limits<float>::epsilon()));
+	float high = std::max<float>(x, y);
+	float low = std::min<float>(x, y);
+	return std::max<float>(low, (low + ((high - low) * rand() / float(RAND_MAX))) * (1.0f - std::numeric_limits<float>::epsilon()));
 }
 
 //--------------------------------------------------
@@ -153,7 +153,7 @@ float ofLerp(float start, float stop, float amt) {
 float ofWrap(float value, float from, float to){
 	// algorithm from http://stackoverflow.com/a/5852628/599884
 	if(from > to){
-		swap(from, to);
+		std::swap(from, to);
 	}
 	float cycle = to - from;
 	if(cycle == 0){
@@ -252,12 +252,12 @@ float ofSignedNoise(const ofVec4f& p){
 }
 
 //--------------------------------------------------
-bool ofInsidePoly(float x, float y, const vector<ofPoint>& polygon){
+bool ofInsidePoly(float x, float y, const std::vector<ofPoint>& polygon){
     return ofPolyline::inside(x,y, ofPolyline(polygon));
 }
 
 //--------------------------------------------------
-bool ofInsidePoly(const ofPoint& p, const vector<ofPoint>& poly){
+bool ofInsidePoly(const ofPoint& p, const std::vector<ofPoint>& poly){
     return ofPolyline::inside(p.x,p.y, ofPolyline(poly));
 }
 

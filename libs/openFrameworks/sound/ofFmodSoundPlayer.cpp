@@ -171,7 +171,7 @@ void ofFmodSoundPlayer::closeFmod(){
 }
 
 //------------------------------------------------------------
-bool ofFmodSoundPlayer::load(string fileName, bool stream){
+bool ofFmodSoundPlayer::load(std::string fileName, bool stream){
 
 	fileName = ofToDataPath(fileName);
 

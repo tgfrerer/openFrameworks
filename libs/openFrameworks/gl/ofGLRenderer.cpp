@@ -13,7 +13,7 @@
 #include "ofTrueTypeFont.h"
 #include "ofNode.h"
 
-const string ofGLRenderer::TYPE="GL";
+const std::string ofGLRenderer::TYPE="GL";
 
 //----------------------------------------------------------
 ofGLRenderer::ofGLRenderer(const ofAppBaseWindow * _window)
@@ -79,7 +79,7 @@ void ofGLRenderer::draw(const ofMesh & vertexData, ofPolyRenderMode renderType, 
 		}
 
 		if(vertexData.getNumTexCoords() && useTextures){
-			set<int>::iterator textureLocation = textureLocationsEnabled.begin();
+			std::set<int>::iterator textureLocation = textureLocationsEnabled.begin();
 			for(;textureLocation!=textureLocationsEnabled.end();textureLocation++){
 				glActiveTexture(GL_TEXTURE0+*textureLocation);
 				glClientActiveTexture(GL_TEXTURE0+*textureLocation);
@@ -269,7 +269,7 @@ void ofGLRenderer::draw(const ofPath & shape) const{
 			mut_this->setColor( shape.getStrokeColor(), shape.getStrokeColor().a);
 		}
 		mut_this->setLineWidth( shape.getStrokeWidth() );
-		const vector<ofPolyline> & outlines = shape.getOutline();
+		const std::vector<ofPolyline> & outlines = shape.getOutline();
 		for(int i=0; i<(int)outlines.size(); i++)
 			draw(outlines[i]);
 		mut_this->setLineWidth(lineWidth);
@@ -945,7 +945,7 @@ void ofGLRenderer::loadViewMatrix(const ofMatrix4x4 & m){
 
 	if(lightingEnabled){
 		for(size_t i=0;i<ofLightsData().size();i++){
-			shared_ptr<ofLight::Data> lightData = ofLightsData()[i].lock();
+			std::shared_ptr<ofLight::Data> lightData = ofLightsData()[i].lock();
 			if(lightData && lightData->isEnabled){
 				glLightfv(GL_LIGHT0 + lightData->glIndex, GL_POSITION, &lightData->position.x);
 			}
@@ -1390,7 +1390,7 @@ void ofGLRenderer::drawTriangle(float x1, float y1, float z1, float x2, float y2
 
 //----------------------------------------------------------
 void ofGLRenderer::drawCircle(float x, float y, float z,  float radius) const{
-	const vector<ofPoint> & circleCache = circlePolyline.getVertices();
+	const std::vector<ofPoint> & circleCache = circlePolyline.getVertices();
 	for(int i=0;i<(int)circleCache.size();i++){
 		circlePoints[i].set(radius*circleCache[i].x+x,radius*circleCache[i].y+y,z);
 	}
@@ -1411,7 +1411,7 @@ void ofGLRenderer::drawCircle(float x, float y, float z,  float radius) const{
 void ofGLRenderer::drawEllipse(float x, float y, float z, float width, float height) const{
 	float radiusX = width*0.5;
 	float radiusY = height*0.5;
-	const vector<ofPoint> & circleCache = circlePolyline.getVertices();
+	const std::vector<ofPoint> & circleCache = circlePolyline.getVertices();
 	for(int i=0;i<(int)circleCache.size();i++){
 		circlePoints[i].set(radiusX*circlePolyline[i].x+x,radiusY*circlePolyline[i].y+y,z);
 	}
@@ -1429,7 +1429,7 @@ void ofGLRenderer::drawEllipse(float x, float y, float z, float width, float hei
 }
 
 //----------------------------------------------------------
-void ofGLRenderer::drawString(string textString, float x, float y, float z) const{
+void ofGLRenderer::drawString(std::string textString, float x, float y, float z) const{
 
 	ofGLRenderer * mutThis = const_cast<ofGLRenderer*>(this);
 	float sx = 0;
@@ -1601,7 +1601,7 @@ void ofGLRenderer::drawString(string textString, float x, float y, float z) cons
 }
 
 //----------------------------------------------------------
-void ofGLRenderer::drawString(const ofTrueTypeFont & font, string text, float x, float y) const{
+void ofGLRenderer::drawString(const ofTrueTypeFont & font, std::string text, float x, float y) const{
 	ofGLRenderer * mutThis = const_cast<ofGLRenderer*>(this);
 	bool blendEnabled = glIsEnabled(GL_BLEND);
 	GLint blend_src, blend_dst;

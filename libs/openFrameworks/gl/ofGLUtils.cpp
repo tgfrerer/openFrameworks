@@ -78,7 +78,7 @@ int ofGetGlInternalFormat(const ofFloatPixels& pix) {
 
 //---------------------------------
 // this is helpful for debugging ofTexture
-string ofGetGlInternalFormatName(int glInternalFormat) {
+std::string ofGetGlInternalFormatName(int glInternalFormat) {
 	switch(glInternalFormat) {
 		case GL_RGBA: return "GL_RGBA";
 #ifndef TARGET_OPENGLES
@@ -682,20 +682,20 @@ void ofSetPixelStoreiAlignment(GLenum pname, int stride){
 
 
 
-vector<string> ofGLSupportedExtensions(){
+std::vector<std::string> ofGLSupportedExtensions(){
 	char* extensions = (char*)glGetString(GL_EXTENSIONS);
 	if(extensions){
-		string extensions_str = extensions;
+		std::string extensions_str = extensions;
 		return ofSplitString(extensions_str," ");
 	}else{
-		return vector<string>();
+		return std::vector<std::string>();
 	}
 }
 
-bool ofGLCheckExtension(string searchName){
+bool ofGLCheckExtension(std::string searchName){
 #if defined( TARGET_OPENGLES ) || defined( TARGET_LINUX )
-	vector<string> extensionsList = ofGLSupportedExtensions();
-	set<string> extensionsSet;
+	std::vector<std::string> extensionsList = ofGLSupportedExtensions();
+	std::set<std::string> extensionsSet;
 	extensionsSet.insert(extensionsList.begin(),extensionsList.end());
 	return extensionsSet.find(searchName)!=extensionsSet.end();
 #else
@@ -710,8 +710,8 @@ bool ofGLSupportsNPOTTextures(){
 	static bool npotChecked = false;
 	static bool npotSupported = false;
 	if(!npotChecked){
-		vector<string> extensionsList = ofGLSupportedExtensions();
-		set<string> extensionsSet;
+		std::vector<std::string> extensionsList = ofGLSupportedExtensions();
+		std::set<std::string> extensionsSet;
 		extensionsSet.insert(extensionsList.begin(),extensionsList.end());
 
 		npotSupported = extensionsSet.find("GL_OES_texture_npot")!=extensionsSet.end() ||
@@ -728,7 +728,7 @@ bool ofGLSupportsNPOTTextures(){
 #endif
 }
 
-string ofGLSLVersionFromGL(int major, int minor){
+std::string ofGLSLVersionFromGL(int major, int minor){
 #ifdef TARGET_OPENGLES
 	return "ES1";
 #else
@@ -752,23 +752,23 @@ string ofGLSLVersionFromGL(int major, int minor){
 }
 
 #ifndef TARGET_PROGRAMMABLE_GL
-shared_ptr<ofBaseGLRenderer> ofGetGLRenderer(){
+std::shared_ptr<ofBaseGLRenderer> ofGetGLRenderer(){
 	if(ofGetCurrentRenderer()->getType()==ofGLRenderer::TYPE || ofGetCurrentRenderer()->getType()==ofGLProgrammableRenderer::TYPE){
-		return (shared_ptr<ofBaseGLRenderer>&)ofGetCurrentRenderer();
+		return (std::shared_ptr<ofBaseGLRenderer>&)ofGetCurrentRenderer();
 	}else if(ofGetCurrentRenderer()->getType()==ofRendererCollection::TYPE){
-		return ((shared_ptr<ofRendererCollection>&)ofGetCurrentRenderer())->getGLRenderer();
+		return ((std::shared_ptr<ofRendererCollection>&)ofGetCurrentRenderer())->getGLRenderer();
 	}else{
-		return shared_ptr<ofGLRenderer>();
+		return std::shared_ptr<ofGLRenderer>();
 	}
 }
 #else
 shared_ptr<ofBaseGLRenderer> ofGetGLRenderer(){
 	if(ofGetCurrentRenderer()->getType()==ofGLProgrammableRenderer::TYPE){
-		return (shared_ptr<ofBaseGLRenderer>&)ofGetCurrentRenderer();
+		return (std::shared_ptr<ofBaseGLRenderer>&)ofGetCurrentRenderer();
 	}else if(ofGetCurrentRenderer()->getType()==ofRendererCollection::TYPE){
-		return ((shared_ptr<ofRendererCollection>&)ofGetCurrentRenderer())->getGLRenderer();
+		return ((std::shared_ptr<ofRendererCollection>&)ofGetCurrentRenderer())->getGLRenderer();
 	}else{
-		return shared_ptr<ofGLProgrammableRenderer>();
+		return std::shared_ptr<ofGLProgrammableRenderer>();
 	}
 }
 #endif

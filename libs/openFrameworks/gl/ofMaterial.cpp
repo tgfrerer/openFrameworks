@@ -11,8 +11,8 @@ ofShader ofMaterial::shaderTextureRect;
 bool ofMaterial::shadersInitialized = false;
 size_t ofMaterial::shaderLights = 0;
 
-static string vertexSource(string defaultHeader, int maxLights, bool hasTexture);
-static string fragmentSource(string defaultHeader, int maxLights, bool hasTexture);
+static std::string vertexSource(std::string defaultHeader, int maxLights, bool hasTexture);
+static std::string fragmentSource(std::string defaultHeader, int maxLights, bool hasTexture);
 
 ofMaterial::Data::Data()
 :diffuse(0.8f, 0.8f, 0.8f, 1.0f)
@@ -96,11 +96,11 @@ void ofMaterial::end() const{
 void ofMaterial::initShaders(ofGLProgrammableRenderer & renderer) const{
 	if(!shadersInitialized || ofLightsData().size()!=shaderLights){
 #ifndef TARGET_OPENGLES
-		string vertexRectHeader = renderer.defaultVertexShaderHeader(GL_TEXTURE_RECTANGLE);
-		string fragmentRectHeader = renderer.defaultFragmentShaderHeader(GL_TEXTURE_RECTANGLE);
+		std::string vertexRectHeader = renderer.defaultVertexShaderHeader(GL_TEXTURE_RECTANGLE);
+		std::string fragmentRectHeader = renderer.defaultFragmentShaderHeader(GL_TEXTURE_RECTANGLE);
 #endif
-		string vertex2DHeader = renderer.defaultVertexShaderHeader(GL_TEXTURE_2D);
-		string fragment2DHeader = renderer.defaultFragmentShaderHeader(GL_TEXTURE_2D);
+		std::string vertex2DHeader = renderer.defaultVertexShaderHeader(GL_TEXTURE_2D);
+		std::string fragment2DHeader = renderer.defaultFragmentShaderHeader(GL_TEXTURE_2D);
 		shaderLights = ofLightsData().size();
 		shaderNoTexture.setupShaderFromSource(GL_VERTEX_SHADER,vertexSource(vertex2DHeader,shaderLights,false));
 		shaderNoTexture.setupShaderFromSource(GL_FRAGMENT_SHADER,fragmentSource(fragment2DHeader,shaderLights,false));
@@ -149,12 +149,12 @@ void ofMaterial::updateMaterial(const ofShader & shader,ofGLProgrammableRenderer
 
 void ofMaterial::updateLights(const ofShader & shader,ofGLProgrammableRenderer & renderer) const{
 	for(size_t i=0;i<ofLightsData().size();i++){
-		string idx = ofToString(i);
+		std::string idx = ofToString(i);
 		if(ofLightsData()[i].expired() || !ofLightsData()[i].lock()->isEnabled){
 			shader.setUniform1f("lights["+idx+"].enabled",0);
 			continue;
 		}
-		shared_ptr<ofLight::Data> light = ofLightsData()[i].lock();
+		std::shared_ptr<ofLight::Data> light = ofLightsData()[i].lock();
 		ofVec4f lightEyePosition = light->position * renderer.getCurrentViewMatrix();
 		shader.setUniform1f("lights["+idx+"].enabled",1);
 		shader.setUniform1f("lights["+idx+"].type", light->lightType);
@@ -199,7 +199,7 @@ void ofMaterial::updateLights(const ofShader & shader,ofGLProgrammableRenderer &
 
 #define STRINGIFY(x) #x
 
-static const string vertexShader = STRINGIFY(
+static const std::string vertexShader = STRINGIFY(
 	OUT vec4 outColor; // this is the ultimate color for this vertex
 	OUT vec2 outtexcoord; // pass the texCoord if needed
 	OUT vec3 transformedNormal;
@@ -231,7 +231,7 @@ static const string vertexShader = STRINGIFY(
 );
 
 
-static const string fragmentShader = STRINGIFY(
+static const std::string fragmentShader = STRINGIFY(
 	IN vec4 outColor; // this is the ultimate color for this vertex
 	IN vec2 outtexcoord; // pass the texCoord if needed
 	IN vec3 transformedNormal;
@@ -466,18 +466,18 @@ static const string fragmentShader = STRINGIFY(
 );
 
 
-static string shaderHeader(string header, int maxLights, bool hasTexture){
-	header += "#define MAX_LIGHTS " + ofToString(max(1,maxLights)) + "\n";
+static std::string shaderHeader(std::string header, int maxLights, bool hasTexture){
+	header += "#define MAX_LIGHTS " + ofToString(std::max<int>(1,maxLights)) + "\n";
 	if(hasTexture){
 		header += "#define HAS_TEXTURE\n";
 	}
 	return header;
 }
 
-static string vertexSource(string defaultHeader, int maxLights, bool hasTexture){
+static std::string vertexSource(std::string defaultHeader, int maxLights, bool hasTexture){
 	return shaderHeader(defaultHeader,maxLights,hasTexture) + vertexShader;
 }
 
-static string fragmentSource(string defaultHeader, int maxLights, bool hasTexture){
+static std::string fragmentSource(std::string defaultHeader, int maxLights, bool hasTexture){
 	return shaderHeader(defaultHeader,maxLights,hasTexture) + fragmentShader;
 }

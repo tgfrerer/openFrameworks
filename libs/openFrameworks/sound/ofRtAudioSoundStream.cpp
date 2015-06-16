@@ -28,17 +28,17 @@ ofRtAudioSoundStream::~ofRtAudioSoundStream(){
 }
 
 //------------------------------------------------------------------------------
-vector<ofSoundDevice> ofRtAudioSoundStream::getDeviceList() const{
-	shared_ptr<RtAudio> audioTemp;
+std::vector<ofSoundDevice> ofRtAudioSoundStream::getDeviceList() const{
+	std::shared_ptr<RtAudio> audioTemp;
 	try {
-		audioTemp = shared_ptr<RtAudio>(new RtAudio());
+		audioTemp = std::shared_ptr<RtAudio>(new RtAudio());
 	} catch (std::exception &error) {
    		ofLogError() << error.what();
-		return vector<ofSoundDevice>();
+		return std::vector<ofSoundDevice>();
 	}
  	int deviceCount = audioTemp->getDeviceCount();
 	RtAudio::DeviceInfo info;
-	vector<ofSoundDevice> deviceList;
+	std::vector<ofSoundDevice> deviceList;
 	for (int i=0; i< deviceCount; i++) {
 		try {
 			info = audioTemp->getDeviceInfo(i);
@@ -103,7 +103,7 @@ bool ofRtAudioSoundStream::setup(int outChannels, int inChannels, int _sampleRat
 	bufferSize			= ofNextPow2(_bufferSize);	// must be pow2
 
 	try {
-		audio = shared_ptr<RtAudio>(new RtAudio());
+		audio = std::shared_ptr<RtAudio>(new RtAudio());
 	} catch (std::exception &error) {
    		ofLogError() << error.what();
 		return false;

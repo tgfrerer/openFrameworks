@@ -185,7 +185,7 @@ bool compare_cps(const charProps & c1, const charProps & c2){
 
 #ifdef TARGET_OSX
 //------------------------------------------------------------------
-static string osxFontPathByName( string fontname ){
+static std::string osxFontPathByName(std::string fontname ){
 	CFStringRef targetName = CFStringCreateWithCString(NULL, fontname.c_str(), kCFStringEncodingUTF8);
 	CTFontDescriptorRef targetDescriptor = CTFontDescriptorCreateWithNameAndSize(targetName, 0.0);
 	CFURLRef targetURL = (CFURLRef) CTFontDescriptorCopyAttribute(targetDescriptor, kCTFontURLAttribute);
@@ -208,7 +208,7 @@ static string osxFontPathByName( string fontname ){
 #ifdef TARGET_WIN32
 #include <map>
 // font font face -> file name name mapping
-static map<string, string> fonts_table;
+static std::map<std::string, std::string> fonts_table;
 // read font linking information from registry, and store in std::map
 //------------------------------------------------------------------
 void initWindows(){
@@ -253,7 +253,7 @@ void initWindows(){
 	char fontsPath[2048];
     SHGetKnownFolderIDList(FOLDERID_Fonts, 0, NULL, &ppidl);
     SHGetPathFromIDList(ppidl,&fontsPath);*/
-    string fontsDir = getenv ("windir");
+	std::string fontsDir = getenv ("windir");
     fontsDir += "\\Fonts\\";
 	for (DWORD i = 0; i < value_count; ++i)
 	{
@@ -268,8 +268,8 @@ void initWindows(){
 
             wcstombs(value_name_char,value_name,2048);
 			wcstombs(value_data_char,reinterpret_cast<wchar_t *>(value_data),2048);
-			string curr_face = value_name_char;
-			string font_file = value_data_char;
+			std::string curr_face = value_name_char;
+			std::string font_file = value_data_char;
 			curr_face = curr_face.substr(0, curr_face.find('(') - 1);
 			fonts_table[curr_face] = fontsDir + font_file;
 	}
@@ -281,11 +281,11 @@ void initWindows(){
 }
 
 
-static string winFontPathByName( string fontname ){
+static std::string winFontPathByName(std::string fontname ){
     if(fonts_table.find(fontname)!=fonts_table.end()){
         return fonts_table[fontname];
     }
-    for(map<string,string>::iterator it = fonts_table.begin(); it!=fonts_table.end(); it++){
+    for(std::map<std::string, std::string>::iterator it = fonts_table.begin(); it!=fonts_table.end(); it++){
         if(ofIsStringInString(ofToLower(it->first),ofToLower(fontname))) return it->second;
     }
     return "";
@@ -294,8 +294,8 @@ static string winFontPathByName( string fontname ){
 
 #ifdef TARGET_LINUX
 //------------------------------------------------------------------
-static string linuxFontPathByName(string fontname){
-	string filename;
+static std::string linuxFontPathByName(std::string fontname){
+	std::string filename;
 	FcPattern * pattern = FcNameParse((const FcChar8*)fontname.c_str());
 	FcBool ret = FcConfigSubstitute(0,pattern,FcMatchPattern);
 	if(!ret){
@@ -392,7 +392,7 @@ void ofTrueTypeFont::reloadTextures(){
 	if(bLoadedOk) load(filename, fontSize, bAntiAliased, bFullCharacterSet, bMakeContours, simplifyAmt, dpi);
 }
 
-static bool loadFontFace(string fontname, int _fontSize, FT_Face & face, string & filename){
+static bool loadFontFace(std::string fontname, int _fontSize, FT_Face & face, std::string & filename){
 	filename = ofToDataPath(fontname,true);
 	ofFile fontFile(filename,ofFile::Reference);
 	int fontID = 0;
@@ -429,7 +429,7 @@ static bool loadFontFace(string fontname, int _fontSize, FT_Face & face, string 
 	err = FT_New_Face( library, filename.c_str(), fontID, &face );
 	if (err) {
 		// simple error table in lieu of full table (see fterrors.h)
-		string errorString = "unknown freetype";
+		std::string errorString = "unknown freetype";
 		if(err == 1) errorString = "INVALID FILENAME";
 		ofLogError("ofTrueTypeFont") << "loadFontFace(): couldn't create new face for \"" << fontname << "\": FT_Error " << err << " " << errorString;
 		return false;
@@ -438,12 +438,12 @@ static bool loadFontFace(string fontname, int _fontSize, FT_Face & face, string 
 	return true;
 }
 //-----------------------------------------------------------
-bool ofTrueTypeFont::loadFont(string _filename, int _fontSize, bool _bAntiAliased, bool _bFullCharacterSet, bool _makeContours, float _simplifyAmt, int _dpi) {
+bool ofTrueTypeFont::loadFont(std::string _filename, int _fontSize, bool _bAntiAliased, bool _bFullCharacterSet, bool _makeContours, float _simplifyAmt, int _dpi) {
 	return load(_filename, _fontSize, _bAntiAliased, _bFullCharacterSet, _makeContours, _simplifyAmt, _dpi);
 }
 
 //-----------------------------------------------------------
-bool ofTrueTypeFont::load(string _filename, int _fontSize, bool _bAntiAliased, bool _bFullCharacterSet, bool _makeContours, float _simplifyAmt, int _dpi) {
+bool ofTrueTypeFont::load(std::string _filename, int _fontSize, bool _bAntiAliased, bool _bFullCharacterSet, bool _makeContours, float _simplifyAmt, int _dpi) {
 	#if defined(TARGET_ANDROID)
 	ofAddListener(ofxAndroidEvents().unloadGL,this,&ofTrueTypeFont::unloadTextures);
 	ofAddListener(ofxAndroidEvents().reloadGL,this,&ofTrueTypeFont::reloadTextures);
@@ -505,7 +505,7 @@ bool ofTrueTypeFont::load(string _filename, int _fontSize, bool _bAntiAliased, b
 		charOutlines.resize(1);
 	}
 
-	vector<ofPixels> expanded_data(nCharacters);
+	std::vector<ofPixels> expanded_data(nCharacters);
 
 	long areaSum=0;
 	FT_Error err;
@@ -620,8 +620,8 @@ bool ofTrueTypeFont::load(string _filename, int _fontSize, bool _bAntiAliased, b
 		}
 	}
 
-	vector<charProps> sortedCopy = cps;
-	sort(sortedCopy.begin(),sortedCopy.end(),&compare_cps);
+	std::vector<charProps> sortedCopy = cps;
+	std::sort(sortedCopy.begin(),sortedCopy.end(),&compare_cps);
 
 	// pack in a texture, algorithm to calculate min w/h from
 	// http://upcommons.upc.edu/pfc/bitstream/2099.1/7720/1/TesiMasterJonas.pdf
@@ -850,8 +850,8 @@ int ofTrueTypeFont::getKerning(int c, int prevC) const{
 }
 
 //-----------------------------------------------------------
-vector<ofTTFCharacter> ofTrueTypeFont::getStringAsPoints(string str, bool vflip, bool filled) const{
-	vector<ofTTFCharacter> shapes;
+std::vector<ofTTFCharacter> ofTrueTypeFont::getStringAsPoints(std::string str, bool vflip, bool filled) const{
+	std::vector<ofTTFCharacter> shapes;
 
 	if (!bLoadedOk){
 		ofLogError("ofxTrueTypeFont") << "getStringAsPoints(): font not allocated: line " << __LINE__ << " in " << __FILE__;
@@ -923,22 +923,22 @@ void ofTrueTypeFont::drawCharAsShape(int c, float x, float y, bool vFlipped, boo
 }
 
 //-----------------------------------------------------------
-float ofTrueTypeFont::stringWidth(string c) const{
+float ofTrueTypeFont::stringWidth(std::string c) const{
     ofRectangle rect = getStringBoundingBox(c, 0,0);
     return rect.width;
 }
 
 //-----------------------------------------------------------
-ofRectangle ofTrueTypeFont::getStringBoundingBox(string c, float x, float y, bool vflip) const{
+ofRectangle ofTrueTypeFont::getStringBoundingBox(std::string c, float x, float y, bool vflip) const{
 	ofMesh mesh = getStringMesh(c,x,y,vflip);
 	ofRectangle bb(std::numeric_limits<float>::max(),std::numeric_limits<float>::max(),0,0);
 	float maxX = std::numeric_limits<float>::min();
 	float maxY = std::numeric_limits<float>::min();
 	for(const auto & v: mesh.getVertices()){
-		bb.x = min(v.x,bb.x);
-		bb.y = min(v.y,bb.y);
-		maxX = max(v.x,maxX);
-		maxY = max(v.y,maxY);
+		bb.x = std::min<float>(v.x,bb.x);
+		bb.y = std::min<float>(v.y,bb.y);
+		maxX = std::max<float>(v.x,maxX);
+		maxY = std::max<float>(v.y,maxY);
 	}
 	bb.width = maxX - bb.x;
 	bb.height = maxY - bb.y;
@@ -946,13 +946,13 @@ ofRectangle ofTrueTypeFont::getStringBoundingBox(string c, float x, float y, boo
 }
 
 //-----------------------------------------------------------
-float ofTrueTypeFont::stringHeight(string c) const{
+float ofTrueTypeFont::stringHeight(std::string c) const{
     ofRectangle rect = getStringBoundingBox(c, 0,0);
     return rect.height;
 }
 
 //-----------------------------------------------------------
-void ofTrueTypeFont::createStringMesh(string str, float x, float y, bool vFlipped) const{
+void ofTrueTypeFont::createStringMesh(std::string str, float x, float y, bool vFlipped) const{
 	GLfloat		X		= x;
 	GLfloat		Y		= y;
 	int newLineDirection		= 1;
@@ -991,7 +991,7 @@ void ofTrueTypeFont::createStringMesh(string str, float x, float y, bool vFlippe
 }
 
 //-----------------------------------------------------------
-const ofMesh & ofTrueTypeFont::getStringMesh(string c, float x, float y, bool vFlipped) const{
+const ofMesh & ofTrueTypeFont::getStringMesh(std::string c, float x, float y, bool vFlipped) const{
 	stringQuads.clear();
 	createStringMesh(c,x,y,vFlipped);
 	return stringQuads;
@@ -1003,7 +1003,7 @@ const ofTexture & ofTrueTypeFont::getFontTexture() const{
 }
 
 //-----------------------------------------------------------
-void ofTrueTypeFont::drawString(string c, float x, float y) const{
+void ofTrueTypeFont::drawString(std::string c, float x, float y) const{
 	if (!bLoadedOk){
 		ofLogError("ofTrueTypeFont") << "drawString(): font not allocated";
 		return;
@@ -1014,7 +1014,7 @@ void ofTrueTypeFont::drawString(string c, float x, float y) const{
 }
 
 //-----------------------------------------------------------
-void ofTrueTypeFont::drawStringAsShapes(string str, float x, float y) const{
+void ofTrueTypeFont::drawStringAsShapes(std::string str, float x, float y) const{
 
     if (!bLoadedOk){
     	ofLogError("ofTrueTypeFont") << "drawStringAsShapes(): font not allocated: line " << __LINE__ << " in " << __FILE__;

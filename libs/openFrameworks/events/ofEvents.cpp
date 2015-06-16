@@ -441,7 +441,7 @@ void ofSendMessage(ofMessage msg){
 }
 
 //------------------------------------------
-void ofSendMessage(string messageString){
+void ofSendMessage(std::string messageString){
 	ofMessage msg(messageString);
 	ofSendMessage(msg);
 }

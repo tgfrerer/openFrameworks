@@ -31,8 +31,8 @@
 
 
 //--------------------------------------
-shared_ptr<ofMainLoop> & mainLoop(){
-	static shared_ptr<ofMainLoop> mainLoop(new ofMainLoop);
+std::shared_ptr<ofMainLoop> & mainLoop(){
+	static std::shared_ptr<ofMainLoop> mainLoop(new ofMainLoop);
 	return mainLoop;
 }
 
@@ -105,24 +105,24 @@ void ofInit(){
 }
 
 //--------------------------------------
-shared_ptr<ofMainLoop> ofGetMainLoop(){
+std::shared_ptr<ofMainLoop> ofGetMainLoop(){
 	return mainLoop();
 }
 
 //--------------------------------------
 int ofRunApp(ofBaseApp * OFSA){
-	return ofRunApp(shared_ptr<ofBaseApp>(OFSA));
+	return ofRunApp(std::shared_ptr<ofBaseApp>(OFSA));
 }
 
 //--------------------------------------
-int ofRunApp(shared_ptr<ofBaseApp> app){
+int ofRunApp(std::shared_ptr<ofBaseApp> app){
 	mainLoop()->run(app);
 	return mainLoop()->loop();
 }
 
 
 //--------------------------------------
-void ofRunApp(shared_ptr<ofAppBaseWindow> window, shared_ptr<ofBaseApp> app){
+void ofRunApp(std::shared_ptr<ofAppBaseWindow> window, std::shared_ptr<ofBaseApp> app){
 	mainLoop()->run(window,app);
 }
 
@@ -147,7 +147,7 @@ void ofSetupOpenGL(int w, int h, ofWindowMode screenMode){
 	ofCreateWindow(settings);
 }
 
-shared_ptr<ofAppBaseWindow> ofCreateWindow(const ofWindowSettings & settings){
+std::shared_ptr<ofAppBaseWindow> ofCreateWindow(const ofWindowSettings & settings){
 	ofInit();
 	return mainLoop()->createWindow(settings);
 }
@@ -213,7 +213,7 @@ void ofSetEscapeQuitsApp(bool bQuitOnEsc){
 }
 
 //--------------------------------------
-shared_ptr<ofBaseRenderer> & ofGetCurrentRenderer(){
+std::shared_ptr<ofBaseRenderer> & ofGetCurrentRenderer(){
 	return mainLoop()->getCurrentWindow()->renderer();
 }
 
@@ -228,7 +228,7 @@ ofAppBaseWindow * ofGetWindowPtr(){
 }
 
 //--------------------------------------
-void ofSetAppPtr(shared_ptr<ofBaseApp> appPtr) {
+void ofSetAppPtr(std::shared_ptr<ofBaseApp> appPtr) {
 	//OFSAptr = appPtr;
 }
 
@@ -336,7 +336,7 @@ ofRectangle	ofGetWindowRect() {
 }
 
 //--------------------------------------
-void ofSetWindowTitle(string title){
+void ofSetWindowTitle(std::string title){
 	mainLoop()->getCurrentWindow()->setWindowTitle(title);
 }
 

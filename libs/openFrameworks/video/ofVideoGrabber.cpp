@@ -20,19 +20,19 @@ ofVideoGrabber::~ofVideoGrabber(){
 }
 
 //--------------------------------------------------------------------
-void ofVideoGrabber::setGrabber(shared_ptr<ofBaseVideoGrabber> newGrabber){
+void ofVideoGrabber::setGrabber(std::shared_ptr<ofBaseVideoGrabber> newGrabber){
 	grabber = newGrabber;
 }
 
 //--------------------------------------------------------------------
-shared_ptr<ofBaseVideoGrabber> ofVideoGrabber::getGrabber(){
+std::shared_ptr<ofBaseVideoGrabber> ofVideoGrabber::getGrabber(){
 	if(!grabber){
-		setGrabber( shared_ptr<OF_VID_GRABBER_TYPE>(new OF_VID_GRABBER_TYPE) );
+		setGrabber(std::shared_ptr<OF_VID_GRABBER_TYPE>(new OF_VID_GRABBER_TYPE) );
 	}
 	return grabber;
 }
 
-const shared_ptr<ofBaseVideoGrabber> ofVideoGrabber::getGrabber() const{
+const std::shared_ptr<ofBaseVideoGrabber> ofVideoGrabber::getGrabber() const{
 	return grabber;
 }
 
@@ -44,7 +44,7 @@ bool ofVideoGrabber::setup(int w, int h, bool setUseTexture){
 #endif
 
 	if(!grabber){
-		setGrabber( shared_ptr<OF_VID_GRABBER_TYPE>(new OF_VID_GRABBER_TYPE) );
+		setGrabber(std::shared_ptr<OF_VID_GRABBER_TYPE>(new OF_VID_GRABBER_TYPE) );
 	}
 
 	bUseTexture = setUseTexture;
@@ -114,10 +114,10 @@ ofPixelFormat ofVideoGrabber::getPixelFormat() const{
 }
 
 //--------------------------------------------------------------------
-vector<ofVideoDevice> ofVideoGrabber::listDevices() const{
+std::vector<ofVideoDevice> ofVideoGrabber::listDevices() const{
 	if(!grabber){
 		ofVideoGrabber * mutThis = const_cast<ofVideoGrabber*>(this);
-		mutThis->setGrabber( shared_ptr<OF_VID_GRABBER_TYPE>(new OF_VID_GRABBER_TYPE) );
+		mutThis->setGrabber(std::shared_ptr<OF_VID_GRABBER_TYPE>(new OF_VID_GRABBER_TYPE) );
 	}
 	return grabber->listDevices();
 }
@@ -196,7 +196,7 @@ const ofTexture & ofVideoGrabber::getTextureReference() const{
 }
 
 //------------------------------------
-vector<ofTexture> & ofVideoGrabber::getTexturePlanes(){
+std::vector<ofTexture> & ofVideoGrabber::getTexturePlanes(){
 	if(grabber->getTexturePtr() != NULL){
 		tex.clear();
 		tex.push_back(*grabber->getTexturePtr());
@@ -205,7 +205,7 @@ vector<ofTexture> & ofVideoGrabber::getTexturePlanes(){
 }
 
 //------------------------------------
-const vector<ofTexture> & ofVideoGrabber::getTexturePlanes() const{
+const std::vector<ofTexture> & ofVideoGrabber::getTexturePlanes() const{
 	if(grabber->getTexturePtr() != NULL){
 		ofVideoGrabber* mutThis = const_cast<ofVideoGrabber*>(this);
 		mutThis->tex.clear();
@@ -302,7 +302,7 @@ void ofVideoGrabber::draw(float _x, float _y) const{
 
 //------------------------------------
 void ofVideoGrabber::bind() const{
-	shared_ptr<ofBaseGLRenderer> renderer = ofGetGLRenderer();
+	std::shared_ptr<ofBaseGLRenderer> renderer = ofGetGLRenderer();
 	if(renderer){
 		renderer->bind(*this);
 	}
@@ -310,7 +310,7 @@ void ofVideoGrabber::bind() const{
 
 //------------------------------------
 void ofVideoGrabber::unbind() const{
-	shared_ptr<ofBaseGLRenderer> renderer = ofGetGLRenderer();
+	std::shared_ptr<ofBaseGLRenderer> renderer = ofGetGLRenderer();
 	if(renderer){
 		renderer->unbind(*this);
 	}

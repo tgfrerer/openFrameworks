@@ -168,7 +168,7 @@ void putBmpIntoPixels(FIBITMAP * bmp, ofPixels_<PixelType> &pix, bool swapForLit
 }
 
 template<typename PixelType>
-static bool loadImage(ofPixels_<PixelType> & pix, string fileName){
+static bool loadImage(ofPixels_<PixelType> & pix, std::string fileName){
 	ofInitFreeImage();
 
 #ifndef TARGET_EMSCRIPTEN
@@ -264,7 +264,7 @@ static bool loadImage(ofPixels_<PixelType> & pix, const ofBuffer & buffer){
 
 
 //----------------------------------------------------
-bool ofLoadImage(ofPixels & pix, string fileName) {
+bool ofLoadImage(ofPixels & pix, std::string fileName) {
 	return loadImage(pix,fileName);
 }
 
@@ -274,7 +274,7 @@ bool ofLoadImage(ofPixels & pix, const ofBuffer & buffer) {
 }
 
 //----------------------------------------------------
-bool ofLoadImage(ofFloatPixels & pix, string path){
+bool ofLoadImage(ofFloatPixels & pix, std::string path){
 	return loadImage(pix,path);
 }
 
@@ -284,7 +284,7 @@ bool ofLoadImage(ofFloatPixels & pix, const ofBuffer & buffer){
 }
 
 //----------------------------------------------------
-bool ofLoadImage(ofShortPixels & pix, string path){
+bool ofLoadImage(ofShortPixels & pix, std::string path){
 	return loadImage(pix,path);
 }
 
@@ -295,7 +295,7 @@ bool ofLoadImage(ofShortPixels & pix, const ofBuffer & buffer){
 
 
 //----------------------------------------------------------------
-bool ofLoadImage(ofTexture & tex, string path){
+bool ofLoadImage(ofTexture & tex, std::string path){
 	ofPixels pixels;
 	bool loaded = ofLoadImage(pixels,path);
 	if(loaded){
@@ -318,7 +318,7 @@ bool ofLoadImage(ofTexture & tex, const ofBuffer & buffer){
 
 //----------------------------------------------------------------
 template<typename PixelType>
-static void saveImage(ofPixels_<PixelType> & pix, string fileName, ofImageQualityType qualityLevel) {
+static void saveImage(ofPixels_<PixelType> & pix, std::string fileName, ofImageQualityType qualityLevel) {
 	ofInitFreeImage();
 	if (pix.isAllocated() == false){
 		ofLogError("ofImage") << "saveImage(): couldn't save \"" << fileName << "\", pixels are not allocated";
@@ -389,17 +389,17 @@ static void saveImage(ofPixels_<PixelType> & pix, string fileName, ofImageQualit
 }
 
 //----------------------------------------------------------------
-void ofSaveImage(ofPixels & pix, string fileName, ofImageQualityType qualityLevel){
+void ofSaveImage(ofPixels & pix, std::string fileName, ofImageQualityType qualityLevel){
 	saveImage(pix,fileName,qualityLevel);
 }
 
 //----------------------------------------------------------------
-void ofSaveImage(ofFloatPixels & pix, string fileName, ofImageQualityType qualityLevel) {
+void ofSaveImage(ofFloatPixels & pix, std::string fileName, ofImageQualityType qualityLevel) {
 	saveImage(pix,fileName,qualityLevel);
 }
 
 //----------------------------------------------------------------
-void ofSaveImage(ofShortPixels & pix, string fileName, ofImageQualityType qualityLevel) {
+void ofSaveImage(ofShortPixels & pix, std::string fileName, ofImageQualityType qualityLevel) {
 	saveImage(pix,fileName,qualityLevel);
 }
 
@@ -561,7 +561,7 @@ ofImage_<PixelType>::ofImage_(const ofFile & file){
 }
 
 template<typename PixelType>
-ofImage_<PixelType>::ofImage_(const string & filename){
+ofImage_<PixelType>::ofImage_(const std::string & filename){
 	width						= 0;
 	height						= 0;
 	bpp							= 0;
@@ -621,7 +621,7 @@ bool ofImage_<PixelType>::loadImage(const ofFile & file){
 
 //----------------------------------------------------------
 template<typename PixelType>
-bool ofImage_<PixelType>::load(string fileName){
+bool ofImage_<PixelType>::load(std::string fileName){
 	#if defined(TARGET_ANDROID)
 	ofAddListener(ofxAndroidEvents().unloadGL,this,&ofImage_<PixelType>::unloadTexture);
 	ofAddListener(ofxAndroidEvents().reloadGL,this,&ofImage_<PixelType>::update);
@@ -638,7 +638,7 @@ bool ofImage_<PixelType>::load(string fileName){
 
 //----------------------------------------------------------
 template<typename PixelType>
-bool ofImage_<PixelType>::loadImage(string fileName){
+bool ofImage_<PixelType>::loadImage(std::string fileName){
 	return load(fileName);
 }
 
@@ -667,7 +667,7 @@ bool ofImage_<PixelType>::loadImage(const ofBuffer & buffer){
 
 //----------------------------------------------------------
 template<typename PixelType>
-void ofImage_<PixelType>::save(string fileName, ofImageQualityType qualityLevel){
+void ofImage_<PixelType>::save(std::string fileName, ofImageQualityType qualityLevel){
 	ofSaveImage(pixels, fileName, qualityLevel);
 }
 
@@ -685,7 +685,7 @@ void ofImage_<PixelType>::save(const ofFile & file, ofImageQualityType compressi
 
 //----------------------------------------------------------
 template<typename PixelType>
-void ofImage_<PixelType>::saveImage(string fileName, ofImageQualityType qualityLevel){
+void ofImage_<PixelType>::saveImage(std::string fileName, ofImageQualityType qualityLevel){
 	save(fileName, qualityLevel);
 }
 
@@ -976,7 +976,7 @@ bool ofImage_<PixelType>::isUsingTexture() const{
 //------------------------------------
 template<>
 void ofImage_<unsigned char>::grabScreen(int x, int y, int w, int h){
-	shared_ptr<ofBaseGLRenderer> renderer = ofGetGLRenderer();
+	std::shared_ptr<ofBaseGLRenderer> renderer = ofGetGLRenderer();
 	if(renderer){
 		renderer->saveScreen(x,y,w,h,pixels);
 		update();
@@ -987,7 +987,7 @@ void ofImage_<unsigned char>::grabScreen(int x, int y, int w, int h){
 template<typename PixelType>
 void ofGrabScreen(ofPixels_<PixelType> & pixels, int x, int y, int w, int h){
 	ofPixels p;
-	shared_ptr<ofBaseGLRenderer> renderer = ofGetGLRenderer();
+	std::shared_ptr<ofBaseGLRenderer> renderer = ofGetGLRenderer();
 	if(renderer){
 		renderer->saveScreen(x,y,w,h,p);
 		pixels = p;
@@ -997,7 +997,7 @@ void ofGrabScreen(ofPixels_<PixelType> & pixels, int x, int y, int w, int h){
 //------------------------------------
 template<>
 void ofGrabScreen(ofPixels & p, int x, int y, int w, int h){
-	shared_ptr<ofBaseGLRenderer> renderer = ofGetGLRenderer();
+	std::shared_ptr<ofBaseGLRenderer> renderer = ofGetGLRenderer();
 	if(renderer){
 		renderer->saveScreen(x,y,w,h,p);
 	}

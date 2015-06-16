@@ -32,8 +32,8 @@ bool ofVbo::vaoChecked=false;
 	#define glBindVertexArray								glBindVertexArrayFunc
 #endif
 
-static map<GLuint,int> & getVAOIds(){
-	static map<GLuint,int> * ids = new map<GLuint,int>;
+static std::map<GLuint,int> & getVAOIds(){
+	static std::map<GLuint,int> * ids = new std::map<GLuint,int>;
 	return *ids;
 }
 
@@ -869,7 +869,7 @@ void ofVbo::bind() const{
             indexAttribute.bind();
         }
 
-		map<int,VertexAttribute>::const_iterator it;
+		std::map<int,VertexAttribute>::const_iterator it;
 		for(it = customAttributes.begin();it!=customAttributes.end();it++){
 			it->second.enable();
 		}

@@ -430,7 +430,7 @@ class DirectShowVideo : public ISampleGrabberCB{
         return E_NOTIMPL;
     }
 
-    bool loadMovie(string path){
+    bool loadMovie(std::string path){
         tearDown();
 
 
@@ -1098,7 +1098,7 @@ ofDirectShowPlayer::~ofDirectShowPlayer(){
     close();
 }
 
-bool ofDirectShowPlayer::load(string path){
+bool ofDirectShowPlayer::load(std::string path){
     path = ofToDataPath(path); 
 
     close();
@@ -1236,7 +1236,7 @@ void ofDirectShowPlayer::setLoopState(ofLoopType state){
         else if( state == OF_LOOP_NORMAL ){
             player->setLoop(true);
         }else{
-            ofLogError("ofDirectShowPlayer") << " cannot set loop of type palindrome " << endl;
+            ofLogError("ofDirectShowPlayer") << " cannot set loop of type palindrome " << std::endl;
         }
     }
 }

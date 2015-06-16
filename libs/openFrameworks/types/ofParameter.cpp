@@ -9,20 +9,20 @@ ofAbstractParameter::~ofAbstractParameter(){
 
 }
 
-string ofAbstractParameter::getName() const {
+std::string ofAbstractParameter::getName() const {
 	return "";
 }
 
-void ofAbstractParameter::setName(string name) {
+void ofAbstractParameter::setName(std::string name) {
 
 }
 
-string ofAbstractParameter::getEscapedName() const{
+std::string ofAbstractParameter::getEscapedName() const{
 	return escape(getName());
 }
 
 
-string ofAbstractParameter::escape(string str) const{
+std::string ofAbstractParameter::escape(std::string str) const{
 	ofStringReplace(str, " ", "_");
 	ofStringReplace(str, "<", "_");
 	ofStringReplace(str, ">", "_");
@@ -39,15 +39,15 @@ string ofAbstractParameter::escape(string str) const{
 	return str;
 }
 
-string ofAbstractParameter::toString() const {
+std::string ofAbstractParameter::toString() const {
 	return "";
 }
 
-void ofAbstractParameter::fromString(string str) {
+void ofAbstractParameter::fromString(std::string str) {
 
 }
 
-string ofAbstractParameter::type() const{
+std::string ofAbstractParameter::type() const{
 	return typeid(*this).name();
 }
 
@@ -63,8 +63,8 @@ ofParameterGroup * ofAbstractParameter::getParent(){
 	return NULL;
 }
 
-vector<string> ofAbstractParameter::getGroupHierarchyNames() const{
-	vector<string> hierarchy;
+std::vector<std::string> ofAbstractParameter::getGroupHierarchyNames() const{
+	std::vector<std::string> hierarchy;
 	if(getParent()){
 		hierarchy = getParent()->getGroupHierarchyNames();
 	}
@@ -85,17 +85,17 @@ bool ofAbstractParameter::isSerializable() const{
 	return true;
 }
 
-shared_ptr<ofAbstractParameter> ofAbstractParameter::newReference() const{
-	return shared_ptr<ofAbstractParameter>(new ofAbstractParameter(*this));
+std::shared_ptr<ofAbstractParameter> ofAbstractParameter::newReference() const{
+	return std::shared_ptr<ofAbstractParameter>(new ofAbstractParameter(*this));
 }
 
-ostream& operator<<(ostream& os, const ofAbstractParameter& p){
+std::ostream& operator<<(std::ostream& os, const ofAbstractParameter& p){
 	os << p.toString();
 	return os;
 }
 
-istream& operator>>(istream& is, ofAbstractParameter& p){
-	string str;
+std::istream& operator>>(std::istream& is, ofAbstractParameter& p){
+	std::string str;
 	is >> str;
 	p.fromString(str);
 	return is;
