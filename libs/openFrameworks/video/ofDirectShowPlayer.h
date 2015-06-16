@@ -13,9 +13,9 @@ class ofDirectShowPlayer : public ofBaseVideoPlayer{
         ofDirectShowPlayer();
         ~ofDirectShowPlayer();
 
-        bool                load(string path);
+        bool                load(std::string path);
         void                update();
-        void                draw(float x, float y);
+        void                draw(float x, float y); ///< FIXME: no implementation in .cpp!
 
         void                close();
     

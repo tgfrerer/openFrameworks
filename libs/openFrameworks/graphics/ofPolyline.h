@@ -58,7 +58,7 @@ public:
 	ofPolyline();
 
 	/// \brief Creates an ofPolyline from a vector of ofVec2f or ofPoint objects.
-	ofPolyline(const vector<ofPoint>& verts);
+	ofPolyline(const std::vector<ofPoint>& verts);
 
     static ofPolyline fromRectangle(const ofRectangle& rect);
 
@@ -94,7 +94,7 @@ public:
 	/// 	ofPolyline p;
 	/// 	p.addVertices(verts);
 	/// ~~~~
-	void addVertices( const vector<ofPoint>& verts );
+	void addVertices( const std::vector<ofPoint>& verts );
 
 	/// \brief Adds multiple points at the end of the ofPolyline using a pointer to
 	/// an array of ofPoint objects.
@@ -131,17 +131,17 @@ public:
 	ofPoint& operator[] (int index);
     
 	/// \brief Gets a vector of vertices that the line contains
-	vector<ofPoint> & getVertices();
-	const vector<ofPoint> & getVertices() const;
+	std::vector<ofPoint> & getVertices();
+	const std::vector<ofPoint> & getVertices() const;
 
-	vector<ofPoint>::iterator begin();
-	vector<ofPoint>::const_iterator begin() const;
-	vector<ofPoint>::reverse_iterator rbegin();
-	vector<ofPoint>::const_reverse_iterator rbegin() const;
-	vector<ofPoint>::iterator end();
-	vector<ofPoint>::const_iterator end() const;
-	vector<ofPoint>::reverse_iterator rend();
-	vector<ofPoint>::const_reverse_iterator rend() const;
+	std::vector<ofPoint>::iterator begin();
+	std::vector<ofPoint>::const_iterator begin() const;
+	std::vector<ofPoint>::reverse_iterator rbegin();
+	std::vector<ofPoint>::const_reverse_iterator rbegin() const;
+	std::vector<ofPoint>::iterator end();
+	std::vector<ofPoint>::const_iterator end() const;
+	std::vector<ofPoint>::reverse_iterator rend();
+	std::vector<ofPoint>::const_reverse_iterator rend() const;
 
 	/// \}
     /// \name Lines and Curves
@@ -482,21 +482,21 @@ private:
 	void setCircleResolution(int res);
     float wrapAngle(float angleRad);
 
-	vector<ofPoint> points;
+	std::vector<ofPoint> points;
     ofVec3f rightVector;
     
     // cache
-    mutable vector<float> lengths;    // cumulative lengths, stored per point (lengths[n] is the distance to the n'th point, zero based)
-    mutable vector<ofVec3f> tangents;   // tangent at vertex, stored per point
-    mutable vector<ofVec3f> normals;    //
-    mutable vector<ofVec3f> rotations;   // rotation between adjacent segments, stored per point (cross product)
-    mutable vector<float> angles;    // angle (degrees) between adjacent segments, stored per point (asin(cross product))
+    mutable std::vector<float> lengths;    // cumulative lengths, stored per point (lengths[n] is the distance to the n'th point, zero based)
+    mutable std::vector<ofVec3f> tangents;   // tangent at vertex, stored per point
+    mutable std::vector<ofVec3f> normals;    //
+    mutable std::vector<ofVec3f> rotations;   // rotation between adjacent segments, stored per point (cross product)
+    mutable std::vector<float> angles;    // angle (degrees) between adjacent segments, stored per point (asin(cross product))
     mutable ofPoint centroid2D;
     mutable float area;
     
     
-	deque<ofPoint> curveVertices;
-	vector<ofPoint> circlePoints;
+	std::deque<ofPoint> curveVertices;
+	std::vector<ofPoint> circlePoints;
 
 	bool bClosed;
 	bool bHasChanged;   // public API has access to this

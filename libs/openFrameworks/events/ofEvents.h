@@ -20,7 +20,7 @@ int	ofGetPreviousMouseY();
 //-----------------------------------------------
 class ofDragInfo{
 	public:
-		vector <string> files;
+		std::vector <std::string> files;
 		ofPoint position;
 };
 
@@ -178,10 +178,10 @@ public:
 
 class ofMessage : public ofEventArgs{
 	public:
-		ofMessage( string msg ){
+		ofMessage( std::string msg ){
 			message = msg;
 		}
-		string message;
+		std::string message;
 };
 		
 
@@ -263,12 +263,12 @@ private:
 	int	currentMouseX, currentMouseY;
 	int	previousMouseX, previousMouseY;
 	bool bPreMouseNotSet;
-	set<int> pressedMouseButtons;
-	set<int> pressedKeys;
+	std::set<int> pressedMouseButtons;
+	std::set<int> pressedKeys;
 };
 
 void ofSendMessage(ofMessage msg);
-void ofSendMessage(string messageString);
+void ofSendMessage(std::string messageString);
 
 ofCoreEvents & ofEvents();
 

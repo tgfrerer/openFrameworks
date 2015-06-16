@@ -20,7 +20,7 @@ public:
 	~ofParameterGroup();
 
 	template<typename ...Args>
-	ofParameterGroup(const string & name, Args&... p)
+	ofParameterGroup(const std::string & name, Args&... p)
 	:obj(new Value){
 		add(p...);
 		setName(name);
@@ -40,27 +40,27 @@ public:
 
 	void clear();
 
-	ofParameter<bool> getBool(string name) const;
-	ofParameter<int> getInt(string name) const;
-	ofParameter<float> getFloat(string name) const;
-	ofParameter<char> getChar(string name) const;
-	ofParameter<string> getString(string name)	 const;
-	ofParameter<ofPoint> getPoint(string name)	 const;
-	ofParameter<ofVec2f> getVec2f(string name) const;
-	ofParameter<ofVec3f> getVec3f(string name) const;
-	ofParameter<ofVec4f> getVec4f(string name) const;
-	ofParameter<ofColor> getColor(string name) const;
-	ofParameter<ofShortColor> getShortColor(string name) const;
-	ofParameter<ofFloatColor> getFloatColor(string name) const;
+	ofParameter<bool> getBool(std::string name) const;
+	ofParameter<int> getInt(std::string name) const;
+	ofParameter<float> getFloat(std::string name) const;
+	ofParameter<char> getChar(std::string name) const;
+	ofParameter<std::string> getString(std::string name)	 const;
+	ofParameter<ofPoint> getPoint(std::string name)	 const;
+	ofParameter<ofVec2f> getVec2f(std::string name) const;
+	ofParameter<ofVec3f> getVec3f(std::string name) const;
+	ofParameter<ofVec4f> getVec4f(std::string name) const;
+	ofParameter<ofColor> getColor(std::string name) const;
+	ofParameter<ofShortColor> getShortColor(std::string name) const;
+	ofParameter<ofFloatColor> getFloatColor(std::string name) const;
 
-	ofParameterGroup getGroup(string name) const;
+	ofParameterGroup getGroup(std::string name) const;
 
 
 	ofParameter<bool> getBool(int pos) const;
 	ofParameter<int> getInt(int pos) const;
 	ofParameter<float> getFloat(int pos) const;
 	ofParameter<char> getChar(int pos) const;
-	ofParameter<string> getString(int pos)	 const;
+	ofParameter<std::string> getString(int pos)	 const;
 	ofParameter<ofPoint> getPoint(int pos)	 const;
 	ofParameter<ofVec2f> getVec2f(int pos) const;
 	ofParameter<ofVec3f> getVec3f(int pos) const;
@@ -70,31 +70,31 @@ public:
 	ofParameter<ofFloatColor> getFloatColor(int pos) const;
 	ofParameterGroup getGroup(int pos) const;
 
-	ofAbstractParameter & get(string name) const;
+	ofAbstractParameter & get(std::string name) const;
 	ofAbstractParameter & get(int pos) const;
 
-	ofAbstractParameter & operator[](string name) const;
+	ofAbstractParameter & operator[](std::string name) const;
 	ofAbstractParameter & operator[](int pos) const;
 
 	template<typename ParameterType>
-	ofParameter<ParameterType> get(string name) const;
+	ofParameter<ParameterType> get(std::string name) const;
 
 	template<typename ParameterType>
 	ofParameter<ParameterType> get(int pos) const;
 
 	int size() const;
-	string getName(int position) const;
-	string getType(int position) const;
-	int getPosition(string name) const;
+	std::string getName(int position) const;
+	std::string getType(int position) const;
+	int getPosition(std::string name) const;
 
-	friend ostream& operator<<(ostream& os, const ofParameterGroup& group);
+	friend std::ostream& operator<<(std::ostream& os, const ofParameterGroup& group);
 
-	string getName() const;
-	void setName(string name);
-	string getEscapedName() const;
-	string toString() const;
+	std::string getName() const;
+	void setName(std::string name);
+	std::string getEscapedName() const;
+	std::string toString() const;
 
-	bool contains(string name);
+	bool contains(std::string name);
 
 	void notifyParameterChanged(ofAbstractParameter & param);
 
@@ -107,20 +107,20 @@ public:
 
 	void setSerializable(bool serializable);
 	bool isSerializable() const;
-	shared_ptr<ofAbstractParameter> newReference() const;
+	std::shared_ptr<ofAbstractParameter> newReference() const;
 
 	void setParent(ofParameterGroup * _parent);
 	const ofParameterGroup * getParent() const;
 	ofParameterGroup * getParent();
 
-	vector<shared_ptr<ofAbstractParameter> >::iterator begin();
-	vector<shared_ptr<ofAbstractParameter> >::iterator end();
-	vector<shared_ptr<ofAbstractParameter> >::const_iterator begin() const;
-	vector<shared_ptr<ofAbstractParameter> >::const_iterator end() const;
-	vector<shared_ptr<ofAbstractParameter> >::reverse_iterator rbegin();
-	vector<shared_ptr<ofAbstractParameter> >::reverse_iterator rend();
-	vector<shared_ptr<ofAbstractParameter> >::const_reverse_iterator rbegin() const;
-	vector<shared_ptr<ofAbstractParameter> >::const_reverse_iterator rend() const;
+	std::vector<std::shared_ptr<ofAbstractParameter> >::iterator begin();
+	std::vector<std::shared_ptr<ofAbstractParameter> >::iterator end();
+	std::vector<std::shared_ptr<ofAbstractParameter> >::const_iterator begin() const;
+	std::vector<std::shared_ptr<ofAbstractParameter> >::const_iterator end() const;
+	std::vector<std::shared_ptr<ofAbstractParameter> >::reverse_iterator rbegin();
+	std::vector<std::shared_ptr<ofAbstractParameter> >::reverse_iterator rend();
+	std::vector<std::shared_ptr<ofAbstractParameter> >::const_reverse_iterator rbegin() const;
+	std::vector<std::shared_ptr<ofAbstractParameter> >::const_reverse_iterator rend() const;
 
 private:
 	class Value{
@@ -129,17 +129,17 @@ private:
 		:serializable(true)
 		,parent(NULL){}
 
-		map<string,int> parametersIndex;
-		vector<shared_ptr<ofAbstractParameter> > parameters;
-		string name;
+		std::map<std::string,int> parametersIndex;
+		std::vector<std::shared_ptr<ofAbstractParameter> > parameters;
+		std::string name;
 		bool serializable;
 		ofParameterGroup * parent;
 	};
-	shared_ptr<Value> obj;
+	std::shared_ptr<Value> obj;
 };
 
 template<typename ParameterType>
-ofParameter<ParameterType> ofParameterGroup::get(string name) const{
+ofParameter<ParameterType> ofParameterGroup::get(std::string name) const{
 	return static_cast<ofParameter<ParameterType>& >(get(name));
 }
 

@@ -46,11 +46,11 @@ int ofGetGlInternalFormat(const ofFloatPixels& pix);
 
 //---------------------------------
 // this is helpful for debugging ofTexture
-string ofGetGlInternalFormatName(int glInternalFormat);
+std::string ofGetGlInternalFormatName(int glInternalFormat);
 int ofGetGLFormatFromInternal(int glInternalFormat);
 int ofGetGlTypeFromInternal(int glInternalFormat);
 
-shared_ptr<ofBaseGLRenderer> ofGetGLRenderer();
+std::shared_ptr<ofBaseGLRenderer> ofGetGLRenderer();
 
 
 int ofGetGlType(const ofPixels & pixels);
@@ -76,7 +76,7 @@ void ofSetPixelStoreiAlignment(GLenum pname, int w, int bpc, int numChannels);
 void ofSetPixelStoreiAlignment(GLenum panme, int stride);
 
 //vector<string> ofGLSupportedExtensions();
-bool ofGLCheckExtension(string searchName);
+bool ofGLCheckExtension(std::string searchName);
 bool ofGLSupportsNPOTTextures();
 
 bool ofIsGLProgrammableRenderer();
@@ -86,7 +86,7 @@ int ofGetGlFormat(const ofPixels_<T> & pixels) {
 	return ofGetGLFormatFromPixelFormat(pixels.getPixelFormat());
 }
 
-string ofGLSLVersionFromGL(int major, int minor);
+std::string ofGLSLVersionFromGL(int major, int minor);
 
 
 #ifndef TARGET_OPENGLES

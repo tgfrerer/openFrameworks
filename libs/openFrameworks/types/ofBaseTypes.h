@@ -172,10 +172,10 @@ public:
 	virtual ~ofBaseHasTexturePlanes(){}
 
 	/// \returns a reference to a std::vector containing the ofTexture planes.
-	virtual vector<ofTexture> & getTexturePlanes()=0;
+	virtual std::vector<ofTexture> & getTexturePlanes()=0;
 
 	/// \returns a const reference to a std::vector containing the ofTexture planes.
-	virtual const vector<ofTexture> & getTexturePlanes() const=0;
+	virtual const std::vector<ofTexture> & getTexturePlanes() const=0;
 };
 
 
@@ -370,7 +370,7 @@ class ofBaseVideoGrabber: virtual public ofBaseVideo{
 	//needs implementing
 	/// \brief Get a list of available video grabber devices.
 	/// \returns a std::vector of ofVideoDevice objects.
-	virtual vector<ofVideoDevice>	listDevices() const = 0;
+	virtual std::vector<ofVideoDevice>	listDevices() const = 0;
 
 	/// \brief Set up the grabber with the requested width and height.
 	///
@@ -435,8 +435,8 @@ public:
 	virtual ~ofBaseVideoPlayer();
 
 	//needs implementing
-	virtual bool				load(string name) = 0;
-	virtual void				loadAsync(string name);
+	virtual bool				load(std::string name) = 0;
+	virtual void				loadAsync(std::string name);
 	
 	virtual void				play() = 0;
 	virtual void				stop() = 0;
@@ -481,7 +481,7 @@ class ofBaseRenderer{
 public:
 	virtual ~ofBaseRenderer(){}
 
-	virtual const string & getType()=0;
+	virtual const std::string & getType()=0;
 
 	virtual void startRender() = 0;
 	virtual void finishRender() = 0;
@@ -604,8 +604,8 @@ public:
 	virtual void drawTriangle(float x1, float y1, float z1, float x2, float y2, float z2, float x3, float y3, float z3) const=0;
 	virtual void drawCircle(float x, float y, float z, float radius) const=0;
 	virtual void drawEllipse(float x, float y, float z, float width, float height) const=0;
-	virtual void drawString(string text, float x, float y, float z) const=0;
-	virtual void drawString(const ofTrueTypeFont & font, string text, float x, float y) const=0;
+	virtual void drawString(std::string text, float x, float y, float z) const=0;
+	virtual void drawString(const ofTrueTypeFont & font, std::string text, float x, float y) const=0;
 
 
 	// returns true an ofPath to draw with, this allows to keep
@@ -849,17 +849,17 @@ class ofBaseFileSerializer: public ofBaseSerializer{
 public:
 	virtual ~ofBaseFileSerializer(){}
 
-	virtual bool load(const string & path)=0;
-	virtual bool save(const string & path)=0;
+	virtual bool load(const std::string & path)=0;
+	virtual bool save(const std::string & path)=0;
 };
 
 class ofBaseURLFileLoader{
 public:
 	virtual ~ofBaseURLFileLoader(){};
-	virtual ofHttpResponse get(string url)=0;
-	virtual int getAsync(string url, string name="")=0;
-	virtual ofHttpResponse saveTo(string url, string path)=0;
-	virtual int saveAsync(string url, string path)=0;
+	virtual ofHttpResponse get(std::string url)=0;
+	virtual int getAsync(std::string url, std::string name="")=0;
+	virtual ofHttpResponse saveTo(std::string url, std::string path)=0;
+	virtual int saveAsync(std::string url, std::string path)=0;
 	virtual void remove(int id)=0;
 	virtual void clear()=0;
 	virtual void stop()=0;

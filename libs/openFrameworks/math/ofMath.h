@@ -433,13 +433,13 @@ float ofSignedNoise(const ofVec4f& p);
 /// \param y The y dimension of the coordinate.
 /// \param poly a vector of ofPoints defining a polygon.
 /// \returns True if the point defined by the coordinates is enclosed, false otherwise.
-bool ofInsidePoly(float x, float y, const vector<ofPoint>& poly);
+bool ofInsidePoly(float x, float y, const std::vector<ofPoint>& poly);
 
 /// \brief Determine if an ofPoint is within the polygon defined by a vector of ofPoints.
 /// \param p A point to check.
 /// \param poly A vector of ofPoints defining a polygon.
 /// \returns True if the ofPoint is enclosed, false otherwise.
-bool ofInsidePoly(const ofPoint & p, const vector<ofPoint>& poly);
+bool ofInsidePoly(const ofPoint & p, const std::vector<ofPoint>& poly);
 
 /// \brief Determine the intersection between two lines.
 /// \param line1Start Starting point for first line.

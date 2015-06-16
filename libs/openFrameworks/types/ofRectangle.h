@@ -1069,8 +1069,8 @@ public:
 /// \cond INTERNAL
 /// \warning The internal z-component of the ofPoint is preserved even though it
 /// is not used.
-ostream& operator<<(ostream& os, const ofRectangle& rect);
+std::ostream& operator<<(std::ostream& os, const ofRectangle& rect);
 /// \warning The internal z-component of the ofPoint is preserved even though it
 /// is not used.
-istream& operator>>(istream& is, ofRectangle& rect);
+std::istream& operator>>(std::istream& is, ofRectangle& rect);
 /// \endcond

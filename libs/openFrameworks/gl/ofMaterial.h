@@ -64,6 +64,6 @@ private:
 	static ofShader shaderTextureRect;
 	static bool shadersInitialized;
 	static size_t shaderLights;
-	static string vertexShader;
-	static string fragmentShader;
+	static std::string vertexShader;
+	static std::string fragmentShader;
 };

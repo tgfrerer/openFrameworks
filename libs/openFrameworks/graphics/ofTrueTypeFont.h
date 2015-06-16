@@ -50,9 +50,9 @@ typedef struct FT_FaceRec_*  FT_Face;
 
 /// \name Fonts
 /// \{
-static const string OF_TTF_SANS = "sans-serif";
-static const string OF_TTF_SERIF = "serif";
-static const string OF_TTF_MONO = "monospace";
+static const std::string OF_TTF_SANS = "sans-serif";
+static const std::string OF_TTF_SERIF = "serif";
+static const std::string OF_TTF_MONO = "monospace";
 /// \}
 
 
@@ -90,14 +90,14 @@ public:
     /// \param simplifyAmt the amount to simplify the vector contours.  Larger number means more simplified.
     /// \param dpi the dots per inch used to specify rendering size.
 	/// \returns true if the font was loaded correctly.
-	bool load(string filename,
+	bool load(std::string filename,
                   int fontsize,
                   bool _bAntiAliased=true,
                   bool _bFullCharacterSet=true,
                   bool makeContours=false,
                   float simplifyAmt=0.3,
                   int dpi=0);
-	OF_DEPRECATED_MSG("Use load instead",bool loadFont(string filename,
+	OF_DEPRECATED_MSG("Use load instead",bool loadFont(std::string filename,
                   int fontsize,
                   bool _bAntiAliased=true,
                   bool _bFullCharacterSet=false,
@@ -215,7 +215,7 @@ public:
 	///
 	/// \param s The string to get the width of.
 	/// \returns Returns the string width. 
-	float stringWidth(string s) const;
+	float stringWidth(std::string s) const;
 
 	/// \brief Returns the string height.
 	///
@@ -223,14 +223,14 @@ public:
 	///
 	/// \param s The string to get the height of.
 	/// \returns Returns the string height. 
-	float stringHeight(string s) const;
+	float stringHeight(std::string s) const;
 
 	/// \brief Returns the bounding box of a string as a rectangle.
 	/// \param s The string to get bounding box of.
 	/// \param x X position of returned rectangle.
 	/// \param y Y position of returned rectangle.
 	/// \returns Returns the bounding box of a string as a rectangle.
-	ofRectangle getStringBoundingBox(string s, float x, float y, bool vflip=true) const;
+	ofRectangle getStringBoundingBox(std::string s, float x, float y, bool vflip=true) const;
 
 	/// \}
 	/// \name Drawing
@@ -240,7 +240,7 @@ public:
 	/// \param s String to draw
 	/// \param x X position of string
 	/// \param y Y position of string
-	void drawString(string s, float x, float y) const;
+	void drawString(std::string s, float x, float y) const;
 
 	/// \brief Draws the string as if it was geometrical shapes.
 	/// 
@@ -248,7 +248,7 @@ public:
 	/// 
 	/// \param x X position of shapes
 	/// \param y Y position of shapes
-	void drawStringAsShapes(string s, float x, float y) const;
+	void drawStringAsShapes(std::string s, float x, float y) const;
 
 	/// \brief Get the num chars in the loaded character set.
 	/// 
@@ -260,8 +260,8 @@ public:
 	
 	/// \todo
 	ofTTFCharacter getCharacterAsPoints(int character, bool vflip=true, bool filled=true) const;
-	vector<ofTTFCharacter> getStringAsPoints(string str, bool vflip=true, bool filled=true) const;
-	const ofMesh & getStringMesh(string s, float x, float y, bool vflip=true) const;
+	std::vector<ofTTFCharacter> getStringAsPoints(std::string str, bool vflip=true, bool filled=true) const;
+	const ofMesh & getStringMesh(std::string s, float x, float y, bool vflip=true) const;
 	const ofTexture & getFontTexture() const;
 
 	/// \}
@@ -274,10 +274,10 @@ protected:
 	bool bFullCharacterSet;
 	int nCharacters;
 	
-	vector <ofTTFCharacter> charOutlines;
-	vector <ofTTFCharacter> charOutlinesNonVFlipped;
-	vector <ofTTFCharacter> charOutlinesContour;
-	vector <ofTTFCharacter> charOutlinesNonVFlippedContour;
+	std::vector <ofTTFCharacter> charOutlines;
+	std::vector <ofTTFCharacter> charOutlinesNonVFlipped;
+	std::vector <ofTTFCharacter> charOutlinesContour;
+	std::vector <ofTTFCharacter> charOutlinesNonVFlippedContour;
 
 	float lineHeight;
 	float ascenderHeight;
@@ -286,7 +286,7 @@ protected:
 	float letterSpacing;
 	float spaceSize;
 
-	vector<charProps> cps; // properties for each character
+	std::vector<charProps> cps; // properties for each character
 
 	int fontSize;
 	bool bMakeContours;
@@ -297,9 +297,9 @@ protected:
     int getKerning(int c, int prevC) const;
 	void drawChar(int c, float x, float y, bool vFlipped) const;
 	void drawCharAsShape(int c, float x, float y, bool vFlipped, bool filled) const;
-	void createStringMesh(string s, float x, float y, bool vFlipped) const;
+	void createStringMesh(std::string s, float x, float y, bool vFlipped) const;
 	
-	string filename;
+	std::string filename;
 
 	ofTexture texAtlas;
 	mutable ofMesh stringQuads;
@@ -315,7 +315,7 @@ private:
 	void		unloadTextures();
 	void		reloadTextures();
 	static bool	initLibraries();
-	static void finishLibraries();
+	static void finishLibraries(); ///< FIXME: there's no implementation for this method.
 
 	friend void ofExitCallback();
 };

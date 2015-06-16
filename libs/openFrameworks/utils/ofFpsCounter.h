@@ -26,6 +26,6 @@ private:
 	uint64_t secsThen, nanosThen;
 	double fps;
 	uint64_t lastFrameTime;
-	queue<double> timestamps;
+	std::queue<double> timestamps;
 	double targetFps;
 };

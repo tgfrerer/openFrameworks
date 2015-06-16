@@ -16,11 +16,11 @@ class ofCoreEvents;
 
 void ofInit();
 void ofSetupOpenGL(int w, int h, ofWindowMode screenMode);	// sets up the opengl context!
-shared_ptr<ofAppBaseWindow> ofCreateWindow(const ofWindowSettings & settings);	// sets up the opengl context!
-shared_ptr<ofMainLoop> ofGetMainLoop();
+std::shared_ptr<ofAppBaseWindow> ofCreateWindow(const ofWindowSettings & settings);	// sets up the opengl context!
+std::shared_ptr<ofMainLoop> ofGetMainLoop();
 
 template<typename Window>
-void ofSetupOpenGL(shared_ptr<Window> windowPtr, int w, int h, ofWindowMode screenMode){
+void ofSetupOpenGL(std::shared_ptr<Window> windowPtr, int w, int h, ofWindowMode screenMode){
 	ofInit();
 	ofWindowSettings settings;
 	settings.width = w;
@@ -36,19 +36,19 @@ static void noopDeleter(Window*){}
 
 template<typename Window>
 void ofSetupOpenGL(Window * windowPtr, int w, int h, ofWindowMode screenMode){
-	shared_ptr<Window> window = shared_ptr<Window>(windowPtr,std::ptr_fun(noopDeleter<Window>));
+	std::shared_ptr<Window> window = std::shared_ptr<Window>(windowPtr,std::ptr_fun(noopDeleter<Window>));
 	ofSetupOpenGL(window,w,h,screenMode);
 }
 
 
-int ofRunApp(shared_ptr<ofBaseApp> OFSA);
+int ofRunApp(std::shared_ptr<ofBaseApp> OFSA);
 int ofRunApp(ofBaseApp * OFSA = NULL); // will be deprecated
-void ofRunApp(shared_ptr<ofAppBaseWindow> window, shared_ptr<ofBaseApp> app);
+void ofRunApp(std::shared_ptr<ofAppBaseWindow> window, std::shared_ptr<ofBaseApp> app);
 int ofRunMainLoop();
 
 
 ofBaseApp * ofGetAppPtr();
-void ofSetAppPtr(shared_ptr<ofBaseApp> appPtr);
+void ofSetAppPtr(std::shared_ptr<ofBaseApp> appPtr);
 
 void		ofExit(int status=0);
 
@@ -88,7 +88,7 @@ ofAppBaseWindow * ofGetWindowPtr();
 
 void 		ofSetWindowPosition(int x, int y);
 void 		ofSetWindowShape(int width, int height);
-void 		ofSetWindowTitle(string title);
+void 		ofSetWindowTitle(std::string title);
 void		ofEnableSetupScreen();
 void		ofDisableSetupScreen();
 void		ofSetFullscreen(bool fullscreen);
@@ -97,8 +97,8 @@ void		ofToggleFullscreen();
 void 		ofSetVerticalSync(bool bSync);
 
 ofCoreEvents & ofEvents();
-void ofSetCurrentRenderer(shared_ptr<ofBaseRenderer> renderer,bool setDefaults=false);
-shared_ptr<ofBaseRenderer> & ofGetCurrentRenderer();
+void ofSetCurrentRenderer(std::shared_ptr<ofBaseRenderer> renderer,bool setDefaults=false);
+std::shared_ptr<ofBaseRenderer> & ofGetCurrentRenderer();
 void ofSetEscapeQuitsApp(bool bQuitOnEsc);
 
 //-------------------------- native window handles

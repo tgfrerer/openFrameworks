@@ -38,7 +38,7 @@ class ofRtAudioSoundStream : public ofBaseSoundStream{
 	
 	private:
 		long unsigned long tickCount;
-		shared_ptr<RtAudio>	audio;
+		std::shared_ptr<RtAudio>	audio;
 		int sampleRate;
 		int outDeviceID;
 		int inDeviceID;

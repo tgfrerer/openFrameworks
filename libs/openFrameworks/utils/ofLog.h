@@ -30,7 +30,7 @@
 /// #### Functional: as a function taking a message
 ///
 /// ~~~~{.cpp}
-/// // Send a single string message, setting the log level.
+/// // Send a single std::string message, setting the log level.
 /// ofLog(OF_LOG_NOTICE, "the number is " + ofToString(10));
 /// 
 /// // The legacy printf style.
@@ -55,8 +55,8 @@
 /// ofLogFatalError() << "Accckkk, a fatal error!!";
 /// ~~~~
 /// 
-/// **Note**: The log level specific stream objects also take a string argument 
-/// for the "module". A module is a string that is added to the beginning of 
+/// **Note**: The log level specific stream objects also take a std::string argument 
+/// for the "module". A module is a std::string that is added to the beginning of 
 /// the log line and can be used to separate logging messages by setting an 
 /// independent log level for **that module only**. This module-specific log
 /// level has no effect on other modules.
@@ -71,14 +71,14 @@
 ///
 /// **Warning**: It is important to understand that the log level specific
 /// stream objects take the module name as an argument and the log messages via
-/// the << operator. Putting your message as a string argument inside the
+/// the << operator. Putting your message as a std::string argument inside the
 /// parentheses uses that message as a *module* and so nothing will be printed:
 /// 
 /// ~~~~{.cpp}
 /// // This prints a warning message.
 /// ofLogWarning() << "A warning message.";
 ///
-/// // !!! This does not print a message because the string "a warning print"
+/// // !!! This does not print a message because the std::string "a warning print"
 /// // is the module argument !!!
 /// ofLogWarning("A warning print");
 /// 
@@ -178,17 +178,17 @@ void ofSetLogLevel(ofLogLevel level);
 /// // In this case, we will see the verbose message from "MyClass", but not
 /// // the message from "MyOtherClass".
 /// ~~~~
-void ofSetLogLevel(string module, ofLogLevel level);
+void ofSetLogLevel(std::string module, ofLogLevel level);
 
 /// \brief Get the currently set global logging level.
 /// \returns The currently set global logging level.
 ofLogLevel ofGetLogLevel();
 
-/// \brief Get log level name as a string.
-/// \param level The ofLogLevel you want as a string.
+/// \brief Get log level name as a std::string.
+/// \param level The ofLogLevel you want as a std::string.
 /// \param pad True if you want all log level names to be the same length.
-/// \returns The log level name as a string.
-string ofGetLogLevelName(ofLogLevel level, bool pad=false);
+/// \returns The log level name as a std::string.
+std::string ofGetLogLevelName(ofLogLevel level, bool pad=false);
 
 /// \}
 
@@ -201,7 +201,7 @@ class ofBaseLoggerChannel;
 /// \brief Set the logging to output to a file instead of the console.
 /// \param path The path to the log file to use.
 /// \param append True if you want to append to the existing file.
-void ofLogToFile(const string & path, bool append=false);
+void ofLogToFile(const std::string & path, bool append=false);
 
 /// \brief Set the logging to ouptut to the console.
 /// 
@@ -216,14 +216,14 @@ void ofLogToConsole();
 /// to email or even Twitter.
 ///
 /// \param loggerChannel A shared pointer to the logger channel.
-void ofSetLoggerChannel(shared_ptr<ofBaseLoggerChannel> loggerChannel);
+void ofSetLoggerChannel(std::shared_ptr<ofBaseLoggerChannel> loggerChannel);
 
 /// \}
 
 /// \class ofLog
 /// \brief A C++ stream-style logging interface.
 ///
-/// ofLog accepts variables via the std::ostream operator << and builds a string
+/// ofLog accepts variables via the std::ostream operator << and builds a std::string
 /// and logs it when the stream is finished (via the destructor). A newline is
 /// printed automatically and all the stream controls (std::endl, std::flush,
 /// std::hex, etc) work normally. The default log level is `OF_LOG_NOTICE`.
@@ -237,11 +237,11 @@ void ofSetLoggerChannel(shared_ptr<ofBaseLoggerChannel> loggerChannel);
 /// ~~~~
 ///
 /// It also accepts the legacy ofLog interface:
-/// ofLog(ofLogLevel level, string message):
+/// ofLog(ofLogLevel level, std::string message):
 ///
 /// ~~~~{.cpp}
 ///
-/// ofLog(OF_LOG_ERROR, "Another string.");
+/// ofLog(OF_LOG_ERROR, "Another std::string.");
 ///
 /// ~~~~
 ///
@@ -262,15 +262,15 @@ class ofLog{
 		/// the `std::ostream` operator `<<` similar to `std::cout` and
 		/// `std::cerr`.
 		/// 
-		/// It builds a string and logs it when the stream is finished. A
+		/// It builds a std::string and logs it when the stream is finished. A
 		/// newline is printed automatically and all the stream controls
 		/// (`std::endl`, `std::flush`, `std::hex`, etc)
 		/// work normally.
 		/// 
 		/// ~~~~{.cpp}
 		/// 
-		/// // Converts primitive types (int, float, etc) to strings automatically.
-		/// ofLog() << "a string " << 100 << 20.234f;
+		/// // Converts primitive types (int, float, etc) to std::strings automatically.
+		/// ofLog() << "a std::string " << 100 << 20.234f;
 		/// 
 		/// ~~~~
 		/// 
@@ -283,7 +283,7 @@ class ofLog{
 		/// ~~~~{.cpp}
 		/// 
 		/// // Set the log level.
-		/// ofLog(OF_LOG_WARNING) << "a string " << 100 << 20.234f;
+		/// ofLog(OF_LOG_WARNING) << "a std::string " << 100 << 20.234f;
 		/// 
 		/// ~~~~
 		/// 
@@ -298,10 +298,10 @@ class ofLog{
 		/// ~~~~{.cpp}
 		/// 
 		/// // Set the log level.
-		/// ofLog(OF_LOG_WARNING) << "a string " << 100 << 20.234f;
+		/// ofLog(OF_LOG_WARNING) << "a std::string " << 100 << 20.234f;
 		/// 
 		/// // This is the same as above.
-		/// ofLogWarning() << "a string " << 100 << 20.234f;
+		/// ofLogWarning() << "a std::string " << 100 << 20.234f;
 		/// 
 		/// ~~~~
 		///
@@ -309,17 +309,17 @@ class ofLog{
 		ofLog(ofLogLevel level);
 	
 	
-		/// \brief Log a string at a specific log level.
+		/// \brief Log a std::string at a specific log level.
 		/// 
 		/// Supply the logging message as a parameter to the function
 		/// instead of as a stream.
 		/// 
-		/// The string message can be concatenated using the
+		/// The std::string message can be concatenated using the
 		/// ofToString(const T& value) conversion function:
 		/// 
 		/// ~~~~{.cpp}
 		/// 
-		/// // Build a single string message.
+		/// // Build a single std::string message.
 		/// ofLog(OF_LOG_NOTICE, "the number is " 
 		/// + ofToString(10) + " and I have a float too " + ofToString(123.45f));
 		/// 
@@ -327,16 +327,16 @@ class ofLog{
 		///
 		/// \param level The ofLogLevel for this log message.
 		/// \param message The log message.
-		ofLog(ofLogLevel level, const string & message);
+		ofLog(ofLogLevel level, const std::string & message);
 
 		/// \brief Logs a message at a specific log level using the printf interface.
 		///
 		/// The message is built using the formatting from the C printf function
 		/// and can be used as a direct replacement. Essentially, the second
-		/// argument is a string with special formatting specifiers starting
+		/// argument is a std::string with special formatting specifiers starting
 		/// with '%' that specify where the following variables go in the
 		/// message. You can have as many variables as you want following the
-		/// logLevel and format string, but there must be a % specifier for each
+		/// logLevel and format std::string, but there must be a % specifier for each
 		/// subsequent variable.
 		/// 
 		/// For quick reference, here are a few of the most useful formatting
@@ -344,9 +344,9 @@ class ofLog{
 		/// 
 		/// * `%d`: integer number, `123`
 		/// * `%f`: floating point number, `123.45`
-		/// * `%s`: a C string ([null terminated](http://en.wikipedia.org/wiki/Null-terminated_string)); 
-		/// this is not a C++ string, use [string::c_str()](http://www.cplusplus.com/reference/string/string/c_str/) 
-		/// to get a C string from a C++ string
+		/// * `%s`: a C std::string ([null terminated](http://en.wikipedia.org/wiki/Null-terminated_string)); 
+		/// this is not a C++ std::string, use [string::c_str()](http://www.cplusplus.com/reference/string/string/c_str/) 
+		/// to get a C std::string from a C++ std::string
 		/// * `%c`: a single character
 		/// * `%x`: unsigned integer as a [hexidecimal](http://en.wikipedia.org/wiki/Hexadecimal) 
 		/// number; `x` uses lower-case letters and `X` uses upper-case
@@ -354,10 +354,10 @@ class ofLog{
 		/// 
 		/// The specifier should match the variable type as it is used to tell
 		/// the function how to convert that primitive type (int, float,
-		/// character, etc) into a string.
+		/// character, etc) into a std::string.
 		/// 
 		/// For instance, let's say we want to print two messages, a salutation
-		/// and the value of an int, a float, and a string variable:
+		/// and the value of an int, a float, and a std::string variable:
 		/// 
 		/// ~~~~{.cpp}
 		/// 
@@ -367,25 +367,25 @@ class ofLog{
 		/// // Our variables.
 		/// float fun = 11.11;
 		/// int games = 100;
-		/// string theNames = "Dan, Kyle, & Golan";
+		/// std::string theNames = "Dan, Kyle, & Golan";
 		/// 
 		/// // Print a message with variables, sets the message format in the
-		/// // format string.
+		/// // format std::string.
 		/// ofLog(OF_LOG_NOTICE, "we've got %d & %f, we got everything you want honey, we know %s", fun, games, theNames.c_str());
 		/// 
 		/// ~~~~
 		/// 
-		/// Note: `theNames.c_str()` returns a C string from theNames which is
-		/// a C++ string object.
+		/// Note: `theNames.c_str()` returns a C std::string from theNames which is
+		/// a C++ std::string object.
 		/// 
 		/// There are other formatting options such as setting the decimal
 		/// precision of float objects and the forward padding of numbers
-		/// (i.e. 0001 instead of 1). See the [Wikipedia printf format string
+		/// (i.e. 0001 instead of 1). See the [Wikipedia printf format std::string
 		/// article](http://en.wikipedia.org/wiki/Printf_format_string) for more
 		/// detailed information.
 		///
 		/// \param level The ofLogLevel for this log message.
-		/// \param format The printf-style format string.
+		/// \param format The printf-style format std::string.
 		ofLog(ofLogLevel level, const char* format, ...) OF_PRINTF_ATTR(3, 4);
 		
 		/// \}
@@ -407,7 +407,7 @@ class ofLog{
 		///
 		/// \sa ofFileLoggerChannel ofConsoleLoggerChannel
 		/// \param channel The channel to log to.
-		static void setChannel(shared_ptr<ofBaseLoggerChannel> channel);
+		static void setChannel(std::shared_ptr<ofBaseLoggerChannel> channel);
 	
 		/// \}
 
@@ -455,21 +455,21 @@ class ofLog{
 
 		ofLogLevel level; ///< Log level.
 		bool bPrinted;	  ///< Has the message been printed in the constructor?
-		string module;    ///< The destination module for this message.
+		std::string module;    ///< The destination module for this message.
 		
 		/// \brief Print a log line.
 		/// \param level The log level.
 		/// \param module The target module.
 		/// \param message The log message.
-		void _log(ofLogLevel level, const string & module, const string & message);
+		void _log(ofLogLevel level, const std::string & module, const std::string & message);
 	
 		/// \brief Determine if the given module is active at the given log level.
 		/// \param level The log level.
 		/// \param module The target module.
 		/// \returns true if the given module is active at the given log level.
-		bool checkLog(ofLogLevel level, const string & module);
+		bool checkLog(ofLogLevel level, const std::string & module);
 	
-		static shared_ptr<ofBaseLoggerChannel> channel;	///< The target channel.
+		static std::shared_ptr<ofBaseLoggerChannel> channel;	///< The target channel.
 	
 		/// \endcond
 	
@@ -481,7 +481,7 @@ class ofLog{
 		ofLog(ofLog const&) {}        					// not defined, not copyable
 		ofLog& operator=(ofLog& from) {return *this;}	// not defined, not assignable
 		
-		static string padding; ///< The padding between std::ostream calls.
+		static std::string padding; ///< The padding between std::ostream calls.
 };
 
 
@@ -492,17 +492,17 @@ class ofLogVerbose : public ofLog{
 	public:
 		/// \brief Create a verbose log message.
 		/// \param module The target module.
-		ofLogVerbose(const string &module="");
+		ofLogVerbose(const std::string &module="");
 
 		/// \brief Create a verbose log message.
 		/// \param module The target module.
 		/// \param message The log message.
-		ofLogVerbose(const string & module, const string & message);
+		ofLogVerbose(const std::string & module, const std::string & message);
 
 		/// \brief Create a verbose log message.
 		/// \param module The target module.
-		/// \param format The printf-style format string.
-		ofLogVerbose(const string & module, const char* format, ...) OF_PRINTF_ATTR(3, 4);
+		/// \param format The printf-style format std::string.
+		ofLogVerbose(const std::string & module, const char* format, ...) OF_PRINTF_ATTR(3, 4);
 };
 
 /// \brief Derived log class for easy notice logging.
@@ -512,17 +512,17 @@ class ofLogNotice : public ofLog{
 	public:
 		/// \brief Create a notice log message.
 		/// \param module The target module.
-		ofLogNotice(const string & module="");
+		ofLogNotice(const std::string & module="");
 
 		/// \brief Create a notice log message.
 		/// \param module The target module.
 		/// \param message The log message.
-		ofLogNotice(const string & module, const string & message);
+		ofLogNotice(const std::string & module, const std::string & message);
 
 		/// \brief Create a notice log message.
 		/// \param module The target module.
-		/// \param format The printf-style format string.
-		ofLogNotice(const string & module, const char* format, ...) OF_PRINTF_ATTR(3, 4);
+		/// \param format The printf-style format std::string.
+		ofLogNotice(const std::string & module, const char* format, ...) OF_PRINTF_ATTR(3, 4);
 };
 
 /// \brief Derived log class for easy warning logging.
@@ -532,16 +532,16 @@ class ofLogWarning : public ofLog{
 	public:
 	/// \brief Create a verbose log message.
 	/// \param module The target module.
-		ofLogWarning(const string & module="");
+		ofLogWarning(const std::string & module="");
 	/// \brief Create a verbose log message.
 	/// \param module The target module.
 	/// \param message The log message.
-		ofLogWarning(const string & module, const string & message);
+		ofLogWarning(const std::string & module, const std::string & message);
 	
 	/// \brief Create a verbose log message.
 	/// \param module The target module.
-	/// \param format The printf-style format string.
-		ofLogWarning(const string & module, const char* format, ...) OF_PRINTF_ATTR(3, 4);
+	/// \param format The printf-style format std::string.
+		ofLogWarning(const std::string & module, const char* format, ...) OF_PRINTF_ATTR(3, 4);
 };
 
 /// \brief Derived log class for easy error logging.
@@ -551,17 +551,17 @@ class ofLogError : public ofLog{
 	public:
 		/// \brief Create a error log message.
 		/// \param module The target module.
-		ofLogError(const string & module="");
+		ofLogError(const std::string & module="");
 	
 		/// \brief Create a error log message.
 		/// \param module The target module.
 		/// \param message The log message.
-		ofLogError(const string & module, const string & message);
+		ofLogError(const std::string & module, const std::string & message);
 	
 		/// \brief Create a error log message.
 		/// \param module The target module.
-		/// \param format The printf-style format string.
-		ofLogError(const string & module, const char* format, ...) OF_PRINTF_ATTR(3, 4);
+		/// \param format The printf-style format std::string.
+		ofLogError(const std::string & module, const char* format, ...) OF_PRINTF_ATTR(3, 4);
 };
 
 /// \brief Derived log class for easy fatal error logging.
@@ -571,17 +571,17 @@ class ofLogFatalError : public ofLog{
 	public:
 		/// \brief Create a fatal error log message.
 		/// \param module The target module.
-		ofLogFatalError(const string & module="");
+		ofLogFatalError(const std::string & module="");
 
 		/// \brief Create a fatal error log message.
 		/// \param module The target module.
 		/// \param message The log message.
-		ofLogFatalError(const string & module, const string & message);
+		ofLogFatalError(const std::string & module, const std::string & message);
 	
 		/// \brief Create a fatal error log message.
 		/// \param module The target module.
-		/// \param format The printf-style format string.
-		ofLogFatalError(const string & module, const char* format, ...) OF_PRINTF_ATTR(3, 4);
+		/// \param format The printf-style format std::string.
+		ofLogFatalError(const std::string & module, const char* format, ...) OF_PRINTF_ATTR(3, 4);
 };
 
 
@@ -603,20 +603,20 @@ public:
 	/// \param level The log level.
 	/// \param module The target module.
 	/// \param message The log message.
-	virtual void log(ofLogLevel level, const string & module, const string & message)=0;
+	virtual void log(ofLogLevel level, const std::string & module, const std::string & message)=0;
 
 	/// \brief Log a message.
 	/// \param level The log level.
 	/// \param module The target module.
-	/// \param format The printf-style format string.
-	virtual void log(ofLogLevel level, const string & module, const char* format, ...)  OF_PRINTF_ATTR(4, 5) =0;
+	/// \param format The printf-style format std::string.
+	virtual void log(ofLogLevel level, const std::string & module, const char* format, ...)  OF_PRINTF_ATTR(4, 5) =0;
 
 	/// \brief Log a message.
 	/// \param level The log level.
 	/// \param module The target module.
-	/// \param format The printf-style format string.
+	/// \param format The printf-style format std::string.
 	/// \param args the list of printf-style arguments.
-	virtual void log(ofLogLevel level, const string & module, const char* format, va_list args)=0;
+	virtual void log(ofLogLevel level, const std::string & module, const char* format, va_list args)=0;
 };
 
 /// \brief A logger channel that logs its messages to the console.
@@ -624,9 +624,9 @@ class ofConsoleLoggerChannel: public ofBaseLoggerChannel{
 public:
 	/// \brief Destroy the console logger channel.
 	virtual ~ofConsoleLoggerChannel(){};
-	void log(ofLogLevel level, const string & module, const string & message);
-	void log(ofLogLevel level, const string & module, const char* format, ...) OF_PRINTF_ATTR(4, 5);
-	void log(ofLogLevel level, const string & module, const char* format, va_list args);
+	void log(ofLogLevel level, const std::string & module, const std::string & message);
+	void log(ofLogLevel level, const std::string & module, const char* format, ...) OF_PRINTF_ATTR(4, 5);
+	void log(ofLogLevel level, const std::string & module, const char* format, va_list args);
 };
 
 /// \brief A logger channel that logs its messages to a log file.
@@ -638,7 +638,7 @@ public:
 	/// \brief Create an ofFileLoggerChannel with parameters.
 	/// \param path The file path for the log file.
 	/// \param append True if the log data should be added to an existing file.
-	ofFileLoggerChannel(const string & path, bool append);
+	ofFileLoggerChannel(const std::string & path, bool append);
 
 	/// \brief Destroy the file logger channel.
 	virtual ~ofFileLoggerChannel();
@@ -646,11 +646,11 @@ public:
 	/// \brief Set the log file.
 	/// \param path The file path for the log file.
 	/// \param append True if the log data should be added to an existing file.
-	void setFile(const string & path,bool append=false);
+	void setFile(const std::string & path,bool append=false);
 
-	void log(ofLogLevel level, const string & module, const string & message);
-	void log(ofLogLevel level, const string & module, const char* format, ...) OF_PRINTF_ATTR(4, 5);
-	void log(ofLogLevel level, const string & module, const char* format, va_list args);
+	void log(ofLogLevel level, const std::string & module, const std::string & message);
+	void log(ofLogLevel level, const std::string & module, const char* format, ...) OF_PRINTF_ATTR(4, 5);
+	void log(ofLogLevel level, const std::string & module, const char* format, va_list args);
 
 	/// \brief CLose the log file.
 	void close();

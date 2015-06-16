@@ -91,12 +91,12 @@ private:
 
 	ofMatrix4x4 * currentMatrix;
 
-	stack <ofRectangle> viewportHistory;
-	stack <ofMatrix4x4> viewMatrixStack;
-	stack <ofMatrix4x4> modelViewMatrixStack;
-	stack <ofMatrix4x4> projectionMatrixStack;
-	stack <ofMatrix4x4> textureMatrixStack;
-	stack <pair<ofOrientation,bool> > orientationStack;
+	std::stack <ofRectangle> viewportHistory;
+	std::stack <ofMatrix4x4> viewMatrixStack;
+	std::stack <ofMatrix4x4> modelViewMatrixStack;
+	std::stack <ofMatrix4x4> projectionMatrixStack;
+	std::stack <ofMatrix4x4> textureMatrixStack;
+	std::stack <std::pair<ofOrientation,bool> > orientationStack;
 
 	int getRenderSurfaceWidth() const;
 	int getRenderSurfaceHeight() const;

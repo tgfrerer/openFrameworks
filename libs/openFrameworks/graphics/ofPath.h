@@ -300,8 +300,8 @@ public:
 	/// \{
 
 	/// \brief Get an ofPolyline representing the outline of the ofPath.
-	vector<ofPolyline> & getOutline();
-	const vector<ofPolyline> & getOutline() const;
+	std::vector<ofPolyline> & getOutline();
+	const std::vector<ofPolyline> & getOutline() const;
 
 	void tessellate();
 
@@ -369,8 +369,8 @@ public:
 		float radiusX, radiusY, angleBegin, angleEnd;
 	};
 
-	vector<Command> & getCommands();
-	const vector<Command> & getCommands() const;
+	std::vector<Command> & getCommands();
+	const std::vector<Command> & getCommands() const;
 
 	/// \}
 	
@@ -382,7 +382,7 @@ private:
 
 	// path description
 	//vector<ofSubPath>		paths;
-	vector<Command> 	commands;
+	std::vector<Command> 	commands;
 	ofPolyWindingMode 	windingMode;
 	ofColor 			fillColor;
 	ofColor				strokeColor;
@@ -391,8 +391,8 @@ private:
 	bool				bUseShapeColor;
 
 	// polyline / tessellation
-	vector<ofPolyline>  polylines;
-	vector<ofPolyline>  tessellatedContour; // if winding mode != ODD
+	std::vector<ofPolyline>  polylines;
+	std::vector<ofPolyline>  tessellatedContour; // if winding mode != ODD
 
 #ifdef TARGET_OPENGLES
 	ofMesh				cachedTessellation;

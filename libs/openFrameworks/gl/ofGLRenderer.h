@@ -19,8 +19,8 @@ public:
 	ofGLRenderer(const ofAppBaseWindow * window);
 	~ofGLRenderer(){}
 
-    static const string TYPE;
-    const string & getType(){ return TYPE; }
+    static const std::string TYPE;
+    const std::string & getType(){ return TYPE; }
 
     void setup();
 
@@ -156,8 +156,8 @@ public:
 	void drawTriangle(float x1, float y1, float z1, float x2, float y2, float z2, float x3, float y3, float z3) const;
 	void drawCircle(float x, float y, float z, float radius) const;
 	void drawEllipse(float x, float y, float z, float width, float height) const;
-	void drawString(string text, float x, float y, float z) const;
-	void drawString(const ofTrueTypeFont & font, string text, float x, float y) const;
+	void drawString(std::string text, float x, float y, float z) const;
+	void drawString(const ofTrueTypeFont & font, std::string text, float x, float y) const;
 
 
 	// gl specifics
@@ -222,21 +222,21 @@ private:
 
 	bool bBackgroundAuto;
 
-	mutable vector<ofPoint> linePoints;
-	mutable vector<ofPoint> rectPoints;
-	mutable vector<ofPoint> triPoints;
-	mutable vector<ofPoint> circlePoints;
+	mutable std::vector<ofPoint> linePoints;
+	mutable std::vector<ofPoint> rectPoints;
+	mutable std::vector<ofPoint> triPoints;
+	mutable std::vector<ofPoint> circlePoints;
 	ofPolyline circlePolyline;
 
 	ofMatrixStack matrixStack;
 	bool normalsEnabled;
 	bool lightingEnabled;
-	set<int> textureLocationsEnabled;
+	std::set<int> textureLocationsEnabled;
 
 	int alphaMaskTextureTarget;
 
 	ofStyle currentStyle;
-	deque <ofStyle> styleHistory;
+	std::deque <ofStyle> styleHistory;
 	of3dGraphics graphics3d;
 	ofBitmapFont bitmapFont;
 	ofPath path;

@@ -173,7 +173,7 @@ public:
 	/// \param device The name of the device.
 	/// You can get the name from the Arduino IDE
 	/// \param baud The baud rate the connection uses
-	bool connect(string device, int baud = 57600);
+	bool connect(std::string device, int baud = 57600);
 	
 	/// \brief Returns true if a succesfull connection has been established
 	/// and the Arduino has reported a firmware
@@ -229,11 +229,11 @@ public:
 	
 	void sendPwm(int pin, int value, bool force = false);
 	
-	void sendSysEx(int command, vector<unsigned char> data);
+	void sendSysEx(int command, std::vector<unsigned char> data);
 	
 	/// \brief Send a string to the Arduino
 	/// \note Firmata can not handle strings longer than 12 characters.
-	void sendString(string str);
+	void sendString(std::string str);
 	
 	void sendProtocolVersionRequest();
 	
@@ -294,10 +294,10 @@ public:
 	int getAnalog(int pin);
 	
 	/// \brief Returns the last received SysEx message
-	vector<unsigned char> getSysEx();
+	std::vector<unsigned char> getSysEx();
 	
 	/// \brief Returns the last received string
-	string getString();
+	std::string getString();
 	
 	/// \brief Returns the major firmware version
 	int getMajorProtocolVersion();
@@ -312,24 +312,24 @@ public:
 	int getMinorFirmwareVersion();
 	
 	/// \brief Returns the name of the firmware
-	string getFirmwareName();
+	std::string getFirmwareName();
 	
 	/// \brief Returns a pointer to the digital data history list for the
 	/// given pin
 	/// \note Pin 16-21 can also be used if analog inputs 0-5 are used as
 	/// digital pins
 	/// \param pin The pin number (2-13)
-	list<int>* getDigitalHistory(int pin);
+	std::list<int>* getDigitalHistory(int pin);
 	
 	/// \brief Returns a pointer to the analog data history list for the given pin
 	/// \param pin On the Arduino Uno pin: 0-5
-	list<int>* getAnalogHistory(int pin);
+	std::list<int>* getAnalogHistory(int pin);
 	
 	/// \brief Returns a pointer to the SysEx history
-	list<vector<unsigned char> >* getSysExHistory();
+	std::list<std::vector<unsigned char> >* getSysExHistory();
 	
 	/// \brief Returns a pointer to the string history
-	list<string>* getStringHistory();
+	std::list<std::string>* getStringHistory();
 	
 	/// \brief Get the pin mode of the given pin
 	///
@@ -356,7 +356,7 @@ public:
 	
 	/// \brief triggered when a SysEx message that isn't in the extended
 	/// command set is received, the SysEx message is passed as an argument
-	ofEvent<const vector<unsigned char> > ESysExReceived;
+	ofEvent<const std::vector<unsigned char> > ESysExReceived;
 	
 	/// \brief Triggered when a protocol version is received, the major version
 	/// is passed as an argument
@@ -373,7 +373,7 @@ public:
 	
 	/// \brief Triggered when a string is received, the string is passed as an
 	/// argument
-	ofEvent<const string> EStringReceived;
+	ofEvent<const std::string> EStringReceived;
 	
 	/// \}
 	/// \name Servos
@@ -418,7 +418,7 @@ protected:
 	
 	void processData(unsigned char inputData);
 	void processDigitalPort(int port, unsigned char value);
-	virtual void processSysExData(vector<unsigned char> data);
+	virtual void processSysExData(std::vector<unsigned char> data);
 	
 	ofSerial _port;
 	int _portStatus;
@@ -436,26 +436,26 @@ protected:
 	
 	// --- data holders
 	unsigned char _storedInputData[FIRMATA_MAX_DATA_BYTES];
-	vector<unsigned char> _sysExData;
+	std::vector<unsigned char> _sysExData;
 	int _majorProtocolVersion;
 	int _minorProtocolVersion;
 	int _majorFirmwareVersion;
 	int _minorFirmwareVersion;
-	string _firmwareName;
+	std::string _firmwareName;
 	
 	// sum of majorFirmwareVersion * 10 + minorFirmwareVersion
 	int _firmwareVersionSum;
 	
-	list<vector<unsigned char> > _sysExHistory;
+	std::list<std::vector<unsigned char> > _sysExHistory;
 	// maintains a history of received sysEx messages (excluding SysEx messages in the extended command set)
 	
-	list<string> _stringHistory;
+	std::list<std::string> _stringHistory;
 	// maintains a history of received strings
 	
-	list<int> _analogHistory[ARD_TOTAL_ANALOG_PINS];
+	std::list<int> _analogHistory[ARD_TOTAL_ANALOG_PINS];
 	// a history of received data for each analog pin
 	
-	list<int> _digitalHistory[ARD_TOTAL_DIGITAL_PINS];
+	std::list<int> _digitalHistory[ARD_TOTAL_DIGITAL_PINS];
 	// a history of received data for each digital pin
 	
 	int _digitalPinMode[ARD_TOTAL_DIGITAL_PINS];

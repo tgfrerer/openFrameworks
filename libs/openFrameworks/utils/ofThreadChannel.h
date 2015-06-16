@@ -31,7 +31,7 @@ public:
 			condition.wait(lock);
 		}
 		if(!closed){
-			swap(ret,queue.front());
+			std::swap(ret,queue.front());
 			queue.pop();
 			return true;
 		}else{
@@ -48,7 +48,7 @@ public:
 			return false;
 		}
 		if(!queue.empty()){
-			swap(ret,queue.front());
+			std::swap(ret,queue.front());
 			queue.pop();
 			return true;
 		}else{
@@ -72,7 +72,7 @@ public:
 		}
 
 		if(!closed){
-			swap(ret,queue.front());
+			std::swap(ret,queue.front());
 			queue.pop();
 			return true;
 		}else{

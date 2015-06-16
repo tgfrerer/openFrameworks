@@ -53,11 +53,11 @@ class ofVideoPlayer : public ofBaseVideoPlayer,public ofBaseVideoDraws{
 		ofVideoPlayer ();
 
 
-		bool 				load(string name);
-		void				loadAsync(string name);
-		OF_DEPRECATED_MSG("Use load instead",bool loadMovie(string name));
+		bool 				load(std::string name);
+		void				loadAsync(std::string name);
+		OF_DEPRECATED_MSG("Use load instead",bool loadMovie(std::string name));
 
-		string				getMoviePath() const;
+		std::string			getMoviePath() const;
 
 		bool				setPixelFormat(ofPixelFormat pixelFormat);
 		ofPixelFormat		getPixelFormat() const;
@@ -92,8 +92,8 @@ class ofVideoPlayer : public ofBaseVideoPlayer,public ofBaseVideoDraws{
 		const ofTexture &	getTexture() const;
 		OF_DEPRECATED_MSG("Use getTexture",ofTexture &			getTextureReference());
 		OF_DEPRECATED_MSG("Use getTexture",const ofTexture &	getTextureReference() const);
-		vector<ofTexture> & getTexturePlanes();
-		const vector<ofTexture> & getTexturePlanes() const;
+		std::vector<ofTexture> & getTexturePlanes();
+		const std::vector<ofTexture> & getTexturePlanes() const;
 		void 				draw(float x, float y, float w, float h) const;
 		void 				draw(float x, float y) const;
 		using ofBaseDraws::draw;
@@ -124,17 +124,17 @@ class ofVideoPlayer : public ofBaseVideoPlayer,public ofBaseVideoDraws{
 		bool				isPlaying() const;
 		bool 				isInitialized() const;
 
-		void				setPlayer(shared_ptr<ofBaseVideoPlayer> newPlayer);
-		shared_ptr<ofBaseVideoPlayer>	getPlayer();
-		const shared_ptr<ofBaseVideoPlayer>	getPlayer() const;
+		void				setPlayer(std::shared_ptr<ofBaseVideoPlayer> newPlayer);
+		std::shared_ptr<ofBaseVideoPlayer>	getPlayer();
+		const std::shared_ptr<ofBaseVideoPlayer>	getPlayer() const;
 
 		template<typename PlayerType>
-		shared_ptr<PlayerType> getPlayer(){
+		std::shared_ptr<PlayerType> getPlayer(){
 			return dynamic_pointer_cast<PlayerType>(getPlayer());
 		}
 
 		template<typename PlayerType>
-		const shared_ptr<PlayerType> getPlayer() const{
+		const std::shared_ptr<PlayerType> getPlayer() const{
 			return dynamic_pointer_cast<PlayerType>(getPlayer());
 		}
 
@@ -143,14 +143,14 @@ class ofVideoPlayer : public ofBaseVideoPlayer,public ofBaseVideoDraws{
 		mutable int         width;
 
 	private:
-		void initDefaultPlayer();
-		shared_ptr<ofBaseVideoPlayer>		player;
+		void initDefaultPlayer(); ///< FIXME: no implementation for this method.
+		std::shared_ptr<ofBaseVideoPlayer>		player;
 		
-		vector<ofTexture> tex;
+		std::vector<ofTexture> tex;
 		ofTexture * playerTex; // a seperate texture that may be optionally implemented by the player to avoid excessive pixel copying.
 		bool bUseTexture;
 		mutable ofPixelFormat internalPixelFormat;
-	    string moviePath;
+		std::string moviePath;
 };
 
 

@@ -9,16 +9,16 @@ public:
 	:saveTo(false)
 	,id(nextID++){};
 
-	ofHttpRequest(string url,string name,bool saveTo=false)
+	ofHttpRequest(std::string url, std::string name,bool saveTo=false)
 	:url(url)
 	,name(name)
 	,saveTo(saveTo)
 	,id(nextID++){}
 
-	string				url;
-	string				name;
-	bool				saveTo;
-	map<string,string>	headers;
+	std::string				url;
+	std::string				name;
+	bool					saveTo;
+	std::map<std::string, std::string>	headers;
 
 	int getID(){return id;}
 private:
@@ -31,13 +31,13 @@ public:
 	ofHttpResponse()
 	:status(0){}
 
-	ofHttpResponse(ofHttpRequest request,const ofBuffer & data,int status, string error)
+	ofHttpResponse(ofHttpRequest request,const ofBuffer & data,int status, std::string error)
 	:request(request)
 	,data(data)
 	,status(status)
 	,error(error){}
 
-	ofHttpResponse(ofHttpRequest request,int status,string error)
+	ofHttpResponse(ofHttpRequest request,int status, std::string error)
 	:request(request)
 	,status(status)
 	,error(error){}
@@ -49,13 +49,13 @@ public:
 	ofHttpRequest	    request;
 	ofBuffer		    data;
 	int					status;
-	string				error;
+	std::string			error;
 };
 
-ofHttpResponse ofLoadURL(string url);
-int ofLoadURLAsync(string url, string name=""); // returns id
-ofHttpResponse ofSaveURLTo(string url, string path);
-int ofSaveURLAsync(string url, string path);
+ofHttpResponse ofLoadURL(std::string url);
+int ofLoadURLAsync(std::string url, std::string name=""); // returns id
+ofHttpResponse ofSaveURLTo(std::string url, std::string path);
+int ofSaveURLAsync(std::string url, std::string path);
 void ofRemoveURLRequest(int id);
 void ofRemoveAllURLRequests();
 
@@ -78,15 +78,15 @@ class ofBaseURLFileLoader;
 class ofURLFileLoader  {
     public:
         ofURLFileLoader();	
-        ofHttpResponse get(string url);
-        int getAsync(string url, string name=""); // returns id
-        ofHttpResponse saveTo(string url, string path);
-        int saveAsync(string url, string path);
+        ofHttpResponse get(std::string url);
+        int getAsync(std::string url, std::string name=""); // returns id
+        ofHttpResponse saveTo(std::string url, std::string path);
+        int saveAsync(std::string url, std::string path);
 		void remove(int id);
 		void clear();
         void stop();
         ofHttpResponse handleRequest(ofHttpRequest & request);
 
     private:
-        shared_ptr<ofBaseURLFileLoader> impl;
+		std::shared_ptr<ofBaseURLFileLoader> impl;
 };

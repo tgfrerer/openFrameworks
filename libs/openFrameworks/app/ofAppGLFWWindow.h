@@ -80,7 +80,7 @@ public:
 	bool decorated;
 	bool resizable;
 	int monitor;
-	shared_ptr<ofAppBaseWindow> shareContextWith;
+	std::shared_ptr<ofAppBaseWindow> shareContextWith;
 };
 
 #ifdef TARGET_OPENGLES
@@ -137,7 +137,7 @@ public:
 	int getWidth();
 
 	ofCoreEvents & events();
-	shared_ptr<ofBaseRenderer> & renderer();
+	std::shared_ptr<ofBaseRenderer> & renderer();
     
     GLFWwindow* getGLFWWindow();
     void * getWindowContext(){return getGLFWWindow();}
@@ -146,7 +146,7 @@ public:
 	ofVec3f		getScreenSize();
 	ofVec3f 	getWindowPosition();
 
-	void setWindowTitle(string title);
+	void setWindowTitle(std::string title);
 	void setWindowPosition(int x, int y);
 	void setWindowShape(int w, int h);
 
@@ -163,8 +163,8 @@ public:
 
 	void		setVerticalSync(bool bSync);
 
-    void        setClipboardString(const string& text);
-    string      getClipboardString();
+    void        setClipboardString(const std::string& text);
+    std::string      getClipboardString();
 
     int         getPixelScreenCoordScale();
 
@@ -212,12 +212,12 @@ private:
 	static void		error_cb(int errorCode, const char* errorDescription);
 
 #ifdef TARGET_LINUX
-	void setWindowIcon(const string & path);
+	void setWindowIcon(const std::string & path);
 	void setWindowIcon(const ofPixels & iconPixels);
 #endif
 
 	ofCoreEvents coreEvents;
-	shared_ptr<ofBaseRenderer> currentRenderer;
+	std::shared_ptr<ofBaseRenderer> currentRenderer;
 	ofGLFWWindowSettings settings;
 
 	ofWindowMode	windowMode;

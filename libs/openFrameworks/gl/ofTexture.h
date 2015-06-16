@@ -211,7 +211,7 @@ public:
 	GLint wrapModeVertical; ///< How will the texture wrap around vertically?
 	
 private:
-	shared_ptr<ofTexture> alphaMask; ///< Optional alpha mask to bind
+	std::shared_ptr<ofTexture> alphaMask; ///< Optional alpha mask to bind
 	bool bUseExternalTextureID; ///< Are we using an external texture ID? 
 	ofMatrix4x4 textureMatrix; ///< For required transformations.
 	bool useTextureMatrix; ///< Apply the transformation matrix?

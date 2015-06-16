@@ -85,7 +85,7 @@ public:
 	
 	/// \brief Returns a vector of ofSerialDeviceInfo instances with the
 	/// devicePath, deviceName, deviceID set.
-	vector <ofSerialDeviceInfo> getDeviceList();
+	std::vector<ofSerialDeviceInfo> getDeviceList();
 	
 	/// \}
 	/// \name Serial Connection
@@ -113,7 +113,7 @@ public:
 	/// 	ofSerial mySerial;
 	/// 	mySerial.setup("COM4", 57600);
 	/// ~~~~
-	bool setup(string portName, int baudrate);
+	bool setup(std::string portName, int baudrate);
 	
 	/// \brief Opens the serial port based on the order in which is listed and
 	/// sets the baud rate.
@@ -260,8 +260,8 @@ public:
 protected:
 	void buildDeviceList();
 	
-	string deviceType;
-	vector <ofSerialDeviceInfo> devices;
+	std::string deviceType;
+	std::vector<ofSerialDeviceInfo> devices;
 	
 	bool bHaveEnumeratedDevices;
 	

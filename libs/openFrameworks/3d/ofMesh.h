@@ -16,7 +16,7 @@ class ofMeshFace;
 /// \brief Represents a set of vertices in 3D spaces with normals, colors, 
 /// and texture coordinates at those points. 
 ///
-/// Each of these different properties is stored in a vector.
+/// Each of these different properties is stored in a std::vector.
 /// Vertices are passed to your graphics card and your graphics card fill in 
 /// the spaces in between them in a processing usually called the rendering 
 /// pipeline. The rendering pipeline goes more or less like this:
@@ -95,9 +95,9 @@ public:
 	/// OF_PRIMITIVE_TRIANGLE_FAN, OF_PRIMITIVE_LINES, OF_PRIMITIVE_LINE_STRIP, 
 	/// OF_PRIMITIVE_LINE_LOOP, OF_PRIMITIVE_POINTS. 
 	/// See [ofGLUtils](../gl/ofGLUtils.htm) for more information on these types.
-	ofMesh(ofPrimitiveMode mode, const vector<ofVec3f>& verts);
+	ofMesh(ofPrimitiveMode mode, const std::vector<ofVec3f>& verts);
 
-	void setFromTriangles( const vector<ofMeshFace>& tris, bool bUseFaceNormal=false );
+	void setFromTriangles( const std::vector<ofMeshFace>& tris, bool bUseFaceNormal=false );
 
 	/// \cond INTERNAL
 	virtual ~ofMesh();
@@ -188,7 +188,7 @@ public:
 	/// \brief Add a vector of vertices to a mesh, allowing you to push out 
 	/// many at once rather than adding one at a time. The vector of vertices 
 	/// is added after the end of the current vertices list.
-	void addVertices(const vector<ofVec3f>& verts);
+	void addVertices(const std::vector<ofVec3f>& verts);
 
 	/// \brief Add an array of vertices to the mesh. 
 	/// Because you are using a pointer to the array you also have to define 
@@ -222,10 +222,10 @@ public:
 	ofVec3f getVertex(ofIndexType i) const;
 
 	/// \returns the vector that contains all of the vertices of the mesh.
-	vector<ofVec3f> & getVertices();
+	std::vector<ofVec3f> & getVertices();
 
 	/// \returns the vector that contains all of the vertices of the mesh.
-	const vector<ofVec3f> & getVertices() const;
+	const std::vector<ofVec3f> & getVertices() const;
 	
 	/// \returns If the vertices of the mesh have changed, been added or removed.
 	bool haveVertsChanged();
@@ -267,7 +267,7 @@ public:
 	/// allowing you to push out many normals at once rather than 
 	/// adding one at a time. The vector of normals is added after the end of 
 	/// the current normals list.
-	void addNormals(const vector<ofVec3f>& norms);
+	void addNormals(const std::vector<ofVec3f>& norms);
 
 	/// \brief Add an array of normals to the mesh. 
 	/// Because you are using a pointer to the array you also have to define 
@@ -298,11 +298,11 @@ public:
 	/// will force a reset of the cache.
 	/// \returns the vector that contains all of the normals of the mesh, 
 	/// if it has any.
-	vector<ofVec3f> & getNormals();
+	std::vector<ofVec3f> & getNormals();
 
 	/// \returns the vector that contains all of the normals of the mesh, if 
 	/// it has any. (read only)
-	const vector<ofVec3f> & getNormals() const;
+	const std::vector<ofVec3f> & getNormals() const;
 
 	/// \returns If the normals of the mesh have changed, been added or removed.
 	bool haveNormalsChanged();
@@ -333,11 +333,11 @@ public:
     /// by setting (perVertex = true) it will return the same normal value for 
     /// each of the three vertices making up a face.
     /// \returns a vector containing the calculated normals of each face in the mesh. 
-    vector<ofVec3f> getFaceNormals( bool perVetex=false) const;
+    std::vector<ofVec3f> getFaceNormals( bool perVetex=false) const;
 
     /// \returns the mesh as a vector of unique ofMeshFaces
     /// a list of triangles that do not share vertices or indices 
-    const vector<ofMeshFace> & getUniqueFaces() const;
+    const std::vector<ofMeshFace> & getUniqueFaces() const;
 
 	/// \}
 	/// \name Colors
@@ -352,7 +352,7 @@ public:
 
 	/// \brief This adds colors using a reference to a vector of ofColors. 
 	/// For each color in the vector, this will put the colors at the corresponding vertex.
-	void addColors(const vector<ofFloatColor>& cols);
+	void addColors(const std::vector<ofFloatColor>& cols);
 
 	/// \brief This adds a pointer of colors to the ofMesh instance with the amount passed as the second parameter.
 	void addColors(const ofFloatColor* cols, std::size_t amt);
@@ -379,10 +379,10 @@ public:
 
 	/// Use this if you plan to change the colors as part of this call as it will force a reset of the cache.
 	/// \returns the vector that contains all of the colors of the mesh, if it has any. 
-	vector<ofFloatColor> & getColors();
+	std::vector<ofFloatColor> & getColors();
 
 	/// \returns the vector that contains all of the colors of the mesh, if it has any. (read only)
-	const vector<ofFloatColor> & getColors() const;
+	const std::vector<ofFloatColor> & getColors() const;
 
 	/// \returns If the colors of the mesh have changed, been added or removed.
 	bool haveColorsChanged();
@@ -420,7 +420,7 @@ public:
 	/// allowing you to push out many at once rather than adding one at a time. 
 	/// The vector of texture coordinates is added after the end of the current 
 	/// texture coordinates list.
-	void addTexCoords(const vector<ofVec2f>& tCoords);
+	void addTexCoords(const std::vector<ofVec2f>& tCoords);
 
 	/// \brief  Add an array of texture coordinates to the mesh. 
 	/// Because you are using a pointer to the array you also have to define 
@@ -451,11 +451,11 @@ public:
 	/// Use this if you plan to change the texture coordinates as part of this 
 	/// call as it will force a reset of the cache.
 	/// \returns a vector of Vec2f representing the texture coordinates for the whole mesh. 
-	vector<ofVec2f> & getTexCoords();
+	std::vector<ofVec2f> & getTexCoords();
 	
 	/// Because OF uses ARB textures these are in pixels rather than 0-1 normalized coordinates. 
 	/// \returns a vector of Vec2f representing the texture coordinates for the whole mesh. (read only)
-	const vector<ofVec2f> & getTexCoords() const;
+	const std::vector<ofVec2f> & getTexCoords() const;
 
 	/// \returns If the texture coords of the mesh have changed, been added or removed.
 	bool haveTexCoordsChanged();
@@ -485,7 +485,7 @@ public:
 	/// \brief Use this if you plan to change the indices as part of this call as it 
 	/// will force a reset of the cache.
 	/// \returns the vector that contains all of the indices of the mesh, if it has any.
-	vector<ofIndexType> & getIndices();
+	std::vector<ofIndexType> & getIndices();
 
 	
 	/// \returns the index from the index vector. Each index represents the index of the vertex in the vertices vector. This determines the way that the vertices are connected into the polgoynon type set in the primitiveMode.
@@ -517,7 +517,7 @@ public:
 	void addIndex(ofIndexType i);
 
 	/// \brief This adds a vector of indices.
-	void addIndices(const vector<ofIndexType>& inds);
+	void addIndices(const std::vector<ofIndexType>& inds);
 
 	/// \brief This adds indices to the ofMesh by pointing to an array of indices.
 	/// The "amt" defines the length of the array.
@@ -545,7 +545,7 @@ public:
 
 
 	/// \returns the vector that contains all of the indices of the mesh, if it has any. (read only)
-	const vector<ofIndexType> & getIndices() const;
+	const std::vector<ofIndexType> & getIndices() const;
 
 	/// \returns If the indices of the mesh have changed, been added or removed.
 	bool haveIndicesChanged();
@@ -605,7 +605,7 @@ public:
     /// 
     /// It expects that the file will be in the [PLY Format](http://en.wikipedia.org/wiki/PLY_(file_format)).
     /// It will only load meshes saved in the PLY ASCII format; the binary format is not supported.
-	void load(string path);
+	void load(std::string path);
 
     ///  \brief Saves the mesh at the passed path in the [PLY Format](http://en.wikipedia.org/wiki/PLY_(file_format)).
     ///  
@@ -616,21 +616,21 @@ public:
     ///  If you're planning on reloading the mesh into ofMesh, ofMesh currently only supports loading the ASCII format.
     ///  
     ///  For more information, see the [PLY format specification](http://paulbourke.net/dataformats/ply/).
-	void save(string path, bool useBinary = false) const;
+	void save(std::string path, bool useBinary = false) const;
 	
 	/// \}
 
 private:
 
-	vector<ofVec3f> vertices;
-	vector<ofFloatColor> colors;
-	vector<ofVec3f> normals;
-	vector<ofVec2f> texCoords;
-	vector<ofIndexType> indices;
+	std::vector<ofVec3f> vertices;
+	std::vector<ofFloatColor> colors;
+	std::vector<ofVec3f> normals;
+	std::vector<ofVec2f> texCoords;
+	std::vector<ofIndexType> indices;
 
 	// this variables are only caches and returned always as const
 	// mutable allows to change them from const methods
-	mutable vector<ofMeshFace> faces;
+	mutable std::vector<ofMeshFace> faces;
 	mutable bool bFacesDirty;
 
 	bool bVertsChanged, bColorsChanged, bNormalsChanged, bTexCoordsChanged, 
@@ -649,11 +649,11 @@ private:
 /// \brief An ofMeshFace is a face on one of the ofPrimitive instances. 
 /// In the ofPrimitive a face consists of 3 points connected together.
 /// 
-/// You can get a vector of ofMeshFace instances from any ofPrimitive like so:
+/// You can get a std::vector of ofMeshFace instances from any ofPrimitive like so:
 /// 
 /// ~~~~{.cpp}
 /// 
-/// vector<ofMeshFace> triangles = box.getMesh().getUniqueFaces();
+/// std::vector<ofMeshFace> triangles = box.getMesh().getUniqueFaces();
 /// 
 /// ~~~~
 /// 
