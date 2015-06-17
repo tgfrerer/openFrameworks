@@ -4,6 +4,8 @@
 #include <string>
 #include <iostream>
 
+using namespace std;
+
 // this increases the accuracy of ofToString() when saving floating point values
 // but in the process of setting it also causes very small values to be ignored.
 const float floatPrecision = 9;
