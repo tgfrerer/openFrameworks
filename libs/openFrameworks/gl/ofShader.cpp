@@ -173,6 +173,18 @@ bool ofShader::setupShaderFromFile(GLenum type, string filename) {
 }
 
 //--------------------------------------------------------------
+void ofShader::setupShaderEnv(const string & glslEnv_)
+{
+	mGlslEnv = glslEnv_;
+}
+
+//--------------------------------------------------------------
+const string & ofShader::getShaderEnv() const
+{
+	return mGlslEnv;
+}
+
+//--------------------------------------------------------------
 bool ofShader::setupShaderFromSource(GLenum type, string source, string sourceDirectoryPath) {
     unload();
     
@@ -193,6 +205,9 @@ bool ofShader::setupShaderFromSource(GLenum type, string source, string sourceDi
 	// parse for includes
 	string src = parseForIncludes( source , sourceDirectoryPath);
 	
+	// parse for "pragma inject" tokens
+	src = parseForEnv(src, mGlslEnv);
+
 	// compile shader
 	const char* sptr = src.c_str();
 	int ssize = src.size();
@@ -229,16 +244,61 @@ bool ofShader::setupShaderFromSource(GLenum type, string source, string sourceDi
 	return true;
 }
 
+//--------------------------------------------------------------
+string ofShader::parseForEnv(const string & source, const string & glslEnv_) {
+	stringstream output;
+	stringstream input;
+	input << source;
+
+	auto match_pragma_inject = [](const std::string& s_) -> bool {
+		std::istringstream s(s_);
+		s >> std::ws; // eat up any leading whitespace.
+
+		if (s.peek() != '#') return false;
+		// -----| invariant: found '#'
+		s.seekg(1, std::ios::cur); // move forward one character
+
+		std::string p, i;
+
+		// while skipping whitespace, read in tokens for: pragma, inject
+		s >> std::skipws >> p >> i;
+
+		if (p.empty() || i.empty()) return false;
+		// -----| invariant: all tokens have values
+
+		if (p != "pragma") return false;
+		if (i != "defines") return false;
+
+		return true;
+	};
+
+	string line;
+
+	// Note that we expand *all* occurances of "#pragma env", not just 
+	// the first one. This is to keep things simple, and least surprise.
+
+	while (std::getline(input, line)) {
+		if (match_pragma_inject(line)) {
+			output << glslEnv_ << endl;
+		} else {
+			output << line << endl;
+		}
+	}
+
+	return output.str();
+}
+
+//--------------------------------------------------------------
 /*
  * Parse for GLSL includes based on
  * https://www.opengl.org/discussion_boards/showthread.php/169209-include-in-glsl?p=1192415&viewfull=1#post1192415
  */
-
 string ofShader::parseForIncludes( const string& source, const string& sourceDirectoryPath) {
 	vector<string> included;
 	return parseForIncludes( source, included, 0, sourceDirectoryPath);
 }
 
+//--------------------------------------------------------------
 string ofShader::parseForIncludes( const string& source, vector<string>& included, int level, const string& sourceDirectoryPath) {
     
 	if ( level > 32 ) {

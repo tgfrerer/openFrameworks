@@ -29,15 +29,12 @@ public:
 	bool load(string shaderName);
 	bool load(string vertName, string fragName, string geomName="");
 	
-	
-	
 	// these are essential to call before linking the program with geometry shaders
 	void setGeometryInputType(GLenum type); // type: GL_POINTS, GL_LINES, GL_LINES_ADJACENCY_EXT, GL_TRIANGLES, GL_TRIANGLES_ADJACENCY_EXT
 	void setGeometryOutputType(GLenum type); // type: GL_POINTS, GL_LINE_STRIP or GL_TRIANGLE_STRIP
 	void setGeometryOutputCount(int count);	// set number of output vertices
 	
 	int getGeometryMaxOutputCount() const;		// returns maximum number of supported vertices
-
 
 	void unload();
 	
@@ -124,7 +121,28 @@ public:
 	
 
 	// advanced use
-	
+
+	/// \brief			Set optional code to define shader code environment
+	/// \description	Any code placed in this string will be injected 
+	///					into the shader source code wherever the custom
+	///					'#pragma env' is found.
+	///					This is a useful container for shader-specific
+	///					'#define' statements. If you want to re-use the
+	///					same GLSL codebase for many permutations of a
+	///					shader, e.g. in an uebershader scenario, you 
+	///					may then activate or de-activate code-paths by
+	///					setting the appropriate preprocessor variables
+	///					with #defines using this method, before combining 
+	///					the shader.
+	///	\note			'#pragma env' is evaluated immediately after 
+	///					'#pragma include', and just before the shader is 
+	///					compiled by the graphics driver.
+	void setupShaderEnv(const string& glslEnv_);
+
+	/// \brief			Return currently set shader code environment
+	/// \sa				void setEnv()
+	const string& getShaderEnv() const;
+
 	// these methods create and compile a shader from source or file
 	// type: GL_VERTEX_SHADER, GL_FRAGMENT_SHADER, GL_GEOMETRY_SHADER_EXT etc.
 	bool setupShaderFromSource(GLenum type, string source, string sourceDirectoryPath = "");
@@ -162,6 +180,7 @@ public:
 private:
 	GLuint program;
 	bool bLoaded;
+	string mGlslEnv;
 
 	struct Shader{
 		GLenum type;
@@ -191,6 +210,13 @@ private:
     static string parseForIncludes( const string& source, vector<string>& included, int level = 0, const string& sourceDirectoryPath = "");
 	
 	void checkAndCreateProgram();
+	/// \brief			Parse GLSL source for pragma env token
+	/// \description	This will substitute any occurrence of '#pragma env' with 
+	///					Whatever is in mGlslEnv.
+	///	\note			This will happen **after** includes have been processed, 
+	///					and just before shader compilation.
+	static string parseForEnv(const string& source, const string& glslEnv_);
+	
 #ifdef TARGET_ANDROID
 	void unloadGL();
 	void reloadGL();
