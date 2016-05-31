@@ -43,19 +43,19 @@ protected:
 class ofGLWindowSettings: public ofWindowSettings{
 public:
 	ofGLWindowSettings()
-	:glVersionMajor(2)
-	,glVersionMinor(1){}
+		:glVersionMajor(2)
+		,glVersionMinor(1){}
 
 	ofGLWindowSettings(const ofWindowSettings & settings)
-	:ofWindowSettings(settings)
-	,glVersionMajor(2)
-	,glVersionMinor(1){
-        const ofGLWindowSettings * glSettings = dynamic_cast<const ofGLWindowSettings*>(&settings);
-        if(glSettings){
-            glVersionMajor = glSettings->glVersionMajor;
-            glVersionMinor = glSettings->glVersionMinor;
-        }
-    }
+		:ofWindowSettings(settings)
+		,glVersionMajor(2)
+		,glVersionMinor(1){
+		const ofGLWindowSettings * glSettings = dynamic_cast<const ofGLWindowSettings*>(&settings);
+		if(glSettings){
+			glVersionMajor = glSettings->glVersionMajor;
+			glVersionMinor = glSettings->glVersionMinor;
+		}
+	}
 
 	virtual ~ofGLWindowSettings(){};
 
@@ -88,4 +88,42 @@ public:
 	}
 
 	int glesVersion;
+};
+
+class ofVkWindowSettings : public ofWindowSettings
+{
+public:
+	ofVkWindowSettings()
+	: vkVersion(1 << 22)
+	{
+	};
+
+	ofVkWindowSettings( const ofWindowSettings & settings )
+		: ofWindowSettings( settings ){
+		const ofVkWindowSettings * vkSettings = dynamic_cast<const ofVkWindowSettings*>( &settings );
+		if ( vkSettings ){
+			vkVersion = vkSettings->vkVersion;
+		}
+	};
+
+	void setVkVersion( int major, int minor, int patch ){
+		vkVersion = ( major << 22 ) | ( minor << 12 ) | patch;
+	}
+
+	int getVkVersionMajor(){
+		return ( ( vkVersion >> 22 ) & ( 0x3ff ) ); // 10 bit
+	}
+
+	int getVersionMinor(){
+		return ( ( vkVersion >> 12 ) & ( 0x3ff ) ); // 10 bit
+	}
+
+	int getVersionPatch(){
+		return ( ( vkVersion >> 0 ) & ( 0xfff ) );
+	}
+
+	virtual ~ofVkWindowSettings(){
+	}
+
+	uint32_t vkVersion;
 };
