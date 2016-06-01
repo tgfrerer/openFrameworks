@@ -7,6 +7,8 @@
 #define OF_VERSION_PATCH 0
 #define OF_VERSION_PRE_RELEASE "master"
 
+#define OF_TARGET_API_VULKAN
+
 //-------------------------------
 
 /// \brief Used to represent the available video looping modes.
