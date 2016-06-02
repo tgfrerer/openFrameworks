@@ -136,16 +136,21 @@ void ofVkRenderer::beginDrawCommandBuffer(){
 // ----------------------------------------------------------------------
 
 void ofVkRenderer::setupDescriptorSet(){
-
+	// descriptor set is allocated from pool mDescriptorPool
+	// with bindings described using a descriptorSetLayout defined in mDescriptorSetLayout
+	// 
+	// a descriptor set has a layout, the layout tells us the number and ordering of descriptors
 	VkDescriptorSetAllocateInfo allocInfo = {};
 	allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-	allocInfo.descriptorPool = mDescriptorPool;
-	allocInfo.descriptorSetCount = 1;
-	allocInfo.pSetLayouts = &mDescriptorSetLayout;
+	allocInfo.descriptorPool = mDescriptorPool;		// pool  : tells us where to allocate from
+	allocInfo.descriptorSetCount = 1;				// count : tells us how many descriptor set layouts 
+	allocInfo.pSetLayouts = &mDescriptorSetLayout;	// layout: tells us how many descriptors, and how these are laid out 
 	allocInfo.pNext = VK_NULL_HANDLE;
 
-	VkResult vkRes = vkAllocateDescriptorSets( mDevice, &allocInfo, &mDescriptorSet );
-	assert( !vkRes );
+	vkAllocateDescriptorSets( mDevice, &allocInfo, &mDescriptorSet );	// allocates mDescriptorSet
+
+	// at this point the descriptor set is untyped 
+	// so we have to write type information into it, as well as binding information
 
 	// Update descriptor sets determining the shader binding points
 	// For every binding point used in a shader there needs to be one
@@ -156,31 +161,52 @@ void ofVkRenderer::setupDescriptorSet(){
 	// we make it dynamic so that multiple matrix structs can be stored into this 
 	// uniform buffer.
 	writeDescriptorSet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-	writeDescriptorSet.dstSet = mDescriptorSet;
+	writeDescriptorSet.dstSet = mDescriptorSet;		// dstSet: where to write this information into 
 	writeDescriptorSet.descriptorCount = 1;
 	writeDescriptorSet.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
 	writeDescriptorSet.pBufferInfo = &mContext->getDescriptorBufferInfo();
 	// Binds this uniform buffer to binding point 0	within the uniform buffer namespace
 	writeDescriptorSet.dstBinding = 0;
+	vkUpdateDescriptorSets( mDevice, 1, &writeDescriptorSet, 0, NULL );	 // updates mDescriptorSet by most importantly filling in the buffer info
+}
 
-	vkUpdateDescriptorSets( mDevice, 1, &writeDescriptorSet, 0, NULL );
+// ----------------------------------------------------------------------
+
+void ofVkRenderer::setupDescriptorSetLayout(){
+	// Setup layout of descriptors used in this example
+	// Basically connects the different shader stages to descriptors
+	// for binding uniform buffers, image samplers, etc.
+	// So every shader binding should map to one descriptor set layout
+	// binding
+
+	// Binding 0 : Uniform buffer (Vertex shader)
+	VkDescriptorSetLayoutBinding layoutBinding = {};
+	layoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+	layoutBinding.descriptorCount = 1;
+	layoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+	layoutBinding.pImmutableSamplers = NULL;
+
+	VkDescriptorSetLayoutCreateInfo descriptorSetLayoutInfo = {};
+	descriptorSetLayoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+	descriptorSetLayoutInfo.pNext = NULL;
+	descriptorSetLayoutInfo.bindingCount = 1;
+	descriptorSetLayoutInfo.pBindings = &layoutBinding;
+
+	VkResult err = vkCreateDescriptorSetLayout( mDevice, &descriptorSetLayoutInfo, NULL, &mDescriptorSetLayout );
+	assert( !err );
 }
 
 // ----------------------------------------------------------------------
 
 void ofVkRenderer::setupDescriptorPool(){
-	// We need to tell the API the number of max. requested descriptors per type
+	// descriptors are allocated from a per-thread pool
+	// the pool needs to reserve size based on the 
+	// maximum number for each type of descriptor
+
 	std::vector<VkDescriptorPoolSize> typeCounts = {
-		{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC , 1}
+		{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC , 1 },
+		//{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1 }, // use this type of descriptors for "classic" texture samplers
 	};
-	// This example only uses one descriptor type (uniform buffer) and only
-	// requests one descriptor of this type
-	/*typeCounts[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
-	typeCounts[0].descriptorCount = 1;*/
-	// For additional types you need to add new entries in the type count list
-	// E.g. for two combined image samplers :
-	// typeCounts[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	// typeCounts[1].descriptorCount = 2;
 
 	// Create the global descriptor pool
 	// All descriptors used in this example are allocated from this pool
@@ -225,6 +251,9 @@ void ofVkRenderer::preparePipelines(){
 	pPipelineLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
 	pPipelineLayoutCreateInfo.pNext = NULL;
 	pPipelineLayoutCreateInfo.setLayoutCount = 1;
+
+	// note that the pipeline is not created from the descriptorSet, 
+	// but from the *layout* of the descriptorSet:
 	pPipelineLayoutCreateInfo.pSetLayouts = &mDescriptorSetLayout;
 
 	err = vkCreatePipelineLayout( mDevice, &pPipelineLayoutCreateInfo, nullptr, &mPipelineLayout );
@@ -363,31 +392,7 @@ void ofVkRenderer::preparePipelines(){
 	assert( !err );
 }
 
-// ----------------------------------------------------------------------
 
-void ofVkRenderer::setupDescriptorSetLayout(){
-	// Setup layout of descriptors used in this example
-	// Basically connects the different shader stages to descriptors
-	// for binding uniform buffers, image samplers, etc.
-	// So every shader binding should map to one descriptor set layout
-	// binding
-
-	// Binding 0 : Uniform buffer (Vertex shader)
-	VkDescriptorSetLayoutBinding layoutBinding = {};
-	layoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
-	layoutBinding.descriptorCount = 1;
-	layoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-	layoutBinding.pImmutableSamplers = NULL;
-
-	VkDescriptorSetLayoutCreateInfo descriptorSetLayoutInfo = {};
-	descriptorSetLayoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-	descriptorSetLayoutInfo.pNext = NULL;
-	descriptorSetLayoutInfo.bindingCount = 1;
-	descriptorSetLayoutInfo.pBindings = &layoutBinding;
-
-	VkResult err = vkCreateDescriptorSetLayout( mDevice, &descriptorSetLayoutInfo, NULL, &mDescriptorSetLayout );
-	assert( !err );
-}
  
 // ----------------------------------------------------------------------
 
@@ -950,22 +955,27 @@ void ofVkRenderer::prepareVertices(){// Setups vertex and index buffers for an i
 // ----------------------------------------------------------------------
 
 void ofVkRenderer::draw( const ofMesh & vertexData, ofPolyRenderMode renderType, bool useColors, bool useTextures, bool useNormals ) const{
-	
-	// TODO: you can use useColors, useTextures and useNormals to find out which pipeline to 
-	// use.
-	
 
 	// create transitent buffers to hold 
 	// + indices
 	// + positions
-	// + colors
-
+	// + normals
 
 	uint32_t dynamicOffsets[1] = { 0 };
 	dynamicOffsets[0] = mContext->getCurrentMatrixStateOffset();
 
 	// Bind uniforms (the first set contains the matrices)
-	vkCmdBindDescriptorSets( *mDrawCmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mPipelineLayout, 0, 1, &mDescriptorSet, 1, dynamicOffsets );
+	vkCmdBindDescriptorSets(
+		*mDrawCmdBuffer,
+		VK_PIPELINE_BIND_POINT_GRAPHICS, // use graphics, not compute pipeline
+		mPipelineLayout, 		// which pipeline layout (contains the bindings programmed from an sequence of descriptor sets )
+		0, 						// firstset: first set index (of the above) to bind to - mDescriptorSet[0] will be bound to pipeline layout [firstset]
+		1, 						// setCount: how many sets to bind
+		&mDescriptorSet, 		// the descriptor sets to match up with our mPipelineLayout (need to be compatible)
+		1, 						// dynamic offsets count how many dynamic offsets
+		dynamicOffsets 			// dynamic offsets for each 
+	);
+
 
 	// Bind the rendering pipeline (including the shaders)
 	vkCmdBindPipeline( *mDrawCmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mPipelines.solid );

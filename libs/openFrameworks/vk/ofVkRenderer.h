@@ -391,6 +391,9 @@ private:
 
 
 	VkPipelineCache       mPipelineCache;
+
+	// contains bindings programmed from a flattened list of descriptorSetLayouts
+	// "represents a sequence of descriptor sets with each having a specific layout"
 	VkPipelineLayout      mPipelineLayout;
 
 	// TODO: make this a dymanic sctucture.
@@ -404,13 +407,23 @@ private:
 	
 	// the pool where all descriptors will be allocated from
 	VkDescriptorPool      mDescriptorPool;
-	// descriptor set - binding uniforms etc to shader in/outs
+	// TODO: move mDescriptorSet to context
+	// since currently its only here to hold 
+	// the descriptors used for matrixstate
+
+	// descriptor set used for matrices
+	// a descriptor set is a sequence of descriptors,
+	// laid out in a way specified by its descriptorSetLayout
 	VkDescriptorSet       mDescriptorSet;
+
+	// a descriptorset layout 
+	// describes the layout for the descriptorset that owns it
+	// the layout also specifies the binding to buffers for the 
+	// descriptorset that owns it
 	VkDescriptorSetLayout mDescriptorSetLayout;
 
 	// our main (primary) gpu queue. all commandbuffers are submitted to this queue
 	// as are present commands.
-	
 	VkQueue	mQueue = VK_NULL_HANDLE;
 
 	// the actual window drawing surface to actually really show something on screen.
