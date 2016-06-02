@@ -68,30 +68,18 @@ void of::vk::Context::setup(){
 	mMatrixUniformData.descriptorBufferInfo.buffer = mMatrixUniformData.buffer;
 	mMatrixUniformData.descriptorBufferInfo.offset = 0;
 	mMatrixUniformData.descriptorBufferInfo.range = sizeof(mMatrixState);
+
+	vkMapMemory(
+		device,
+		mMatrixUniformData.memory,
+		0,
+		VK_WHOLE_SIZE, 0, (void**)&mHostMemory.pData
+	);
 }
 
 // ----------------------------------------------------------------------
 
-
 void of::vk::Context::begin(){
-
-	if ( mHostMemory.pData){
-		ofLogError() << "mapped uniform buffer whilst already mapped. re-mapping...";
-		end();
-	}
-
-	auto & device = mRenderer->mDevice;
-	size_t element_id = 0;
-	// Map uniform buffer data and update it
-	
-	VkResult err = vkMapMemory( 
-		device, 
-		mMatrixUniformData.memory, 
-		0,
-		VK_WHOLE_SIZE, 0, (void**)&mHostMemory.pData
-	);
-	assert( !err );
-
 	mSavedMatricesLastElement = 0;
 	mMatrixState = {}; // reset matrix state
 }
@@ -99,25 +87,18 @@ void of::vk::Context::begin(){
 // ----------------------------------------------------------------------
 
 void of::vk::Context::end(){
-	auto & device = mRenderer->mDevice;
-	/*VkMappedMemoryRange range{};
-	range.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
-	range.pNext = nullptr;
-	range.memory = mMatrixUniformDataBuffer.memory;
-	range.offset = element_id * mAlignedMatrixStateSize;
-	range.size = mAlignedMatrixStateSize;
-
-	vkFlushMappedMemoryRanges( device, 1, &range );*/
-
-	vkUnmapMemory( device, mMatrixUniformData.memory );
-	mHostMemory.pData = nullptr;
 }
 
 // ----------------------------------------------------------------------
 
 void of::vk::Context::reset(){
-	vkFreeMemory( mRenderer->mDevice, mMatrixUniformData.memory, nullptr );
-	vkDestroyBuffer( mRenderer->mDevice, mMatrixUniformData.buffer, nullptr );
+	auto & device = mRenderer->mDevice;
+	
+	vkUnmapMemory( device, mMatrixUniformData.memory );
+	mHostMemory.pData = nullptr;
+
+	vkFreeMemory( device, mMatrixUniformData.memory, nullptr );
+	vkDestroyBuffer( device, mMatrixUniformData.buffer, nullptr );
 }
 
 // ----------------------------------------------------------------------
