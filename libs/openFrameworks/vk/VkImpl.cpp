@@ -1,6 +1,6 @@
 #include "ofVkRenderer.h"
 #include "vulkantools.h"
-#include "ofVec3f.h"
+#include "spirv_cross.hpp"
 // ----------------------------------------------------------------------
 
 void ofVkRenderer::setup(){
@@ -363,6 +363,16 @@ void ofVkRenderer::preparePipelines(){
 	//shaderStages[1] = loadShaderGLSL( ofToDataPath( "triangle.frag" ).c_str(), VK_SHADER_STAGE_FRAGMENT_BIT );
 	shaderStages[0] = loadShader( ofToDataPath( "test.vert.spv" ).c_str(), VK_SHADER_STAGE_VERTEX_BIT );
 	shaderStages[1] = loadShader( ofToDataPath( "test.frag.spv" ).c_str(), VK_SHADER_STAGE_FRAGMENT_BIT );
+
+	{
+		auto vertBuf = ofBufferFromFile( ofToDataPath( "test.vert.spv" ), true );
+		int sizeNeeded = vertBuf.size() / sizeof(uint32_t);
+		vector<uint32_t> shaderWords((uint32_t*)vertBuf.getData(), (uint32_t*)vertBuf.getData() + sizeNeeded);
+
+		spirv_cross::Compiler compiler(shaderWords);
+		auto reflections = compiler.get_shader_resources();
+	}
+	
 
 	// Assign states
 	// Two shader stages: vertex, fragment
