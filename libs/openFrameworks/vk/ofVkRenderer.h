@@ -394,6 +394,10 @@ private:
 
 	// contains bindings programmed from a flattened list of descriptorSetLayouts
 	// "represents a sequence of descriptor sets with each having a specific layout"
+	//
+	// The pipeline layout describes which descriptor sets you are using as well as push 
+	// constants. This serves as the "function prototype" for your shader.
+	// see: https://community.arm.com/groups/arm-mali-graphics/blog/2016/04/18/spirv-cross
 	VkPipelineLayout      mPipelineLayout;
 
 	// TODO: make this a dymanic sctucture.

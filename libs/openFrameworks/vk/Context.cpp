@@ -35,14 +35,19 @@ void of::vk::Context::setup(){
 	mHostMemory.alignedMatrixStateSize = alignment * (( alignment + sizeof( mMatrixState ) - 1 ) / alignment);
 
  	// Prepare and initialize uniform buffer containing shader uniforms
-
-	// Vertex shader uniform buffer block
-	VkBufferCreateInfo bufferInfo = {};
 	VkResult err;
 
-	bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-	bufferInfo.size = mHostMemory.alignedMatrixStateSize * mMaxElementCount;
-	bufferInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+	// Vertex shader uniform buffer block
+	VkBufferCreateInfo bufferInfo {
+		VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,                   // VkStructureType        sType;
+		nullptr,                                                // const void*            pNext;
+		0,                                                      // VkBufferCreateFlags    flags;
+		mHostMemory.alignedMatrixStateSize * mMaxElementCount,  // VkDeviceSize           size;
+		VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,                     // VkBufferUsageFlags     usage;
+		VK_SHARING_MODE_EXCLUSIVE,                              // VkSharingMode          sharingMode;
+	    0,                                                      // uint32_t               queueFamilyIndexCount;
+		nullptr,                                                // const uint32_t*        pQueueFamilyIndices;
+	};
 
 	// Create a new buffer
 	err = vkCreateBuffer( device, &bufferInfo, nullptr, &mMatrixUniformData.buffer );
@@ -54,9 +59,15 @@ void of::vk::Context::setup(){
 	assert( mHostMemory.alignedMatrixStateSize * mMaxElementCount == memReqs.size );
 
 	// Gets the appropriate memory type for this type of buffer allocation
-	// Only memory types that are visible to the host
-	VkMemoryAllocateInfo allocInfo = {};
-	mRenderer->getMemoryAllocationInfo( memReqs, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, allocInfo );
+	// Only memory types that are visible to the host and coherent (coherent means they
+	// appear to the GPU without the need of explicit range flushes)
+	// Vulkan 1.0 guarantees the presence of at least one host-visible+coherent memory heap.
+	VkMemoryAllocateInfo allocInfo {};
+	mRenderer->getMemoryAllocationInfo( 
+		memReqs, 
+		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 
+		allocInfo 
+	);
 	// Allocate memory for the uniform buffer
 	err = vkAllocateMemory( device, &allocInfo, nullptr, &( mMatrixUniformData.memory ) );
 	assert( !err );

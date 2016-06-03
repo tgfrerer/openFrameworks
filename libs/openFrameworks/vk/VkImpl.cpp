@@ -1,4 +1,5 @@
 #include "ofVkRenderer.h"
+#include "Pipeline.h"
 #include "vulkantools.h"
 #include "spirv_cross.hpp"
 // ----------------------------------------------------------------------
@@ -21,7 +22,7 @@ void ofVkRenderer::setup(){
 		setupRenderPass();
 
 		// here we create a pipeline cache so that we can create a pipeline from it in preparePipelines
-		createPipelineCache();
+		mPipelineCache = of::vk::createPipelineCache(mDevice,"testPipelineCache.bin");
 
 		mViewport = { 0.f, 0.f, float( mWindowWidth ), float( mWindowHeight ) };
 		setupFrameBuffer();
@@ -242,27 +243,82 @@ void ofVkRenderer::preparePipelines(){
 	
 	VkResult err;
 	
-	// Create the pipeline layout that is used to generate the rendering pipelines that
-	// are based on the descriptor set layout
-	//
-	// In a more complex scenario you would have different pipeline layouts for different
-	// descriptor set layouts that could be reused
-	VkPipelineLayoutCreateInfo pPipelineLayoutCreateInfo = {};
-	pPipelineLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-	pPipelineLayoutCreateInfo.pNext = NULL;
-	pPipelineLayoutCreateInfo.setLayoutCount = 1;
 
-	// note that the pipeline is not created from the descriptorSet, 
-	// but from the *layout* of the descriptorSet:
-	pPipelineLayoutCreateInfo.pSetLayouts = &mDescriptorSetLayout;
+	auto  loadShader = [&shaderModules = mShaderModules, &device = mDevice]( const char * fileName, VkShaderStageFlagBits stage ) -> VkPipelineShaderStageCreateInfo{
+		VkPipelineShaderStageCreateInfo shaderStage = {};
+		shaderStage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+		shaderStage.stage = stage;
+		shaderStage.module = vkTools::loadShader( fileName, device, stage );
+		shaderStage.pName = "main"; // todo : make param
+		assert( shaderStage.module != NULL );
+		shaderModules.push_back( shaderStage.module );
+		return shaderStage;
+	};
 
-	err = vkCreatePipelineLayout( mDevice, &pPipelineLayoutCreateInfo, nullptr, &mPipelineLayout );
-	assert( !err );
+	// Load shaders	--------
+
+	// Shaders are loaded from the SPIR-V format, which can be generated from glsl
+	VkPipelineShaderStageCreateInfo shaderStages[2] = { {},{} };
+	//shaderStages[0] = loadShaderGLSL( ofToDataPath( "triangle.vert" ).c_str(), VK_SHADER_STAGE_VERTEX_BIT );
+	//shaderStages[1] = loadShaderGLSL( ofToDataPath( "triangle.frag" ).c_str(), VK_SHADER_STAGE_FRAGMENT_BIT );
+	shaderStages[0] = loadShader( ofToDataPath( "test.vert.spv" ).c_str(), VK_SHADER_STAGE_VERTEX_BIT );
+	shaderStages[1] = loadShader( ofToDataPath( "test.frag.spv" ).c_str(), VK_SHADER_STAGE_FRAGMENT_BIT );
+
+	{
+		auto vertBuf = ofBufferFromFile( ofToDataPath( "test.vert.spv" ), true );
+		int sizeNeeded = vertBuf.size() / sizeof( uint32_t );
+		vector<uint32_t> shaderWords( (uint32_t*)vertBuf.getData(), (uint32_t*)vertBuf.getData() + sizeNeeded );
+
+		spirv_cross::Compiler compiler( std::move( shaderWords ) );
+		auto shaderResources = compiler.get_shader_resources();
+
+		shaderResources.uniform_buffers.size();
+
+		for ( auto &ubo : shaderResources.uniform_buffers ){
+			ostringstream os;
+			
+			// returns a bitmask 
+			uint64_t decorationMask = compiler.get_decoration_mask( ubo.id );
+
+			if ( ( 1ull << spv::DecorationDescriptorSet ) & decorationMask ){
+				uint32_t set = compiler.get_decoration( ubo.id, spv::DecorationDescriptorSet );
+				os << ", set = " << set;
+			}
+
+			if ( ( 1ull << spv::DecorationBinding ) & decorationMask ){
+				uint32_t binding = compiler.get_decoration( ubo.id, spv::DecorationBinding );
+				os << ", binding = " << binding;
+			}
+			
+			ofLog() << "Uniform Block: '" << ubo.name << "'" << os.str();
+		}
+
+		// TODO: 
+		// build a pipeline layout based on the reflected shader stage information
+
+		// Create the pipeline layout that is used to generate the rendering pipelines that
+		// are based on the descriptor set layout
+		//
+		// In a more complex scenario you would have different pipeline layouts for different
+		// descriptor set layouts that could be reused
+		VkPipelineLayoutCreateInfo pPipelineLayoutCreateInfo {};
+		pPipelineLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+		pPipelineLayoutCreateInfo.pNext = NULL;
+		pPipelineLayoutCreateInfo.setLayoutCount = 1;
+		// note that the pipeline is not created from the descriptorSet, 
+		// but from the *layout* of the descriptorSet - really, 
+		// we should use above reflection to do this, to generate the descriptorSetLayout
+		pPipelineLayoutCreateInfo.pSetLayouts = &mDescriptorSetLayout;
+		pPipelineLayoutCreateInfo.pushConstantRangeCount = 0;
+		pPipelineLayoutCreateInfo.pPushConstantRanges = VK_NULL_HANDLE;
+
+		vkCreatePipelineLayout( mDevice, &pPipelineLayoutCreateInfo, nullptr, &mPipelineLayout );
+	}
 
 	VkGraphicsPipelineCreateInfo pipelineCreateInfo = {};
 
 	pipelineCreateInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-	// The layout used for this pipeline
+	// The layout used for this pipeline -- this needs 
 	pipelineCreateInfo.layout = mPipelineLayout;
 	// Renderpass this pipeline is attached to
 	pipelineCreateInfo.renderPass = mRenderPass;
@@ -314,12 +370,13 @@ void ofVkRenderer::preparePipelines(){
 	// a viewport's dimensions or a scissor box
 	VkPipelineDynamicStateCreateInfo dynamicState = {};
 	// The dynamic state properties themselves are stored in the command buffer
-	std::vector<VkDynamicState> dynamicStateEnables;
-	dynamicStateEnables.push_back( VK_DYNAMIC_STATE_VIEWPORT );
-	dynamicStateEnables.push_back( VK_DYNAMIC_STATE_SCISSOR );
+	std::vector<VkDynamicState> dynamicStates {
+		VK_DYNAMIC_STATE_VIEWPORT,
+		VK_DYNAMIC_STATE_SCISSOR,
+	};
 	dynamicState.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-	dynamicState.pDynamicStates = dynamicStateEnables.data();
-	dynamicState.dynamicStateCount = dynamicStateEnables.size();
+	dynamicState.pDynamicStates = dynamicStates.data();
+	dynamicState.dynamicStateCount = dynamicStates.size();
 
 	// Depth and stencil state
 	// Describes depth and stenctil test and compare ops
@@ -344,36 +401,6 @@ void ofVkRenderer::preparePipelines(){
 	// No multi sampling used in this example
 	multisampleState.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
 
-
-	auto  loadShader = [ &shaderModules = mShaderModules, &device = mDevice ]( const char * fileName, VkShaderStageFlagBits stage ) -> VkPipelineShaderStageCreateInfo{
-		VkPipelineShaderStageCreateInfo shaderStage = {};
-		shaderStage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-		shaderStage.stage = stage;
-		shaderStage.module = vkTools::loadShader( fileName, device, stage );
-		shaderStage.pName = "main"; // todo : make param
-		assert( shaderStage.module != NULL );
-		shaderModules.push_back( shaderStage.module );
-		return shaderStage;
-	};
-
-	// Load shaders
-	// Shaders are loaded from the SPIR-V format, which can be generated from glsl
-	VkPipelineShaderStageCreateInfo shaderStages[2] = { {},{} };
-	//shaderStages[0] = loadShaderGLSL( ofToDataPath( "triangle.vert" ).c_str(), VK_SHADER_STAGE_VERTEX_BIT );
-	//shaderStages[1] = loadShaderGLSL( ofToDataPath( "triangle.frag" ).c_str(), VK_SHADER_STAGE_FRAGMENT_BIT );
-	shaderStages[0] = loadShader( ofToDataPath( "test.vert.spv" ).c_str(), VK_SHADER_STAGE_VERTEX_BIT );
-	shaderStages[1] = loadShader( ofToDataPath( "test.frag.spv" ).c_str(), VK_SHADER_STAGE_FRAGMENT_BIT );
-
-	{
-		auto vertBuf = ofBufferFromFile( ofToDataPath( "test.vert.spv" ), true );
-		int sizeNeeded = vertBuf.size() / sizeof(uint32_t);
-		vector<uint32_t> shaderWords((uint32_t*)vertBuf.getData(), (uint32_t*)vertBuf.getData() + sizeNeeded);
-
-		spirv_cross::Compiler compiler(shaderWords);
-		auto reflections = compiler.get_shader_resources();
-	}
-	
-
 	// Assign states
 	// Two shader stages: vertex, fragment
 	pipelineCreateInfo.stageCount = 2;
@@ -388,7 +415,7 @@ void ofVkRenderer::preparePipelines(){
 	pipelineCreateInfo.pStages = shaderStages;
 	pipelineCreateInfo.renderPass = mRenderPass;
 	pipelineCreateInfo.pDynamicState = &dynamicState;	// allows us to dynamically assign viewport and other states defined in dynamicState
-
+	
 	// Create rendering pipeline
 
 	// tig: we can create the pipeline without using a pipeline cache
@@ -682,14 +709,6 @@ void ofVkRenderer::setupRenderPass(){
 	assert(!err);
 };
 
-// ----------------------------------------------------------------------
-
-void ofVkRenderer::createPipelineCache(){
-	VkPipelineCacheCreateInfo pipelineCacheCreateInfo = {};
-	pipelineCacheCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
-	VkResult err = vkCreatePipelineCache( mDevice, &pipelineCacheCreateInfo, nullptr, &mPipelineCache );
-	assert( !err );
-};
 
 // ----------------------------------------------------------------------
 
