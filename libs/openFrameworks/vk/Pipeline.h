@@ -8,9 +8,12 @@
 
 /*
 
-A pipeline is a monolithic object that contains all the state
-needed for a draw call. You can look at it as a GPU program
-combining shader code with vendor-specific code dealing with 
+A pipeline is a monolithic, compiled object that represents 
+all the programmable, and non-dynamic state affecting a 
+draw call. 
+
+You can look at it as a GPU program combining shader machine 
+code with gpu-hardware-specific machine code dealing with 
 blending, primitive assembly, etc. 
 
 The Pipeline has a layout, that's the "function signature" so
@@ -18,6 +21,14 @@ to say, for the uniform parameters. You feed these parameters
 when you bind descriptor sets to the command buffer which you
 are currently recording. A pipeline bound to the same command
 buffer will then use these inputs.
+
+Note that you *don't* bind to the pipeline directly, 
+but you bind both pipeline layout and descriptor sets 
+TO THE CURRENT COMMAND BUFFER. 
+
+Imagine the Command Buffer as the plugboard, and the Pipeline 
+Layout plugging wires in on one side, and the descriptor sets 
+plugging wires in on the other side. 
 
 A pipeline can have some dynamic state, that is state which is
 controlled by the command buffer. State which may be dynamic is
@@ -50,7 +61,7 @@ namespace vk{
 
 class Shader;
 
-class Pipeline
+class GraphicsPipelineState
 {
 	// The idea is to have the context hold a pipeline in memory, 
 	// and with each draw command store the current pipeline's 
@@ -64,21 +75,12 @@ class Pipeline
 	// 
 	// if it is, we bind that pipeline.
 
-	// you can only create a pipeline object from a shader.
-	Pipeline(  );
+	
 
-	// or from another pipeline object for that matter.
-	Pipeline operator=( const Pipeline& rhs ){
-		// TODO: make proper copy
-		Pipeline lhs;
-		lhs = rhs;
-		return lhs;
-	};
+public: // these elements are set at pipeline instantiation
 
-private: // these elements are set at pipeline instantiation
-
-	// TODO: static, shader-dependent (build using spirv-cross)
-	const std::vector<VkPipelineShaderStageCreateInfo>     mStages = {
+	// TODO: const, shader-dependent (build using spirv-cross)
+	std::vector<VkPipelineShaderStageCreateInfo>     mStages = {
 		// todo: fill with defaults.
 		{
 		// default vertex shader state
@@ -88,8 +90,8 @@ private: // these elements are set at pipeline instantiation
 		},
 	};
 
-	// TODO: static, shader-dependent (build using spirv-cross)
-	const VkPipelineVertexInputStateCreateInfo mVertexInputState{};
+	// TODO: const, shader-dependent (build using spirv-cross)
+	 VkPipelineVertexInputStateCreateInfo mVertexInputState {};
 
 public:	// default state for pipeline
 
@@ -196,7 +198,7 @@ public:	// default state for pipeline
 		VK_DYNAMIC_STATE_SCISSOR,
 	};
 
-	VkPipelineDynamicStateCreateInfo pDynamicState {
+	VkPipelineDynamicStateCreateInfo mDynamicState {
 		VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,        // VkStructureType                            sType;
 		nullptr,                                                     // const void*                                pNext;
 		0,                                                           // VkPipelineDynamicStateCreateFlags          flags;
@@ -204,29 +206,55 @@ public:	// default state for pipeline
 		mDefaultDynamicStates                                        // const VkDynamicState*                      pDynamicStates;
 	};
 	
-	VkPipelineLayout  layout             = nullptr;
-	VkRenderPass      renderPass         = nullptr;
-	uint32_t          subpass            = 0;
-	VkPipeline        basePipelineHandle = nullptr;
-	int32_t           basePipelineIndex  = 0;
+	VkPipelineLayout  mLayout             = nullptr;
+	VkRenderPass      mRenderPass         = nullptr;
+	uint32_t          mSubpass            = 0;
+	VkPipeline        mBasePipelineHandle = nullptr;
+	int32_t           mBasePipelineIndex  = 0;
 
-};
 
-class PipelineHelper
-{
-	struct Parameters
-	{
-		// these parametes are borrowed, ownership is outside of this
-		// class.
-		VkDevice&         device;        // current device
-		VkPipelineCache&  pipelineCache; // cache for all pipelines
-	} const mParams;
 
-	// We need to keep track of our pipelines internally and hash
-	// them. This hash can be used to order draw calls within a 
-	// command buffer recording.
+	VkPipeline&& createPipeline(const VkDevice& device, const VkPipelineCache& pipelineCache){
+		VkPipeline pipeline;
 
-	
+		// naive: create a pipeline based on current internal state
+		
+		// TODO: make sure pipeline is not already in current cache
+		//       otherwise return handle to cached pipeline - instead
+		//       of moving a new pipeline out, return a handle to 
+		//       a borrowed pipeline.
+
+		VkGraphicsPipelineCreateInfo createInfo{
+			VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO, // VkStructureType                                  sType;
+			nullptr,                                         // const void*                                      pNext;
+			0,                                               // VkPipelineCreateFlags                            flags;
+			mStages.size(),                                  // uint32_t                                         stageCount;
+			mStages.data(),                                  // const VkPipelineShaderStageCreateInfo*           pStages;
+			&mVertexInputState,                              // const VkPipelineVertexInputStateCreateInfo*      pVertexInputState;
+			&mInputAssemblyState,                            // const VkPipelineInputAssemblyStateCreateInfo*    pInputAssemblyState;
+			&mTessellationState,                             // const VkPipelineTessellationStateCreateInfo*     pTessellationState;
+			&mViewportState,                                 // const VkPipelineViewportStateCreateInfo*         pViewportState;
+			&mRasterizationState,                            // const VkPipelineRasterizationStateCreateInfo*    pRasterizationState;
+			&mMultisampleState,                              // const VkPipelineMultisampleStateCreateInfo*      pMultisampleState;
+			&mDepthStencilState,                             // const VkPipelineDepthStencilStateCreateInfo*     pDepthStencilState;
+			&mColorBlendState,                               // const VkPipelineColorBlendStateCreateInfo*       pColorBlendState;
+			&mDynamicState,                                  // const VkPipelineDynamicStateCreateInfo*          pDynamicState;
+			mLayout,                                         // VkPipelineLayout                                 layout;
+			mRenderPass,                                     // VkRenderPass                                     renderPass;
+			mSubpass,                                        // uint32_t                                         subpass;
+			mBasePipelineHandle,                             // VkPipeline                                       basePipelineHandle;
+			mBasePipelineIndex                               // int32_t                                          basePipelineIndex;
+		};
+
+		auto err = vkCreateGraphicsPipelines( device, pipelineCache, 1, &createInfo, nullptr, &pipeline );
+		
+		if ( err != VK_SUCCESS ){
+			ofLogError() << "Vulkan error in " << __FILE__ << ", line " << __LINE__;
+		}
+		
+		return 	std::move( pipeline );
+	}
+
 };
 
 /// \brief  Create a pipeline cache object

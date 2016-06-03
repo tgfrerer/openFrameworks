@@ -258,9 +258,8 @@ void ofVkRenderer::preparePipelines(){
 	// Load shaders	--------
 
 	// Shaders are loaded from the SPIR-V format, which can be generated from glsl
-	VkPipelineShaderStageCreateInfo shaderStages[2] = { {},{} };
-	//shaderStages[0] = loadShaderGLSL( ofToDataPath( "triangle.vert" ).c_str(), VK_SHADER_STAGE_VERTEX_BIT );
-	//shaderStages[1] = loadShaderGLSL( ofToDataPath( "triangle.frag" ).c_str(), VK_SHADER_STAGE_FRAGMENT_BIT );
+	std::vector<VkPipelineShaderStageCreateInfo> shaderStages(2);
+
 	shaderStages[0] = loadShader( ofToDataPath( "test.vert.spv" ).c_str(), VK_SHADER_STAGE_VERTEX_BIT );
 	shaderStages[1] = loadShader( ofToDataPath( "test.frag.spv" ).c_str(), VK_SHADER_STAGE_FRAGMENT_BIT );
 
@@ -315,118 +314,14 @@ void ofVkRenderer::preparePipelines(){
 		vkCreatePipelineLayout( mDevice, &pPipelineLayoutCreateInfo, nullptr, &mPipelineLayout );
 	}
 
-	VkGraphicsPipelineCreateInfo pipelineCreateInfo = {};
+	of::vk::GraphicsPipelineState defaultPSO;
 
-	pipelineCreateInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-	// The layout used for this pipeline -- this needs 
-	pipelineCreateInfo.layout = mPipelineLayout;
-	// Renderpass this pipeline is attached to
-	pipelineCreateInfo.renderPass = mRenderPass;
+	defaultPSO.mLayout = mPipelineLayout;
+	defaultPSO.mStages = shaderStages;
+	defaultPSO.mRenderPass = mRenderPass;
+	defaultPSO.mVertexInputState = mVertexInfo.vi;
 
-	// Vertex input state
-	// Describes the topoloy used with this pipeline
-	VkPipelineInputAssemblyStateCreateInfo inputAssemblyState = {};
-	inputAssemblyState.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-	// This pipeline renders vertex data as triangle lists
-	inputAssemblyState.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-
-	// Rasterization state
-	VkPipelineRasterizationStateCreateInfo rasterizationState = {};
-	rasterizationState.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-	// Solid polygon mode
-	rasterizationState.polygonMode = VK_POLYGON_MODE_FILL;
-	// enable backface culling
-	rasterizationState.cullMode = VK_CULL_MODE_BACK_BIT;
-	rasterizationState.frontFace = VK_FRONT_FACE_CLOCKWISE;
-	rasterizationState.depthClampEnable = VK_FALSE;
-	rasterizationState.rasterizerDiscardEnable = VK_FALSE;
-	rasterizationState.depthBiasEnable = VK_FALSE;
-	rasterizationState.lineWidth = 1.f;
-
-	// Color blend state
-	// Describes blend modes and color masks
-	VkPipelineColorBlendStateCreateInfo colorBlendState = {};
-	colorBlendState.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-	// One blend attachment state
-	// Blending is not used in this example
-	VkPipelineColorBlendAttachmentState blendAttachmentState[1] = {};
-	blendAttachmentState[0].colorWriteMask = 0xf;
-	blendAttachmentState[0].blendEnable = VK_FALSE;
-	colorBlendState.attachmentCount = 1;
-	colorBlendState.pAttachments = blendAttachmentState;
-
-	// Viewport state
-	VkPipelineViewportStateCreateInfo viewportState = {};
-	viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
-	// One viewport
-	viewportState.viewportCount = 1;
-	// One scissor rectangle
-	viewportState.scissorCount = 1;
-
-	// Enable dynamic states
-	// Describes the dynamic states to be used with this pipeline
-	// Dynamic states can be set even after the pipeline has been created
-	// So there is no need to create new pipelines just for changing
-	// a viewport's dimensions or a scissor box
-	VkPipelineDynamicStateCreateInfo dynamicState = {};
-	// The dynamic state properties themselves are stored in the command buffer
-	std::vector<VkDynamicState> dynamicStates {
-		VK_DYNAMIC_STATE_VIEWPORT,
-		VK_DYNAMIC_STATE_SCISSOR,
-	};
-	dynamicState.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-	dynamicState.pDynamicStates = dynamicStates.data();
-	dynamicState.dynamicStateCount = dynamicStates.size();
-
-	// Depth and stencil state
-	// Describes depth and stenctil test and compare ops
-	VkPipelineDepthStencilStateCreateInfo depthStencilState = {};
-	// Basic depth compare setup with depth writes and depth test enabled
-	// No stencil used 
-	depthStencilState.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-	depthStencilState.depthTestEnable = VK_TRUE;
-	depthStencilState.depthWriteEnable = VK_TRUE;
-	depthStencilState.depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
-	depthStencilState.depthBoundsTestEnable = VK_FALSE;
-	depthStencilState.back.failOp = VK_STENCIL_OP_KEEP;
-	depthStencilState.back.passOp = VK_STENCIL_OP_KEEP;
-	depthStencilState.back.compareOp = VK_COMPARE_OP_ALWAYS;
-	depthStencilState.stencilTestEnable = VK_FALSE;
-	depthStencilState.front = depthStencilState.back;
-
-	// Multi sampling state
-	VkPipelineMultisampleStateCreateInfo multisampleState = {};
-	multisampleState.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-	multisampleState.pSampleMask = NULL;
-	// No multi sampling used in this example
-	multisampleState.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
-
-	// Assign states
-	// Two shader stages: vertex, fragment
-	pipelineCreateInfo.stageCount = 2;
-	// Assign pipeline state create information
-	pipelineCreateInfo.pVertexInputState = &mVertexInfo.vi;
-	pipelineCreateInfo.pInputAssemblyState = &inputAssemblyState;
-	pipelineCreateInfo.pRasterizationState = &rasterizationState;
-	pipelineCreateInfo.pColorBlendState = &colorBlendState;
-	pipelineCreateInfo.pMultisampleState = &multisampleState;
-	pipelineCreateInfo.pViewportState = &viewportState;
-	pipelineCreateInfo.pDepthStencilState = &depthStencilState;
-	pipelineCreateInfo.pStages = shaderStages;
-	pipelineCreateInfo.renderPass = mRenderPass;
-	pipelineCreateInfo.pDynamicState = &dynamicState;	// allows us to dynamically assign viewport and other states defined in dynamicState
-	
-	// Create rendering pipeline
-
-	// tig: we can create the pipeline without using a pipeline cache
-	// err = vkCreateGraphicsPipelines( mDevice, VK_NULL_HANDLE, 1, &pipelineCreateInfo, nullptr, &mPipelines.solid );
-	//
-	// if we use the cache, that means that caching is enabled "for the duration of this command" (i.e. "vkCreateGraphicsPipelines"), and 
-	// pipeline creation might be quicker if the same or a simililar pipeline has been generated previously.
-	// The cache can also be saved out and retrieved, which can make it faster to generate pipelines for the 
-	// next run of the application.
-	err = vkCreateGraphicsPipelines( mDevice, mPipelineCache, 1, &pipelineCreateInfo, nullptr, &mPipelines.solid );
-	assert( !err );
+	mPipelines.solid = defaultPSO.createPipeline( mDevice, mPipelineCache );
 }
 
 
