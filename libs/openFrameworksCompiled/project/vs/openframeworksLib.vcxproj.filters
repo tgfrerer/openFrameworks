@@ -306,6 +306,9 @@
     <ClInclude Include="..\..\..\openFrameworks\vk\Pipeline.h">
       <Filter>libs\openFrameworks\vk</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\..\openFrameworks\vk\Shader.h">
+      <Filter>libs\openFrameworks\vk</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\openFrameworks\app\ofAppGlutWindow.cpp">

@@ -115,10 +115,7 @@ ofVkRenderer::~ofVkRenderer()
 	}
 	mFrameBuffers.clear();
 
-	for ( auto &s : mShaderModules ){
-		vkDestroyShaderModule( mDevice, s, nullptr );
-	}
-	mShaderModules.clear();
+	mShaders.clear();
 
 	vkDestroyPipelineLayout( mDevice, mPipelineLayout, nullptr );
 	vkDestroyPipelineCache( mDevice, mPipelineCache, nullptr );

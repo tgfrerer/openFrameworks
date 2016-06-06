@@ -2,6 +2,8 @@
 #include "Pipeline.h"
 #include "vulkantools.h"
 #include "spirv_cross.hpp"
+#include "vk/Shader.h"
+
 // ----------------------------------------------------------------------
 
 void ofVkRenderer::setup(){
@@ -31,7 +33,7 @@ void ofVkRenderer::setup(){
 	flushSetupCommandBuffer();
 	
 	createSemaphores();
-	prepareVertices();
+	
 
 	mContext = make_shared < of::vk::Context >();
 
@@ -241,57 +243,19 @@ void ofVkRenderer::preparePipelines(){
 	// pipeline only stores that they are used with this pipeline,
 	// but not their states
 	
-	VkResult err;
-	
+	// -- load shaders
 
-	auto  loadShader = [&shaderModules = mShaderModules, &device = mDevice]( const char * fileName, VkShaderStageFlagBits stage ) -> VkPipelineShaderStageCreateInfo{
-		VkPipelineShaderStageCreateInfo shaderStage = {};
-		shaderStage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-		shaderStage.stage = stage;
-		shaderStage.module = vkTools::loadShader( fileName, device, stage );
-		shaderStage.pName = "main"; // todo : make param
-		assert( shaderStage.module != NULL );
-		shaderModules.push_back( shaderStage.module );
-		return shaderStage;
+	of::vk::Shader::Settings settings {
+		mDevice, 
+		{
+			{ VK_SHADER_STAGE_VERTEX_BIT  , "test.vert.spv" },
+			{ VK_SHADER_STAGE_FRAGMENT_BIT, "test.frag.spv" },
+		}
 	};
 
-	// Load shaders	--------
+	mShaders.emplace_back( std::make_shared<of::vk::Shader>( settings ) );
 
-	// Shaders are loaded from the SPIR-V format, which can be generated from glsl
-	std::vector<VkPipelineShaderStageCreateInfo> shaderStages(2);
-
-	shaderStages[0] = loadShader( ofToDataPath( "test.vert.spv" ).c_str(), VK_SHADER_STAGE_VERTEX_BIT );
-	shaderStages[1] = loadShader( ofToDataPath( "test.frag.spv" ).c_str(), VK_SHADER_STAGE_FRAGMENT_BIT );
-
-	{
-		auto vertBuf = ofBufferFromFile( ofToDataPath( "test.vert.spv" ), true );
-		int sizeNeeded = vertBuf.size() / sizeof( uint32_t );
-		vector<uint32_t> shaderWords( (uint32_t*)vertBuf.getData(), (uint32_t*)vertBuf.getData() + sizeNeeded );
-
-		spirv_cross::Compiler compiler( std::move( shaderWords ) );
-		auto shaderResources = compiler.get_shader_resources();
-
-		shaderResources.uniform_buffers.size();
-
-		for ( auto &ubo : shaderResources.uniform_buffers ){
-			ostringstream os;
-			
-			// returns a bitmask 
-			uint64_t decorationMask = compiler.get_decoration_mask( ubo.id );
-
-			if ( ( 1ull << spv::DecorationDescriptorSet ) & decorationMask ){
-				uint32_t set = compiler.get_decoration( ubo.id, spv::DecorationDescriptorSet );
-				os << ", set = " << set;
-			}
-
-			if ( ( 1ull << spv::DecorationBinding ) & decorationMask ){
-				uint32_t binding = compiler.get_decoration( ubo.id, spv::DecorationBinding );
-				os << ", binding = " << binding;
-			}
-			
-			ofLog() << "Uniform Block: '" << ubo.name << "'" << os.str();
-		}
-
+   	{
 		// TODO: 
 		// build a pipeline layout based on the reflected shader stage information
 
@@ -317,14 +281,12 @@ void ofVkRenderer::preparePipelines(){
 	of::vk::GraphicsPipelineState defaultPSO;
 
 	defaultPSO.mLayout = mPipelineLayout;
-	defaultPSO.mStages = shaderStages;
+	defaultPSO.mStages = mShaders.back()->getShaderStageCreateInfo();
 	defaultPSO.mRenderPass = mRenderPass;
-	defaultPSO.mVertexInputState = mVertexInfo.vi;
+	defaultPSO.mVertexInputState = mShaders.back()->getVertexInputState();
 
 	mPipelines.solid = defaultPSO.createPipeline( mDevice, mPipelineCache );
 }
-
-
  
 // ----------------------------------------------------------------------
 
@@ -821,59 +783,6 @@ void ofVkRenderer::finishRender(){
 	
 	// vkDeviceWaitIdle( mDevice );
 
-}
-
-// ----------------------------------------------------------------------
-
-void ofVkRenderer::prepareVertices(){// Setups vertex and index buffers for an indexed triangle,
-	// uploads them to the VRAM and sets binding points and attribute
-	// descriptions to match locations inside the shaders
-	struct Vertex
-	{
-		ofVec3f pos;
-		ofVec3f col;
-	};
-	// first Null out mVertices memory location
-	memset( &mVertexInfo, 0, sizeof( mVertexInfo ) );
-
-	// Binding descrition: 
-	// how memory is mapped to the input assembly
-
-	// Binding description: pos
-	mVertexInfo.binding.resize( 2 );
-	mVertexInfo.binding[0].binding = static_cast<uint32_t>( VertexAttribLocation::Position );
-	mVertexInfo.binding[0].stride = sizeof(Vertex::pos);
-	mVertexInfo.binding[0].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-	// Binding description: col 
-	mVertexInfo.binding[1].binding = static_cast<uint32_t>( VertexAttribLocation::Color );
-	mVertexInfo.binding[1].stride = sizeof( Vertex::col );
-	mVertexInfo.binding[1].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-
-	// Attribute descriptions
-
-	// how memory is read from the input assembly
-	
-	mVertexInfo.attribute.resize( 2 );
-	// Location 0 : Position
-	mVertexInfo.attribute[0].binding = static_cast<uint32_t>( VertexAttribLocation::Position );
-	mVertexInfo.attribute[0].location = 0;
-	mVertexInfo.attribute[0].format = VK_FORMAT_R32G32B32_SFLOAT;
-	mVertexInfo.attribute[0].offset = 0;
-	
-	// Location 1 : Color
-	mVertexInfo.attribute[1].binding = static_cast<uint32_t>( VertexAttribLocation::Color );
-	mVertexInfo.attribute[1].location = 1;
-	mVertexInfo.attribute[1].format = VK_FORMAT_R32G32B32_SFLOAT;
-	mVertexInfo.attribute[1].offset = 0; // sizeof( float ) * 3 // note: do this if using interleaved vertex data.
-
-	// define how vertices are going to be bound to pipeline
-	// by specifying the pipeline vertex input state
-	mVertexInfo.vi.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-	mVertexInfo.vi.pNext = VK_NULL_HANDLE;
-	mVertexInfo.vi.vertexBindingDescriptionCount   = mVertexInfo.binding.size();
-	mVertexInfo.vi.pVertexBindingDescriptions      = mVertexInfo.binding.data();
-	mVertexInfo.vi.vertexAttributeDescriptionCount = mVertexInfo.attribute.size();
-	mVertexInfo.vi.pVertexAttributeDescriptions    = mVertexInfo.attribute.data();
 }
 
 // ----------------------------------------------------------------------

@@ -213,6 +213,7 @@
     <ClInclude Include="..\..\..\openFrameworks\vk\Device.h" />
     <ClInclude Include="..\..\..\openFrameworks\vk\ofVkRenderer.h" />
     <ClInclude Include="..\..\..\openFrameworks\vk\Pipeline.h" />
+    <ClInclude Include="..\..\..\openFrameworks\vk\Shader.h" />
     <ClInclude Include="..\..\..\openFrameworks\vk\Swapchain.h" />
     <ClInclude Include="..\..\..\openFrameworks\vk\vkBufferObject.h" />
     <ClInclude Include="..\..\..\openFrameworks\vk\vulkantools.h" />

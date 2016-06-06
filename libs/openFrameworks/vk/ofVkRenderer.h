@@ -14,6 +14,12 @@
 class ofShapeTessellation;
 class ofMesh;
 
+namespace of{
+namespace vk{
+	class Shader;
+}
+};
+
 
 class ofVkRenderer : public ofBaseRenderer
 {
@@ -300,7 +306,8 @@ private:
 	std::vector<const char*> mInstanceExtensions;   // debug layer list for device
 	std::vector<const char*> mDeviceLayers;         // debug layer list for device
 	std::vector<const char*> mDeviceExtensions;     // debug layer list for device
-	std::vector<VkShaderModule> mShaderModules;		// shader modules kept around for cleanup
+
+	std::vector<shared_ptr<of::vk::Shader>>	 mShaders;
 
 	uint32_t         mVkGraphicsFamilyIndex = 0;
 
@@ -350,14 +357,12 @@ private:
 	void createCommandBuffers();
 	void setupDepthStencil();
 	void setupRenderPass();
-	void createPipelineCache();
+	
 	void setupFrameBuffer();
 	void flushSetupCommandBuffer();
 
 	// creates synchronisation primitives 
 	void createSemaphores();
-	// sets up some vertices and index buffers
-	void prepareVertices();
 
 	void setupDescriptorSetLayout();
 	void preparePipelines();
