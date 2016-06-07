@@ -412,9 +412,15 @@ private:
 	// laid out in a way specified by its descriptorSetLayout
 	vector<VkDescriptorSet>  mDescriptorSets;
 
-	// describes the layout for the descriptorset that owns it
-	// the layout also specifies the binding to buffers for the 
-	// descriptorset that owns it
+	// ideally, descriptorsets are kept within a map 
+	// so that they can be referenced by their ubo name from the shader.
+	// but it's important that these then match!
+
+	// describes the layout for a descriptorset, i.e. the count and ordering
+	// of descriptors within a set
+	//
+	// each descriptorset is derived from a layout
+	// multiple descriptorsets may be derived from the same layout
 	std::vector<std::shared_ptr<VkDescriptorSetLayout>> mDescriptorSetLayouts;
 
 	std::vector<std::shared_ptr<VkPipelineLayout>> mPipelineLayouts;

@@ -18,6 +18,7 @@ class Shader
 	struct Binding
 	{	
 		std::string                   blockName;
+		uint32_t                      set;
 		VkDescriptorSetLayoutBinding  layout;
 	};
 
@@ -116,7 +117,7 @@ public:
 				};
 
 				if ( ubo.name != "" ){
-					Binding tmpBinding{ ubo.name, layoutBinding };
+					Binding tmpBinding{ ubo.name, set, layoutBinding };
 					mBindings.emplace_back( std::move(tmpBinding));
 				}
 				
@@ -252,6 +253,12 @@ public:
 		}
 		mModules.clear();
 		mStages.clear();
+	}
+
+	// ----------------------------------------------------------------------
+
+	const std::vector<Binding>& getBindings() const {
+		return mBindings;
 	}
 
 	// ----------------------------------------------------------------------

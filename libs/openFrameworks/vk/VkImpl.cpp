@@ -40,14 +40,16 @@ void ofVkRenderer::setup(){
 
 	mContext->setup();
 
+
+	// shaders will let us know about descriptorSetLayouts.
+	setupShaders();
+
 	// create a descriptor pool from which descriptor sets can be allocated
 	setupDescriptorPool();
 
-	// shaders will let us know about descriptorset layouts.
-	setupShaders();
-
-	// once shaders are known, we can derive what descriptorsetlayouts
-	// will be needed.
+	// once we know the layout for the descriptorSets, we
+	// can allocate them from the pool based on the layout
+	// information
 	setupDescriptorSets();
 
 	// Create our rendering pipeline used in this example
@@ -70,44 +72,63 @@ void ofVkRenderer::setup(){
 // ----------------------------------------------------------------------
 
 void ofVkRenderer::setupDescriptorSets(){
-	// descriptor set is allocated from pool mDescriptorPool
-	// with bindings described using a descriptorSetLayout defined in mDescriptorSetLayout
-	// 
-	// a descriptor set has a layout, the layout tells us the number and ordering of descriptors
 	
-	std::vector<VkDescriptorSetLayout> dsl( mDescriptorSetLayouts.size() );
-	for ( size_t i = 0; i != dsl.size(); ++i ){
-		dsl[i] = *mDescriptorSetLayouts[i];
+	// descriptor sets are there to describe how uniforms are fed to a pipeline
+
+	// descriptor set is allocated from pool mDescriptorPool
+	// based on information from descriptorSetLayout which was derived from shader code reflection 
+	// 
+	// a descriptorSetLayout describes a descriptor set, it tells us the 
+	// number and ordering of descriptors within the set.
+	
+	{
+		std::vector<VkDescriptorSetLayout> dsl( mDescriptorSetLayouts.size() );
+		for ( size_t i = 0; i != dsl.size(); ++i ){
+			dsl[i] = *mDescriptorSetLayouts[i];
+		}
+
+		VkDescriptorSetAllocateInfo allocInfo = {};
+		allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+		allocInfo.descriptorPool = mDescriptorPool;		              // pool  : tells us where to allocate from
+		allocInfo.descriptorSetCount = dsl.size();  // count : tells us how many descriptor set layouts 
+		allocInfo.pSetLayouts = dsl.data();         // layout: tells us how many descriptors, and how these are laid out 
+		allocInfo.pNext = VK_NULL_HANDLE;
+
+		mDescriptorSets.resize( mDescriptorSetLayouts.size() );
+		vkAllocateDescriptorSets( mDevice, &allocInfo, mDescriptorSets.data() );	// allocates mDescriptorSets
 	}
 	
-	VkDescriptorSetAllocateInfo allocInfo = {};
-	allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-	allocInfo.descriptorPool = mDescriptorPool;		              // pool  : tells us where to allocate from
-	allocInfo.descriptorSetCount = dsl.size();  // count : tells us how many descriptor set layouts 
-	allocInfo.pSetLayouts = dsl.data();         // layout: tells us how many descriptors, and how these are laid out 
-	allocInfo.pNext = VK_NULL_HANDLE;
+	// At this point the descriptors within the set are untyped 
+	// so we have to write type information into it, 
+	// as well as binding information so the set knows how to ingest data from memory
+	
+	// TODO: do this for all unique bindings over all shaders.
 
-	mDescriptorSets.resize( mDescriptorSetLayouts.size() );
-	vkAllocateDescriptorSets( mDevice, &allocInfo, mDescriptorSets.data() );	// allocates mDescriptorSet
+	// get bindings from shader
+	auto bindings = mShaders[0]->getBindings();
 
-	// at this point the descriptor set is untyped 
-	// so we have to write type information into it, as well as binding information
-															  
-	// Update descriptor sets determining the shader binding points
+	for ( auto &b : bindings ){
+	   
+	}
+
+	// Update descriptors within sets 
+	//
 	// For every binding point used in a shader there needs to be one
 	// descriptor set matching that binding point
-	VkWriteDescriptorSet writeDescriptorSet = {};
+	VkWriteDescriptorSet writeDescriptorSet = {
+		VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,                    // VkStructureType                  sType;
+		nullptr,                                                   // const void*                      pNext;
+		mDescriptorSets[0],                                        // VkDescriptorSet                  dstSet;
+		0,                                                         // uint32_t                         dstBinding;
+		0,                                                         // uint32_t                         dstArrayElement;
+		1,                                                         // uint32_t                         descriptorCount;
+		VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,                 // VkDescriptorType                 descriptorType;
+		nullptr,                                                   // const VkDescriptorImageInfo*     pImageInfo;
+		&mContext->getDescriptorBufferInfo(),                      // const VkDescriptorBufferInfo*    pBufferInfo;
+		nullptr,                                                   // const VkBufferView*              pTexelBufferView;
+	
+	};
 
-	// Binding 0 : Uniform buffer
-	// we make it dynamic so that multiple matrix structs can be stored into this 
-	// uniform buffer.
-	writeDescriptorSet.dstBinding = 0;
-	writeDescriptorSet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-	writeDescriptorSet.dstSet = mDescriptorSets[0];		// dstSet: where to write this information into 
-	writeDescriptorSet.descriptorCount = 1;
-	writeDescriptorSet.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
-	writeDescriptorSet.pBufferInfo = &mContext->getDescriptorBufferInfo();
-	// Binds this uniform buffer to binding point 0	within the uniform buffer namespace
 	
 	vkUpdateDescriptorSets( mDevice, 1, &writeDescriptorSet, 0, NULL );	 // updates mDescriptorSet by most importantly filling in the buffer info
 }
@@ -119,21 +140,47 @@ void ofVkRenderer::setupDescriptorPool(){
 	// the pool needs to reserve size based on the 
 	// maximum number for each type of descriptor
 
-	std::vector<VkDescriptorPoolSize> typeCounts = {
-		{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC , 1 },
-		//{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1 }, // use this type of descriptors for "classic" texture samplers
-	};
+	// list of all descriptors types and their count
+	std::vector<VkDescriptorPoolSize> typeCounts;
+
+	uint32_t maxSets = 0;
+
+	// iterate over descriptorsetlayouts to find out what we need
+	// and to populate list above
+	{	
+		// count all necessary descriptor of all necessary types over
+		// all currently known shaders.
+		std::map<VkDescriptorType, uint32_t> descriptorTypes;
+		
+		for ( const auto & s : mShaders ){
+			for ( const auto & b : s->getBindings() ){
+				if ( descriptorTypes.find( b.layout.descriptorType ) == descriptorTypes.end() ){
+					// first of this kind
+					descriptorTypes[b.layout.descriptorType] = 1;
+				}
+				else{
+					++descriptorTypes[b.layout.descriptorType];
+				}
+			}
+		}
+			  
+		for ( const auto &t : descriptorTypes ){
+			typeCounts.push_back( {t.first, t.second} );
+			maxSets += t.second;
+		}
+
+	}
 
 	// Create the global descriptor pool
 	// All descriptors used in this example are allocated from this pool
-	VkDescriptorPoolCreateInfo descriptorPoolInfo = {};
-	descriptorPoolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-	descriptorPoolInfo.pNext = NULL;
-	descriptorPoolInfo.poolSizeCount = typeCounts.size();
-	descriptorPoolInfo.pPoolSizes = typeCounts.data();
-	// Set the max. number of sets that can be requested
-	// Requesting descriptors beyond maxSets will result in an error
-	descriptorPoolInfo.maxSets = 1;
+	VkDescriptorPoolCreateInfo descriptorPoolInfo = {
+		VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,             // VkStructureType                sType;
+		nullptr,                                                   // const void*                    pNext;
+		0,                                                         // VkDescriptorPoolCreateFlags    flags;
+		maxSets,                                                   // uint32_t                       maxSets;
+		typeCounts.size(),                                         // uint32_t                       poolSizeCount;
+		typeCounts.data(),                                         // const VkDescriptorPoolSize*    pPoolSizes;
+	};
 
 	VkResult vkRes = vkCreateDescriptorPool( mDevice, &descriptorPoolInfo, nullptr, &mDescriptorPool );
 	assert( !vkRes );
