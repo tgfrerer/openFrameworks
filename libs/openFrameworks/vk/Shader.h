@@ -20,6 +20,7 @@ class Shader
 		std::string                   blockName;
 		uint32_t                      set;
 		VkDescriptorSetLayoutBinding  layout;
+		//VkDescriptorBufferInfo        buffer; // we may need to store the buffer with the bindings so that we can use this to fill in the writeDescriptorSet.
 	};
 
 	std::vector<Binding> mBindings;

@@ -102,35 +102,57 @@ void ofVkRenderer::setupDescriptorSets(){
 	// so we have to write type information into it, 
 	// as well as binding information so the set knows how to ingest data from memory
 	
-	// TODO: do this for all unique bindings over all shaders.
+	// TODO: write descriptor information to all *unique* bindings over all shaders
+	// make sure to re-use descriptors for shared bindings.
 
 	// get bindings from shader
 	auto bindings = mShaders[0]->getBindings();
 
-	for ( auto &b : bindings ){
-	   
+	std::vector<VkWriteDescriptorSet> writeDescriptorSets(bindings.size());
+
+	{
+		// Careful! bufferInfo must be retrieved from somewhere... 
+		// this means probably that we shouldn't write to our 
+		// descriptors before we know the buffer that is going to 
+		// be used with them.
+		size_t i = 0;
+		for ( auto &b : bindings ){
+			writeDescriptorSets[i] = {
+				VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,                    // VkStructureType                  sType;
+				nullptr,                                                   // const void*                      pNext;
+				mDescriptorSets[0],                       //<-- check      // VkDescriptorSet                  dstSet;
+				b.layout.binding,                         //<-- check      // uint32_t                         dstBinding;
+				0,                                                         // uint32_t                         dstArrayElement;
+				1,                                                         // uint32_t                         descriptorCount;
+				b.layout.descriptorType,                  //<-- check      // VkDescriptorType                 descriptorType;
+				nullptr,                                                   // const VkDescriptorImageInfo*     pImageInfo;
+				&mContext->getDescriptorBufferInfo(),                      // const VkDescriptorBufferInfo*    pBufferInfo;
+				nullptr,                                                   // const VkBufferView*              pTexelBufferView;
+
+			};
+		}
+		++i;
 	}
 
 	// Update descriptors within sets 
 	//
 	// For every binding point used in a shader there needs to be one
 	// descriptor set matching that binding point
-	VkWriteDescriptorSet writeDescriptorSet = {
-		VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,                    // VkStructureType                  sType;
-		nullptr,                                                   // const void*                      pNext;
-		mDescriptorSets[0],                                        // VkDescriptorSet                  dstSet;
-		0,                                                         // uint32_t                         dstBinding;
-		0,                                                         // uint32_t                         dstArrayElement;
-		1,                                                         // uint32_t                         descriptorCount;
-		VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,                 // VkDescriptorType                 descriptorType;
-		nullptr,                                                   // const VkDescriptorImageInfo*     pImageInfo;
-		&mContext->getDescriptorBufferInfo(),                      // const VkDescriptorBufferInfo*    pBufferInfo;
-		nullptr,                                                   // const VkBufferView*              pTexelBufferView;
-	
-	};
+	//VkWriteDescriptorSet writeDescriptorSet = {
+	//	VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,                    // VkStructureType                  sType;
+	//	nullptr,                                                   // const void*                      pNext;
+	//	mDescriptorSets[0],                                        // VkDescriptorSet                  dstSet;
+	//	0,                                                         // uint32_t                         dstBinding;
+	//	0,                                                         // uint32_t                         dstArrayElement;
+	//	1,                                                         // uint32_t                         descriptorCount;
+	//	VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,                 // VkDescriptorType                 descriptorType;
+	//	nullptr,                                                   // const VkDescriptorImageInfo*     pImageInfo;
+	//	&mContext->getDescriptorBufferInfo(),                      // const VkDescriptorBufferInfo*    pBufferInfo;
+	//	nullptr,                                                   // const VkBufferView*              pTexelBufferView;
+	//
+	//};
 
-	
-	vkUpdateDescriptorSets( mDevice, 1, &writeDescriptorSet, 0, NULL );	 // updates mDescriptorSet by most importantly filling in the buffer info
+	vkUpdateDescriptorSets( mDevice, writeDescriptorSets.size(), writeDescriptorSets.data(), 0, NULL );	 
 }
 
 // ----------------------------------------------------------------------
@@ -163,7 +185,9 @@ void ofVkRenderer::setupDescriptorPool(){
 				}
 			}
 		}
-			  
+			
+		// accumulate total number of descriptor sets
+		// TODO: find out: is this the max number of descriptor sets or the max number of descriptors?
 		for ( const auto &t : descriptorTypes ){
 			typeCounts.push_back( {t.first, t.second} );
 			maxSets += t.second;
@@ -226,6 +250,13 @@ void ofVkRenderer::setupPipelines(){
 	// but not their states
 	
 
+	// GraphicsPipelineState comes with sensible defaults
+	// and is able to produce pipelines based on its current state.
+	// the idea will be to a dynamic version of this object to
+	// keep track of current context state and create new pipelines
+	// on the fly if needed, or, alternatively, create all pipeline
+	// combinatinons upfront based on a .json file which lists each
+	// state combination for required pipelines.
 	of::vk::GraphicsPipelineState defaultPSO;
 
 	// TODO: let us choose which shader we want to use with our pipeline.
