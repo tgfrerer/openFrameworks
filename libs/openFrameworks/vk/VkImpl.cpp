@@ -248,8 +248,8 @@ void ofVkRenderer::preparePipelines(){
 	of::vk::Shader::Settings settings {
 		mDevice, 
 		{
-			{ VK_SHADER_STAGE_VERTEX_BIT  , "test.vert.spv" },
-			{ VK_SHADER_STAGE_FRAGMENT_BIT, "test.frag.spv" },
+			{ VK_SHADER_STAGE_VERTEX_BIT  , "triangle.vert.spv" },
+			{ VK_SHADER_STAGE_FRAGMENT_BIT, "triangle.frag.spv" },
 		}
 	};
 
@@ -280,10 +280,10 @@ void ofVkRenderer::preparePipelines(){
 
 	of::vk::GraphicsPipelineState defaultPSO;
 
-	defaultPSO.mLayout = mPipelineLayout;
-	defaultPSO.mStages = mShaders.back()->getShaderStageCreateInfo();
-	defaultPSO.mRenderPass = mRenderPass;
+	defaultPSO.mLayout           = mPipelineLayout;
+	defaultPSO.mStages           = mShaders.back()->getShaderStageCreateInfo();
 	defaultPSO.mVertexInputState = mShaders.back()->getVertexInputState();
+	defaultPSO.mRenderPass       = mRenderPass;
 
 	mPipelines.solid = defaultPSO.createPipeline( mDevice, mPipelineCache );
 }

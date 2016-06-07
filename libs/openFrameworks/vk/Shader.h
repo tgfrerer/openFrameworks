@@ -34,7 +34,10 @@ public:
 	} mVertexInfo;
 
 	// ----------------------------------------------------------------------
-	// derive bindings from shader reflection
+	// derive bindings from shader reflection using SPIR-V Cross
+	// we want to extract as much information out of the shader metadata as possible
+	// all this data helps us to create descriptors, and also to create layouts fit
+	// for our pipelines.
 	void reflectShaderResources(){
 
 		// go through all shader elements
@@ -42,8 +45,6 @@ public:
 
 			auto & compiler = *c.second;
 			auto & shaderStage = c.first;
-
-			compiler.compile();
 
 			auto shaderResources = compiler.get_shader_resources();
 
@@ -59,6 +60,7 @@ public:
 
 				// returns a bitmask 
 				uint64_t decorationMask = compiler.get_decoration_mask( ubo.id );
+				
 
 				if ( ( 1ull << spv::DecorationDescriptorSet ) & decorationMask ){
 					set = compiler.get_decoration( ubo.id, spv::DecorationDescriptorSet );
@@ -71,7 +73,18 @@ public:
 				}
 
 				ofLog() << "Uniform Block: '" << ubo.name << "'" << os.str();
-				
+
+				auto type = compiler.get_type( ubo.type_id );
+
+				// type for ubo descriptors is struct
+				// such structs will have member types, that is, they have elements within.
+				for ( size_t tI = 0; tI != type.member_types.size(); ++tI ){
+					auto mn = compiler.get_member_name(ubo.type_id, tI );
+					auto mt = compiler.get_type( type.member_types[tI] );
+					ofLog() << "Member Name: " << ubo.name << "[" << tI << "] : " << mn;
+				}
+
+
 				// TODO: check under which circumstances descriptorCount needs to be other
 				// than 1.
 
@@ -100,12 +113,13 @@ public:
 				for ( uint32_t i = 0; i != shaderResources.stage_inputs.size(); ++i ){
 					auto & input = shaderResources.stage_inputs[i];
 
-					uint64_t decorationMask = compiler.get_decoration_mask( input.id );
 					ofLog() << "Vertex Attribute: [" << i << "] : " << input.name;
+
+					auto type = compiler.get_type( input.type_id );
 
 					// binding description: how memory is mapped to the input assembly
 					mVertexInfo.binding[i].binding = i;
-					mVertexInfo.binding[i].stride = sizeof( ofVec3f ); // TODO: figure out how to calculate proper stride based on type
+					mVertexInfo.binding[i].stride = (type.width/8) * type.vecsize * type.columns;
 					mVertexInfo.binding[i].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
 					// attribute decription: how memory is read from the input assembly
