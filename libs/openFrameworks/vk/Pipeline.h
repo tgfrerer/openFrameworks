@@ -8,7 +8,7 @@
 
 /*
 
-A pipeline is a monolithic, compiled object that represents 
+A pipeline is a monolithic compiled object that represents 
 all the programmable, and non-dynamic state affecting a 
 draw call. 
 
