@@ -364,28 +364,15 @@ private:
 	// creates synchronisation primitives 
 	void createSemaphores();
 
-	void setupDescriptorSetLayout();
-	void preparePipelines();
+	// load and compile shaders, then
+	// derive descriptor set table from shaders
+	void setupShaders();
+	void setupDescriptorSets();
+	void setupPipelines();
 	void setupDescriptorPool();
-	void setupDescriptorSet();
-
 
 	void endDrawCommandBuffer();
 	void beginDrawCommandBuffer();
-
-	//struct		   // todo: change so that you have buf[] instead of vertexData[]
-	//{			   // this makes it easier to bind them.
-	//	std::vector<VkBuffer> buf;
-	//	std::vector<VkDeviceMemory> mem;
-	//} mVertexData;
-
-	// must match shader locations
-	enum class VertexAttribLocation : std::uint32_t
-	{
-		Position = 0,
-		Color    = 1,
-		TexCoord = 2,
-	};
 
 	struct
 	{
@@ -394,16 +381,8 @@ private:
 		VkPipelineVertexInputStateCreateInfo vi;
 	} mVertexInfo;
 
-
 	VkPipelineCache       mPipelineCache;
 
-	// contains bindings programmed from a flattened list of descriptorSetLayouts
-	// "represents a sequence of descriptor sets with each having a specific layout"
-	//
-	// The pipeline layout describes which descriptor sets you are using as well as push 
-	// constants. This serves as the "function prototype" for your shader.
-	// see: https://community.arm.com/groups/arm-mali-graphics/blog/2016/04/18/spirv-cross
-	VkPipelineLayout      mPipelineLayout;
 
 	// TODO: make this a dymanic sctucture.
 	// this is only there to store pipelines once they have been set up.
@@ -416,20 +395,29 @@ private:
 	
 	// the pool where all descriptors will be allocated from
 	VkDescriptorPool      mDescriptorPool;
-	// TODO: move mDescriptorSet to context
-	// since currently its only here to hold 
-	// the descriptors used for matrixstate
 
-	// descriptor set used for matrices
+	/*
+	
+	descriptor sets are owned by the renderer
+	as these are used with multiple pipelines
+	and bindings.
+
+	they are initially derived from iterating over
+	all shaders
+	
+	*/
+	
+
 	// a descriptor set is a sequence of descriptors,
 	// laid out in a way specified by its descriptorSetLayout
-	VkDescriptorSet       mDescriptorSet;
+	vector<VkDescriptorSet>  mDescriptorSets;
 
-	// a descriptorset layout 
 	// describes the layout for the descriptorset that owns it
 	// the layout also specifies the binding to buffers for the 
 	// descriptorset that owns it
-	VkDescriptorSetLayout mDescriptorSetLayout;
+	std::vector<std::shared_ptr<VkDescriptorSetLayout>> mDescriptorSetLayouts;
+
+	std::vector<std::shared_ptr<VkPipelineLayout>> mPipelineLayouts;
 
 	// our main (primary) gpu queue. all commandbuffers are submitted to this queue
 	// as are present commands.
@@ -438,7 +426,6 @@ private:
 	// the actual window drawing surface to actually really show something on screen.
 	// this is set externally using GLFW.
 	VkSurfaceKHR mWindowSurface = VK_NULL_HANDLE;	
-
 
 	VkSurfaceFormatKHR mWindowColorFormat = {};
 
@@ -455,7 +442,6 @@ private:
 		VkSemaphore presentComplete = VK_NULL_HANDLE;
 		VkSemaphore renderComplete  = VK_NULL_HANDLE;
 	} mSemaphores;
-
 
 	// our depth stencil: 
 	// we only need one since there is only ever one frame in flight.

@@ -12,11 +12,26 @@ namespace vk{
 
 class Shader
 {
-	std::map<VkShaderStageFlagBits, VkShaderModule>        mModules;
-	std::vector<VkPipelineShaderStageCreateInfo>	       mStages;
-	std::vector<VkDescriptorSetLayoutBinding>              mBindings;
+	std::map<VkShaderStageFlagBits, VkShaderModule>         mModules;
+	std::vector<VkPipelineShaderStageCreateInfo>	        mStages;
 
+	struct Binding
+	{	
+		std::string                   blockName;
+		VkDescriptorSetLayoutBinding  layout;
+	};
+
+	std::vector<Binding> mBindings;
 	std::map<VkShaderStageFlagBits, std::shared_ptr<spirv_cross::Compiler>> mCompilers;
+
+	// contains bindings programmed from a flattened list of descriptorSetLayouts
+	// "represents a sequence of descriptor sets with each having a specific layout"
+	//
+	// The pipeline layout describes which descriptor sets you are using as well as push 
+	// constants. This serves as the "function prototype" for your shader.
+	// see: https://community.arm.com/groups/arm-mali-graphics/blog/2016/04/18/spirv-cross
+	//std::shared_ptr<VkPipelineLayout> mPipelineLayout;
+	
 
 public:
 
@@ -51,6 +66,7 @@ public:
 			shaderResources.uniform_buffers.size();
 
 			// --- uniform buffers ---
+			// DESCRIPTORS
 
 			for ( auto & ubo : shaderResources.uniform_buffers ){
 				ostringstream os;
@@ -78,7 +94,7 @@ public:
 
 				// type for ubo descriptors is struct
 				// such structs will have member types, that is, they have elements within.
-				for ( size_t tI = 0; tI != type.member_types.size(); ++tI ){
+				for ( uint32_t tI = 0; tI != type.member_types.size(); ++tI ){
 					auto mn = compiler.get_member_name(ubo.type_id, tI );
 					auto mt = compiler.get_type( type.member_types[tI] );
 					ofLog() << "Member Name: " << ubo.name << "[" << tI << "] : " << mn;
@@ -87,19 +103,27 @@ public:
 
 				// TODO: check under which circumstances descriptorCount needs to be other
 				// than 1.
+				
+				// shaderStage defines from which shader stages this layout is acce
+				VkShaderStageFlags layoutAccessibleFromStages = shaderStage;
 
 				VkDescriptorSetLayoutBinding  layoutBinding{
 					binding,                                              // uint32_t              binding;
 					VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,            // VkDescriptorType      descriptorType;
 					1,                                                    // uint32_t              descriptorCount;
-					shaderStage,                                          // VkShaderStageFlags    stageFlags;
+					layoutAccessibleFromStages,                           // VkShaderStageFlags    stageFlags;
 					nullptr,                                              // const VkSampler*      pImmutableSamplers;
 				};
 
-				mBindings.emplace_back( std::move( layoutBinding ) );
+				if ( ubo.name != "" ){
+					Binding tmpBinding{ ubo.name, layoutBinding };
+					mBindings.emplace_back( std::move(tmpBinding));
+				}
+				
 			} // end for : shaderResources.uniform_buffers
 
 			// --- vertex inputs ---
+			// VERTEX ATTRIBUTES
 			
 			if ( shaderStage & VK_SHADER_STAGE_VERTEX_BIT ){
 				// this populate vertex info 
@@ -211,6 +235,7 @@ public:
 			}
 		}  // for : mSettings.sources
 		reflectShaderResources();
+		//mPipelineLayout = createPipelineLayout();
 	};
 
 	// ----------------------------------------------------------------------
@@ -249,31 +274,60 @@ public:
 	// descriptor sets describe the interface for uniforms within the render pipeline
 	// note: returns an auto-deleted shared pointer.
 	std::shared_ptr<VkDescriptorSetLayout> createDescriptorSetLayout(){
+		
 		auto dsl = std::shared_ptr<VkDescriptorSetLayout>( new VkDescriptorSetLayout,
-			[&device = mSettings.device]( VkDescriptorSetLayout * dsl ){
+			[&device = mSettings.device]( VkDescriptorSetLayout * dsl )
+		{
 			vkDestroyDescriptorSetLayout( device, *dsl, nullptr );
 			delete dsl;
 		} );
+
+		vector<VkDescriptorSetLayoutBinding> tmpFlattenedBindings( mBindings.size() );
+		for ( size_t i = 0; i != mBindings.size(); ++i ){
+			tmpFlattenedBindings[i] = mBindings[i].layout;
+		}
 
 		VkDescriptorSetLayoutCreateInfo ci{
 			VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO, // VkStructureType                        sType;
 			nullptr,                                             // const void*                            pNext;
 			0,                                                   // VkDescriptorSetLayoutCreateFlags       flags;
-			mBindings.size(),                                    // uint32_t                               bindingCount;
-			mBindings.data()                                     // const VkDescriptorSetLayoutBinding*    pBindings;
+			tmpFlattenedBindings.size(),                         // uint32_t                               bindingCount;
+			tmpFlattenedBindings.data()                          // const VkDescriptorSetLayoutBinding*    pBindings;
 		};
+
 		vkCreateDescriptorSetLayout( mSettings.device, &ci, nullptr, dsl.get());
 
 		return ( dsl );
 	}
 
-	// return a layout create info derived from shader reflection
-	VkPipelineLayoutCreateInfo getLayoutCreateInfo(){
-		VkPipelineLayoutCreateInfo res;
-		return res;
-	}
-
 	// ----------------------------------------------------------------------
+
+	// return a layout create info derived from shader reflection
+	std::shared_ptr<VkPipelineLayout> createPipelineLayout( VkDescriptorSetLayout* dsl_ ){
+		
+		auto pipelineLayout = shared_ptr<VkPipelineLayout>(
+			new VkPipelineLayout,
+			[&device = mSettings.device]( VkPipelineLayout * pl )
+		{
+			vkDestroyPipelineLayout( device, *pl, nullptr );
+			delete pl;
+		} );
+
+		VkPipelineLayoutCreateInfo pPipelineLayoutCreateInfo{};
+		pPipelineLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+		pPipelineLayoutCreateInfo.pNext = NULL;
+		pPipelineLayoutCreateInfo.setLayoutCount = 1;
+		// note that the pipeline is not created from the descriptorSet, 
+		// but from the *layout* of the descriptorSet - really, 
+		// we should use above reflection to do this, to generate the descriptorSetLayout
+		pPipelineLayoutCreateInfo.pSetLayouts = dsl_;
+		pPipelineLayoutCreateInfo.pushConstantRangeCount = 0;
+		pPipelineLayoutCreateInfo.pPushConstantRanges = VK_NULL_HANDLE;
+
+		vkCreatePipelineLayout( mSettings.device, &pPipelineLayoutCreateInfo, nullptr, pipelineLayout.get() );
+
+		return pipelineLayout;
+	}
 
 };
 

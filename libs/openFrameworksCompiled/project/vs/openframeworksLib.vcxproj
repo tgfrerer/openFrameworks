@@ -289,6 +289,7 @@
     <ClCompile Include="..\..\..\openFrameworks\vk\Context.cpp" />
     <ClCompile Include="..\..\..\openFrameworks\vk\Device.cpp" />
     <ClCompile Include="..\..\..\openFrameworks\vk\ofVkRenderer.cpp" />
+    <ClCompile Include="..\..\..\openFrameworks\vk\Pipeline.cpp" />
     <ClCompile Include="..\..\..\openFrameworks\vk\Swapchain.cpp" />
     <ClCompile Include="..\..\..\openFrameworks\vk\vkBufferObject.cpp" />
     <ClCompile Include="..\..\..\openFrameworks\vk\VkImpl.cpp" />

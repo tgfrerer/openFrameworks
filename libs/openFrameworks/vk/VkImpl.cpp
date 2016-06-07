@@ -33,20 +33,22 @@ void ofVkRenderer::setup(){
 	flushSetupCommandBuffer();
 	
 	createSemaphores();
-	
 
-	mContext = make_shared < of::vk::Context >();
+	mContext = make_shared<of::vk::Context>();
 
 	mContext->mRenderer = this;
 
 	mContext->setup();
 
-	// Setup layout of descriptors used in this example
-	// Basically connects the different shader stages to descriptors
-	// for binding uniform buffers, image samplers, etc.
-	// So every shader binding should map to one descriptor set layout
-	// binding
-	setupDescriptorSetLayout();
+	// create a descriptor pool from which descriptor sets can be allocated
+	setupDescriptorPool();
+
+	// shaders will let us know about descriptorset layouts.
+	setupShaders();
+
+	// once shaders are known, we can derive what descriptorsetlayouts
+	// will be needed.
+	setupDescriptorSets();
 
 	// Create our rendering pipeline used in this example
 	// Vulkan uses the concept of rendering pipelines to encapsulate
@@ -61,100 +63,36 @@ void ofVkRenderer::setup(){
 	// the pipeline. These are called dynamic states and the 
 	// pipeline only stores that they are used with this pipeline,
 	// but not their states
-	preparePipelines();
-
-	// create a descriptor pool from which descriptor sets can be allocated
-	setupDescriptorPool();
-
-	// Update descriptor sets determining the shader binding points
-	// For every binding point used in a shader there needs to be one
-	// descriptor set matching that binding point
-	setupDescriptorSet();
-
+	setupPipelines();
+	
 }
 
 // ----------------------------------------------------------------------
 
-void ofVkRenderer::endDrawCommandBuffer(){
-	vkCmdEndRenderPass( *mDrawCmdBuffer );
-	vkEndCommandBuffer( *mDrawCmdBuffer );
-}
-// ----------------------------------------------------------------------
-
-void ofVkRenderer::beginDrawCommandBuffer(){
-	VkCommandBufferBeginInfo cmdBufInfo = {};
-	cmdBufInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-	cmdBufInfo.pNext = NULL;
-
-	VkClearValue clearValues[2];
-	clearValues[0].color = mDefaultClearColor;
-	clearValues[1].depthStencil = { 1.0f, 0 };
-
-	VkRenderPassBeginInfo renderPassBeginInfo = {};
-	renderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-	renderPassBeginInfo.pNext = NULL;
-	renderPassBeginInfo.renderPass = mRenderPass;
-	renderPassBeginInfo.renderArea.offset.x = 0;
-	renderPassBeginInfo.renderArea.offset.y = 0;
-	renderPassBeginInfo.renderArea.extent.width = mWindowWidth;
-	renderPassBeginInfo.renderArea.extent.height = mWindowHeight;
-	renderPassBeginInfo.clearValueCount = 2;
-	renderPassBeginInfo.pClearValues = clearValues;
-
-
-	// we have two command buffers because each command buffer 
-	// uses a different framebuffer for a target.
-
-	auto currentFrameBufferId = mSwapchain.getCurrentBuffer();
-
-	// Set target frame buffer
-	renderPassBeginInfo.framebuffer = mFrameBuffers[currentFrameBufferId];
-
-	vkBeginCommandBuffer( *mDrawCmdBuffer, &cmdBufInfo );
-
-
-	// VK_SUBPASS_CONTENTS_INLINE means we're putting all our render commands into
-	// the primary command buffer - otherwise we would have to call execute on secondary
-	// command buffers to draw.
-	vkCmdBeginRenderPass( *mDrawCmdBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE );
-
-	// Update dynamic viewport state
-	VkViewport viewport = {};
-	viewport.width = (float)mViewport.width;
-	viewport.height = (float)mViewport.height;
-	viewport.minDepth = ( float ) 0.0f;		   // this is the min depth value for the depth buffer
-	viewport.maxDepth = ( float ) 1.0f;		   // this is the dax depth value for the depth buffer  
-	vkCmdSetViewport( *mDrawCmdBuffer, 0, 1, &viewport );
-
-	// Update dynamic scissor state
-	VkRect2D scissor = {};
-	scissor.extent.width = mWindowWidth;
-	scissor.extent.height = mWindowHeight;
-	scissor.offset.x = 0;
-	scissor.offset.y = 0;
-	vkCmdSetScissor( *mDrawCmdBuffer, 0, 1, &scissor );
-
-}
-
-// ----------------------------------------------------------------------
-
-void ofVkRenderer::setupDescriptorSet(){
+void ofVkRenderer::setupDescriptorSets(){
 	// descriptor set is allocated from pool mDescriptorPool
 	// with bindings described using a descriptorSetLayout defined in mDescriptorSetLayout
 	// 
 	// a descriptor set has a layout, the layout tells us the number and ordering of descriptors
+	
+	std::vector<VkDescriptorSetLayout> dsl( mDescriptorSetLayouts.size() );
+	for ( size_t i = 0; i != dsl.size(); ++i ){
+		dsl[i] = *mDescriptorSetLayouts[i];
+	}
+	
 	VkDescriptorSetAllocateInfo allocInfo = {};
 	allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-	allocInfo.descriptorPool = mDescriptorPool;		// pool  : tells us where to allocate from
-	allocInfo.descriptorSetCount = 1;				// count : tells us how many descriptor set layouts 
-	allocInfo.pSetLayouts = &mDescriptorSetLayout;	// layout: tells us how many descriptors, and how these are laid out 
+	allocInfo.descriptorPool = mDescriptorPool;		              // pool  : tells us where to allocate from
+	allocInfo.descriptorSetCount = dsl.size();  // count : tells us how many descriptor set layouts 
+	allocInfo.pSetLayouts = dsl.data();         // layout: tells us how many descriptors, and how these are laid out 
 	allocInfo.pNext = VK_NULL_HANDLE;
 
-	vkAllocateDescriptorSets( mDevice, &allocInfo, &mDescriptorSet );	// allocates mDescriptorSet
+	mDescriptorSets.resize( mDescriptorSetLayouts.size() );
+	vkAllocateDescriptorSets( mDevice, &allocInfo, mDescriptorSets.data() );	// allocates mDescriptorSet
 
 	// at this point the descriptor set is untyped 
 	// so we have to write type information into it, as well as binding information
-
+															  
 	// Update descriptor sets determining the shader binding points
 	// For every binding point used in a shader there needs to be one
 	// descriptor set matching that binding point
@@ -163,40 +101,15 @@ void ofVkRenderer::setupDescriptorSet(){
 	// Binding 0 : Uniform buffer
 	// we make it dynamic so that multiple matrix structs can be stored into this 
 	// uniform buffer.
+	writeDescriptorSet.dstBinding = 0;
 	writeDescriptorSet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-	writeDescriptorSet.dstSet = mDescriptorSet;		// dstSet: where to write this information into 
+	writeDescriptorSet.dstSet = mDescriptorSets[0];		// dstSet: where to write this information into 
 	writeDescriptorSet.descriptorCount = 1;
 	writeDescriptorSet.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
 	writeDescriptorSet.pBufferInfo = &mContext->getDescriptorBufferInfo();
 	// Binds this uniform buffer to binding point 0	within the uniform buffer namespace
-	writeDescriptorSet.dstBinding = 0;
+	
 	vkUpdateDescriptorSets( mDevice, 1, &writeDescriptorSet, 0, NULL );	 // updates mDescriptorSet by most importantly filling in the buffer info
-}
-
-// ----------------------------------------------------------------------
-
-void ofVkRenderer::setupDescriptorSetLayout(){
-	// Setup layout of descriptors used in this example
-	// Basically connects the different shader stages to descriptors
-	// for binding uniform buffers, image samplers, etc.
-	// So every shader binding should map to one descriptor set layout
-	// binding
-
-	// Binding 0 : Uniform buffer (Vertex shader)
-	VkDescriptorSetLayoutBinding layoutBinding = {};
-	layoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
-	layoutBinding.descriptorCount = 1;
-	layoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-	layoutBinding.pImmutableSamplers = NULL;
-
-	VkDescriptorSetLayoutCreateInfo descriptorSetLayoutInfo = {};
-	descriptorSetLayoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-	descriptorSetLayoutInfo.pNext = NULL;
-	descriptorSetLayoutInfo.bindingCount = 1;
-	descriptorSetLayoutInfo.pBindings = &layoutBinding;
-
-	VkResult err = vkCreateDescriptorSetLayout( mDevice, &descriptorSetLayoutInfo, NULL, &mDescriptorSetLayout );
-	assert( !err );
 }
 
 // ----------------------------------------------------------------------
@@ -228,7 +141,29 @@ void ofVkRenderer::setupDescriptorPool(){
 
 // ----------------------------------------------------------------------
 
-void ofVkRenderer::preparePipelines(){
+void ofVkRenderer::setupShaders(){
+	// -- load shaders
+
+	of::vk::Shader::Settings settings{
+		mDevice,
+		{
+			{ VK_SHADER_STAGE_VERTEX_BIT  , "triangle.vert.spv" },
+			{ VK_SHADER_STAGE_FRAGMENT_BIT, "triangle.frag.spv" },
+		}
+	};
+
+	auto shader = std::make_shared<of::vk::Shader>( settings );
+	mShaders.emplace_back( shader );
+	auto descriptorSetLayout = shader->createDescriptorSetLayout();
+	mDescriptorSetLayouts.emplace_back( descriptorSetLayout );
+	auto pl = shader->createPipelineLayout( descriptorSetLayout.get() );
+	mPipelineLayouts.emplace_back( pl );
+
+}
+
+// ----------------------------------------------------------------------
+
+void ofVkRenderer::setupPipelines(){
 	// Create our rendering pipeline used in this example
 	// Vulkan uses the concept of rendering pipelines to encapsulate
 	// fixed states
@@ -243,49 +178,16 @@ void ofVkRenderer::preparePipelines(){
 	// pipeline only stores that they are used with this pipeline,
 	// but not their states
 	
-	// -- load shaders
-
-	of::vk::Shader::Settings settings {
-		mDevice, 
-		{
-			{ VK_SHADER_STAGE_VERTEX_BIT  , "triangle.vert.spv" },
-			{ VK_SHADER_STAGE_FRAGMENT_BIT, "triangle.frag.spv" },
-		}
-	};
-
-	mShaders.emplace_back( std::make_shared<of::vk::Shader>( settings ) );
-
-   	{
-		// TODO: 
-		// build a pipeline layout based on the reflected shader stage information
-
-		// Create the pipeline layout that is used to generate the rendering pipelines that
-		// are based on the descriptor set layout
-		//
-		// In a more complex scenario you would have different pipeline layouts for different
-		// descriptor set layouts that could be reused
-		VkPipelineLayoutCreateInfo pPipelineLayoutCreateInfo {};
-		pPipelineLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-		pPipelineLayoutCreateInfo.pNext = NULL;
-		pPipelineLayoutCreateInfo.setLayoutCount = 1;
-		// note that the pipeline is not created from the descriptorSet, 
-		// but from the *layout* of the descriptorSet - really, 
-		// we should use above reflection to do this, to generate the descriptorSetLayout
-		pPipelineLayoutCreateInfo.pSetLayouts = &mDescriptorSetLayout;
-		pPipelineLayoutCreateInfo.pushConstantRangeCount = 0;
-		pPipelineLayoutCreateInfo.pPushConstantRanges = VK_NULL_HANDLE;
-
-		vkCreatePipelineLayout( mDevice, &pPipelineLayoutCreateInfo, nullptr, &mPipelineLayout );
-	}
 
 	of::vk::GraphicsPipelineState defaultPSO;
 
-	defaultPSO.mLayout           = mPipelineLayout;
-	defaultPSO.mStages           = mShaders.back()->getShaderStageCreateInfo();
-	defaultPSO.mVertexInputState = mShaders.back()->getVertexInputState();
+	// TODO: let us choose which shader we want to use with our pipeline.
+	defaultPSO.mShader           = mShaders[0];
 	defaultPSO.mRenderPass       = mRenderPass;
-
+	defaultPSO.mLayout           = mPipelineLayouts[0];
+	
 	mPipelines.solid = defaultPSO.createPipeline( mDevice, mPipelineCache );
+	
 }
  
 // ----------------------------------------------------------------------
@@ -463,8 +365,6 @@ void ofVkRenderer::setupDepthStencil(){
 	image.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
 	image.flags = 0;
 
-
-
 	VkImageViewCreateInfo depthStencilView = {};
 	depthStencilView.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
 	depthStencilView.pNext = NULL;
@@ -627,6 +527,70 @@ void ofVkRenderer::flushSetupCommandBuffer(){
 	vkFreeCommandBuffers( mDevice, mCommandPool, 1, &mSetupCommandBuffer );
 	mSetupCommandBuffer = VK_NULL_HANDLE; // todo : check if still necessary
 };
+
+// ----------------------------------------------------------------------
+
+void ofVkRenderer::beginDrawCommandBuffer(){
+	VkCommandBufferBeginInfo cmdBufInfo = {};
+	cmdBufInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+	cmdBufInfo.pNext = NULL;
+
+	VkClearValue clearValues[2];
+	clearValues[0].color = mDefaultClearColor;
+	clearValues[1].depthStencil = { 1.0f, 0 };
+
+	VkRenderPassBeginInfo renderPassBeginInfo = {};
+	renderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+	renderPassBeginInfo.pNext = NULL;
+	renderPassBeginInfo.renderPass = mRenderPass;
+	renderPassBeginInfo.renderArea.offset.x = 0;
+	renderPassBeginInfo.renderArea.offset.y = 0;
+	renderPassBeginInfo.renderArea.extent.width = mWindowWidth;
+	renderPassBeginInfo.renderArea.extent.height = mWindowHeight;
+	renderPassBeginInfo.clearValueCount = 2;
+	renderPassBeginInfo.pClearValues = clearValues;
+
+
+	// we have two command buffers because each command buffer 
+	// uses a different framebuffer for a target.
+
+	auto currentFrameBufferId = mSwapchain.getCurrentBuffer();
+
+	// Set target frame buffer
+	renderPassBeginInfo.framebuffer = mFrameBuffers[currentFrameBufferId];
+
+	vkBeginCommandBuffer( *mDrawCmdBuffer, &cmdBufInfo );
+
+
+	// VK_SUBPASS_CONTENTS_INLINE means we're putting all our render commands into
+	// the primary command buffer - otherwise we would have to call execute on secondary
+	// command buffers to draw.
+	vkCmdBeginRenderPass( *mDrawCmdBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE );
+
+	// Update dynamic viewport state
+	VkViewport viewport = {};
+	viewport.width = (float)mViewport.width;
+	viewport.height = (float)mViewport.height;
+	viewport.minDepth = ( float ) 0.0f;		   // this is the min depth value for the depth buffer
+	viewport.maxDepth = ( float ) 1.0f;		   // this is the dax depth value for the depth buffer  
+	vkCmdSetViewport( *mDrawCmdBuffer, 0, 1, &viewport );
+
+	// Update dynamic scissor state
+	VkRect2D scissor = {};
+	scissor.extent.width = mWindowWidth;
+	scissor.extent.height = mWindowHeight;
+	scissor.offset.x = 0;
+	scissor.offset.y = 0;
+	vkCmdSetScissor( *mDrawCmdBuffer, 0, 1, &scissor );
+
+}
+
+// ----------------------------------------------------------------------
+
+void ofVkRenderer::endDrawCommandBuffer(){
+	vkCmdEndRenderPass( *mDrawCmdBuffer );
+	vkEndCommandBuffer( *mDrawCmdBuffer );
+}
 
 // ----------------------------------------------------------------------
 
@@ -797,18 +761,24 @@ void ofVkRenderer::draw( const ofMesh & vertexData, ofPolyRenderMode renderType,
 	uint32_t dynamicOffsets[1] = { 0 };
 	dynamicOffsets[0] = mContext->getCurrentMatrixStateOffset();
 
+	auto & currentShader = mShaders[0];
+
+	vector<VkDescriptorSet>  currentlyBoundDescriptorsets = {
+		mDescriptorSets[0],						 // default matrix uniforms
+		                                         // if there were any other uniforms bound
+	};
+
 	// Bind uniforms (the first set contains the matrices)
 	vkCmdBindDescriptorSets(
 		*mDrawCmdBuffer,
-		VK_PIPELINE_BIND_POINT_GRAPHICS, // use graphics, not compute pipeline
-		mPipelineLayout, 		// which pipeline layout (contains the bindings programmed from an sequence of descriptor sets )
-		0, 						// firstset: first set index (of the above) to bind to - mDescriptorSet[0] will be bound to pipeline layout [firstset]
-		1, 						// setCount: how many sets to bind
-		&mDescriptorSet, 		// the descriptor sets to match up with our mPipelineLayout (need to be compatible)
-		1, 						// dynamic offsets count how many dynamic offsets
-		dynamicOffsets 			// dynamic offsets for each 
+		VK_PIPELINE_BIND_POINT_GRAPHICS,     // use graphics, not compute pipeline
+		*mPipelineLayouts[0],  // which pipeline layout (contains the bindings programmed from an sequence of descriptor sets )
+		0, 						             // firstset: first set index (of the above) to bind to - mDescriptorSet[0] will be bound to pipeline layout [firstset]
+		currentlyBoundDescriptorsets.size(), // setCount: how many sets to bind
+		currentlyBoundDescriptorsets.data(), // the descriptor sets to match up with our mPipelineLayout (need to be compatible)
+		1, 						             // dynamic offsets count how many dynamic offsets
+		dynamicOffsets 			             // dynamic offsets for each 
 	);
-
 
 	// Bind the rendering pipeline (including the shaders)
 	vkCmdBindPipeline( *mDrawCmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mPipelines.solid );
@@ -821,11 +791,11 @@ void ofVkRenderer::draw( const ofMesh & vertexData, ofPolyRenderMode renderType,
 	auto tempPositions = TransientVertexBuffer::create( const_cast<ofVkRenderer*>( this ), vertexData.getVertices() );
 	auto tempColors    = TransientVertexBuffer::create( const_cast<ofVkRenderer*>( this ), vertexData.getNormals() );
 
-	VkBuffer vertexBuffers[2] = {
+	std::array<VkBuffer, 2> vertexBuffers = {
 	  tempPositions->buf,
 	  tempColors->buf,
 	};
-	vkCmdBindVertexBuffers( *mDrawCmdBuffer, static_cast<uint32_t>( VertexAttribLocation::Position ), 2, vertexBuffers, offsets );
+	vkCmdBindVertexBuffers( *mDrawCmdBuffer, 0, vertexBuffers.size(), vertexBuffers.data(), offsets );
 
 	// This transient buffer will: 
 	// + upload the vector to GPU memory.

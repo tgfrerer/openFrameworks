@@ -115,9 +115,11 @@ ofVkRenderer::~ofVkRenderer()
 	}
 	mFrameBuffers.clear();
 
-	mShaders.clear();
+	mDescriptorSetLayouts.clear();
+	mPipelineLayouts.clear();
 
-	vkDestroyPipelineLayout( mDevice, mPipelineLayout, nullptr );
+	mShaders.clear();
+	
 	vkDestroyPipelineCache( mDevice, mPipelineCache, nullptr );
 	vkDestroyPipeline( mDevice, mPipelines.solid, nullptr );
 
@@ -125,7 +127,7 @@ ofVkRenderer::~ofVkRenderer()
 	vkDestroyImage( mDevice, mDepthStencil.image, nullptr );
 	vkFreeMemory( mDevice, mDepthStencil.mem, nullptr );
 	
-	vkDestroyDescriptorSetLayout( mDevice, mDescriptorSetLayout, nullptr ); 
+
 	vkDestroyDescriptorPool( mDevice, mDescriptorPool, nullptr );
 
 	vkDestroyCommandPool( mDevice, mCommandPool, VK_NULL_HANDLE );
