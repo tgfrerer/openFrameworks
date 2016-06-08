@@ -1,5 +1,5 @@
 #include "ofApp.h"
-#include "ofVkRenderer.h"
+#include "vk/ofVkRenderer.h"
 
 //--------------------------------------------------------------
 void ofApp::setup(){

@@ -1,8 +1,9 @@
-#include "ofVkRenderer.h"
-#include "Pipeline.h"
-#include "spirv_cross.hpp"
+#include "vk/ofVkRenderer.h"
+#include "vk/Pipeline.h"
 #include "vk/Shader.h"
 #include "vk/vkUtils.h"
+
+#include "spirv_cross.hpp"
 
 // ----------------------------------------------------------------------
 

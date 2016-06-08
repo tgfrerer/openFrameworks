@@ -1,8 +1,9 @@
-#include "Swapchain.h"
+#include "vk/Swapchain.h"
+#include <vector>
 #include "ofLog.h"
 #include "GLFW\glfw3.h"
-#include <vector>
 #include "vk/vkUtils.h"
+
 
 void Swapchain::setup(
 	const VkInstance & instance_,
