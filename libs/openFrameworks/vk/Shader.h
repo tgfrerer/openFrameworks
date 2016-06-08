@@ -17,13 +17,12 @@ class Shader
 
 	struct Binding
 	{	
-		std::string                   blockName;
 		uint32_t                      set;
 		VkDescriptorSetLayoutBinding  layout;
 		//VkDescriptorBufferInfo        buffer; // we may need to store the buffer with the bindings so that we can use this to fill in the writeDescriptorSet.
 	};
 
-	std::vector<Binding> mBindings;
+	std::map<std::string, Binding> mBindings; // map from block name to binding
 	std::map<VkShaderStageFlagBits, std::shared_ptr<spirv_cross::Compiler>> mCompilers;
 
 	// contains bindings programmed from a flattened list of descriptorSetLayouts
@@ -73,16 +72,16 @@ public:
 			for ( auto & ubo : shaderResources.uniform_buffers ){
 				ostringstream os;
 				
-				uint32_t set     = 0;
-				uint32_t binding = 0;
+				uint32_t descriptor_set     = 0;
+				uint32_t binding            = 0;
 
 				// returns a bitmask 
 				uint64_t decorationMask = compiler.get_decoration_mask( ubo.id );
 				
 
 				if ( ( 1ull << spv::DecorationDescriptorSet ) & decorationMask ){
-					set = compiler.get_decoration( ubo.id, spv::DecorationDescriptorSet );
-					os << ", set = " << set;
+					descriptor_set = compiler.get_decoration( ubo.id, spv::DecorationDescriptorSet );
+					os << ", set = " << descriptor_set;
 				}
 
 				if ( ( 1ull << spv::DecorationBinding ) & decorationMask ){
@@ -102,25 +101,45 @@ public:
 					ofLog() << "Member Name: " << ubo.name << "[" << tI << "] : " << mn;
 				}
 
+				{
+					// let's look up if the current block name already exists in the 
+					// table of bindings for this shader, and if necessary update
+					// the shader stage flags to permit access to all stages that need it:
 
+					// shaderStage defines from which shader stages this layout is accessible
+					VkShaderStageFlags layoutAccessibleFromStages = shaderStage;
+
+					VkDescriptorSetLayoutBinding  layoutBinding{
+						binding,                                              // uint32_t              binding;
+						VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,            // VkDescriptorType      descriptorType;
+						1,                  // <- check:array?                // uint32_t              descriptorCount;
+						layoutAccessibleFromStages,                           // VkShaderStageFlags    stageFlags;
+						nullptr,                                              // const VkSampler*      pImmutableSamplers;
+					};
+
+					if ( mBindings.find( ubo.name ) != mBindings.end() ){
+						// we have found a binding with the same name in another shader stage.
+						// therefore we: 
+						// 1.) need to update the binding accessiblity flag
+						// 2.) do some error checking to make sure the binding is the same.
+
+						auto& existingBinding = mBindings[ubo.name];
+						if ( existingBinding.set != descriptor_set
+							|| existingBinding.layout.binding != binding ){
+							ofLogError() << "Incompatible bindings between shader stages: " << ubo.name;
+						}
+						else{
+							// all good, make sure the binding is also accessible in the 
+							// current stage.
+							layoutBinding.stageFlags |= existingBinding.layout.stageFlags;
+						}
+					}
+
+					mBindings[ubo.name] = { descriptor_set, layoutBinding };
+				}
 				// TODO: check under which circumstances descriptorCount needs to be other
 				// than 1.
 				
-				// shaderStage defines from which shader stages this layout is acce
-				VkShaderStageFlags layoutAccessibleFromStages = shaderStage;
-
-				VkDescriptorSetLayoutBinding  layoutBinding{
-					binding,                                              // uint32_t              binding;
-					VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,            // VkDescriptorType      descriptorType;
-					1,                                                    // uint32_t              descriptorCount;
-					layoutAccessibleFromStages,                           // VkShaderStageFlags    stageFlags;
-					nullptr,                                              // const VkSampler*      pImmutableSamplers;
-				};
-
-				if ( ubo.name != "" ){
-					Binding tmpBinding{ ubo.name, set, layoutBinding };
-					mBindings.emplace_back( std::move(tmpBinding));
-				}
 				
 			} // end for : shaderResources.uniform_buffers
 
@@ -258,7 +277,7 @@ public:
 
 	// ----------------------------------------------------------------------
 
-	const std::vector<Binding>& getBindings() const {
+	const std::map < std::string , Binding > & getBindings() const{
 		return mBindings;
 	}
 
@@ -291,8 +310,8 @@ public:
 		} );
 
 		vector<VkDescriptorSetLayoutBinding> tmpFlattenedBindings( mBindings.size() );
-		for ( size_t i = 0; i != mBindings.size(); ++i ){
-			tmpFlattenedBindings[i] = mBindings[i].layout;
+		for ( auto b:mBindings ){
+			tmpFlattenedBindings[b.second.set] = b.second.layout;
 		}
 
 		VkDescriptorSetLayoutCreateInfo ci{

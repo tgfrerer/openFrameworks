@@ -121,10 +121,10 @@ void ofVkRenderer::setupDescriptorSets(){
 				VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,                    // VkStructureType                  sType;
 				nullptr,                                                   // const void*                      pNext;
 				mDescriptorSets[0],                       //<-- check      // VkDescriptorSet                  dstSet;
-				b.layout.binding,                         //<-- check      // uint32_t                         dstBinding;
+				b.second.layout.binding,                  //<-- check      // uint32_t                         dstBinding;
 				0,                                                         // uint32_t                         dstArrayElement;
 				1,                                                         // uint32_t                         descriptorCount;
-				b.layout.descriptorType,                  //<-- check      // VkDescriptorType                 descriptorType;
+				b.second.layout.descriptorType,           //<-- check      // VkDescriptorType                 descriptorType;
 				nullptr,                                                   // const VkDescriptorImageInfo*     pImageInfo;
 				&mContext->getDescriptorBufferInfo(),                      // const VkDescriptorBufferInfo*    pBufferInfo;
 				nullptr,                                                   // const VkBufferView*              pTexelBufferView;
@@ -176,12 +176,12 @@ void ofVkRenderer::setupDescriptorPool(){
 		
 		for ( const auto & s : mShaders ){
 			for ( const auto & b : s->getBindings() ){
-				if ( descriptorTypes.find( b.layout.descriptorType ) == descriptorTypes.end() ){
+				if ( descriptorTypes.find( b.second.layout.descriptorType ) == descriptorTypes.end() ){
 					// first of this kind
-					descriptorTypes[b.layout.descriptorType] = 1;
+					descriptorTypes[b.second.layout.descriptorType] = 1;
 				}
 				else{
-					++descriptorTypes[b.layout.descriptorType];
+					++descriptorTypes[b.second.layout.descriptorType];
 				}
 			}
 		}
@@ -218,8 +218,8 @@ void ofVkRenderer::setupShaders(){
 	of::vk::Shader::Settings settings{
 		mDevice,
 		{
-			{ VK_SHADER_STAGE_VERTEX_BIT  , "triangle.vert.spv" },
-			{ VK_SHADER_STAGE_FRAGMENT_BIT, "triangle.frag.spv" },
+			{ VK_SHADER_STAGE_VERTEX_BIT  , "vert.spv" },
+			{ VK_SHADER_STAGE_FRAGMENT_BIT, "frag.spv" },
 		}
 	};
 
