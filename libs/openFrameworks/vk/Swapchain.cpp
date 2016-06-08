@@ -2,8 +2,7 @@
 #include "ofLog.h"
 #include "GLFW\glfw3.h"
 #include <vector>
-#include "vulkantools.h"
-
+#include "vk/vkUtils.h"
 
 void Swapchain::setup(
 	const VkInstance & instance_,
@@ -135,13 +134,20 @@ void Swapchain::setup(
 
 		buffers[i].imageRef = swapchainImages[i];
 
-		// Transform images from initial (undefined) to present layout
-		vkTools::setImageLayout(
-			cmdBuffer,
-			buffers[i].imageRef,
+		auto transferBarrier = of::vk::createImageBarrier( buffers[i].imageRef,
 			VK_IMAGE_ASPECT_COLOR_BIT,
 			VK_IMAGE_LAYOUT_UNDEFINED,
 			VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL );
+
+		// Append pipeline barrier to commandBuffer
+		vkCmdPipelineBarrier(
+			cmdBuffer,
+			VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+			VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+			0,
+			0, nullptr,
+			0, nullptr,
+			1, &transferBarrier );
 
 		colorAttachmentView.image = buffers[i].imageRef;
 

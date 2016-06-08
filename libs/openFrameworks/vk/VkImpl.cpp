@@ -1,8 +1,8 @@
 #include "ofVkRenderer.h"
 #include "Pipeline.h"
-#include "vulkantools.h"
 #include "spirv_cross.hpp"
 #include "vk/Shader.h"
+#include "vk/vkUtils.h"
 
 // ----------------------------------------------------------------------
 
@@ -471,14 +471,38 @@ void ofVkRenderer::setupDepthStencil(){
 
 	err = vkBindImageMemory( mDevice, mDepthStencil.image, mDepthStencil.mem, 0 );
 	assert( !err );
-	vkTools::setImageLayout(
-		mSetupCommandBuffer,
+
+	auto transferBarrier = of::vk::createImageBarrier(
 		mDepthStencil.image,
 		VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT,
 		VK_IMAGE_LAYOUT_UNDEFINED,
-		VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL );
+		VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL 
+	);
+
+	// Append pipeline barrier to current setup commandBuffer
+	vkCmdPipelineBarrier(
+		mSetupCommandBuffer,
+		VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+		VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+		0,
+		0, nullptr,
+		0, nullptr,
+		1, &transferBarrier );
+
+		/*VkCommandBuffer                             commandBuffer,
+		VkPipelineStageFlags                        srcStageMask,
+		VkPipelineStageFlags                        dstStageMask,
+		VkDependencyFlags                           dependencyFlags,
+		uint32_t                                    memoryBarrierCount,
+		const VkMemoryBarrier*                      pMemoryBarriers,
+		uint32_t                                    bufferMemoryBarrierCount,
+		const VkBufferMemoryBarrier*                pBufferMemoryBarriers,
+		uint32_t                                    imageMemoryBarrierCount,
+		const VkImageMemoryBarrier*                 pImageMemoryBarriers*/
+
 
 	depthStencilView.image = mDepthStencil.image;
+
 	err = vkCreateImageView( mDevice, &depthStencilView, nullptr, &mDepthStencil.view );
 	assert( !err );
 };
@@ -752,15 +776,25 @@ void ofVkRenderer::finishRender(){
 
 		VkCommandBufferBeginInfo beginInfo = {};
 		beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-		//beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+		// beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 		vkBeginCommandBuffer( mPrePresentCommandBuffer, &beginInfo );
+		{
+			auto transferBarrier = of::vk::createImageBarrier(	
+				mSwapchain.getBuffer(mCurrentFramebufferIndex).imageRef,
+				VK_IMAGE_ASPECT_COLOR_BIT,
+				VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+				VK_IMAGE_LAYOUT_PRESENT_SRC_KHR );
 
-		vkTools::setImageLayout( mPrePresentCommandBuffer,
-			mSwapchain.getBuffer(mCurrentFramebufferIndex).imageRef,
-			VK_IMAGE_ASPECT_COLOR_BIT,
-			VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-			VK_IMAGE_LAYOUT_PRESENT_SRC_KHR );
-
+			// Append pipeline barrier to commandBuffer
+			vkCmdPipelineBarrier(
+				mPrePresentCommandBuffer,
+				VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+				VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+				0,
+				0, nullptr,
+				0, nullptr,
+				1, &transferBarrier );
+		}
 		vkEndCommandBuffer( mPrePresentCommandBuffer );
 		// Submit to the queue
 		VkSubmitInfo submitInfo = {};
@@ -806,7 +840,7 @@ void ofVkRenderer::finishRender(){
 		mPostPresentCommandBuffer,
 		VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
 		VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-		VK_FLAGS_NONE,
+		0,
 		0, nullptr,
 		0, nullptr,
 		1, &postPresentBarrier );

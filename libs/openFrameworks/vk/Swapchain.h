@@ -23,8 +23,6 @@ class Swapchain {
 	
 	uint32_t             mImageCount = 0;
 	uint32_t             mCurrentBuffer = 0;
-	
-	
 
 	// these are the front and the back buffer for our main 
 	// render target.

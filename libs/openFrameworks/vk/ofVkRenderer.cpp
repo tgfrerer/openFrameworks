@@ -10,7 +10,7 @@
 #include "ofTrueTypeFont.h"
 #include "ofNode.h"
 #include "GLFW/glfw3.h"
-#include "vk/vulkantools.h"
+
 
 #include <cstdint>
 
@@ -233,9 +233,6 @@ void ofVkRenderer::createDevice()
 		
 		ofLog() << output.str();
 
-		
-
-
 		// let's find out the devices' memory properties
 		vkGetPhysicalDeviceMemoryProperties( mPhysicalDevice, &mPhysicalDeviceMemoryProperties );
 	}
@@ -325,10 +322,30 @@ void ofVkRenderer::createDevice()
 	// fetch queue handle into mQueue
 	vkGetDeviceQueue(mDevice, mVkGraphicsFamilyIndex, 0, &mQueue);
 
-	// query valid depth buffer format 
-	// Find a suitable depth format
-	VkBool32 validDepthFormat = vkTools::getSupportedDepthFormat( mPhysicalDevice, &mDepthFormat );
-	assert( validDepthFormat );
+
+	// query possible depth formats, find the 
+	// first format that supports attachment as a depth stencil 
+	// 
+	//
+	// Since all depth formats may be optional, we need to find a suitable depth format to use
+	// Start with the highest precision packed format
+	std::vector<VkFormat> depthFormats = {
+		VK_FORMAT_D32_SFLOAT_S8_UINT,
+		VK_FORMAT_D32_SFLOAT,
+		VK_FORMAT_D24_UNORM_S8_UINT,
+		VK_FORMAT_D16_UNORM_S8_UINT,
+		VK_FORMAT_D16_UNORM
+	};
+
+	for ( auto& format : depthFormats ){
+		VkFormatProperties formatProps;
+		vkGetPhysicalDeviceFormatProperties( mPhysicalDevice, format, &formatProps );
+		// Format must support depth stencil attachment for optimal tiling
+		if ( formatProps.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT ){
+			mDepthFormat = format;
+			break;
+		}
+	}
 
 }
 

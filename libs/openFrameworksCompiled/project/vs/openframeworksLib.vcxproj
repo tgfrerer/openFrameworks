@@ -210,13 +210,11 @@
     <ClInclude Include="..\..\..\openFrameworks\events\ofEvents.h" />
     <ClInclude Include="..\..\..\openFrameworks\events\ofEventUtils.h" />
     <ClInclude Include="..\..\..\openFrameworks\vk\Context.h" />
-    <ClInclude Include="..\..\..\openFrameworks\vk\Device.h" />
     <ClInclude Include="..\..\..\openFrameworks\vk\ofVkRenderer.h" />
     <ClInclude Include="..\..\..\openFrameworks\vk\Pipeline.h" />
     <ClInclude Include="..\..\..\openFrameworks\vk\Shader.h" />
     <ClInclude Include="..\..\..\openFrameworks\vk\Swapchain.h" />
-    <ClInclude Include="..\..\..\openFrameworks\vk\vkBufferObject.h" />
-    <ClInclude Include="..\..\..\openFrameworks\vk\vulkantools.h" />
+    <ClInclude Include="..\..\..\openFrameworks\vk\vkUtils.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\openFrameworks\3d\of3dPrimitives.cpp" />
@@ -287,13 +285,10 @@
     <ClCompile Include="..\..\..\openFrameworks\communication\ofArduino.cpp" />
     <ClCompile Include="..\..\..\openFrameworks\communication\ofSerial.cpp" />
     <ClCompile Include="..\..\..\openFrameworks\vk\Context.cpp" />
-    <ClCompile Include="..\..\..\openFrameworks\vk\Device.cpp" />
     <ClCompile Include="..\..\..\openFrameworks\vk\ofVkRenderer.cpp" />
     <ClCompile Include="..\..\..\openFrameworks\vk\Pipeline.cpp" />
     <ClCompile Include="..\..\..\openFrameworks\vk\Swapchain.cpp" />
-    <ClCompile Include="..\..\..\openFrameworks\vk\vkBufferObject.cpp" />
     <ClCompile Include="..\..\..\openFrameworks\vk\VkImpl.cpp" />
-    <ClCompile Include="..\..\..\openFrameworks\vk\vulkantools.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
 </Project>

@@ -288,25 +288,19 @@
     <ClInclude Include="..\..\..\openFrameworks\vk\Context.h">
       <Filter>libs\openFrameworks\vk</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\openFrameworks\vk\Device.h">
-      <Filter>libs\openFrameworks\vk</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\..\openFrameworks\vk\ofVkRenderer.h">
       <Filter>libs\openFrameworks\vk</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\openFrameworks\vk\Swapchain.h">
       <Filter>libs\openFrameworks\vk</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\openFrameworks\vk\vkBufferObject.h">
-      <Filter>libs\openFrameworks\vk</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\openFrameworks\vk\vulkantools.h">
-      <Filter>libs\openFrameworks\vk</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\..\openFrameworks\vk\Pipeline.h">
       <Filter>libs\openFrameworks\vk</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\openFrameworks\vk\Shader.h">
+      <Filter>libs\openFrameworks\vk</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\openFrameworks\vk\vkUtils.h">
       <Filter>libs\openFrameworks\vk</Filter>
     </ClInclude>
   </ItemGroup>
@@ -515,22 +509,13 @@
     <ClCompile Include="..\..\..\openFrameworks\vk\Context.cpp">
       <Filter>libs\openFrameworks\vk</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\openFrameworks\vk\Device.cpp">
-      <Filter>libs\openFrameworks\vk</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\openFrameworks\vk\ofVkRenderer.cpp">
       <Filter>libs\openFrameworks\vk</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\openFrameworks\vk\Swapchain.cpp">
       <Filter>libs\openFrameworks\vk</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\openFrameworks\vk\vkBufferObject.cpp">
-      <Filter>libs\openFrameworks\vk</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\openFrameworks\vk\VkImpl.cpp">
-      <Filter>libs\openFrameworks\vk</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\openFrameworks\vk\vulkantools.cpp">
       <Filter>libs\openFrameworks\vk</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\openFrameworks\vk\Pipeline.cpp">
