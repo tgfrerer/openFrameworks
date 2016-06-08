@@ -242,5 +242,33 @@ static VkPipelineCache&& createPipelineCache( const VkDevice& device, std::strin
 	return std::move( cache );
 }
 
+// ----------------------------------------------------------------------
+
+// return a layout create info derived from shader reflection
+static std::shared_ptr<VkPipelineLayout> createPipelineLayout(const VkDevice& device_, const std::vector<VkDescriptorSetLayout>& dsl_ ){
+
+	auto pipelineLayout = shared_ptr<VkPipelineLayout>(
+		new VkPipelineLayout,
+		[&device = device_]( VkPipelineLayout * pl )
+	{
+		vkDestroyPipelineLayout( device, *pl, nullptr );
+		delete pl;
+	} );
+
+	VkPipelineLayoutCreateInfo pPipelineLayoutCreateInfo{
+		VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,       // VkStructureType                 sType;
+		nullptr,                                             // const void*                     pNext;
+		0,                                                   // VkPipelineLayoutCreateFlags     flags;
+		dsl_.size(),                                         // uint32_t                        setLayoutCount;
+		dsl_.data(),                                         // const VkDescriptorSetLayout*    pSetLayouts;
+		0,                                                   // uint32_t                        pushConstantRangeCount;
+		nullptr,                                             // const VkPushConstantRange*      pPushConstantRanges;
+	};
+
+	vkCreatePipelineLayout( device_, &pPipelineLayoutCreateInfo, nullptr, pipelineLayout.get() );
+
+	return pipelineLayout;
+}
+
 } // namespace vk
 } // namespace of

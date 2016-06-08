@@ -4,6 +4,7 @@
 #include "vk/vkUtils.h"
 
 #include "spirv_cross.hpp"
+#include <algorithm>
 
 // ----------------------------------------------------------------------
 
@@ -135,24 +136,6 @@ void ofVkRenderer::setupDescriptorSets(){
 		++i;
 	}
 
-	// Update descriptors within sets 
-	//
-	// For every binding point used in a shader there needs to be one
-	// descriptor set matching that binding point
-	//VkWriteDescriptorSet writeDescriptorSet = {
-	//	VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,                    // VkStructureType                  sType;
-	//	nullptr,                                                   // const void*                      pNext;
-	//	mDescriptorSets[0],                                        // VkDescriptorSet                  dstSet;
-	//	0,                                                         // uint32_t                         dstBinding;
-	//	0,                                                         // uint32_t                         dstArrayElement;
-	//	1,                                                         // uint32_t                         descriptorCount;
-	//	VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,                 // VkDescriptorType                 descriptorType;
-	//	nullptr,                                                   // const VkDescriptorImageInfo*     pImageInfo;
-	//	&mContext->getDescriptorBufferInfo(),                      // const VkDescriptorBufferInfo*    pBufferInfo;
-	//	nullptr,                                                   // const VkBufferView*              pTexelBufferView;
-	//
-	//};
-
 	vkUpdateDescriptorSets( mDevice, writeDescriptorSets.size(), writeDescriptorSets.data(), 0, NULL );	 
 }
 
@@ -228,7 +211,15 @@ void ofVkRenderer::setupShaders(){
 	mShaders.emplace_back( shader );
 	auto descriptorSetLayout = shader->createDescriptorSetLayout();
 	mDescriptorSetLayouts.emplace_back( descriptorSetLayout );
-	auto pl = shader->createPipelineLayout( descriptorSetLayout.get() );
+
+	// create temporary object which may be borrowed by createPipeline method
+	std::vector<VkDescriptorSetLayout> dsl( mDescriptorSetLayouts.size() );
+	// fill with elements borrowed from mDescriptorSets	
+	std::transform( mDescriptorSetLayouts.begin(), mDescriptorSetLayouts.end(), dsl.begin(), 
+		[]( auto & lhs )->VkDescriptorSetLayout { return *lhs; } );
+
+	auto pl = of::vk::createPipelineLayout(mDevice, dsl );
+
 	mPipelineLayouts.emplace_back( pl );
 
 }

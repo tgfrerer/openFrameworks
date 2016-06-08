@@ -327,34 +327,7 @@ public:
 		return ( dsl );
 	}
 
-	// ----------------------------------------------------------------------
-
-	// return a layout create info derived from shader reflection
-	std::shared_ptr<VkPipelineLayout> createPipelineLayout( VkDescriptorSetLayout* dsl_ ){
-		
-		auto pipelineLayout = shared_ptr<VkPipelineLayout>(
-			new VkPipelineLayout,
-			[&device = mSettings.device]( VkPipelineLayout * pl )
-		{
-			vkDestroyPipelineLayout( device, *pl, nullptr );
-			delete pl;
-		} );
-
-		VkPipelineLayoutCreateInfo pPipelineLayoutCreateInfo{};
-		pPipelineLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-		pPipelineLayoutCreateInfo.pNext = NULL;
-		pPipelineLayoutCreateInfo.setLayoutCount = 1;
-		// note that the pipeline is not created from the descriptorSet, 
-		// but from the *layout* of the descriptorSet - really, 
-		// we should use above reflection to do this, to generate the descriptorSetLayout
-		pPipelineLayoutCreateInfo.pSetLayouts = dsl_;
-		pPipelineLayoutCreateInfo.pushConstantRangeCount = 0;
-		pPipelineLayoutCreateInfo.pPushConstantRanges = VK_NULL_HANDLE;
-
-		vkCreatePipelineLayout( mSettings.device, &pPipelineLayoutCreateInfo, nullptr, pipelineLayout.get() );
-
-		return pipelineLayout;
-	}
+	
 
 };
 
