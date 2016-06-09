@@ -666,7 +666,7 @@ void ofVkRenderer::beginDrawCommandBuffer(){
 	viewport.width = (float)mViewport.width;
 	viewport.height = (float)mViewport.height;
 	viewport.minDepth = ( float ) 0.0f;		   // this is the min depth value for the depth buffer
-	viewport.maxDepth = ( float ) 1.0f;		   // this is the dax depth value for the depth buffer  
+	viewport.maxDepth = ( float ) 1.0f;		   // this is the max depth value for the depth buffer  
 	vkCmdSetViewport( *mDrawCmdBuffer, 0, 1, &viewport );
 
 	// Update dynamic scissor state

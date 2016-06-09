@@ -54,40 +54,25 @@ public:
 	virtual void startRender() override;
 	virtual void finishRender() override;
 
-	virtual void draw( const ofPolyline & poly ) const{
-	};
-	virtual void draw( const ofPath & shape ) const{
-	};
+	virtual void draw( const ofPolyline & poly ) const{};
+	virtual void draw( const ofPath & shape ) const{};
 	virtual void draw( const ofMesh & vertexData, ofPolyRenderMode renderType, bool useColors, bool useTextures, bool useNormals ) const;
-	virtual void draw( const of3dPrimitive& model, ofPolyRenderMode renderType ) const{
-	};
-	virtual void draw( const ofNode& model ) const{
-	};
-	virtual void draw( const ofImage & image, float x, float y, float z, float w, float h, float sx, float sy, float sw, float sh ) const{
-	};
-	virtual void draw( const ofFloatImage & image, float x, float y, float z, float w, float h, float sx, float sy, float sw, float sh ) const{
-	};
-	virtual void draw( const ofShortImage & image, float x, float y, float z, float w, float h, float sx, float sy, float sw, float sh ) const{
-	};
-	virtual void draw( const ofBaseVideoDraws & video, float x, float y, float w, float h ) const{
-	};
+	virtual void draw( const of3dPrimitive& model, ofPolyRenderMode renderType ) const{};
+	virtual void draw( const ofNode& model ) const{};
+	virtual void draw( const ofImage & image, float x, float y, float z, float w, float h, float sx, float sy, float sw, float sh ) const{};
+	virtual void draw( const ofFloatImage & image, float x, float y, float z, float w, float h, float sx, float sy, float sw, float sh ) const{};
+	virtual void draw( const ofShortImage & image, float x, float y, float z, float w, float h, float sx, float sy, float sw, float sh ) const{};
+	virtual void draw( const ofBaseVideoDraws & video, float x, float y, float w, float h ) const{};
 
-	virtual void pushView(){
-	};
-	virtual void popView(){
-	};
+	virtual void pushView(){};
+	virtual void popView(){};
 
-	virtual void viewport( ofRectangle viewport ){
-	};
-	virtual void viewport( float x = 0, float y = 0, float width = -1, float height = -1, bool vflip = true ){
-	};
+	virtual void viewport( ofRectangle viewport ){};
+	virtual void viewport( float x = 0, float y = 0, float width = -1, float height = -1, bool vflip = true ){};
 
-	virtual void setupScreenPerspective( float width = -1, float height = -1, float fov = 60, float nearDist = 0, float farDist = 0 ){
-	};
-	virtual void setupScreenOrtho( float width = -1, float height = -1, float nearDist = -1, float farDist = 1 ){
-	};
-	virtual void setOrientation( ofOrientation orientation, bool vFlip ){
-	};
+	virtual void setupScreenPerspective( float width = -1, float height = -1, float fov = 60, float nearDist = 0, float farDist = 0 ){};
+	virtual void setupScreenOrtho( float width = -1, float height = -1, float nearDist = -1, float farDist = 1 ){};
+	virtual void setOrientation( ofOrientation orientation, bool vFlip ){};
 
 	virtual ofRectangle getCurrentViewport() const override;
 	virtual ofRectangle getNativeViewport() const override;
@@ -95,14 +80,11 @@ public:
 	virtual int getViewportHeight() const override;
 
 	virtual bool isVFlipped() const override;
-	virtual void setCoordHandedness( ofHandednessType handedness ){
-	};
+	virtual void setCoordHandedness( ofHandednessType handedness ){};
 	virtual ofHandednessType getCoordHandedness() const override;
 
-	virtual void pushMatrix(){
-	};
-	virtual void popMatrix(){
-	};
+	virtual void pushMatrix(){};
+	virtual void popMatrix(){};
 
 	virtual ofMatrix4x4 getCurrentMatrix( ofMatrixMode matrixMode_ ) const override;
 	virtual ofMatrix4x4 getCurrentOrientationMatrix() const override;
@@ -111,37 +93,23 @@ public:
 		translate( { x,y,z } );
 	};
 	virtual void translate( const ofPoint & p );
-	virtual void scale( float xAmnt, float yAmnt, float zAmnt = 1 ){
-	};
-	virtual void rotate( float degrees, float vecX, float vecY, float vecZ ){
-	};
-	virtual void rotateX( float degrees ){
-	};
-	virtual void rotateY( float degrees ){
-	};
-	virtual void rotateZ( float degrees ){
-	};
-	virtual void rotate( float degrees ){
-	};
+	virtual void scale( float xAmnt, float yAmnt, float zAmnt = 1 ){};
+	virtual void rotate( float degrees, float vecX, float vecY, float vecZ ){};
+	virtual void rotateX( float degrees ){};
+	virtual void rotateY( float degrees ){};
+	virtual void rotateZ( float degrees ){};
+	virtual void rotate( float degrees ){};
 
-	virtual void matrixMode( ofMatrixMode mode ){
-	};
+	virtual void matrixMode( ofMatrixMode mode ){};
 
 
-	virtual void loadMatrix( const ofMatrix4x4 & m ){
-	};
-	virtual void loadMatrix( const float *m ){
-	};
-	virtual void loadIdentityMatrix( void ){
-	};
-	virtual void loadViewMatrix( const ofMatrix4x4 & m ){
-	};
-	virtual void multViewMatrix( const ofMatrix4x4 & m ){
-	};
-	virtual void multMatrix( const ofMatrix4x4 & m ){
-	};
-	virtual void multMatrix( const float *m ){
-	};
+	virtual void loadMatrix( const ofMatrix4x4 & m ){};
+	virtual void loadMatrix( const float *m ){};
+	virtual void loadIdentityMatrix( void ){};
+	virtual void loadViewMatrix( const ofMatrix4x4 & m ){};
+	virtual void multViewMatrix( const ofMatrix4x4 & m ){};
+	virtual void multMatrix( const ofMatrix4x4 & m ){};
+	virtual void multMatrix( const float *m ){};
 
 	virtual ofMatrix4x4 getCurrentViewMatrix() const override;
 	virtual ofMatrix4x4 getCurrentNormalMatrix() const override;
@@ -149,109 +117,69 @@ public:
 	virtual void bind( const ofCamera & camera, const ofRectangle & viewport );
 	virtual void unbind( const ofCamera & camera );
 
-	virtual void setupGraphicDefaults(){
-	};
-	virtual void setupScreen(){
-	};
+	virtual void setupGraphicDefaults(){};
+	virtual void setupScreen(){};
 
-	virtual void setRectMode( ofRectMode mode ){
-	};
+	virtual void setRectMode( ofRectMode mode ){};
 
 	virtual ofRectMode getRectMode() override;
 
-	virtual void setFillMode( ofFillFlag fill ){
-	};
+	virtual void setFillMode( ofFillFlag fill ){};
 
 	virtual ofFillFlag getFillMode() override;
 
-	virtual void setLineWidth( float lineWidth ){
-	};
-	virtual void setDepthTest( bool depthTest ){
-	};
+	virtual void setLineWidth( float lineWidth ){};
+	virtual void setDepthTest( bool depthTest ){};
 
-	virtual void setBlendMode( ofBlendMode blendMode ){
-	};
-	virtual void setLineSmoothing( bool smooth ){
-	};
+	virtual void setBlendMode( ofBlendMode blendMode ){};
+	virtual void setLineSmoothing( bool smooth ){};
 
-	virtual void setCircleResolution( int res ){
-	};
-	virtual void enableAntiAliasing(){
-	};
-	virtual void disableAntiAliasing(){
-	};
+	virtual void setCircleResolution( int res ){};
+	virtual void enableAntiAliasing(){};
+	virtual void disableAntiAliasing(){};
 
-	virtual void setColor( int r, int g, int b ){
-	};
-	virtual void setColor( int r, int g, int b, int a ){
-	};
-	virtual void setColor( const ofColor & color ){
-	};
-	virtual void setColor( const ofColor & color, int _a ){
-	};
-	virtual void setColor( int gray ){
-	};
-	virtual void setHexColor( int hexColor ){
-	};
+	virtual void setColor( int r, int g, int b ){};
+	virtual void setColor( int r, int g, int b, int a ){};
+	virtual void setColor( const ofColor & color ){};
+	virtual void setColor( const ofColor & color, int _a ){};
+	virtual void setColor( int gray ){};
+	virtual void setHexColor( int hexColor ){};
 
-	virtual void setBitmapTextMode( ofDrawBitmapMode mode ){
-	};
+	virtual void setBitmapTextMode( ofDrawBitmapMode mode ){};
 
 	virtual ofColor getBackgroundColor() override;
-	virtual void setBackgroundColor( const ofColor & c ){
-	};
+	virtual void setBackgroundColor( const ofColor & c ){};
 
-	virtual void background( const ofColor & c ){
-	};
-	virtual void background( float brightness ){
-	};
-	virtual void background( int hexColor, float _a = 255.0f ){
-	};
-	virtual void background( int r, int g, int b, int a = 255 ){
-	};
-	virtual void setBackgroundAuto( bool bManual ){
-	};
+	virtual void background( const ofColor & c ){};
+	virtual void background( float brightness ){};
+	virtual void background( int hexColor, float _a = 255.0f ){};
+	virtual void background( int r, int g, int b, int a = 255 ){};
+	virtual void setBackgroundAuto( bool bManual ){};
 
 	virtual bool getBackgroundAuto() override;
 
-	virtual void clear(){
-	};
-	virtual void clear( float r, float g, float b, float a = 0 ){
-	};
-	virtual void clear( float brightness, float a = 0 ){
-	};
-	virtual void clearAlpha(){
-	};
+	virtual void clear(){};
+	virtual void clear( float r, float g, float b, float a = 0 ){};
+	virtual void clear( float brightness, float a = 0 ){};
+	virtual void clearAlpha(){};
 
-	virtual void drawLine( float x1, float y1, float z1, float x2, float y2, float z2 ) const{
-	};
-	virtual void drawRectangle( float x, float y, float z, float w, float h ) const{
-	};
-	virtual void drawTriangle( float x1, float y1, float z1, float x2, float y2, float z2, float x3, float y3, float z3 ) const{
-	};
-	virtual void drawCircle( float x, float y, float z, float radius ) const{
-	};
-	virtual void drawEllipse( float x, float y, float z, float width, float height ) const{
-	};
-	virtual void drawString( string text, float x, float y, float z ) const{
-	};
-	virtual void drawString( const ofTrueTypeFont & font, string text, float x, float y ) const{
-	};
+	virtual void drawLine( float x1, float y1, float z1, float x2, float y2, float z2 ) const{};
+	virtual void drawRectangle( float x, float y, float z, float w, float h ) const{};
+	virtual void drawTriangle( float x1, float y1, float z1, float x2, float y2, float z2, float x3, float y3, float z3 ) const{};
+	virtual void drawCircle( float x, float y, float z, float radius ) const{};
+	virtual void drawEllipse( float x, float y, float z, float width, float height ) const{};
+	virtual void drawString( string text, float x, float y, float z ) const{};
+	virtual void drawString( const ofTrueTypeFont & font, string text, float x, float y ) const{};
 
 	virtual ofPath & getPath() override;
 	virtual ofStyle getStyle() const override;
-	virtual void setStyle( const ofStyle & style ){
-	};
-	virtual void pushStyle(){
-	};
-	virtual void popStyle(){
-	};
+	virtual void setStyle( const ofStyle & style ){};
+	virtual void pushStyle(){};
+	virtual void popStyle(){};
 
-	virtual void setCurveResolution( int resolution ){
-	};
+	virtual void setCurveResolution( int resolution ){};
 
-	virtual void setPolyMode( ofPolyWindingMode mode ){
-	};
+	virtual void setPolyMode( ofPolyWindingMode mode ){};
 
 	virtual const of3dGraphics & get3dGraphics() const override;
 	virtual of3dGraphics & get3dGraphics() override;
