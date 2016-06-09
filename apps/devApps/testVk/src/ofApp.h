@@ -6,6 +6,7 @@ class ofApp : public ofBaseApp{
 
 	ofEasyCam mCam1;
 	ofMesh    mFontMesh;
+	ofMesh	  mLMesh;
 
 
 	public:

@@ -3,13 +3,41 @@
 
 //--------------------------------------------------------------
 void ofApp::setup(){
+	mCam1.disableMouseInput();
+	mCam1.setupPerspective( true, 60, 0.1, 5000 );
+	mCam1.setGlobalPosition( 0, 0, mCam1.getImagePlaneDistance() );
+	mCam1.lookAt( { 0,0,0 }, {0,1,0} );
+	//mCam1.setDistance( 200 );
+	mCam1.enableMouseInput();
 
-	mCam1.setupPerspective( true, 60, 0.1, 500 );
-	mCam1.setGlobalPosition( 0, 0, 200 );
-	mCam1.setDistance( 200 );
-	
 	mFontMesh.load( "untitled.ply" );
 	
+	{
+		vector<ofVec3f> vert {
+			{0.f,0.f,0.f},
+			{20.f,20.f,0.f},
+			{0.f,100.f,0.f},
+			{20.f,100.f,0.f},
+			{200.f,0.f,0.f},
+			{200.f,20.f,0.f}
+		};
+
+		vector<ofIndexType> idx {
+			0, 1, 2,
+			1, 3, 2,
+			0, 4, 1,
+			1, 4, 5,
+		};
+
+		vector<ofVec3f> norm( vert.size(), { 0, 0, 1.f } );
+
+		mLMesh.addVertices( vert );
+		mLMesh.addNormals( norm );
+		mLMesh.addIndices( idx );
+
+	};
+
+
 }
 
 //--------------------------------------------------------------
@@ -48,14 +76,19 @@ void ofApp::draw(){
 	
 	// look at nvidia vulkan demo and at how they structure rendering.
 
-	ofMesh m = ofMesh::icosphere(30,3);
+	ofMesh m = ofMesh::icosphere(200,3);
 	
-	ofTranslate( -100, +100, -50 );
-	m.draw();
+	//ofTranslate( -100, +100, -50 );
+	//m.draw();
+	
+	// mFontMesh.draw();
+
+	mLMesh.draw();
+
+	/*ofTranslate( 100, -100, 50 );
+	
 	ofTranslate( 100, -100, 50 );
-	mFontMesh.draw();
-	ofTranslate( 100, -100, 50 );
-	m.draw();
+	m.draw();*/
 	mCam1.end();
 }
 
