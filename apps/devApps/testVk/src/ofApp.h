@@ -8,7 +8,6 @@ class ofApp : public ofBaseApp{
 	ofMesh    mFontMesh;
 	ofMesh	  mLMesh;
 
-
 	public:
 		void setup();
 		void update();

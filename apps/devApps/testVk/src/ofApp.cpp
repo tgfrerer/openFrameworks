@@ -4,7 +4,7 @@
 //--------------------------------------------------------------
 void ofApp::setup(){
 	mCam1.disableMouseInput();
-	mCam1.setupPerspective( true, 60, 0.1, 5000 );
+	mCam1.setupPerspective( false, 60, 0.1, 5000 );
 	mCam1.setGlobalPosition( 0, 0, mCam1.getImagePlaneDistance() );
 	mCam1.lookAt( { 0,0,0 }, {0,1,0} );
 	//mCam1.setDistance( 200 );
@@ -37,6 +37,34 @@ void ofApp::setup(){
 
 	};
 
+	// 0. define swapchain state
+
+	/*
+	
+		+ behaviour : fifo, mailbox, immediate
+		+ number of swapchain images (size of swapchain maps to size of uniform buffers --> double buffering means uniform buffers are double-buffered as well )
+		
+	*/
+
+	// 1. define render passes and framebuffers
+
+	/*
+		+ color attachments
+		+ depth buffers?
+		+ which attachment is mapped to swapchain image? (this one needs to be double-buffered)
+		+ multisampling?
+		+ clear color
+		
+		+ subpasses 
+			+ relationship (dependency graph) between subpasses
+	
+	*/
+
+	// 3. define global uniform state (lights, matrices) ==> scene
+
+	// 2. define pipelines and specify dynamic pipeline state, and possible pipeline permutations --> materials
+
+	// 4. define per-object uniform state (this is based on materials)
 
 }
 
@@ -81,9 +109,9 @@ void ofApp::draw(){
 	//ofTranslate( -100, +100, -50 );
 	//m.draw();
 	
-	// mFontMesh.draw();
+	mFontMesh.draw();
 
-	mLMesh.draw();
+	// mLMesh.draw();
 
 	/*ofTranslate( 100, -100, 50 );
 	
