@@ -17,7 +17,7 @@ static VkImageMemoryBarrier createImageBarrier( VkImage image, VkImageAspectFlag
 	VkImageMemoryBarrier imageMemoryBarrier{
 		VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,                    // VkStructureType            sType;
 		nullptr,                                                   // const void*                pNext;
-		VK_ACCESS_HOST_WRITE_BIT | VK_ACCESS_TRANSFER_WRITE_BIT,   // VkAccessFlags              srcAccessMask;
+		0,                                                         // VkAccessFlags              srcAccessMask;
 		VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,                      // VkAccessFlags              dstAccessMask;
 		oldImageLayout,                                            // VkImageLayout              oldLayout;
 		newImageLayout,                                            // VkImageLayout              newLayout;
@@ -93,7 +93,7 @@ static VkImageMemoryBarrier createImageBarrier( VkImage image, VkImageAspectFlag
 	// New layout is depth attachment
 	// Make sure any writes to depth/stencil buffer have been finished
 	if ( newImageLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL ){
-		imageMemoryBarrier.dstAccessMask = imageMemoryBarrier.dstAccessMask | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+		imageMemoryBarrier.dstAccessMask =  VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
 	}
 
 	// New layout is shader read (sampler, input attachment)
@@ -103,9 +103,6 @@ static VkImageMemoryBarrier createImageBarrier( VkImage image, VkImageAspectFlag
 		imageMemoryBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
 	}
 
-	// Put barrier on top
-	VkPipelineStageFlags srcStageFlags = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-	VkPipelineStageFlags destStageFlags = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
 
 	// we're expecting the compiler to be smart enough to return this as an rvalue.
 	return imageMemoryBarrier;
