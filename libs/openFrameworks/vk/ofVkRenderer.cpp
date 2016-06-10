@@ -608,7 +608,18 @@ void ofVkRenderer::bind( const ofCamera & camera, const ofRectangle & viewport )
 	mContext->push();
 	mContext->mCurrentMatrixId = -1; // taint matrix state
 	mContext->mMatrixState.viewMatrix = camera.getModelViewMatrix();
-	mContext->mMatrixState.projectionMatrix = camera.getProjectionMatrix(viewport);
+
+	// Clip space transform:
+	
+	// vulkan has inverted y 
+	// and half-width z.
+
+	static const ofMatrix4x4 clip( 1.0f, 0.0f, 0.0f, 0.0f,
+		0.0f, -1.0f, 0.0f, 0.0f,
+		0.0f, 0.0f, 0.5f, 0.0f,
+		0.0f, 0.0f, 0.5f, 1.0f );
+	
+	mContext->mMatrixState.projectionMatrix = camera.getProjectionMatrix(viewport) * clip;
 }
 
 // ----------------------------------------------------------------------
