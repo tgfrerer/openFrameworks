@@ -68,6 +68,9 @@ void of::vk::Context::setup(){
 		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 
 		allocInfo 
 	);
+
+	allocInfo.allocationSize = 1UL << 27 - 1; // 2^26 = 67108864 bytes
+
 	// Allocate memory for the uniform buffer
 	err = vkAllocateMemory( device, &allocInfo, nullptr, &( mMatrixUniformData.memory ) );
 	assert( !err );

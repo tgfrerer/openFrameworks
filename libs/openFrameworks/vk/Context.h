@@ -88,7 +88,7 @@ class Context
 
 	std::vector<MatrixState>	   mSavedMatrices;
 	size_t mSavedMatricesLastElement = 0;
-	size_t mMaxElementCount = 3;
+	size_t mMaxElementCount = 262144;	 // todo: find max element count based on 
 
 	// stack of all pushed or popped matrices.
 	// -1 indicates the matrix has not been saved yet

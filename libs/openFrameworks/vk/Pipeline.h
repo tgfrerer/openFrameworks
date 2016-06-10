@@ -212,6 +212,8 @@ public:	// default state for pipeline
 
 };
 
+// ----------------------------------------------------------------------
+
 /// \brief  Create a pipeline cache object
 /// \detail Optionally load from disk, if filepath given.
 /// \note  	Ownership: passed on.
@@ -240,12 +242,10 @@ static VkPipelineCache&& createPipelineCache( const VkDevice& device, std::strin
 	}
 
 	return std::move( cache );
-}
-
-// ----------------------------------------------------------------------
+};
 
 // return a layout create info derived from shader reflection
-static std::shared_ptr<VkPipelineLayout> createPipelineLayout(const VkDevice& device_, const std::vector<VkDescriptorSetLayout>& dsl_ ){
+static std::shared_ptr<VkPipelineLayout> createPipelineLayout( const VkDevice& device_, const std::vector<VkDescriptorSetLayout>& dsl_ ){
 
 	auto pipelineLayout = shared_ptr<VkPipelineLayout>(
 		new VkPipelineLayout,
@@ -268,7 +268,7 @@ static std::shared_ptr<VkPipelineLayout> createPipelineLayout(const VkDevice& de
 	vkCreatePipelineLayout( device_, &pPipelineLayoutCreateInfo, nullptr, pipelineLayout.get() );
 
 	return pipelineLayout;
-}
+};
 
 } // namespace vk
 } // namespace of

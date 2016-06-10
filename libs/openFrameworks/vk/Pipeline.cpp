@@ -3,7 +3,7 @@
 
 using namespace of;
 
-VkPipeline && of::vk::GraphicsPipelineState::createPipeline( const VkDevice & device, const VkPipelineCache & pipelineCache ){
+VkPipeline && vk::GraphicsPipelineState::createPipeline( const VkDevice & device, const VkPipelineCache & pipelineCache ){
 		VkPipeline pipeline = nullptr;
 
 		// naive: create a pipeline based on current internal state
@@ -54,3 +54,4 @@ VkPipeline && of::vk::GraphicsPipelineState::createPipeline( const VkDevice & de
 
 		return 	std::move( pipeline );
 }
+

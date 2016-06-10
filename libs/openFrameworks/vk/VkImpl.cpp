@@ -325,11 +325,15 @@ void ofVkRenderer::querySurfaceCapabilities(){
 
 void ofVkRenderer::createCommandPool(){
 	// create a command pool
-	VkCommandPoolCreateInfo poolInfo{};
-	poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-	poolInfo.queueFamilyIndex = mVkGraphicsFamilyIndex;
-	poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;  // tells us how persistent the commands living in this pool are going to be
-	poolInfo.pNext = VK_NULL_HANDLE;
+	VkCommandPoolCreateInfo poolInfo
+	{
+		VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,      // VkStructureType             sType;
+		nullptr,                                         // const void*                 pNext;
+		VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT, // VkCommandPoolCreateFlags    flags;
+		0,                                               // uint32_t                    queueFamilyIndex;
+	};
+		 
+	// VkCommandPoolCreateFlags --> tells us how persistent the commands living in this pool are going to be
 	vkCreateCommandPool( mDevice, &poolInfo, nullptr, &mCommandPool );
 }
 
@@ -341,14 +345,15 @@ void ofVkRenderer::createSetupCommandBuffer(){
 		mSetupCommandBuffer = VK_NULL_HANDLE;
 	}
 
-	VkCommandBufferAllocateInfo info = {};
-	info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-	info.commandPool = mCommandPool;
-	info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-	info.commandBufferCount = 1;
-	info.pNext = VK_NULL_HANDLE;
+	VkCommandBufferAllocateInfo info = {
+		VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO, // VkStructureType         sType;
+		nullptr,                                        // const void*             pNext;
+		mCommandPool,                                   // VkCommandPool           commandPool;
+		VK_COMMAND_BUFFER_LEVEL_PRIMARY,                // VkCommandBufferLevel    level;
+		1,                                              // uint32_t                commandBufferCount;
+	};
 
-	// allocate one command buffer (as stated above) and store the handle to 
+ 	// allocate one command buffer (as stated above) and store the handle to 
 	// the newly allocated buffer into mSetupCommandBuffer
 	vkAllocateCommandBuffers( mDevice, &info, &mSetupCommandBuffer );
 
