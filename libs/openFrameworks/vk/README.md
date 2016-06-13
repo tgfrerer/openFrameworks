@@ -4,11 +4,25 @@
 This renderer is more than experimental. Expect everything to change
 all the time. Send pull requests to influence what changes.
 
+## Switch between GL and VK rendering mode
+
+To switch between Vulkan and GL for rendering API, toggle the
+following `#define` near the top of `ofConstants.h`:
+
+    #define OF_TARGET_API_VULKAN
+
+Unfortunately, because of how `ofGLFWWindow` is organised currently, it
+is not trivial to switch between Vulkan and GL for target APIs. Using
+the #define seemed the most straightforward way to do it, but ideally,
+you should be able to feed an `ofVkWindowSettings` object to
+`ofCreateWindow` and that should be it. A future feature.
+
 ## Setup 
 
-This has been initially developed on: 
-
-+ Windows 10/64bit, NVIDIA GTX 980 (Vulkan API 1.0.8), Vulkan SDK 1.0.13
+This has been initially developed on: Windows 10/64bit, NVIDIA GTX 980
+(Vulkan API 1.0.8), Vulkan SDK 1.0.13. Other Vulkan capable
+systems/GPUs are expected to work, most proably requiring some
+modifications. 
 
 1. Install the Vulkan SDK from LunarG
 
@@ -23,6 +37,8 @@ This has been initially developed on:
 
 3. In apps/devApps you'll find a project called `testVk`, that's where
    some things can be tested.
+
+----------------------------------------------------------------------
 
 ## The Grand Plan
 
@@ -64,18 +80,23 @@ That means, the openFrameworks Vulkan middle layer will aim not to
 produce objects within shared pointers or even to encapsulate Vulkan
 objects with "helper" classes.
 
+----------------------------------------------------------------------
+
 ## Context.h
 
-To facilitate some semblance of old-style OpenGL immediate mode and
-to ease the transition, there is a Context class which is responsible
-to deal with tracking drawing state and to translate this into
-meaningful Vulkan Command buffers and pipeline changes. 
+To allow rendering using similar techniques as in old-style OpenGL
+immediate mode and to ease the transition, there is a Context class
+which is responsible to deal with tracking drawing state and to
+translate this into meaningful Vulkan Command buffers and pipeline
+changes.
 
 Context also has a matrix stack, which makes it possible to use the
 familiar ofPush/ofPopMatrix methods here.
 
 The aim for Context should be to provide a friendly environment to
 quickly prototype drawing using vulkan.
+
+----------------------------------------------------------------------
 
 ## SPIR-V Cross
 
@@ -106,6 +127,8 @@ apothecary recipe to generate a dynamic library (one lib for debug
 *and* release) which would make it possible to track development of
 SPIR-V cross more closely.
 
+----------------------------------------------------------------------
+
 ## Vulkan Quirks
 
 + In Screen Space, Vulkan flips Y, compared to OpenGL.
@@ -116,6 +139,6 @@ SPIR-V cross more closely.
   matrix with a clip matrix:
 
 	ofMatrix4x4 clip(1.0f,  0.0f, 0.0f, 0.0f,
-                     0.0f, -1.0f, 0.0f, 0.0f,
-                     0.0f,  0.0f, 0.5f, 0.0f,
-                     0.0f,  0.0f, 0.5f, 1.0f);
+                         0.0f, -1.0f, 0.0f, 0.0f,
+                         0.0f,  0.0f, 0.5f, 0.0f,
+                         0.0f,  0.0f, 0.5f, 1.0f);
