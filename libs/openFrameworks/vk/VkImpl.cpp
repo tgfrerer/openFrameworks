@@ -721,20 +721,26 @@ void ofVkRenderer::startRender(){
 	assert( !err );
 
 	{
-		// re-allocate command buffer for drawing.
-		VkCommandBufferAllocateInfo allocInfo = {};
-		allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-		allocInfo.pNext = nullptr;
-		allocInfo.commandPool = mCommandPool;
-		allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-		allocInfo.commandBufferCount = 1;
 
-		mDrawCmdBuffer = std::shared_ptr<VkCommandBuffer>( new( VkCommandBuffer ), [&dev = mDevice, &pool = mCommandPool]( auto * buf ){
-			vkFreeCommandBuffers( dev, pool, 1, buf );
-			delete( buf );
-			buf = nullptr;
-		} );
-		vkAllocateCommandBuffers( mDevice, &allocInfo, mDrawCmdBuffer.get() );
+		if ( mDrawCmdBuffer ){
+			// if command buffer has been previously recorded, we want to re-use it.
+			vkResetCommandBuffer( *mDrawCmdBuffer, 0 );
+		} else{
+			mDrawCmdBuffer = std::shared_ptr<VkCommandBuffer>( new( VkCommandBuffer ), [&dev = mDevice, &pool = mCommandPool]( auto * buf ){
+				vkFreeCommandBuffers( dev, pool, 1, buf );
+				delete( buf );
+				buf = nullptr;
+			} );
+			// re-allocate command buffer for drawing.
+			VkCommandBufferAllocateInfo allocInfo = {};
+			allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+			allocInfo.pNext = nullptr;
+			allocInfo.commandPool = mCommandPool;
+			allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+			allocInfo.commandBufferCount = 1;
+			vkAllocateCommandBuffers( mDevice, &allocInfo, mDrawCmdBuffer.get() );
+		}
+
 	}
 	
 	beginDrawCommandBuffer();
