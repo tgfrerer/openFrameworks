@@ -548,7 +548,7 @@ void ofVkRenderer::translate( const ofPoint & p ){
 
 ofMatrix4x4 ofVkRenderer::getCurrentViewMatrix() const
 {
-	return ofMatrix4x4();
+	return mContext->mMatrixState.viewMatrix;
 }
 
 // ----------------------------------------------------------------------
