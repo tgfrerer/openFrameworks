@@ -202,10 +202,6 @@ const uint32_t & Swapchain::getImageCount(){
 }
 
 // ----------------------------------------------------------------------
-const uint32_t & Swapchain::getCurrentBuffer(){
-	return mCurrentBuffer;
-}
-// ----------------------------------------------------------------------
   
 // Present the current image to the queue
 VkResult Swapchain::queuePresent( VkQueue queue, uint32_t currentBuffer ){

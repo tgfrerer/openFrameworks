@@ -70,5 +70,7 @@ public:
 	// return number of swapchain buffers
 	const uint32_t & getImageCount();
 	// return last acquired buffer id
-	const uint32_t & getCurrentBuffer();
+	inline const uint32_t & getCurrentBuffer() const {
+		return mCurrentBuffer;
+	};
 };
