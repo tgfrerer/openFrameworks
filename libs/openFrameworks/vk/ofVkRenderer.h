@@ -246,7 +246,7 @@ public:
 		return mDevice;
 	};
 
-	shared_ptr<VkCommandBuffer> getDrawCommandBuffer(){
+	VkCommandBuffer& getDrawCommandBuffer(){
 		return mDrawCmdBuffer;
 	};
 
@@ -264,10 +264,10 @@ private:
 
 	// in the future, we will want users to create their own command pools etc. 
 	// so we will want users to be able to access the current device.
-	VkCommandPool            mCommandPool;
+	VkCommandPool            mCommandPool = nullptr;
 	
 	// Command buffer used for rendering
-	shared_ptr<VkCommandBuffer>	mDrawCmdBuffer;
+	VkCommandBuffer			mDrawCmdBuffer = nullptr;
 
 	// command buffers used to present frame buffer to screen
 	VkCommandBuffer          mPrePresentCommandBuffer     = VK_NULL_HANDLE;

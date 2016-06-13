@@ -106,7 +106,10 @@ ofVkRenderer::~ofVkRenderer()
 	mContext->reset();
 
 	mTransientBufferObjects.clear();
-	mDrawCmdBuffer.reset();
+	
+	// reset command pool and all associated command buffers.
+	vkResetCommandPool( mDevice, mCommandPool, VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT );
+	
 
 	vkDestroyRenderPass( mDevice, mRenderPass, nullptr );
 
@@ -122,6 +125,8 @@ ofVkRenderer::~ofVkRenderer()
 	
 	vkDestroyPipelineCache( mDevice, mPipelineCache, nullptr );
 	vkDestroyPipeline( mDevice, mPipelines.solid, nullptr );
+	vkDestroyPipeline( mDevice, mPipelines.wireframe, nullptr );
+
 
 	vkDestroyImageView( mDevice, mDepthStencil.view, nullptr );
 	vkDestroyImage( mDevice, mDepthStencil.image, nullptr );

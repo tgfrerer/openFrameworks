@@ -638,8 +638,7 @@ void ofVkRenderer::beginDrawCommandBuffer(){
 	cmdBufInfo.pNext = NULL;
 
 	// Set target frame buffer
-
-	vkBeginCommandBuffer( *mDrawCmdBuffer, &cmdBufInfo );
+	vkBeginCommandBuffer( mDrawCmdBuffer, &cmdBufInfo );
 
 	// Update dynamic viewport state
 	VkViewport viewport = {};
@@ -647,7 +646,7 @@ void ofVkRenderer::beginDrawCommandBuffer(){
 	viewport.height = (float)mViewport.height;
 	viewport.minDepth = ( float ) 0.0f;		   // this is the min depth value for the depth buffer
 	viewport.maxDepth = ( float ) 1.0f;		   // this is the max depth value for the depth buffer  
-	vkCmdSetViewport( *mDrawCmdBuffer, 0, 1, &viewport );
+	vkCmdSetViewport( mDrawCmdBuffer, 0, 1, &viewport );
 
 	// Update dynamic scissor state
 	VkRect2D scissor = {};
@@ -655,7 +654,7 @@ void ofVkRenderer::beginDrawCommandBuffer(){
 	scissor.extent.height = mWindowHeight;
 	scissor.offset.x = 0;
 	scissor.offset.y = 0;
-	vkCmdSetScissor( *mDrawCmdBuffer, 0, 1, &scissor );
+	vkCmdSetScissor( mDrawCmdBuffer, 0, 1, &scissor );
 
 	beginRenderPass();
 }
@@ -687,7 +686,7 @@ void ofVkRenderer::beginRenderPass(){
 	// VK_SUBPASS_CONTENTS_INLINE means we're putting all our render commands into
 	// the primary command buffer - otherwise we would have to call execute on secondary
 	// command buffers to draw.
-	vkCmdBeginRenderPass( *mDrawCmdBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE );
+	vkCmdBeginRenderPass( mDrawCmdBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE );
 };
 
 // ----------------------------------------------------------------------
@@ -709,26 +708,19 @@ void ofVkRenderer::startRender(){
 	assert( !err );
 
 	{
-
 		if ( mDrawCmdBuffer ){
 			// if command buffer has been previously recorded, we want to re-use it.
-			vkResetCommandBuffer( *mDrawCmdBuffer, 0 );
+			vkResetCommandBuffer( mDrawCmdBuffer, 0 );
 		} else{
-			mDrawCmdBuffer = std::shared_ptr<VkCommandBuffer>( new( VkCommandBuffer ), [&dev = mDevice, &pool = mCommandPool]( auto * buf ){
-				vkFreeCommandBuffers( dev, pool, 1, buf );
-				delete( buf );
-				buf = nullptr;
-			} );
-			// re-allocate command buffer for drawing.
+			// (re)allocate command buffer used for draw commands
 			VkCommandBufferAllocateInfo allocInfo = {};
 			allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
 			allocInfo.pNext = nullptr;
 			allocInfo.commandPool = mCommandPool;
 			allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
 			allocInfo.commandBufferCount = 1;
-			vkAllocateCommandBuffers( mDevice, &allocInfo, mDrawCmdBuffer.get() );
+			vkAllocateCommandBuffers( mDevice, &allocInfo, &mDrawCmdBuffer );
 		}
-
 	}
 	
 	beginDrawCommandBuffer();
@@ -740,13 +732,13 @@ void ofVkRenderer::startRender(){
 
 void ofVkRenderer::endDrawCommandBuffer(){
 	endRenderPass();
-	vkEndCommandBuffer( *mDrawCmdBuffer );
+	vkEndCommandBuffer( mDrawCmdBuffer );
 }
 
 // ----------------------------------------------------------------------
 
 void ofVkRenderer::endRenderPass(){
-	vkCmdEndRenderPass( *mDrawCmdBuffer );
+	vkCmdEndRenderPass( mDrawCmdBuffer );
 };
 
 
@@ -775,7 +767,7 @@ void ofVkRenderer::finishRender(){
 	submitInfo.pWaitSemaphores = &mSemaphores.presentComplete;
 	// Submit the currently active command buffer
 	submitInfo.commandBufferCount = 1;
-	submitInfo.pCommandBuffers = mDrawCmdBuffer.get();
+	submitInfo.pCommandBuffers = &mDrawCmdBuffer;
 	// The signal semaphore is used during queue presentation
 	// to ensure that the image is not rendered before all
 	// commands have been submitted
@@ -896,7 +888,7 @@ void ofVkRenderer::draw( const ofMesh & vertexData, ofPolyRenderMode renderType,
 
 	// Bind uniforms (the first set contains the matrices)
 	vkCmdBindDescriptorSets(
-		*mDrawCmdBuffer,
+		mDrawCmdBuffer,
 		VK_PIPELINE_BIND_POINT_GRAPHICS,     // use graphics, not compute pipeline
 		*mPipelineLayouts[0],                // which pipeline layout (contains the bindings programmed from an sequence of descriptor sets )
 		0, 						             // firstset: first set index (of the above) to bind to - mDescriptorSet[0] will be bound to pipeline layout [firstset]
@@ -907,7 +899,7 @@ void ofVkRenderer::draw( const ofMesh & vertexData, ofPolyRenderMode renderType,
 	);
 
 	// Bind the rendering pipeline (including the shaders)
-	vkCmdBindPipeline( *mDrawCmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mPipelines.solid );
+	vkCmdBindPipeline( mDrawCmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mPipelines.solid );
 
 	// Bind triangle vertices
 	// todo: offsets are the offsets into the vertex data buffers used to store data for the
@@ -921,17 +913,17 @@ void ofVkRenderer::draw( const ofMesh & vertexData, ofPolyRenderMode renderType,
 	  tempPositions->buf,
 	  tempColors->buf,
 	};
-	vkCmdBindVertexBuffers( *mDrawCmdBuffer, 0, vertexBuffers.size(), vertexBuffers.data(), offsets );
+	vkCmdBindVertexBuffers( mDrawCmdBuffer, 0, vertexBuffers.size(), vertexBuffers.data(), offsets );
 
 	// This transient buffer will: 
 	// + upload the vector to GPU memory.
 	// + automatically get deleted on the next frame.
 	auto tempIndices = TransientIndexBuffer::create( const_cast<ofVkRenderer*>( this ), vertexData.getIndices() );
 	// Bind triangle indices
-	vkCmdBindIndexBuffer( *mDrawCmdBuffer, tempIndices->buf, 0, VK_INDEX_TYPE_UINT32 );
+	vkCmdBindIndexBuffer( mDrawCmdBuffer, tempIndices->buf, 0, VK_INDEX_TYPE_UINT32 );
 
 	// Draw indexed triangle
-	vkCmdDrawIndexed( *mDrawCmdBuffer, tempIndices->num_elements, 1, 0, 0, 1 );
+	vkCmdDrawIndexed( mDrawCmdBuffer, tempIndices->num_elements, 1, 0, 0, 1 );
 }  
 
 // ----------------------------------------------------------------------
