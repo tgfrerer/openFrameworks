@@ -527,6 +527,18 @@ ofMatrix4x4 ofVkRenderer::getCurrentOrientationMatrix() const
 
 // ----------------------------------------------------------------------
 
+void ofVkRenderer::pushMatrix(){
+	mContext->push();
+}
+
+// ----------------------------------------------------------------------
+
+void ofVkRenderer::popMatrix(){
+	mContext->pop();	
+}
+
+// ----------------------------------------------------------------------
+
 void ofVkRenderer::translate( const ofPoint & p ){
 	mContext->mCurrentMatrixId = -1;
 	mContext->mMatrixState.modelMatrix.glTranslate( p );

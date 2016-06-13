@@ -83,8 +83,8 @@ public:
 	virtual void setCoordHandedness( ofHandednessType handedness ){};
 	virtual ofHandednessType getCoordHandedness() const override;
 
-	virtual void pushMatrix(){};
-	virtual void popMatrix(){};
+	virtual void pushMatrix() override;
+	virtual void popMatrix() override;
 
 	virtual ofMatrix4x4 getCurrentMatrix( ofMatrixMode matrixMode_ ) const override;
 	virtual ofMatrix4x4 getCurrentOrientationMatrix() const override;

@@ -122,7 +122,6 @@ class Context
 	// destroys memory allocations
 	void reset();
 
-
 	/// map uniform buffers so that they can be written to.
 	/// \return an address into gpu readable memory
 	/// also resets indices into internal matrix state structures
@@ -132,7 +131,6 @@ class Context
 	void end();
 
 	vector<VkMappedMemoryRange> mMappedRanges;
-
 
 	// the descriptor is something like a view into the 
 	// memory, an alias so to say

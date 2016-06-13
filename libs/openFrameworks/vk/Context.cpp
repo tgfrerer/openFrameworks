@@ -134,7 +134,7 @@ VkDescriptorBufferInfo & of::vk::Context::getDescriptorBufferInfo(){
 
 void of::vk::Context::push(){
 	mMatrixStack.push( mCurrentMatrixState );
-	mMatrixIdStack.push( mCurrentMatrixId );
+	mMatrixIdStack.push( getCurrentMatrixStateIdx() );
 }
 
 // ----------------------------------------------------------------------
