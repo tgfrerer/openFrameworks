@@ -105,9 +105,10 @@ void ofApp::draw(){
 	// look at nvidia vulkan demo and at how they structure rendering.
 
 	ofMesh m = ofMesh::icosphere(200,3);
-	
-	//ofTranslate( -100, +100, -50 );
-	//m.draw();
+	ofPushMatrix();
+	ofTranslate( -200, +100, 0 );
+	m.draw();
+	ofPopMatrix();
 	
 	mFontMesh.draw();
 
