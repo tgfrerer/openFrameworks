@@ -3,20 +3,21 @@
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_ARB_shading_language_420pack : enable
 
-// inputs
-layout (location = 0) in vec3 inPos;
-layout (location = 1) in vec3 inColor;
-
-// outputs
-layout (location = 0) flat out vec3 outColor;
-
 // uniforms (resources)
-layout (binding = 0) uniform DefaultMatrices 
+layout (set = 0, binding = 0) uniform DefaultMatrices 
 {
 	mat4 projectionMatrix;
 	mat4 modelMatrix;
 	mat4 viewMatrix;
 } ubo;
+
+// inputs (vertex attributes)
+layout (set = 0, location = 0) in vec3 inPos;
+layout (set = 0, location = 1) in vec3 inColor;
+
+// outputs 
+layout (location = 0) flat out vec3 outColor;
+
 
 
 void main() 
