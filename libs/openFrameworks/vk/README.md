@@ -7,7 +7,8 @@ all the time. Send pull requests to influence what changes.
 ## Setup 
 
 This has been initially developed on: 
-     +  Windows 10/64bit, NVIDIA GTX 980 (Vulkan API 1.0.8), Vulkan SDK 1.0.13
+
++ Windows 10/64bit, NVIDIA GTX 980 (Vulkan API 1.0.8), Vulkan SDK 1.0.13
 
 1. Install the Vulkan SDK from LunarG
 
@@ -65,7 +66,7 @@ objects with "helper" classes.
 
 ## Context.h
 
-To facilitate some simulacrum of old-style OpenGL immediate mode and
+To facilitate some semblance of old-style OpenGL immediate mode and
 to ease the transition, there is a Context class which is responsible
 to deal with tracking drawing state and to translate this into
 meaningful Vulkan Command buffers and pipeline changes. 
@@ -107,8 +108,14 @@ SPIR-V cross more closely.
 
 ## Vulkan Quirks
 
-+ In Screen Space, Vulkan flips Y, compared to OpenGL. If you set up
-  your camera to do flipping, you should be fine again.
-
++ In Screen Space, Vulkan flips Y, compared to OpenGL.
 + Vulkan does not use an unit cube for the view frustum, the frustum
-  cube is mapped to x: -1..+1, y: -1..+1, z: 0..1
+  cube is mapped to x: -1..+1, y: -1..+1, z: 0..1, so: half-depth
+
++ To deal with the two points above, we pre-multiply the projection
+  matrix with a clip matrix:
+
+	ofMatrix4x4 clip(1.0f,  0.0f, 0.0f, 0.0f,
+                     0.0f, -1.0f, 0.0f, 0.0f,
+                     0.0f,  0.0f, 0.5f, 0.0f,
+                     0.0f,  0.0f, 0.5f, 1.0f);

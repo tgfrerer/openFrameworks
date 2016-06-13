@@ -244,7 +244,7 @@ static VkPipelineCache&& createPipelineCache( const VkDevice& device, std::strin
 	return std::move( cache );
 };
 
-// return a layout create info derived from shader reflection
+// return a pipeline layout based on a vector of descriptorsetLayouts.
 static std::shared_ptr<VkPipelineLayout> createPipelineLayout( const VkDevice& device_, const std::vector<VkDescriptorSetLayout>& dsl_ ){
 
 	auto pipelineLayout = shared_ptr<VkPipelineLayout>(

@@ -154,7 +154,6 @@ public:
 				mVertexInfo.attribute.resize( shaderResources.stage_inputs.size() );
 				mVertexInfo.binding.resize( shaderResources.stage_inputs.size() );
 
-
 				for ( uint32_t i = 0; i != shaderResources.stage_inputs.size(); ++i ){
 					auto & input = shaderResources.stage_inputs[i];
 
@@ -326,8 +325,6 @@ public:
 
 		return ( dsl );
 	}
-
-	
 
 };
 
