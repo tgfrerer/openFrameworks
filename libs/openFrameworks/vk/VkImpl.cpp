@@ -634,37 +634,9 @@ void ofVkRenderer::beginDrawCommandBuffer(){
 	cmdBufInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 	cmdBufInfo.pNext = NULL;
 
-	VkClearValue clearValues[2];
-	clearValues[0].color = mDefaultClearColor;
-	clearValues[1].depthStencil = { 1.0f, 0 };
-
-	VkRenderPassBeginInfo renderPassBeginInfo = {};
-	renderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-	renderPassBeginInfo.pNext = NULL;
-	renderPassBeginInfo.renderPass = mRenderPass;
-	renderPassBeginInfo.renderArea.offset.x = 0;
-	renderPassBeginInfo.renderArea.offset.y = 0;
-	renderPassBeginInfo.renderArea.extent.width = mWindowWidth;
-	renderPassBeginInfo.renderArea.extent.height = mWindowHeight;
-	renderPassBeginInfo.clearValueCount = 2;
-	renderPassBeginInfo.pClearValues = clearValues;
-
-
-	// we have two command buffers because each command buffer 
-	// uses a different framebuffer for a target.
-
-	auto currentFrameBufferId = mSwapchain.getCurrentBuffer();
-
 	// Set target frame buffer
-	renderPassBeginInfo.framebuffer = mFrameBuffers[currentFrameBufferId];
 
 	vkBeginCommandBuffer( *mDrawCmdBuffer, &cmdBufInfo );
-
-
-	// VK_SUBPASS_CONTENTS_INLINE means we're putting all our render commands into
-	// the primary command buffer - otherwise we would have to call execute on secondary
-	// command buffers to draw.
-	vkCmdBeginRenderPass( *mDrawCmdBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE );
 
 	// Update dynamic viewport state
 	VkViewport viewport = {};
@@ -682,14 +654,53 @@ void ofVkRenderer::beginDrawCommandBuffer(){
 	scissor.offset.y = 0;
 	vkCmdSetScissor( *mDrawCmdBuffer, 0, 1, &scissor );
 
+	beginRenderPass();
 }
 
 // ----------------------------------------------------------------------
 
 void ofVkRenderer::endDrawCommandBuffer(){
-	vkCmdEndRenderPass( *mDrawCmdBuffer );
+	endRenderPass();
 	vkEndCommandBuffer( *mDrawCmdBuffer );
 }
+
+// ----------------------------------------------------------------------
+
+void ofVkRenderer::beginRenderPass(){
+	VkClearValue clearValues[2];
+	clearValues[0].color = mDefaultClearColor;
+	clearValues[1].depthStencil = { 1.0f, 0 };
+
+	VkRect2D renderArea{
+		{ 0, 0 },								  // VkOffset2D
+		{ mWindowWidth, mWindowHeight },		  // VkExtent2D
+	};
+
+	// we have two command buffers because each command buffer 
+	// uses a different framebuffer for a target.
+	auto currentFrameBufferId = mSwapchain.getCurrentBuffer();
+
+	VkRenderPassBeginInfo renderPassBeginInfo = {
+		VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO, // VkStructureType        sType;
+		nullptr,                                  // const void*            pNext;
+		mRenderPass,                              // VkRenderPass           renderPass;
+		mFrameBuffers[currentFrameBufferId],      // VkFramebuffer          framebuffer;
+		renderArea,                               // VkRect2D               renderArea;
+		2,                                        // uint32_t               clearValueCount;
+		clearValues,                              // const VkClearValue*    pClearValues;
+	};
+
+	// VK_SUBPASS_CONTENTS_INLINE means we're putting all our render commands into
+	// the primary command buffer - otherwise we would have to call execute on secondary
+	// command buffers to draw.
+	vkCmdBeginRenderPass( *mDrawCmdBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE );
+};
+
+// ----------------------------------------------------------------------
+
+void ofVkRenderer::endRenderPass(){
+	vkCmdEndRenderPass( *mDrawCmdBuffer );
+};
 
 // ----------------------------------------------------------------------
 
@@ -713,11 +724,10 @@ void ofVkRenderer::startRender(){
 		// re-allocate command buffer for drawing.
 		VkCommandBufferAllocateInfo allocInfo = {};
 		allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+		allocInfo.pNext = nullptr;
 		allocInfo.commandPool = mCommandPool;
 		allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
 		allocInfo.commandBufferCount = 1;
-
-		allocInfo.pNext = VK_NULL_HANDLE;
 
 		mDrawCmdBuffer = std::shared_ptr<VkCommandBuffer>( new( VkCommandBuffer ), [&dev = mDevice, &pool = mCommandPool]( auto * buf ){
 			vkFreeCommandBuffers( dev, pool, 1, buf );
@@ -742,7 +752,6 @@ void ofVkRenderer::finishRender(){
 	
 	mContext->end();
 	endDrawCommandBuffer();
-	
 
 	// Submit the draw command buffer
 	//

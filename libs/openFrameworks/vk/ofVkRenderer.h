@@ -41,7 +41,6 @@ class ofVkRenderer : public ofBaseRenderer
 public:
 	static const string TYPE;
 
-
 	ofVkRenderer( const ofAppBaseWindow * window );
 	void setup();
 	virtual ~ofVkRenderer() override;
@@ -299,8 +298,11 @@ private:
 	void setupPipelines();
 	void setupDescriptorPool();
 
-	void endDrawCommandBuffer();
 	void beginDrawCommandBuffer();
+	void endDrawCommandBuffer();
+
+	void beginRenderPass();
+	void endRenderPass();
 
 	struct
 	{
