@@ -70,23 +70,27 @@ their own scene graphs, renderer addons etc. Great! We should make
 sure that this is possible.
  
 To make sure that the basic elements and helper methods inside
-openFrameworks/vk have maximum compatiblity with 1) each other, 2) the
-Vulkan Api, and 3) possible 3rd party middleware libraries, the
-function returns and parameters aim to be *undecorated* Vulkan API
-variables. Think of it as a C-style API. It's not super pretty and
-clever, but it's bound to work everywhere.
+openFrameworks/vk have maximum compatiblity with 
 
-That means, the openFrameworks Vulkan middle layer will aim not to
+	1) each other, 
+	2) the Vulkan Api, and 
+	3) possible 3rd party middleware libraries, 
+
+the function returns and parameters aim to be *undecorated* Vulkan API
+types. Think of it as a C-style API. It's not super pretty and
+clever, but it's bound to work everywhere. And Dijkstra might be happy.
+
+This implies that the openFrameworks Vulkan middle layer will aim not to
 produce objects within shared pointers or even to encapsulate Vulkan
-objects with "helper" classes.
+objects with "helper" classes if it can be avoided.
 
 ----------------------------------------------------------------------
 
 ## Context.h
 
 To allow rendering using similar techniques as in old-style OpenGL
-immediate mode and to ease the transition, there is a Context class
-which is responsible to deal with tracking drawing state and to
+immediate mode and to make experimenting more fun, there is a Context 
+class which is responsible to deal with tracking drawing state and to
 translate this into meaningful Vulkan Command buffers and pipeline
 changes.
 
