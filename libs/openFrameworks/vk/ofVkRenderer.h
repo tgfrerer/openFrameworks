@@ -321,6 +321,7 @@ private:
 	struct
 	{
 		VkPipeline solid; // solid triangle render pipeline
+		VkPipeline wireframe; // wireframe render pipeline
 	} mPipelines;
 	
 	// the pool where all descriptors will be allocated from

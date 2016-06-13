@@ -258,6 +258,9 @@ void ofVkRenderer::setupPipelines(){
 	
 	mPipelines.solid = defaultPSO.createPipeline( mDevice, mPipelineCache );
 	
+	defaultPSO.mRasterizationState.polygonMode = VK_POLYGON_MODE_LINE;
+	mPipelines.wireframe = defaultPSO.createPipeline( mDevice, mPipelineCache );
+	
 }
  
 // ----------------------------------------------------------------------
