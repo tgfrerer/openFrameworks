@@ -325,7 +325,6 @@ void ofVkRenderer::createDevice()
 
 	// query possible depth formats, find the 
 	// first format that supports attachment as a depth stencil 
-	// 
 	//
 	// Since all depth formats may be optional, we need to find a suitable depth format to use
 	// Start with the highest precision packed format
@@ -353,10 +352,8 @@ void ofVkRenderer::createDevice()
 
 void ofVkRenderer::destroyDevice()
 {
-	
 	vkDestroyDevice(mDevice, VK_NULL_HANDLE);
 	mDevice = VK_NULL_HANDLE;
-
 }
 
 // ----------------------------------------------------------------------

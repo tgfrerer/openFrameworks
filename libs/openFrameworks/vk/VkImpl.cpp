@@ -659,13 +659,6 @@ void ofVkRenderer::beginDrawCommandBuffer(){
 
 // ----------------------------------------------------------------------
 
-void ofVkRenderer::endDrawCommandBuffer(){
-	endRenderPass();
-	vkEndCommandBuffer( *mDrawCmdBuffer );
-}
-
-// ----------------------------------------------------------------------
-
 void ofVkRenderer::beginRenderPass(){
 	VkClearValue clearValues[2];
 	clearValues[0].color = mDefaultClearColor;
@@ -676,8 +669,6 @@ void ofVkRenderer::beginRenderPass(){
 		{ mWindowWidth, mWindowHeight },		  // VkExtent2D
 	};
 
-	// we have two command buffers because each command buffer 
-	// uses a different framebuffer for a target.
 	auto currentFrameBufferId = mSwapchain.getCurrentBuffer();
 
 	VkRenderPassBeginInfo renderPassBeginInfo = {
@@ -694,12 +685,6 @@ void ofVkRenderer::beginRenderPass(){
 	// the primary command buffer - otherwise we would have to call execute on secondary
 	// command buffers to draw.
 	vkCmdBeginRenderPass( *mDrawCmdBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE );
-};
-
-// ----------------------------------------------------------------------
-
-void ofVkRenderer::endRenderPass(){
-	vkCmdEndRenderPass( *mDrawCmdBuffer );
 };
 
 // ----------------------------------------------------------------------
@@ -747,6 +732,20 @@ void ofVkRenderer::startRender(){
 	mContext->begin();
 
 }
+
+// ----------------------------------------------------------------------
+
+void ofVkRenderer::endDrawCommandBuffer(){
+	endRenderPass();
+	vkEndCommandBuffer( *mDrawCmdBuffer );
+}
+
+// ----------------------------------------------------------------------
+
+void ofVkRenderer::endRenderPass(){
+	vkCmdEndRenderPass( *mDrawCmdBuffer );
+};
+
 
 // ----------------------------------------------------------------------
 
@@ -888,15 +887,15 @@ void ofVkRenderer::draw( const ofMesh & vertexData, ofPolyRenderMode renderType,
 	auto & currentShader = mShaders[0];
 
 	vector<VkDescriptorSet>  currentlyBoundDescriptorsets = {
-		mDescriptorSets[0],						 // default matrix uniforms
-		                                         // if there were any other uniforms bound
+		mDescriptorSets[0],                  // default matrix uniforms
+		                                     // if there were any other uniforms bound
 	};
 
 	// Bind uniforms (the first set contains the matrices)
 	vkCmdBindDescriptorSets(
 		*mDrawCmdBuffer,
 		VK_PIPELINE_BIND_POINT_GRAPHICS,     // use graphics, not compute pipeline
-		*mPipelineLayouts[0],  // which pipeline layout (contains the bindings programmed from an sequence of descriptor sets )
+		*mPipelineLayouts[0],                // which pipeline layout (contains the bindings programmed from an sequence of descriptor sets )
 		0, 						             // firstset: first set index (of the above) to bind to - mDescriptorSet[0] will be bound to pipeline layout [firstset]
 		currentlyBoundDescriptorsets.size(), // setCount: how many sets to bind
 		currentlyBoundDescriptorsets.data(), // the descriptor sets to match up with our mPipelineLayout (need to be compatible)
