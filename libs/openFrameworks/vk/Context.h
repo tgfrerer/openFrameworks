@@ -10,6 +10,20 @@
 /// transient state is tracked and accumulated in CPU memory
 /// before frame submission, state is flushed to GPU memory
 
+/*
+
+Context exists to provide legacy support for immediate mode 
+style rendering.
+
+You bind things to a context and can expect it to work
+in a similar way to OpenGL. But without the OpenGL under 
+the hood driver optimisations.
+
+If you want proper Vulkan performance, do your rendering 
+in a more parallel, Vulkan-ic way.
+
+*/
+
 
 class ofVkRenderer;
 
