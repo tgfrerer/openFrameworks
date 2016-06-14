@@ -4,11 +4,11 @@
 #include <vector>
 
 // TODO: rename
-typedef struct _SwapchainBuffers
+typedef struct
 {
 	VkImage imageRef;	   // owned by SwapchainKHR, only referenced here
 	VkImageView view;
-} SwapchainBuffer;
+} SwapchainImage;
 
 class Swapchain {
 
@@ -22,22 +22,22 @@ class Swapchain {
 	VkSurfaceFormatKHR   mColorFormat = {};
 	
 	uint32_t             mImageCount = 0;
-	uint32_t             mCurrentBuffer = 0;
+	uint32_t             mImageIndex = 0;
 
 	// these are the front and the back buffer for our main 
 	// render target.
 	// todo: this should not be public, as these are owned by 
 	// us.
-	std::vector<SwapchainBuffer> buffers;  // owning!
+	std::vector<SwapchainImage> mImages;  // owning!
 
 public:
 
-	const std::vector<SwapchainBuffer> & getBuffers() const {
-		return buffers;
+	const std::vector<SwapchainImage> & getImages() const {
+		return mImages;
 	};
 
-	const SwapchainBuffer& getBuffer( size_t i ) const{
-		return buffers[i];
+	const SwapchainImage& getImage( size_t i ) const{
+		return mImages[i];
 	};
 
 	void setup( 
@@ -67,10 +67,10 @@ public:
 	VkResult queuePresent( VkQueue queue, uint32_t currentBuffer );
 	VkResult queuePresent( VkQueue queue, uint32_t currentBuffer, VkSemaphore waitSemaphore );
 
-	// return number of swapchain buffers
-	const uint32_t & getImageCount();
+	// return number of swapchain images
+	inline const uint32_t & getImageCount() const { return mImageCount; };
+	
 	// return last acquired buffer id
-	inline const uint32_t & getCurrentBuffer() const {
-		return mCurrentBuffer;
-	};
+	inline const uint32_t & getCurrentImageIndex() const { return mImageIndex; };
+
 };

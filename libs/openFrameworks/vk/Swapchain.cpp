@@ -113,7 +113,7 @@ void Swapchain::setup(
 	vkGetSwapchainImagesKHR( mDevice, mSwapchain, &mImageCount, swapchainImages.data() );
 	
 	// Get the swap chain buffers containing the image and imageview
-	buffers.resize( mImageCount );
+	mImages.resize( mImageCount );
 	for ( uint32_t i = 0; i < mImageCount; i++ ){
 		VkImageViewCreateInfo colorAttachmentView = {};
 		colorAttachmentView.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
@@ -133,9 +133,9 @@ void Swapchain::setup(
 		colorAttachmentView.viewType = VK_IMAGE_VIEW_TYPE_2D;
 		colorAttachmentView.flags = 0;
 
-		buffers[i].imageRef = swapchainImages[i];
+		mImages[i].imageRef = swapchainImages[i];
 
-		auto transferBarrier = of::vk::createImageBarrier( buffers[i].imageRef,
+		auto transferBarrier = of::vk::createImageBarrier( mImages[i].imageRef,
 			VK_IMAGE_ASPECT_COLOR_BIT,
 			VK_IMAGE_LAYOUT_UNDEFINED,
 			VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL );
@@ -150,9 +150,9 @@ void Swapchain::setup(
 			0, nullptr,
 			1, &transferBarrier );
 
-		colorAttachmentView.image = buffers[i].imageRef;
+		colorAttachmentView.image = mImages[i].imageRef;
 
-		err = vkCreateImageView( mDevice, &colorAttachmentView, nullptr, &buffers[i].view );
+		err = vkCreateImageView( mDevice, &colorAttachmentView, nullptr, &mImages[i].view );
 		assert( !err );
 	}
 
@@ -164,13 +164,13 @@ void Swapchain::reset(){
 
 	// it's imperative we clean up.
 	
-	for ( auto&b : buffers ){
+	for ( auto&b : mImages ){
 		// note that we only destroy the VkImageView,
 		// as the VkImage is owned by the swapchain mSwapchain
 		// and will get destroyed when destroying the swapchain
 		vkDestroyImageView( mDevice, b.view, nullptr );
 	}
-	buffers.clear();
+	mImages.clear();
 
 	vkDestroySwapchainKHR( mDevice, mSwapchain, nullptr );
 }
@@ -180,26 +180,21 @@ void Swapchain::reset(){
 // Acquires the next image in the swap chain
 // blocks cpu until image has been acquired
 // signals semaphorePresentComplete once image has been acquired
-VkResult Swapchain::acquireNextImage( VkSemaphore semaphorePresentComplete, uint32_t *currentBuffer ){
+VkResult Swapchain::acquireNextImage( VkSemaphore semaphorePresentComplete, uint32_t *imageIndex ){
 	// TODO: research:
 	// because we are blocking here, could this affect our frame rate? could it take away time for cpu work?
 	// we somehow need to make sure to keep the internal time value increasing in regular intervals,
 	// tracking the current frame number!
-	auto err = vkAcquireNextImageKHR( mDevice, mSwapchain, UINT64_MAX, semaphorePresentComplete, ( VkFence )nullptr, currentBuffer );
+	auto err = vkAcquireNextImageKHR( mDevice, mSwapchain, UINT64_MAX, semaphorePresentComplete, ( VkFence )nullptr, imageIndex );
 	
 	if ( err != VK_SUCCESS ){
 		ofLogWarning() << "image acquisition returned: " << err;
 	}
-	mCurrentBuffer = *currentBuffer;
+	mImageIndex = *imageIndex;
 
 	return err;
 }
 
-// ----------------------------------------------------------------------
-
-const uint32_t & Swapchain::getImageCount(){
-	return mImageCount;
-}
 
 // ----------------------------------------------------------------------
   
