@@ -136,8 +136,8 @@ ofVkRenderer::~ofVkRenderer()
 	vkDestroyDescriptorPool( mDevice, mDescriptorPool, nullptr );
 
 	vkDestroyCommandPool( mDevice, mCommandPool, VK_NULL_HANDLE );
-	vkDestroySemaphore( mDevice, mSemaphores.presentComplete, nullptr );
-	vkDestroySemaphore( mDevice, mSemaphores.renderComplete, nullptr );
+	vkDestroySemaphore( mDevice, mSemaphorePresentComplete, nullptr );
+	vkDestroySemaphore( mDevice, mSemaphoreRenderComplete, nullptr );
 
 	mSwapchain.reset();
 

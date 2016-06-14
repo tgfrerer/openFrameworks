@@ -267,19 +267,18 @@ void ofVkRenderer::setupPipelines(){
 
 void ofVkRenderer::createSemaphores(){
 	
-	VkSemaphoreCreateInfo semaphoreCreateInfo = {};
-	semaphoreCreateInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-	semaphoreCreateInfo.pNext = VK_NULL_HANDLE;
+	VkSemaphoreCreateInfo semaphoreCreateInfo = {
+		VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO, // VkStructureType           sType;
+		nullptr,                                 // const void*               pNext;
+		0,                                       // VkSemaphoreCreateFlags    flags;
+	};
 
-	// This semaphore ensures that the image is complete
-	// before starting to submit again
-	VkResult err = vkCreateSemaphore( mDevice, &semaphoreCreateInfo, nullptr, &mSemaphores.presentComplete );
-	assert( !err );
+	// This semaphore ensures that the image is complete before starting to submit again
+	vkCreateSemaphore( mDevice, &semaphoreCreateInfo, nullptr, &mSemaphorePresentComplete );
 
-	// This semaphore ensures that all commands submitted
+	// This semaphore ensures that all commands submitted 
 	// have been finished before submitting the image to the queue
-	err = vkCreateSemaphore( mDevice, &semaphoreCreateInfo, nullptr, &mSemaphores.renderComplete );
-	assert( !err );
+	vkCreateSemaphore( mDevice, &semaphoreCreateInfo, nullptr, &mSemaphoreRenderComplete );
 }
 
 // ----------------------------------------------------------------------
@@ -704,7 +703,7 @@ void ofVkRenderer::startRender(){
 	// + block cpu until swapchain can get next image, 
 	// + get index for swapchain image we may render into,
 	// + signal presentComplete once the image has been acquired
-	err = mSwapchain.acquireNextImage( mSemaphores.presentComplete, &mCurrentSwapIndex );
+	err = mSwapchain.acquireNextImage( mSemaphorePresentComplete, &mCurrentSwapIndex );
 	assert( !err );
 
 	{
@@ -768,14 +767,12 @@ void ofVkRenderer::finishRender(){
 		VK_STRUCTURE_TYPE_SUBMIT_INFO,                       // VkStructureType                sType;
 		nullptr,                                             // const void*                    pNext;
 		1,                                                   // uint32_t                       waitSemaphoreCount;
-	// we have to wait until the image has been acquired - that's when this semaphore is signalled:
-		&mSemaphores.presentComplete,                        // const VkSemaphore*             pWaitSemaphores;
+		&mSemaphorePresentComplete,                        // const VkSemaphore*             pWaitSemaphores;
 		pipelineStages,                                      // const VkPipelineStageFlags*    pWaitDstStageMask;
 		1,                                                   // uint32_t                       commandBufferCount;
-	// Submit the currently active command buffer:
 		&mDrawCmdBuffer[mCurrentSwapIndex],                  // const VkCommandBuffer*         pCommandBuffers;
 		1,                                                   // uint32_t                       signalSemaphoreCount;
-		&mSemaphores.renderComplete,                         // const VkSemaphore*             pSignalSemaphores;
+		&mSemaphoreRenderComplete,                         // const VkSemaphore*             pSignalSemaphores;
 	};
 
 	// Submit to the graphics queue	- 
@@ -823,7 +820,7 @@ void ofVkRenderer::finishRender(){
 	// We pass the signal semaphore from the submit info
 	// to ensure that the image is not rendered until
 	// all commands have been submitted
-	auto presentResult = mSwapchain.queuePresent( mQueue, mCurrentSwapIndex, mSemaphores.renderComplete );
+	mSwapchain.queuePresent( mQueue, mCurrentSwapIndex, { mSemaphoreRenderComplete } );
 	
 	// Add a post present image memory barrier
 	// This will transform the frame buffer color attachment back

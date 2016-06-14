@@ -37,7 +37,6 @@ class ofVkRenderer : public ofBaseRenderer
 	ofPath mPath;
 	const ofAppBaseWindow * window;
 
-
 public:
 	static const string TYPE;
 
@@ -374,12 +373,9 @@ private:
 	// main renderpass 
 	VkRenderPass mRenderPass;
 
-	// Synchronization semaphores
-	struct
-	{
-		VkSemaphore presentComplete = VK_NULL_HANDLE;
-		VkSemaphore renderComplete  = VK_NULL_HANDLE;
-	} mSemaphores;
+	// Synchronization semaphores - one for each swapchain image
+	VkSemaphore mSemaphorePresentComplete;
+	VkSemaphore mSemaphoreRenderComplete;
 
 	// our depth stencil: 
 	// we only need one since there is only ever one frame in flight.

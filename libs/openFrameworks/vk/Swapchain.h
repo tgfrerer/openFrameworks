@@ -12,23 +12,18 @@ typedef struct
 
 class Swapchain {
 
-	VkSwapchainKHR       mSwapchain = VK_NULL_HANDLE;
-
-	VkInstance           mInstance = VK_NULL_HANDLE;
-	VkDevice             mDevice = VK_NULL_HANDLE;
+	VkSwapchainKHR       mSwapchain      = VK_NULL_HANDLE;
+	VkInstance           mInstance       = VK_NULL_HANDLE;
+	VkDevice             mDevice         = VK_NULL_HANDLE;
 	VkPhysicalDevice     mPhysicalDevice = VK_NULL_HANDLE;
 
-	VkSurfaceKHR         mWindowSurface = VK_NULL_HANDLE;
-	VkSurfaceFormatKHR   mColorFormat = {};
+	VkSurfaceKHR         mWindowSurface  = VK_NULL_HANDLE;
+	VkSurfaceFormatKHR   mColorFormat    = {};
 	
 	uint32_t             mImageCount = 0;
 	uint32_t             mImageIndex = 0;
 
-	// these are the front and the back buffer for our main 
-	// render target.
-	// todo: this should not be public, as these are owned by 
-	// us.
-	std::vector<SwapchainImage> mImages;  // owning!
+	std::vector<SwapchainImage> mImages;  // owning, clients may only borrow!
 
 public:
 
@@ -58,14 +53,16 @@ public:
 	// the image must be returned to the swapchain when done using 
 	// queuePresent
 	// \note this might cause waiting.
-	VkResult acquireNextImage( VkSemaphore presentCompleteSemaphore, uint32_t *currentBuffer );
+	VkResult acquireNextImage( VkSemaphore presentCompleteSemaphore, uint32_t *imageIndex );
 
 	// mark the image ready to present by the swapchain.
 	// this returns the image to the swapchain and tells the 
 	// swapchain that we're done rendering to it and that 
 	// it may show the image on screen.
-	VkResult queuePresent( VkQueue queue, uint32_t currentBuffer );
-	VkResult queuePresent( VkQueue queue, uint32_t currentBuffer, VkSemaphore waitSemaphore );
+	VkResult queuePresent( VkQueue queue, uint32_t imageIndex );
+	// Present the current image to the queue
+	// Waits with execution until all waitSemaphores have been signalled
+	VkResult queuePresent( VkQueue queue, uint32_t imageIndex, std::vector<VkSemaphore> waitSemaphores_ );
 
 	// return number of swapchain images
 	inline const uint32_t & getImageCount() const { return mImageCount; };

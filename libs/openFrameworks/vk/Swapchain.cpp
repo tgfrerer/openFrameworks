@@ -70,6 +70,11 @@ void Swapchain::setup(
 	}
 
 	VkSurfaceTransformFlagsKHR preTransform;
+
+	// Note: this will be interesting for mobile devices
+	// - if rotation and mirroring for the final output can 
+	// be defined here.
+
 	if ( surfCaps.supportedTransforms & VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR ){
 		preTransform = VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR;
 	}
@@ -200,24 +205,23 @@ VkResult Swapchain::acquireNextImage( VkSemaphore semaphorePresentComplete, uint
   
 // Present the current image to the queue
 VkResult Swapchain::queuePresent( VkQueue queue, uint32_t currentBuffer ){
-	return queuePresent( queue, currentBuffer, VK_NULL_HANDLE );
+	std::vector<VkSemaphore> noSemaphores;
+	return queuePresent( queue, currentBuffer, noSemaphores);
 }
 
 // ----------------------------------------------------------------------
 
-// Present the current image to the queue
-// waits with execution until waitSemaphore have been signalled
-VkResult Swapchain::queuePresent( VkQueue queue, uint32_t currentBuffer, VkSemaphore waitSemaphore ){
-	VkPresentInfoKHR presentInfo = {};
-	presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-	presentInfo.pNext = NULL;
-	presentInfo.swapchainCount = 1;
-	presentInfo.pSwapchains = &mSwapchain;
-	presentInfo.pImageIndices = &currentBuffer;
-	if ( waitSemaphore != VK_NULL_HANDLE ){
-		presentInfo.pWaitSemaphores = &waitSemaphore;
-		presentInfo.waitSemaphoreCount = 1;
-	}
+VkResult Swapchain::queuePresent( VkQueue queue, uint32_t currentImageIndex, std::vector<VkSemaphore> waitSemaphores_ ){
+	VkPresentInfoKHR presentInfo = {
+		VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,                            // VkStructureType          sType;
+		nullptr,                                                       // const void*              pNext;
+		waitSemaphores_.size(),                                        // uint32_t                 waitSemaphoreCount;
+		waitSemaphores_.data(),                                        // const VkSemaphore*       pWaitSemaphores;
+		1,                                                             // uint32_t                 swapchainCount;
+		&mSwapchain,                                                   // const VkSwapchainKHR*    pSwapchains;
+		&currentImageIndex,                                            // const uint32_t*          pImageIndices;
+		nullptr,                                                       // VkResult*                pResults;
+	};
 	// each command wich begins with vkQueue... is appended to the end of the 
 	// queue. this includes presenting.
 	return vkQueuePresentKHR( queue, &presentInfo );
