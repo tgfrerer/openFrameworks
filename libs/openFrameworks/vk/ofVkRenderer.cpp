@@ -127,11 +127,9 @@ ofVkRenderer::~ofVkRenderer()
 	vkDestroyPipeline( mDevice, mPipelines.solid, nullptr );
 	vkDestroyPipeline( mDevice, mPipelines.wireframe, nullptr );
 
-
 	vkDestroyImageView( mDevice, mDepthStencil.view, nullptr );
 	vkDestroyImage( mDevice, mDepthStencil.image, nullptr );
 	vkFreeMemory( mDevice, mDepthStencil.mem, nullptr );
-	
 
 	vkDestroyDescriptorPool( mDevice, mDescriptorPool, nullptr );
 

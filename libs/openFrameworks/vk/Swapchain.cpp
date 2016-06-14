@@ -70,7 +70,6 @@ void Swapchain::setup(
 	}
 
 	VkSurfaceTransformFlagsKHR preTransform;
-
 	// Note: this will be interesting for mobile devices
 	// - if rotation and mirroring for the final output can 
 	// be defined here.
@@ -82,24 +81,29 @@ void Swapchain::setup(
 		preTransform = surfCaps.currentTransform;
 	}
 
-	VkSwapchainCreateInfoKHR swapchainCI = {};
-	swapchainCI.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
-	swapchainCI.pNext = VK_NULL_HANDLE;
-	swapchainCI.surface = mWindowSurface;
-	swapchainCI.minImageCount = desiredNumberOfSwapchainImages;
-	swapchainCI.imageFormat = mColorFormat.format;
-	swapchainCI.imageColorSpace = mColorFormat.colorSpace;
-	swapchainCI.imageExtent = { swapchainExtent.width, swapchainExtent.height };
-	swapchainCI.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-	swapchainCI.preTransform = (VkSurfaceTransformFlagBitsKHR)preTransform;
-	swapchainCI.imageArrayLayers = 1;
-	swapchainCI.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
-	swapchainCI.queueFamilyIndexCount = 0;
-	swapchainCI.pQueueFamilyIndices = VK_NULL_HANDLE;
-	swapchainCI.presentMode = swapchainPresentMode;
-	swapchainCI.oldSwapchain = oldSwapchain;
-	swapchainCI.clipped = VK_TRUE;
-	swapchainCI.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+	VkSwapchainCreateInfoKHR swapchainCI = {
+		VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,             // VkStructureType                  sType;
+		nullptr,                                                 // const void*                      pNext;
+		0,                                                       // VkSwapchainCreateFlagsKHR        flags;
+		mWindowSurface,                                          // VkSurfaceKHR                     surface;
+		desiredNumberOfSwapchainImages,                          // uint32_t                         minImageCount;
+		mColorFormat.format,                                     // VkFormat                         imageFormat;
+		mColorFormat.colorSpace,                                 // VkColorSpaceKHR                  imageColorSpace;
+		{								                         
+			swapchainExtent.width,		                         
+			swapchainExtent.height		                         
+		},                                                       // VkExtent2D                       imageExtent;
+		1,                                                       // uint32_t                         imageArrayLayers;
+		VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,                     // VkImageUsageFlags                imageUsage;
+		VK_SHARING_MODE_EXCLUSIVE,                               // VkSharingMode                    imageSharingMode;
+		0,                                                       // uint32_t                         queueFamilyIndexCount;
+		nullptr,                                                 // const uint32_t*                  pQueueFamilyIndices;
+		(VkSurfaceTransformFlagBitsKHR)preTransform,             // VkSurfaceTransformFlagBitsKHR    preTransform;
+		VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,                       // VkCompositeAlphaFlagBitsKHR      compositeAlpha;
+		swapchainPresentMode,                                    // VkPresentModeKHR                 presentMode;
+		VK_TRUE,                                                 // VkBool32                         clipped;
+		oldSwapchain,                                            // VkSwapchainKHR                   oldSwapchain;
+	};
 
 	err = vkCreateSwapchainKHR( mDevice, &swapchainCI, nullptr, &mSwapchain );
 
@@ -199,7 +203,6 @@ VkResult Swapchain::acquireNextImage( VkSemaphore semaphorePresentComplete, uint
 
 	return err;
 }
-
 
 // ----------------------------------------------------------------------
   
