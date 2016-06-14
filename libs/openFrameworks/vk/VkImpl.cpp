@@ -38,9 +38,7 @@ void ofVkRenderer::setup(){
 
 	mContext = make_shared<of::vk::Context>();
 
-	mContext->mRenderer = this;
-
-	mContext->setup();
+	mContext->setup(this);
 
 
 	// shaders will let us know about descriptorSetLayouts.
@@ -880,8 +878,10 @@ void ofVkRenderer::draw( const ofMesh & vertexData, ofPolyRenderMode renderType,
 	// + positions
 	// + normals
 
-	uint32_t dynamicOffsets[1] = { 0 };
-	dynamicOffsets[0] = mContext->getCurrentMatrixStateOffset();
+	std::vector<uint32_t> dynamicOffsets = { 
+		(uint32_t)mContext->getCurrentMatrixStateOffset(),
+	};
+	
 
 	auto & currentShader = mShaders[0];
 
@@ -900,8 +900,8 @@ void ofVkRenderer::draw( const ofMesh & vertexData, ofPolyRenderMode renderType,
 		0, 						             // firstset: first set index (of the above) to bind to - mDescriptorSet[0] will be bound to pipeline layout [firstset]
 		currentlyBoundDescriptorsets.size(), // setCount: how many sets to bind
 		currentlyBoundDescriptorsets.data(), // the descriptor sets to match up with our mPipelineLayout (need to be compatible)
-		1, 						             // dynamic offsets count how many dynamic offsets
-		dynamicOffsets 			             // dynamic offsets for each 
+		dynamicOffsets.size(),               // dynamic offsets count how many dynamic offsets
+		dynamicOffsets.data()                // dynamic offsets for each 
 	);
 
 	// Bind the rendering pipeline (including the shaders)

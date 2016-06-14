@@ -9,7 +9,7 @@ all the time. Send pull requests to influence what changes.
 To switch between Vulkan and GL for rendering API, toggle the
 following `#define` near the top of `ofConstants.h`:
 
-    #define OF_TARGET_API_VULKAN
+    ```#define OF_TARGET_API_VULKAN```
 
 Unfortunately, because of how `ofGLFWWindow` is organised currently, it
 is not trivial to switch between Vulkan and GL for target APIs. Using
@@ -30,8 +30,8 @@ modifications.
 
 2. update GLFW using apothecary
    
-    cd openFrameworks/scripts/apothecary
-    ./apothecary update glfw
+    ```cd openFrameworks/scripts/apothecary
+    ./apothecary update glfw```
 
    Check the apothecary headers to make sure they are at version 3.2
 
@@ -140,7 +140,7 @@ SPIR-V cross more closely.
 + To deal with the two points above, we pre-multiply the projection
   matrix with a clip matrix:
 
-    ofMatrix4x4 clip(1.0f,  0.0f, 0.0f, 0.0f,
+    ```ofMatrix4x4 clip(1.0f,  0.0f, 0.0f, 0.0f,
                      0.0f, -1.0f, 0.0f, 0.0f,
                      0.0f,  0.0f, 0.5f, 0.0f,
-                     0.0f,  0.0f, 0.5f, 1.0f);
+                     0.0f,  0.0f, 0.5f, 1.0f);```

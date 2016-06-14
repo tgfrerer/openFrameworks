@@ -6,7 +6,9 @@
 
 // ----------------------------------------------------------------------
 
-void of::vk::Context::setup(){
+void of::vk::Context::setup(ofVkRenderer* renderer_){
+
+	mRenderer = renderer_;
 
 	// The most important shader uniforms are the matrices
 	// model, view, and projection matrix
@@ -22,9 +24,6 @@ void of::vk::Context::setup(){
 		ofLogWarning() << "calling setup on already set up Context";
 		reset();
 	}
-	
-	// reserve size for saved matrices in our temporary buffer
-	mSavedMatrices.resize( mMaxElementCount );
 
 	auto & device = mRenderer->mDevice;
 
@@ -32,7 +31,7 @@ void of::vk::Context::setup(){
 	// physical device.
 	auto alignment = mRenderer->mPhysicalDeviceProperties.limits.minUniformBufferOffsetAlignment;
 
-	mHostMemory.alignedMatrixStateSize = alignment * (( alignment + sizeof( mMatrixState ) - 1 ) / alignment);
+	mHostMemory.alignedMatrixStateSize = alignment * (( alignment + sizeof( MatrixState ) - 1 ) / alignment);
 
  	// Prepare and initialize uniform buffer containing shader uniforms
 	VkResult err;
@@ -50,8 +49,8 @@ void of::vk::Context::setup(){
 	};
 
 	// Create a new buffer
-	err = vkCreateBuffer( device, &bufferInfo, nullptr, &mMatrixUniformData.buffer );
-	assert( !err );
+	vkCreateBuffer( device, &bufferInfo, nullptr, &mMatrixUniformData.buffer );
+	
 	// Get memory requirements including size, alignment and memory type 
 	VkMemoryRequirements memReqs;
 	vkGetBufferMemoryRequirements( device, mMatrixUniformData.buffer, &memReqs );
@@ -72,16 +71,16 @@ void of::vk::Context::setup(){
 	allocInfo.allocationSize = 1UL << 27 - 1; // 2^26 = 67108864 bytes
 
 	// Allocate memory for the uniform buffer
-	err = vkAllocateMemory( device, &allocInfo, nullptr, &( mMatrixUniformData.memory ) );
-	assert( !err );
+	// todo: check for and recover from allocation errors
+	vkAllocateMemory( device, &allocInfo, nullptr, &( mMatrixUniformData.memory ) );
+	
 	// Bind memory to buffer
-	err = vkBindBufferMemory( device, mMatrixUniformData.buffer, mMatrixUniformData.memory, 0 );
-	assert( !err );
+	vkBindBufferMemory( device, mMatrixUniformData.buffer, mMatrixUniformData.memory, 0 );
 
 	// Store information in the uniform's descriptor
 	mMatrixUniformData.descriptorBufferInfo.buffer = mMatrixUniformData.buffer;
 	mMatrixUniformData.descriptorBufferInfo.offset = 0;
-	mMatrixUniformData.descriptorBufferInfo.range = sizeof(mMatrixState);
+	mMatrixUniformData.descriptorBufferInfo.range = sizeof(MatrixState);
 
 	vkMapMemory(
 		device,
@@ -95,7 +94,7 @@ void of::vk::Context::setup(){
 
 void of::vk::Context::begin(){
 	mSavedMatricesLastElement = 0;
-	mMatrixState = {}; // reset matrix state
+	mCurrentMatrixState = {}; // reset matrix state
 }
 
 // ----------------------------------------------------------------------
@@ -123,52 +122,55 @@ VkDescriptorBufferInfo & of::vk::Context::getDescriptorBufferInfo(){
 
 // ----------------------------------------------------------------------
 
-// you only have to submit a matrix state to GPU memory if something has 
-// been drawn with it. 
-
-// if you do so, increase the matrixStateId 
-// 
-
-
-// ----------------------------------------------------------------------
-
 void of::vk::Context::push(){
 	mMatrixStack.push( mCurrentMatrixState );
-	mMatrixIdStack.push( getCurrentMatrixStateIdx() );
+	mMatrixIdStack.push( mCurrentMatrixId );
+	mCurrentMatrixId = -1;
 }
 
 // ----------------------------------------------------------------------
 
 void of::vk::Context::pop(){
 	if ( !mMatrixStack.empty() ){
+		ofLog() << "pop, before: " << mCurrentMatrixId << " now: " << mMatrixIdStack.top() ;
+
 		mCurrentMatrixState = mMatrixStack.top(); mMatrixStack.pop();
 		mCurrentMatrixId = mMatrixIdStack.top(); mMatrixIdStack.pop();
 	}
 	else{
 		ofLogError() << "Context:: Cannot push Matrix state further back than 0";
 	}
-		
 }
 
+// you only have to submit a matrix state to GPU memory if something has 
+// been drawn with it. 
+// if you do so, increase the matrixStateId 
+//
+// TODO: return an offset in bytes rather than an index.
+//
 // ----------------------------------------------------------------------
 size_t of::vk::Context::getCurrentMatrixStateIdx(){
 
+	// only when a matrix state id is requested,
+	// is matrix data saved to 
+
 	if ( mCurrentMatrixId == -1 ){
 
-		if ( mSavedMatricesLastElement == mSavedMatrices.size() ){
+		if (  mSavedMatricesLastElement == mMaxElementCount ){
 			ofLogError() << "out of matrix space.";
-			// TODO: realloc
-			return mSavedMatricesLastElement-1;
+			return ( mMaxElementCount - 1 );
 		}
 
 		// save matrix to buffer - offset by id
-		memcpy( mHostMemory.pData + (mHostMemory.alignedMatrixStateSize * mSavedMatricesLastElement),
-			&mMatrixState,
-			sizeof(mMatrixState));
+		memcpy( mHostMemory.pData 
+			+ (mHostMemory.alignedMatrixStateSize * mSavedMatricesLastElement),
+			&mCurrentMatrixState,
+			sizeof( MatrixState ));
 
-		//mSavedMatrices[mSavedMatricesLastElement] = ( mCurrentMatrixState );
 		mCurrentMatrixId = mSavedMatricesLastElement;
-		mSavedMatricesLastElement++;
+
+		++ mSavedMatricesLastElement;
+		
 	}
 
 	// return current matrix state index, if such index exists.
@@ -181,4 +183,27 @@ size_t of::vk::Context::getCurrentMatrixStateIdx(){
 
 size_t of::vk::Context::getCurrentMatrixStateOffset(){
 	return mHostMemory.alignedMatrixStateSize * getCurrentMatrixStateIdx();
+}
+
+void of::vk::Context::setViewMatrix( const ofMatrix4x4 & mat_ ){
+	mCurrentMatrixId = -1;
+	mCurrentMatrixState.viewMatrix = mat_;
+}
+
+void of::vk::Context::setProjectionMatrix( const ofMatrix4x4 & mat_ ){
+	mCurrentMatrixId = -1;
+	mCurrentMatrixState.projectionMatrix = mat_;
+
+}
+
+// ----------------------------------------------------------------------
+void of::vk::Context::translate( const ofVec3f& v_ ){
+	mCurrentMatrixId = -1;
+	mCurrentMatrixState.modelMatrix.glTranslate( v_ );
+}
+
+// ----------------------------------------------------------------------
+void of::vk::Context::rotate( const float& degrees_, const ofVec3f& axis_ ){
+	mCurrentMatrixId = -1;
+	mCurrentMatrixState.modelMatrix.glRotate( degrees_, axis_.x, axis_.y, axis_.z );
 }

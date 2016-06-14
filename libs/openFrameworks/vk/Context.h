@@ -80,7 +80,7 @@ class Context
 	struct HostMemory
 	{
 		uint8_t* pData = nullptr;
-		//size_t allocatedSize = 0;	// mapped size in bytes
+		size_t allocatedSize = 0;	// mapped size in bytes
 		size_t alignedMatrixStateSize = 0;  // matrixState size in bytes aligned to minUniformBufferOffsetAlignment
 	} mHostMemory;
 
@@ -98,9 +98,9 @@ class Context
 		ofMatrix4x4 modelMatrix;
 		ofMatrix4x4 viewMatrix;
 		
-	} mMatrixState;
+	};
 
-	std::vector<MatrixState>	   mSavedMatrices;
+	//std::vector<MatrixState>	   mSavedMatrices;
 	size_t mSavedMatricesLastElement = 0;
 	size_t mMaxElementCount = 262144;	 // todo: find max element count based on 
 
@@ -110,8 +110,13 @@ class Context
 	stack<int> mMatrixIdStack;
 	std::stack<MatrixState> mMatrixStack;
 
+	int         mCurrentMatrixId = -1; // -1 means undefined, not yet used/saved
 	MatrixState mCurrentMatrixState;
-	int         mCurrentMatrixId = -1;
+
+	vector<VkMappedMemoryRange> mMappedRanges;
+
+
+public:
 
 	/// returns index of current matrix for generating 
 	/// the binding offset into host memory for the descriptor
@@ -130,8 +135,13 @@ class Context
 		mCurrentMatrixId = -1;
 	};
 
+	
+	// the descriptor is something like a view into the 
+	// memory, an alias so to say
+	VkDescriptorBufferInfo& getDescriptorBufferInfo();
+
 	// allocates memory on the GPU (call rarely)
-	void setup();
+	void setup(ofVkRenderer * renderer_);
 
 	// destroys memory allocations
 	void reset();
@@ -144,18 +154,26 @@ class Context
 	// unmap uniform buffers 
 	void end();
 
-	vector<VkMappedMemoryRange> mMappedRanges;
-
-	// the descriptor is something like a view into the 
-	// memory, an alias so to say
-	VkDescriptorBufferInfo& getDescriptorBufferInfo();
-
-	friend class ofVkRenderer;
-
-public:
-	
 
 	// whenever a draw command occurs, the current matrix id has to be either
+
+	inline const ofMatrix4x4 & getViewMatrix() const {
+		return mCurrentMatrixState.viewMatrix;
+	};
+
+	inline const ofMatrix4x4 & getModelMatrix() const {
+		return mCurrentMatrixState.modelMatrix;
+	};
+
+	inline const ofMatrix4x4 & projectionMatrix() const {
+		return mCurrentMatrixState.projectionMatrix;
+	}
+
+	void setViewMatrix( const ofMatrix4x4& mat_ );
+	void setProjectionMatrix( const ofMatrix4x4& mat_ );
+
+	void translate(const ofVec3f& v_);
+	void rotate( const float & degrees_, const ofVec3f& axis_ );
 
 	// push currentMatrix state
 	void push();

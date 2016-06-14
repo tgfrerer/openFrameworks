@@ -31,7 +31,6 @@ const string ofVkRenderer::TYPE = "Vulkan";
 
 using InstanceP = shared_ptr<VkInstance>;
 
-
 // ----------------------------------------------------------------------
 
 // fetched function pointers for debug layer callback creation / destruction
@@ -540,15 +539,13 @@ void ofVkRenderer::popMatrix(){
 // ----------------------------------------------------------------------
 
 void ofVkRenderer::translate( const ofPoint & p ){
-	mContext->mCurrentMatrixId = -1;
-	mContext->mMatrixState.modelMatrix.glTranslate( p );
+	mContext->translate( p );
 }
 
 // ----------------------------------------------------------------------
 
 void ofVkRenderer::rotate( float degrees, float axisX, float axisY, float axisZ ){
-	mContext->mCurrentMatrixId = -1;
-	mContext->mMatrixState.modelMatrix.glRotate( degrees,axisX,axisY,axisZ );
+	mContext->rotate( degrees, { axisX, axisY, axisZ } );
 }
 
 // ----------------------------------------------------------------------
@@ -577,7 +574,7 @@ void ofVkRenderer::rotate( float degrees ){
 
 ofMatrix4x4 ofVkRenderer::getCurrentViewMatrix() const
 {
-	return mContext->mMatrixState.viewMatrix;
+	return mContext->getViewMatrix();
 }
 
 // ----------------------------------------------------------------------
@@ -647,12 +644,11 @@ of3dGraphics & ofVkRenderer::get3dGraphics()
 
 void ofVkRenderer::bind( const ofCamera & camera, const ofRectangle & viewport ){
 	mContext->push();
-	mContext->mCurrentMatrixId = -1; // taint matrix state
-	mContext->mMatrixState.viewMatrix = camera.getModelViewMatrix();
+	mContext->setViewMatrix(camera.getModelViewMatrix());
 
 	// Clip space transform:
 	
-	// vulkan has inverted y 
+	// Vulkan has inverted y 
 	// and half-width z.
 
 	static const ofMatrix4x4 clip( 1.0f, 0.0f, 0.0f, 0.0f,
@@ -660,7 +656,7 @@ void ofVkRenderer::bind( const ofCamera & camera, const ofRectangle & viewport )
 		0.0f, 0.0f, 0.5f, 0.0f,
 		0.0f, 0.0f, 0.5f, 1.0f );
 	
-	mContext->mMatrixState.projectionMatrix = camera.getProjectionMatrix(viewport) * clip;
+	mContext->setProjectionMatrix(camera.getProjectionMatrix(viewport) * clip);
 }
 
 // ----------------------------------------------------------------------
