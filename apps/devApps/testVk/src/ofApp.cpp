@@ -12,7 +12,8 @@ void ofApp::setup(){
 
 	mFontMesh.load( "untitled.ply" );
 	
-	{
+	{	// Horizontally elongated "L___" shape
+
 		vector<ofVec3f> vert {
 			{0.f,0.f,0.f},
 			{20.f,20.f,0.f},
@@ -112,7 +113,10 @@ void ofApp::draw(){
 	
 	mFontMesh.draw();
 
-	// mLMesh.draw();
+	ofPushMatrix();
+	ofRotate( ofGetFrameNum() % 360 ); // this should rotate at a speed of one revolution every 6 seconds. 
+	mLMesh.draw();
+	ofPopMatrix();
 
 	/*ofTranslate( 100, -100, 50 );
 	
