@@ -584,7 +584,7 @@ void ofVkRenderer::setupFrameBuffer(){
 		
 		VkImageView attachments[2];
 		// attachment0 shall be the image view for the image buffer to the corresponding swapchain image view
-		attachments[0] = mSwapchain.getBuffer(i).view;
+		attachments[0] = mSwapchain.getImage(i).view;
 		// attachment1 shall be the image view for the depthStencil buffer
 		attachments[1] = mDepthStencil.view;
 
@@ -632,13 +632,13 @@ void ofVkRenderer::flushSetupCommandBuffer(){
 
 // ----------------------------------------------------------------------
 
-void ofVkRenderer::beginDrawCommandBuffer(){
+void ofVkRenderer::beginDrawCommandBuffer(VkCommandBuffer& cmdBuf_){
 	VkCommandBufferBeginInfo cmdBufInfo = {};
 	cmdBufInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 	cmdBufInfo.pNext = NULL;
 
 	// Set target frame buffer
-	vkBeginCommandBuffer( mDrawCmdBuffer, &cmdBufInfo );
+	vkBeginCommandBuffer( cmdBuf_, &cmdBufInfo );
 
 	// Update dynamic viewport state
 	VkViewport viewport = {};
@@ -646,7 +646,7 @@ void ofVkRenderer::beginDrawCommandBuffer(){
 	viewport.height = (float)mViewport.height;
 	viewport.minDepth = ( float ) 0.0f;		   // this is the min depth value for the depth buffer
 	viewport.maxDepth = ( float ) 1.0f;		   // this is the max depth value for the depth buffer  
-	vkCmdSetViewport( mDrawCmdBuffer, 0, 1, &viewport );
+	vkCmdSetViewport( cmdBuf_, 0, 1, &viewport );
 
 	// Update dynamic scissor state
 	VkRect2D scissor = {};
@@ -654,14 +654,14 @@ void ofVkRenderer::beginDrawCommandBuffer(){
 	scissor.extent.height = mWindowHeight;
 	scissor.offset.x = 0;
 	scissor.offset.y = 0;
-	vkCmdSetScissor( mDrawCmdBuffer, 0, 1, &scissor );
+	vkCmdSetScissor( cmdBuf_, 0, 1, &scissor );
 
-	beginRenderPass();
+	beginRenderPass(cmdBuf_, mFrameBuffers[mCurrentSwapIndex] );
 }
 
 // ----------------------------------------------------------------------
 
-void ofVkRenderer::beginRenderPass(){
+void ofVkRenderer::beginRenderPass(VkCommandBuffer& cmdBuf_, VkFramebuffer& frameBuf_){
 	VkClearValue clearValues[2];
 	clearValues[0].color = mDefaultClearColor;
 	clearValues[1].depthStencil = { 1.0f, 0 };
@@ -671,13 +671,13 @@ void ofVkRenderer::beginRenderPass(){
 		{ mWindowWidth, mWindowHeight },		  // VkExtent2D
 	};
 
-	auto currentFrameBufferId = mSwapchain.getCurrentBuffer();
+	//auto currentFrameBufferId = mSwapchain.getCurrentBuffer();
 
 	VkRenderPassBeginInfo renderPassBeginInfo = {
 		VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO, // VkStructureType        sType;
 		nullptr,                                  // const void*            pNext;
 		mRenderPass,                              // VkRenderPass           renderPass;
-		mFrameBuffers[currentFrameBufferId],      // VkFramebuffer          framebuffer;
+		frameBuf_,      // VkFramebuffer          framebuffer;
 		renderArea,                               // VkRect2D               renderArea;
 		2,                                        // uint32_t               clearValueCount;
 		clearValues,                              // const VkClearValue*    pClearValues;
@@ -686,7 +686,7 @@ void ofVkRenderer::beginRenderPass(){
 	// VK_SUBPASS_CONTENTS_INLINE means we're putting all our render commands into
 	// the primary command buffer - otherwise we would have to call execute on secondary
 	// command buffers to draw.
-	vkCmdBeginRenderPass( mDrawCmdBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE );
+	vkCmdBeginRenderPass( cmdBuf_, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE );
 };
 
 // ----------------------------------------------------------------------
@@ -704,26 +704,30 @@ void ofVkRenderer::startRender(){
 	// + block cpu until swapchain can get next image, 
 	// + get index for swapchain image we may render into,
 	// + signal presentComplete once the image has been acquired
-	err = mSwapchain.acquireNextImage( mSemaphores.presentComplete, &mCurrentFramebufferIndex );
+	err = mSwapchain.acquireNextImage( mSemaphores.presentComplete, &mCurrentSwapIndex );
 	assert( !err );
 
 	{
-		if ( mDrawCmdBuffer ){
+		if ( mDrawCmdBuffer.size() == mSwapchain.getImageCount() ){
 			// if command buffer has been previously recorded, we want to re-use it.
-			vkResetCommandBuffer( mDrawCmdBuffer, 0 );
-		} else{
+			vkResetCommandBuffer( mDrawCmdBuffer[mCurrentSwapIndex], 0 );
+		} else {
+			// allocate a draw command buffer for each swapchain image
+			mDrawCmdBuffer.resize( mSwapchain.getImageCount() );
 			// (re)allocate command buffer used for draw commands
-			VkCommandBufferAllocateInfo allocInfo = {};
-			allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-			allocInfo.pNext = nullptr;
-			allocInfo.commandPool = mCommandPool;
-			allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-			allocInfo.commandBufferCount = 1;
-			vkAllocateCommandBuffers( mDevice, &allocInfo, &mDrawCmdBuffer );
+			VkCommandBufferAllocateInfo allocInfo = {
+				VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,                 // VkStructureType         sType;
+				nullptr,                                                        // const void*             pNext;
+				mCommandPool,                                                   // VkCommandPool           commandPool;
+				VK_COMMAND_BUFFER_LEVEL_PRIMARY,                                // VkCommandBufferLevel    level;
+				mDrawCmdBuffer.size()                                           // uint32_t                commandBufferCount;
+			};
+			
+			vkAllocateCommandBuffers( mDevice, &allocInfo, mDrawCmdBuffer.data() );
 		}
 	}
 	
-	beginDrawCommandBuffer();
+	beginDrawCommandBuffer(mDrawCmdBuffer[mCurrentSwapIndex]);
 	mContext->begin();
 
 }
@@ -732,13 +736,13 @@ void ofVkRenderer::startRender(){
 
 void ofVkRenderer::endDrawCommandBuffer(){
 	endRenderPass();
-	vkEndCommandBuffer( mDrawCmdBuffer );
+	vkEndCommandBuffer( mDrawCmdBuffer[mCurrentSwapIndex] );
 }
 
 // ----------------------------------------------------------------------
 
 void ofVkRenderer::endRenderPass(){
-	vkCmdEndRenderPass( mDrawCmdBuffer );
+	vkCmdEndRenderPass( mDrawCmdBuffer[mCurrentSwapIndex] );
 };
 
 
@@ -746,7 +750,7 @@ void ofVkRenderer::endRenderPass(){
 
 void ofVkRenderer::finishRender(){
 	VkResult err;
-	VkSubmitInfo submitInfo = {};
+	
 
 	// submit current model view and projection matrices
 	
@@ -758,21 +762,21 @@ void ofVkRenderer::finishRender(){
 	// The submit info structure contains a list of
 	// command buffers and semaphores to be submitted to a queue
 	// If you want to submit multiple command buffers, pass an array
-	VkPipelineStageFlags pipelineStages = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
-
-	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-	submitInfo.pWaitDstStageMask = &pipelineStages;
-	submitInfo.waitSemaphoreCount = 1;
-	// we have to wait until the image has been acquired - that's when this semaphore is signalled.
-	submitInfo.pWaitSemaphores = &mSemaphores.presentComplete;
-	// Submit the currently active command buffer
-	submitInfo.commandBufferCount = 1;
-	submitInfo.pCommandBuffers = &mDrawCmdBuffer;
-	// The signal semaphore is used during queue presentation
-	// to ensure that the image is not rendered before all
-	// commands have been submitted
-	submitInfo.signalSemaphoreCount = 1;
-	submitInfo.pSignalSemaphores = &mSemaphores.renderComplete;
+	VkPipelineStageFlags pipelineStages[] = { VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT };
+	
+	VkSubmitInfo submitInfo = {
+		VK_STRUCTURE_TYPE_SUBMIT_INFO,                       // VkStructureType                sType;
+		nullptr,                                             // const void*                    pNext;
+		1,                                                   // uint32_t                       waitSemaphoreCount;
+	// we have to wait until the image has been acquired - that's when this semaphore is signalled:
+		&mSemaphores.presentComplete,                        // const VkSemaphore*             pWaitSemaphores;
+		pipelineStages,                                      // const VkPipelineStageFlags*    pWaitDstStageMask;
+		1,                                                   // uint32_t                       commandBufferCount;
+	// Submit the currently active command buffer:
+		&mDrawCmdBuffer[mCurrentSwapIndex],                  // const VkCommandBuffer*         pCommandBuffers;
+		1,                                                   // uint32_t                       signalSemaphoreCount;
+		&mSemaphores.renderComplete,                         // const VkSemaphore*             pSignalSemaphores;
+	};
 
 	// Submit to the graphics queue	- 
 	err = vkQueueSubmit( mQueue, 1, &submitInfo, VK_NULL_HANDLE );
@@ -780,13 +784,17 @@ void ofVkRenderer::finishRender(){
 
 	{  // pre-present
 
-		VkCommandBufferBeginInfo beginInfo = {};
-		beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-		// beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+		VkCommandBufferBeginInfo beginInfo = {
+			VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,     // VkStructureType                          sType;
+			nullptr,                                         // const void*                              pNext;
+			0,                                               // VkCommandBufferUsageFlags                flags;
+			nullptr,                                         // const VkCommandBufferInheritanceInfo*    pInheritanceInfo;
+		};
+		
 		vkBeginCommandBuffer( mPrePresentCommandBuffer, &beginInfo );
 		{
 			auto transferBarrier = of::vk::createImageBarrier(	
-				mSwapchain.getBuffer(mCurrentFramebufferIndex).imageRef,
+				mSwapchain.getImage(mCurrentSwapIndex).imageRef,
 				VK_IMAGE_ASPECT_COLOR_BIT,
 				VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
 				VK_IMAGE_LAYOUT_PRESENT_SRC_KHR );
@@ -815,7 +823,7 @@ void ofVkRenderer::finishRender(){
 	// We pass the signal semaphore from the submit info
 	// to ensure that the image is not rendered until
 	// all commands have been submitted
-	auto presentResult = mSwapchain.queuePresent( mQueue, mCurrentFramebufferIndex, mSemaphores.renderComplete );
+	auto presentResult = mSwapchain.queuePresent( mQueue, mCurrentSwapIndex, mSemaphores.renderComplete );
 	
 	// Add a post present image memory barrier
 	// This will transform the frame buffer color attachment back
@@ -833,7 +841,7 @@ void ofVkRenderer::finishRender(){
 	postPresentBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 	postPresentBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 	postPresentBarrier.subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 };
-	postPresentBarrier.image = mSwapchain.getBuffer(mCurrentFramebufferIndex).imageRef;
+	postPresentBarrier.image = mSwapchain.getImage(mCurrentSwapIndex).imageRef;
 
 	// Use dedicated command buffer from example base class for submitting the post present barrier
 	VkCommandBufferBeginInfo cmdBufInfo = {};
@@ -860,7 +868,6 @@ void ofVkRenderer::finishRender(){
 	submitInfo.pCommandBuffers = &mPostPresentCommandBuffer;
 
 	err = vkQueueSubmit( mQueue, 1, &submitInfo, VK_NULL_HANDLE );
-
 	err = vkQueueWaitIdle( mQueue );
 	
 	// vkDeviceWaitIdle( mDevice );
@@ -886,9 +893,11 @@ void ofVkRenderer::draw( const ofMesh & vertexData, ofPolyRenderMode renderType,
 		                                     // if there were any other uniforms bound
 	};
 
+	auto & cmd = mDrawCmdBuffer[mCurrentSwapIndex];
+
 	// Bind uniforms (the first set contains the matrices)
 	vkCmdBindDescriptorSets(
-		mDrawCmdBuffer,
+		cmd,
 		VK_PIPELINE_BIND_POINT_GRAPHICS,     // use graphics, not compute pipeline
 		*mPipelineLayouts[0],                // which pipeline layout (contains the bindings programmed from an sequence of descriptor sets )
 		0, 						             // firstset: first set index (of the above) to bind to - mDescriptorSet[0] will be bound to pipeline layout [firstset]
@@ -899,7 +908,7 @@ void ofVkRenderer::draw( const ofMesh & vertexData, ofPolyRenderMode renderType,
 	);
 
 	// Bind the rendering pipeline (including the shaders)
-	vkCmdBindPipeline( mDrawCmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mPipelines.solid );
+	vkCmdBindPipeline( cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, mPipelines.solid );
 
 	// Bind triangle vertices
 	// todo: offsets are the offsets into the vertex data buffers used to store data for the
@@ -913,17 +922,17 @@ void ofVkRenderer::draw( const ofMesh & vertexData, ofPolyRenderMode renderType,
 	  tempPositions->buf,
 	  tempColors->buf,
 	};
-	vkCmdBindVertexBuffers( mDrawCmdBuffer, 0, vertexBuffers.size(), vertexBuffers.data(), offsets );
+	vkCmdBindVertexBuffers( cmd, 0, vertexBuffers.size(), vertexBuffers.data(), offsets );
 
 	// This transient buffer will: 
 	// + upload the vector to GPU memory.
 	// + automatically get deleted on the next frame.
 	auto tempIndices = TransientIndexBuffer::create( const_cast<ofVkRenderer*>( this ), vertexData.getIndices() );
 	// Bind triangle indices
-	vkCmdBindIndexBuffer( mDrawCmdBuffer, tempIndices->buf, 0, VK_INDEX_TYPE_UINT32 );
+	vkCmdBindIndexBuffer( cmd, tempIndices->buf, 0, VK_INDEX_TYPE_UINT32 );
 
 	// Draw indexed triangle
-	vkCmdDrawIndexed( mDrawCmdBuffer, tempIndices->num_elements, 1, 0, 0, 1 );
+	vkCmdDrawIndexed( cmd, tempIndices->num_elements, 1, 0, 0, 1 );
 }  
 
 // ----------------------------------------------------------------------

@@ -247,7 +247,7 @@ public:
 	};
 
 	VkCommandBuffer& getDrawCommandBuffer(){
-		return mDrawCmdBuffer;
+		return mDrawCmdBuffer[mCurrentSwapIndex];
 	};
 
 	const VkPhysicalDeviceProperties& getVkPhysicalDeviceProperties() const {
@@ -266,8 +266,9 @@ private:
 	// so we will want users to be able to access the current device.
 	VkCommandPool            mCommandPool = nullptr;
 	
-	// Command buffer used for rendering
-	VkCommandBuffer			mDrawCmdBuffer = nullptr;
+	// Command buffers used for rendering
+	// we will double-buffer these
+	std::vector<VkCommandBuffer> mDrawCmdBuffer; 
 
 	// command buffers used to present frame buffer to screen
 	VkCommandBuffer          mPrePresentCommandBuffer     = VK_NULL_HANDLE;
@@ -298,10 +299,10 @@ private:
 	void setupPipelines();
 	void setupDescriptorPool();
 
-	void beginDrawCommandBuffer();
+	void beginDrawCommandBuffer( VkCommandBuffer& cmdBuf_ );
 	void endDrawCommandBuffer();
 
-	void beginRenderPass();
+	void beginRenderPass( VkCommandBuffer& cmdBuf_, VkFramebuffer& frameBuf_ );
 	void endRenderPass();
 
 	struct
@@ -395,11 +396,10 @@ private:
 	// frame buffers for each image in the swapchain
 	std::vector<VkFramebuffer> mFrameBuffers;
 	// Active frame buffer index
-	uint32_t mCurrentFramebufferIndex = 0;
+	uint32_t mCurrentSwapIndex = 0;
 
 	uint32_t mWindowWidth = 0;
 	uint32_t mWindowHeight = 0;
-
 
 	VkClearColorValue mDefaultClearColor = { { 0.025f, 0.025f, 0.025f, 1.0f } };
 
