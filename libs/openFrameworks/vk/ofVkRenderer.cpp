@@ -548,6 +548,35 @@ void ofVkRenderer::translate( const ofPoint & p ){
 
 // ----------------------------------------------------------------------
 
+void ofVkRenderer::rotate( float degrees, float axisX, float axisY, float axisZ ){
+	mContext->mCurrentMatrixId = -1;
+	mContext->mMatrixState.modelMatrix.glRotate( degrees,axisX,axisY,axisZ );
+}
+
+// ----------------------------------------------------------------------
+
+void ofVkRenderer::rotateY( float degrees ){
+	rotate( degrees, 0, 1, 0 );
+}
+
+void ofVkRenderer::rotateZ( float degrees ){
+	rotate( degrees, 0, 0, 1 );
+}
+
+// ----------------------------------------------------------------------
+
+void ofVkRenderer::rotateX(float degrees) {
+	rotate( degrees, 1, 0, 0 );
+};
+
+// ----------------------------------------------------------------------
+
+void ofVkRenderer::rotate( float degrees ){
+	rotateZ( degrees );
+}
+
+// ----------------------------------------------------------------------
+
 ofMatrix4x4 ofVkRenderer::getCurrentViewMatrix() const
 {
 	return mContext->mMatrixState.viewMatrix;

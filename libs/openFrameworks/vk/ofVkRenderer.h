@@ -93,11 +93,11 @@ public:
 	};
 	virtual void translate( const ofPoint & p );
 	virtual void scale( float xAmnt, float yAmnt, float zAmnt = 1 ){};
-	virtual void rotate( float degrees, float vecX, float vecY, float vecZ ){};
-	virtual void rotateX( float degrees ){};
-	virtual void rotateY( float degrees ){};
-	virtual void rotateZ( float degrees ){};
-	virtual void rotate( float degrees ){};
+	virtual void rotate( float degrees, float axisX, float axisY, float axisZ );
+	virtual void rotateX( float degrees );
+	virtual void rotateY( float degrees );
+	virtual void rotateZ( float degrees );
+	virtual void rotate( float degrees );
 
 	virtual void matrixMode( ofMatrixMode mode ){};
 
