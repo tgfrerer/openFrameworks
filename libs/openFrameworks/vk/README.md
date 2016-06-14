@@ -72,9 +72,9 @@ sure that this is possible.
 To make sure that the basic elements and helper methods inside
 openFrameworks/vk have maximum compatiblity with 
 
-	1) each other, 
-	2) the Vulkan Api, and 
-	3) possible 3rd party middleware libraries, 
+1) each other, 
+2) the Vulkan Api, and 
+3) possible 3rd party middleware libraries, 
 
 the function returns and parameters aim to be *undecorated* Vulkan API
 types. Think of it as a C-style API. It's not super pretty and
@@ -104,8 +104,7 @@ quickly prototype drawing using vulkan.
 
 ## SPIR-V Cross
 
-With Vulkan, a new intermediary shader language, SPIR-V was
-introduced. Vulkan only accepts SPIR-V as shader language. SPIR-V
+Vulkan introduces a new intermediary shader language, SPIR-V. Vulkan only accepts SPIR-V as shader language. SPIR-V
 files come precompiled, as a blob of 32bit words.
 
 You generate these from GLSL source using the
