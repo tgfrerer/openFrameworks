@@ -30,8 +30,8 @@ modifications.
 
 2. update GLFW using apothecary
    
-	cd openFrameworks/scripts/apothecary
-   	./apothecary update glfw
+    cd openFrameworks/scripts/apothecary
+    ./apothecary update glfw
 
    Check the apothecary headers to make sure they are at version 3.2
 
@@ -70,7 +70,7 @@ their own scene graphs, renderer addons etc. Great! We should make
 sure that this is possible.
  
 To make sure that the basic elements and helper methods inside
-openFrameworks/vk have maximum compatiblity with 
+openFrameworks/vk have maximum compatiblity with:
 
 1) each other, 
 2) the Vulkan Api, and 
@@ -136,12 +136,11 @@ SPIR-V cross more closely.
 
 + In Screen Space, Vulkan flips Y, compared to OpenGL.
 + Vulkan does not use an unit cube for the view frustum, the frustum
-  cube is mapped to x: -1..+1, y: -1..+1, z: 0..1, so: half-depth
-
+  has half-depth (z does from 0 to +1 instead of -1 to +1)
 + To deal with the two points above, we pre-multiply the projection
   matrix with a clip matrix:
 
-	ofMatrix4x4 clip(1.0f,  0.0f, 0.0f, 0.0f,
-                         0.0f, -1.0f, 0.0f, 0.0f,
-                         0.0f,  0.0f, 0.5f, 0.0f,
-                         0.0f,  0.0f, 0.5f, 1.0f);
+    ofMatrix4x4 clip(1.0f,  0.0f, 0.0f, 0.0f,
+                     0.0f, -1.0f, 0.0f, 0.0f,
+                     0.0f,  0.0f, 0.5f, 0.0f,
+                     0.0f,  0.0f, 0.5f, 1.0f);
