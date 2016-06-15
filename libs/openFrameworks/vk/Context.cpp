@@ -1,8 +1,16 @@
 #include "Context.h"
 #include "ofVkRenderer.h"
 
+/*
 
-// buffers have descriptors (these tell us 
+Next steps: 
+
++ return offset in bytes, not in elements 
++ add allocator	class for dynamic memory
++ use allocator to get dynamic memory for buffers
+
+*/
+
 
 // ----------------------------------------------------------------------
 
@@ -132,8 +140,6 @@ void of::vk::Context::push(){
 
 void of::vk::Context::pop(){
 	if ( !mMatrixStack.empty() ){
-		ofLog() << "pop, before: " << mCurrentMatrixId << " now: " << mMatrixIdStack.top() ;
-
 		mCurrentMatrixState = mMatrixStack.top(); mMatrixStack.pop();
 		mCurrentMatrixId = mMatrixIdStack.top(); mMatrixIdStack.pop();
 	}
