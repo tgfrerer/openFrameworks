@@ -163,12 +163,12 @@ SPIR-V cross more closely.
 + To deal with the two points above, we pre-multiply the projection
   matrix with a clip matrix:
 
-
-    ofMatrix4x4 clip(1.0f,  0.0f, 0.0f, 0.0f,
-                     0.0f, -1.0f, 0.0f, 0.0f,
-                     0.0f,  0.0f, 0.5f, 0.0f,
-                     0.0f,  0.0f, 0.5f, 1.0f);
-
+```cpp
+ofMatrix4x4 clip(1.0f,  0.0f, 0.0f, 0.0f,
+                 0.0f, -1.0f, 0.0f, 0.0f,
+                 0.0f,  0.0f, 0.5f, 0.0f,
+                 0.0f,  0.0f, 0.5f, 1.0f);
+```
 
 ----------------------------------------------------------------------
 
@@ -181,9 +181,9 @@ SPIR-V cross more closely.
 
 # TODO
 
-[ ] Unify transient vertex and index buffers and Context
-[ ] Define default pipeline layout based on default descriptor set layout
-[ ] Define default pipelines based on default shaders
+- [ ] Unify transient vertex and index buffers and Context
+- [ ] Define default pipeline layout based on default descriptor set layout
+- [ ] Define default pipelines based on default shaders
 
 ----------------------------------------------------------------------
 

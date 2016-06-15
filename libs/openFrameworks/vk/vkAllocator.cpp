@@ -66,11 +66,11 @@ void of::vk::Allocator::setup(){
 		allocationInfo
 	);
 
-	// Allocate memory for the uniform buffer
+	// 2.3 Finally, to the allocation
 	// todo: check for and recover from allocation errors
 	vkAllocateMemory( mSettings.device, &allocationInfo, nullptr, &mDeviceMemory );
 
-	// back buffer with memory (buffer must not be already backed by memory)
+	// 2.4 Attach memory to buffer (buffer must not be already backed by memory)
 	vkBindBufferMemory( mSettings.device, mBuffer, mDeviceMemory, 0 );
 
 	mOffset.clear();
@@ -79,7 +79,7 @@ void of::vk::Allocator::setup(){
 	mBaseAddress.clear();
 	mBaseAddress.resize( mSettings.frames, 0 );
 
-	// map full memory range for writing
+	// Map full memory range for CPU write access
 	vkMapMemory(
 		mSettings.device,
 		mDeviceMemory,
