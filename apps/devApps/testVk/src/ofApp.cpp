@@ -118,13 +118,11 @@ void ofApp::draw(){
 	mLMesh.draw();
 	ofPopMatrix();
 
-
 	ofPushMatrix();
 	ofTranslate( 200, 0 );
-	ofRotate( ofGetFrameNum() % 360 ); // this should rotate at a speed of one revolution every 6 seconds. 
+	ofRotate( 360.f * ((ofGetElapsedTimeMillis() % 1000) / 1000.f) ); // this should rotate at a speed of one revolution every 6 seconds. 
 	mLMesh.draw();
 	ofPopMatrix();
-
 
 	/*ofTranslate( 100, -100, 50 );
 	
