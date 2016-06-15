@@ -4,7 +4,6 @@
 #include "GLFW\glfw3.h"
 #include "vk/vkUtils.h"
 
-
 void Swapchain::setup(
 	const VkInstance & instance_,
 	const VkDevice & device_,
@@ -48,10 +47,10 @@ void Swapchain::setup(
 	}
 
 	// Prefer mailbox mode if present, it's the lowest latency non-tearing present mode
-	// TODO: allow user to choose presentmode 
+	// TODO: allow user to choose preferred presentmode 
 	// with setup constants.
 	VkPresentModeKHR swapchainPresentMode = VK_PRESENT_MODE_FIFO_KHR;
-	for ( size_t i = 0; i < presentModeCount; i++ ){
+	/*for ( size_t i = 0; i < presentModeCount; i++ ){
 		if ( presentModes[i] == VK_PRESENT_MODE_MAILBOX_KHR ){
 			swapchainPresentMode = VK_PRESENT_MODE_MAILBOX_KHR;
 			break;
@@ -59,7 +58,7 @@ void Swapchain::setup(
 		if ( ( swapchainPresentMode != VK_PRESENT_MODE_MAILBOX_KHR ) && ( presentModes[i] == VK_PRESENT_MODE_IMMEDIATE_KHR ) ){
 			swapchainPresentMode = VK_PRESENT_MODE_IMMEDIATE_KHR;
 		}
-	}
+	}*/
 
 	// Determine the number of images
 	// TODO: allow user to choose number of swapchain elements
