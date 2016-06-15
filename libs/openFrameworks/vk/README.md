@@ -9,7 +9,7 @@ all the time. Send pull requests to influence what changes.
 To switch between Vulkan and GL for rendering API, toggle the
 following `#define` near the top of `ofConstants.h`:
 
-    ```#define OF_TARGET_API_VULKAN```
+    #define OF_TARGET_API_VULKAN
 
 Unfortunately, because of how `ofGLFWWindow` is organised currently, it
 is not trivial to switch between Vulkan and GL for target APIs. Using
@@ -68,9 +68,9 @@ Advanced users will probably want to write their own scene graphs, renderer addo
 So that the basic elements and helper methods inside
 openFrameworks/vk have maximum compatiblity with:
 
-1) each other, 
-2) the Vulkan Api, and 
-3) possible 3rd party middleware libraries, 
+1. each other, 
+2. the Vulkan Api, and 
+3. possible 3rd party middleware libraries, 
 
 any function returns and parameters aim to be *undecorated* Vulkan API
 types. Think of it as a C-style API. It's not super pretty and
@@ -163,10 +163,12 @@ SPIR-V cross more closely.
 + To deal with the two points above, we pre-multiply the projection
   matrix with a clip matrix:
 
-    ```ofMatrix4x4 clip(1.0f,  0.0f, 0.0f, 0.0f,
+
+    ofMatrix4x4 clip(1.0f,  0.0f, 0.0f, 0.0f,
                      0.0f, -1.0f, 0.0f, 0.0f,
                      0.0f,  0.0f, 0.5f, 0.0f,
-                     0.0f,  0.0f, 0.5f, 1.0f);```
+                     0.0f,  0.0f, 0.5f, 1.0f);
+
 
 ----------------------------------------------------------------------
 
@@ -175,6 +177,22 @@ SPIR-V cross more closely.
 * Vulkan spec ([PDF][spec])
 * [Awesome Vulkan][awesome] -- A curated collection of links to resources around Vulkan
 
+----------------------------------------------------------------------
+
+# TODO
+
+[ ] Unify transient vertex and index buffers and Context
+[ ] Define default pipeline layout based on default descriptor set layout
+[ ] Define default pipelines based on default shaders
+
+----------------------------------------------------------------------
+
+# Design Principles
+
+1. Make it correct
+2. Keep it simple
+3. Make it extensible
+4. Optimise
 
 
 [spec]: https://www.khronos.org/registry/vulkan/specs/1.0-wsi_extensions/pdf/vkspec.pdf
