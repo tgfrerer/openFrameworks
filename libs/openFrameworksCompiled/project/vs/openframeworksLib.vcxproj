@@ -214,6 +214,7 @@
     <ClInclude Include="..\..\..\openFrameworks\vk\Pipeline.h" />
     <ClInclude Include="..\..\..\openFrameworks\vk\Shader.h" />
     <ClInclude Include="..\..\..\openFrameworks\vk\Swapchain.h" />
+    <ClInclude Include="..\..\..\openFrameworks\vk\vkAllocator.h" />
     <ClInclude Include="..\..\..\openFrameworks\vk\vkUtils.h" />
   </ItemGroup>
   <ItemGroup>
@@ -284,11 +285,12 @@
     <ClCompile Include="..\..\..\openFrameworks\video\ofVideoPlayer.cpp" />
     <ClCompile Include="..\..\..\openFrameworks\communication\ofArduino.cpp" />
     <ClCompile Include="..\..\..\openFrameworks\communication\ofSerial.cpp" />
+    <ClCompile Include="..\..\..\openFrameworks\vk\vkAllocator.cpp" />
     <ClCompile Include="..\..\..\openFrameworks\vk\Context.cpp" />
     <ClCompile Include="..\..\..\openFrameworks\vk\ofVkRenderer.cpp" />
     <ClCompile Include="..\..\..\openFrameworks\vk\Pipeline.cpp" />
     <ClCompile Include="..\..\..\openFrameworks\vk\Swapchain.cpp" />
-    <ClCompile Include="..\..\..\openFrameworks\vk\VkImpl.cpp" />
+    <ClCompile Include="..\..\..\openFrameworks\vk\ofVkRendererImpl.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
 </Project>

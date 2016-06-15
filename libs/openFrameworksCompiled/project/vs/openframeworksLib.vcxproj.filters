@@ -303,6 +303,9 @@
     <ClInclude Include="..\..\..\openFrameworks\vk\vkUtils.h">
       <Filter>libs\openFrameworks\vk</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\..\openFrameworks\vk\vkAllocator.h">
+      <Filter>libs\openFrameworks\vk</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\openFrameworks\app\ofAppGlutWindow.cpp">
@@ -515,10 +518,13 @@
     <ClCompile Include="..\..\..\openFrameworks\vk\Swapchain.cpp">
       <Filter>libs\openFrameworks\vk</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\openFrameworks\vk\VkImpl.cpp">
+    <ClCompile Include="..\..\..\openFrameworks\vk\Pipeline.cpp">
       <Filter>libs\openFrameworks\vk</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\openFrameworks\vk\Pipeline.cpp">
+    <ClCompile Include="..\..\..\openFrameworks\vk\ofVkRendererImpl.cpp">
+      <Filter>libs\openFrameworks\vk</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\openFrameworks\vk\vkAllocator.cpp">
       <Filter>libs\openFrameworks\vk</Filter>
     </ClCompile>
   </ItemGroup>
