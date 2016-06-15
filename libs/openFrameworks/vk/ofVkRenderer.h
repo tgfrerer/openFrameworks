@@ -28,7 +28,6 @@ class ofVkRenderer : public ofBaseRenderer
 	bool wrongUseLoggedOnce;
 
 	const ofBaseMaterial * currentMaterial;
-	int alphaMaskTextureTarget;
 
 	ofStyle currentStyle;
 	deque <ofStyle> styleHistory;
@@ -185,24 +184,6 @@ public:
 
 private:
 
-	std::shared_ptr<of::vk::Context> mContext;
-	/*
-
-	We want the instance to be shared across multiple renderers, i.e. across multiple windows.
-
-	currently, we have one renderer per window
-
-	the instance is shared across windows
-
-	each window will have its own rendering environment
-
-	they can share elements because they will end up on the same device,
-	each window will have its own render queue.
-	but renderers will have to be synchronised using semaphores if you want to share memory.
-
-	multiwindow is something to implement at a later point.
-
-	*/
 
 	void createInstance();
 	void destroyInstance();
@@ -237,6 +218,7 @@ private:
 
 	uint32_t         mVkGraphicsFamilyIndex = 0;
 
+
 public:
 
 	// return handle to renderer's vkDevice
@@ -246,7 +228,7 @@ public:
 	};
 
 	VkCommandBuffer& getDrawCommandBuffer(){
-		return mDrawCmdBuffer[mCurrentSwapIndex];
+		return mDrawCmdBuffer[mSwapchain.getCurrentImageIndex()];
 	};
 
 	const VkPhysicalDeviceProperties& getVkPhysicalDeviceProperties() const {
@@ -392,7 +374,11 @@ private:
 	// frame buffers for each image in the swapchain
 	std::vector<VkFramebuffer> mFrameBuffers;
 	// Active frame buffer index
-	uint32_t mCurrentSwapIndex = 0;
+	// uint32_t mCurrentSwapIndex = 0;
+
+	// context manages up to n partitions of frame 
+	// state & memory 
+	std::shared_ptr<of::vk::Context> mContext;
 
 	uint32_t mWindowWidth = 0;
 	uint32_t mWindowHeight = 0;

@@ -1,156 +1,90 @@
 #include "Context.h"
 #include "ofVkRenderer.h"
-
-/*
-
-Next steps: 
-
-+ return offset in bytes, not in elements 
-+ add allocator	class for dynamic memory
-+ use allocator to get dynamic memory for buffers
-
-*/
-
+#include "vk/vkAllocator.h"
 
 // ----------------------------------------------------------------------
 
-void of::vk::Context::setup(ofVkRenderer* renderer_){
+void of::vk::Context::setup(ofVkRenderer* renderer_, size_t numSwapchainImages_ ){
 
 	mRenderer = renderer_;
 
 	// The most important shader uniforms are the matrices
 	// model, view, and projection matrix
 	
-	// we allocate enough memory in host-visible space to 
-	// be able to update mMaxElementCount number of state objects 
-	// as uniforms on each draw call.
-
-	// TODO: effectively, this buffer needs the ability to grow - but there is a penalty for allocating - so ideally,
-	// you would be able to tell it how many matrices to expect.
+	of::vk::Allocator::Settings settings{};
+	settings.device = mRenderer->getVkDevice();
+	settings.renderer = mRenderer;
+	settings.frames = numSwapchainImages_;
+	settings.size =  ( (2UL << 24)); // (32 MB * number of swapchain images)
 	
-	if ( mMatrixUniformData.memory ){
-		ofLogWarning() << "calling setup on already set up Context";
-		reset();
-	}
+	settings.size = settings.size * numSwapchainImages_ ;
 
-	auto & device = mRenderer->mDevice;
+	mAlloc = std::make_shared<of::vk::Allocator>(settings);
+	mAlloc->setup();
 
-	// we need to find out the min buffer uniform alignment from the 
-	// physical device.
-	auto alignment = mRenderer->mPhysicalDeviceProperties.limits.minUniformBufferOffsetAlignment;
-
-	mHostMemory.alignedMatrixStateSize = alignment * (( alignment + sizeof( MatrixState ) - 1 ) / alignment);
-
- 	// Prepare and initialize uniform buffer containing shader uniforms
-	VkResult err;
-
-	// Vertex shader uniform buffer block
-	VkBufferCreateInfo bufferInfo {
-		VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,                   // VkStructureType        sType;
-		nullptr,                                                // const void*            pNext;
-		0,                                                      // VkBufferCreateFlags    flags;
-		mHostMemory.alignedMatrixStateSize * mMaxElementCount,  // VkDeviceSize           size;
-		VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,                     // VkBufferUsageFlags     usage;
-		VK_SHARING_MODE_EXCLUSIVE,                              // VkSharingMode          sharingMode;
-	    0,                                                      // uint32_t               queueFamilyIndexCount;
-		nullptr,                                                // const uint32_t*        pQueueFamilyIndices;
+	mMatrixStateBufferInfo = {
+		mAlloc->getBuffer(),   // VkBuffer        buffer;
+		0,                     // VkDeviceSize    offset;
+		sizeof(MatrixState),   // VkDeviceSize    range;
 	};
 
-	// Create a new buffer
-	vkCreateBuffer( device, &bufferInfo, nullptr, &mMatrixUniformData.buffer );
-	
-	// Get memory requirements including size, alignment and memory type 
-	VkMemoryRequirements memReqs;
-	vkGetBufferMemoryRequirements( device, mMatrixUniformData.buffer, &memReqs );
+	if (!mFrame.empty())
+		mFrame.clear();
+	mFrame.resize( numSwapchainImages_, ContextState() );
 
-	assert( mHostMemory.alignedMatrixStateSize * mMaxElementCount == memReqs.size );
-
-	// Gets the appropriate memory type for this type of buffer allocation
-	// Only memory types that are visible to the host and coherent (coherent means they
-	// appear to the GPU without the need of explicit range flushes)
-	// Vulkan 1.0 guarantees the presence of at least one host-visible+coherent memory heap.
-	VkMemoryAllocateInfo allocInfo {};
-	mRenderer->getMemoryAllocationInfo( 
-		memReqs, 
-		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 
-		allocInfo 
-	);
-
-	allocInfo.allocationSize = 1UL << 27 - 1; // 2^26 = 67108864 bytes
-
-	// Allocate memory for the uniform buffer
-	// todo: check for and recover from allocation errors
-	vkAllocateMemory( device, &allocInfo, nullptr, &( mMatrixUniformData.memory ) );
-	
-	// Bind memory to buffer
-	vkBindBufferMemory( device, mMatrixUniformData.buffer, mMatrixUniformData.memory, 0 );
-
-	// Store information in the uniform's descriptor
-	mMatrixUniformData.descriptorBufferInfo.buffer = mMatrixUniformData.buffer;
-	mMatrixUniformData.descriptorBufferInfo.offset = 0;
-	mMatrixUniformData.descriptorBufferInfo.range = sizeof(MatrixState);
-
-	vkMapMemory(
-		device,
-		mMatrixUniformData.memory,
-		0,
-		VK_WHOLE_SIZE, 0, (void**)&mHostMemory.pData
-	);
 }
 
 // ----------------------------------------------------------------------
 
-void of::vk::Context::begin(){
-	mSavedMatricesLastElement = 0;
-	mCurrentMatrixState = {}; // reset matrix state
+void of::vk::Context::begin(size_t frame_){
+	mSwapIdx = frame_;
+	mAlloc->free(frame_);
+	mFrame[mSwapIdx].mCurrentMatrixState = {}; // reset matrix state
 }
 
 // ----------------------------------------------------------------------
 
 void of::vk::Context::end(){
+	mSwapIdx = -1;
 }
 
 // ----------------------------------------------------------------------
 
 void of::vk::Context::reset(){
-	auto & device = mRenderer->mDevice;
-	
-	vkUnmapMemory( device, mMatrixUniformData.memory );
-	mHostMemory.pData = nullptr;
-
-	vkFreeMemory( device, mMatrixUniformData.memory, nullptr );
-	vkDestroyBuffer( device, mMatrixUniformData.buffer, nullptr );
+	mAlloc->reset();
 }
 
 // ----------------------------------------------------------------------
 
 VkDescriptorBufferInfo & of::vk::Context::getDescriptorBufferInfo(){
-	return mMatrixUniformData.descriptorBufferInfo;
+	return mMatrixStateBufferInfo;
 }
 
 // ----------------------------------------------------------------------
 
 void of::vk::Context::push(){
-	mMatrixStack.push( mCurrentMatrixState );
-	mMatrixIdStack.push( mCurrentMatrixId );
-	mCurrentMatrixId = -1;
+	auto & f = mFrame[mSwapIdx];
+	f.mMatrixStack.push( f.mCurrentMatrixState );
+	f.mMatrixIdStack.push( f.mCurrentMatrixId );
+	f.mCurrentMatrixId = -1;
 }
 
 // ----------------------------------------------------------------------
 
 void of::vk::Context::pop(){
-	if ( !mMatrixStack.empty() ){
-		mCurrentMatrixState = mMatrixStack.top(); mMatrixStack.pop();
-		mCurrentMatrixId = mMatrixIdStack.top(); mMatrixIdStack.pop();
+	auto & f = mFrame[mSwapIdx];
+
+	if ( !f.mMatrixStack.empty() ){
+		f.mCurrentMatrixState = f.mMatrixStack.top(); f.mMatrixStack.pop();
+		f.mCurrentMatrixId = f.mMatrixIdStack.top(); f.mMatrixIdStack.pop();
 	}
 	else{
 		ofLogError() << "Context:: Cannot push Matrix state further back than 0";
 	}
 }
 
-// TODO: return an offset in bytes rather than an index.
-//
 // ----------------------------------------------------------------------
+
 size_t of::vk::Context::getCurrentMatrixStateIdx(){
 	// return current matrix state index, if such index exists.
 	// if index does not exist, add the current matrix to the list of saved 
@@ -158,60 +92,65 @@ size_t of::vk::Context::getCurrentMatrixStateIdx(){
 
 	// only when a matrix state id is requested,
 	// is matrix data saved to gpu accessible memory
+	
+	auto & f = mFrame[mSwapIdx];
 
-	if ( mCurrentMatrixId == -1 ){
+	if ( f.mCurrentMatrixId == -1 ){
 
-		if (  mSavedMatricesLastElement == mMaxElementCount ){
+		void * pData = nullptr;
+		if ( ! mAlloc->allocate( sizeof( MatrixState ), pData, f.mCurrentMatrixStateOffset, mSwapIdx )){
 			ofLogError() << "out of matrix space.";
-			return ( mMaxElementCount - 1 );
+			return ( 0 );
 		}
 
-		// allocator knows that its for a buffer
-		// because the allocator was setup to allocate
-		// dynamic buffer memory.
-		// how do we make sure that the allocator can signal error state?
-		//auto pWriteAddress = mAllocator.allocate( size, alignment );
+		// ----------| invariant: allocation successful
 
-		// save matrix to buffer - offset by id
-		memcpy( mHostMemory.pData 
-			+ (mHostMemory.alignedMatrixStateSize * mSavedMatricesLastElement),
-			&mCurrentMatrixState,
-			sizeof( MatrixState ));
+		// save matrix state into buffer
+		memcpy( pData, &f.mCurrentMatrixState, sizeof( MatrixState ));
 
-		mCurrentMatrixId = mSavedMatricesLastElement;
+		f.mCurrentMatrixId = f.mSavedMatricesLastElement;
 
-		++ mSavedMatricesLastElement;
+		++ f.mSavedMatricesLastElement;
 		
 	}
-	return mCurrentMatrixId;
+	return f.mCurrentMatrixId;
 }
 
 // ----------------------------------------------------------------------
-size_t of::vk::Context::getCurrentMatrixStateOffset(){
-	return mHostMemory.alignedMatrixStateSize * getCurrentMatrixStateIdx();
+
+const uint32_t& of::vk::Context::getCurrentMatrixStateOffset(){
+	getCurrentMatrixStateIdx();
+	return mFrame[mSwapIdx].mCurrentMatrixStateOffset;
 }
 
 // ----------------------------------------------------------------------
+
 void of::vk::Context::setViewMatrix( const ofMatrix4x4 & mat_ ){
-	mCurrentMatrixId = -1;
-	mCurrentMatrixState.viewMatrix = mat_;
+	auto & f = mFrame[mSwapIdx]; 
+	f.mCurrentMatrixId = -1;
+	f.mCurrentMatrixState.viewMatrix = mat_;
 }
 
 // ----------------------------------------------------------------------
+
 void of::vk::Context::setProjectionMatrix( const ofMatrix4x4 & mat_ ){
-	mCurrentMatrixId = -1;
-	mCurrentMatrixState.projectionMatrix = mat_;
-
+	auto & f = mFrame[mSwapIdx]; 
+	f.mCurrentMatrixId = -1;
+	f.mCurrentMatrixState.projectionMatrix = mat_;
 }
 
 // ----------------------------------------------------------------------
+
 void of::vk::Context::translate( const ofVec3f& v_ ){
-	mCurrentMatrixId = -1;
-	mCurrentMatrixState.modelMatrix.glTranslate( v_ );
+	auto & f = mFrame[mSwapIdx];
+	f.mCurrentMatrixId = -1;
+	f.mCurrentMatrixState.modelMatrix.glTranslate( v_ );
 }
 
 // ----------------------------------------------------------------------
+
 void of::vk::Context::rotate( const float& degrees_, const ofVec3f& axis_ ){
-	mCurrentMatrixId = -1;
-	mCurrentMatrixState.modelMatrix.glRotate( degrees_, axis_.x, axis_.y, axis_.z );
+	auto & f = mFrame[mSwapIdx];
+	f.mCurrentMatrixId = -1;
+	f.mCurrentMatrixState.modelMatrix.glRotate( degrees_, axis_.x, axis_.y, axis_.z );
 }

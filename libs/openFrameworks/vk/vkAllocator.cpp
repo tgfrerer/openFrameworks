@@ -5,10 +5,14 @@
 
 void of::vk::Allocator::setup(){
 	
-	
 	if ( mSettings.renderer == nullptr ){
 		ofLogFatalError() << "Allocator: No renderer specified.";
 		ofExit();
+	}
+
+	if ( mSettings.frames < 1 ){
+		ofLogWarning() << "Allocator: Must have a minimum of 1 frame. Setting frames to 1.";
+		const_cast<uint32_t&>( mSettings.frames ) = 1;
 	}
 
 	if ( mSettings.device != mSettings.renderer->getVkDevice() ){
@@ -24,8 +28,8 @@ void of::vk::Allocator::setup(){
 	// make this dependent on the type of buffer this allocator stands for 
 	const_cast<uint32_t&>( mAlignment ) = mSettings.renderer->getVkPhysicalDeviceProperties().limits.minUniformBufferOffsetAlignment;
 
-	// make sure reserved memory is multiple of alignment	
-	const_cast<uint32_t&>( mSettings.size ) = mAlignment * ( ( mSettings.size + mAlignment - 1 ) / mAlignment );
+	// make sure reserved memory is multiple of alignment, and that we can fit in the number of requested frames.	
+	const_cast<uint32_t&>( mSettings.size ) = mSettings.frames * mAlignment * ( ( mSettings.size / mSettings.frames + mAlignment - 1 ) / mAlignment );
 
 	// Vertex shader uniform buffer block
 	VkBufferCreateInfo bufferInfo{
@@ -66,39 +70,65 @@ void of::vk::Allocator::setup(){
 	// todo: check for and recover from allocation errors
 	vkAllocateMemory( mSettings.device, &allocationInfo, nullptr, &mDeviceMemory );
 
-	// back buffer with memory
+	// back buffer with memory (buffer must not be already backed by memory)
 	vkBindBufferMemory( mSettings.device, mBuffer, mDeviceMemory, 0 );
 
+	mOffset.clear();
+	mOffset.resize( mSettings.frames, 0 );
+
+	mBaseAddress.clear();
+	mBaseAddress.resize( mSettings.frames, 0 );
+
+	// map full memory range for writing
 	vkMapMemory(
 		mSettings.device,
 		mDeviceMemory,
 		0,
-		VK_WHOLE_SIZE, 0, (void**)&mBaseAddress
+		VK_WHOLE_SIZE, 0, (void**)&mBaseAddress[0]
 	);
+
+	for ( uint32_t i = 1; i != mBaseAddress.size(); ++i ){
+		// offset the pointer by full frame sizes
+		// for base addresses above frame 0
+		mBaseAddress[i] = mBaseAddress[0] + i * ( mSettings.size / mSettings.frames );
+	}
 
 }
 
 // ----------------------------------------------------------------------
 
 void of::vk::Allocator::reset(){
-	vkUnmapMemory( mSettings.device, mDeviceMemory);
-	mDeviceMemory = nullptr;
 
-	vkFreeMemory( mSettings.device, mDeviceMemory, nullptr );
-	vkDestroyBuffer( mSettings.device, mBuffer, nullptr );
+	if ( mDeviceMemory ){
+		vkUnmapMemory( mSettings.device, mDeviceMemory );
+		vkFreeMemory( mSettings.device, mDeviceMemory, nullptr );
+		mDeviceMemory = nullptr;
+	}
+
+	if ( mBuffer ){
+		vkDestroyBuffer( mSettings.device, mBuffer, nullptr );
+		mBuffer = nullptr;
+	}
+
+	mOffset.clear();
+	mBaseAddress.clear();
 }
 
 // ----------------------------------------------------------------------
 
-bool of::vk::Allocator::allocate( size_t byteCount_, void*& pAddr, uint32_t& offset ){
+bool of::vk::Allocator::allocate( size_t byteCount_, void*& pAddr, uint32_t& offset, size_t frame ){
 	uint32_t alignedByteCount = mAlignment * ( ( byteCount_ + mAlignment - 1 ) / mAlignment );
 
-	if ( mOffset + alignedByteCount <= mSettings.size ){
+	if ( mOffset[frame] + alignedByteCount <= (mSettings.size / mSettings.frames) ){
 		// write out memory address
-		pAddr = mBaseAddress + mOffset;
+		pAddr = mBaseAddress[frame] + mOffset[frame];
 		// write out offset 
-		offset = mOffset;
-		mOffset += alignedByteCount;
+		offset = mOffset[frame];
+		mOffset[frame] += alignedByteCount;
+		// TODO: if you use non-coherent memory you need to invalidate the 
+		// cache for the memory that has been written to.
+		// What we will realistically do is to flush the full memory range occpuied by a frame
+		// instead of the list of sub-allocations.
 		return true;
 	} else{
 		ofLogError() << "Allocator: out of memory";
@@ -110,10 +140,8 @@ bool of::vk::Allocator::allocate( size_t byteCount_, void*& pAddr, uint32_t& off
 }
 
 // ----------------------------------------------------------------------
-bool of::vk::Allocator::free(){
-	mOffset = 0;
-
-	return false;
+void of::vk::Allocator::free(size_t frame){
+	mOffset[frame] = 0;
 }
 
 // ----------------------------------------------------------------------

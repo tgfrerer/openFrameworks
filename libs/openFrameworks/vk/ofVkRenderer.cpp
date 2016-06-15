@@ -11,21 +11,7 @@
 #include "ofNode.h"
 #include "GLFW/glfw3.h"
 
-
 #include <cstdint>
-
-static const string VIEW_MATRIX_UNIFORM = "viewMatrix";
-static const string MODELVIEW_MATRIX_UNIFORM = "modelViewMatrix";
-static const string PROJECTION_MATRIX_UNIFORM = "projectionMatrix";
-static const string MODELVIEW_PROJECTION_MATRIX_UNIFORM = "modelViewProjectionMatrix";
-static const string TEXTURE_MATRIX_UNIFORM = "textureMatrix";
-static const string COLOR_UNIFORM = "globalColor";
-
-static const string USE_TEXTURE_UNIFORM = "usingTexture";
-static const string USE_COLORS_UNIFORM = "usingColors";
-static const string BITMAP_STRING_UNIFORM = "bitmapText";
-
-static const int OF_NO_TEXTURE = -1;
 
 const string ofVkRenderer::TYPE = "Vulkan";
 
@@ -48,7 +34,7 @@ ofVkRenderer::ofVkRenderer(const ofAppBaseWindow * _window)
 	wrongUseLoggedOnce = false;
 
 	currentMaterial = nullptr;
-	alphaMaskTextureTarget = OF_NO_TEXTURE;
+	
 
 	window = _window;
 
@@ -102,7 +88,7 @@ ofVkRenderer::~ofVkRenderer()
 	// Which is what this method is doing.
 	vkDeviceWaitIdle(mDevice);
 
-	mContext->reset();
+	mContext.reset();
 
 	mTransientBufferObjects.clear();
 	
@@ -533,7 +519,7 @@ void ofVkRenderer::pushMatrix(){
 // ----------------------------------------------------------------------
 
 void ofVkRenderer::popMatrix(){
-	mContext->pop();	
+	mContext->pop();
 }
 
 // ----------------------------------------------------------------------
