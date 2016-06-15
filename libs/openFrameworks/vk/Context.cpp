@@ -148,17 +148,16 @@ void of::vk::Context::pop(){
 	}
 }
 
-// you only have to submit a matrix state to GPU memory if something has 
-// been drawn with it. 
-// if you do so, increase the matrixStateId 
-//
 // TODO: return an offset in bytes rather than an index.
 //
 // ----------------------------------------------------------------------
 size_t of::vk::Context::getCurrentMatrixStateIdx(){
+	// return current matrix state index, if such index exists.
+	// if index does not exist, add the current matrix to the list of saved 
+	// matrixes, and generate a new index.
 
 	// only when a matrix state id is requested,
-	// is matrix data saved to 
+	// is matrix data saved to gpu accessible memory
 
 	if ( mCurrentMatrixId == -1 ){
 
@@ -166,6 +165,12 @@ size_t of::vk::Context::getCurrentMatrixStateIdx(){
 			ofLogError() << "out of matrix space.";
 			return ( mMaxElementCount - 1 );
 		}
+
+		// allocator knows that its for a buffer
+		// because the allocator was setup to allocate
+		// dynamic buffer memory.
+		// how do we make sure that the allocator can signal error state?
+		//auto pWriteAddress = mAllocator.allocate( size, alignment );
 
 		// save matrix to buffer - offset by id
 		memcpy( mHostMemory.pData 
@@ -178,24 +183,21 @@ size_t of::vk::Context::getCurrentMatrixStateIdx(){
 		++ mSavedMatricesLastElement;
 		
 	}
-
-	// return current matrix state index, if such index exists.
-	// if index does not exist, add the current matrix to the list of saved 
-	// matrixes, and generate a new index.
 	return mCurrentMatrixId;
 }
 
 // ----------------------------------------------------------------------
-
 size_t of::vk::Context::getCurrentMatrixStateOffset(){
 	return mHostMemory.alignedMatrixStateSize * getCurrentMatrixStateIdx();
 }
 
+// ----------------------------------------------------------------------
 void of::vk::Context::setViewMatrix( const ofMatrix4x4 & mat_ ){
 	mCurrentMatrixId = -1;
 	mCurrentMatrixState.viewMatrix = mat_;
 }
 
+// ----------------------------------------------------------------------
 void of::vk::Context::setProjectionMatrix( const ofMatrix4x4 & mat_ ){
 	mCurrentMatrixId = -1;
 	mCurrentMatrixState.projectionMatrix = mat_;
