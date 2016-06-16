@@ -96,7 +96,6 @@ class Context
 	// uploaded.
 	size_t getCurrentMatrixStateIdx();
 
-	
 
 public:
 

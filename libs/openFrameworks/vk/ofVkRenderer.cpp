@@ -94,7 +94,6 @@ ofVkRenderer::~ofVkRenderer()
 	
 	// reset command pool and all associated command buffers.
 	vkResetCommandPool( mDevice, mCommandPool, VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT );
-	
 
 	vkDestroyRenderPass( mDevice, mRenderPass, nullptr );
 
