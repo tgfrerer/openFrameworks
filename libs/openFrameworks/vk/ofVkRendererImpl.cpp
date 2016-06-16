@@ -706,8 +706,8 @@ void ofVkRenderer::startRender(){
 		}
 	}
 	
-	beginDrawCommandBuffer(mDrawCmdBuffer[swapIdx]);
 	mContext->begin( swapIdx );
+	beginDrawCommandBuffer(mDrawCmdBuffer[swapIdx]);
 
 }
 
@@ -733,8 +733,8 @@ void ofVkRenderer::finishRender(){
 
 	// submit current model view and projection matrices
 	
-	mContext->end();
 	endDrawCommandBuffer();
+	mContext->end();
 
 	// Submit the draw command buffer
 	//
