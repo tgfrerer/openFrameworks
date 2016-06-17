@@ -37,7 +37,9 @@ void of::vk::Allocator::setup(){
 		nullptr,                                                // const void*            pNext;
 		0,                                                      // VkBufferCreateFlags    flags;
 		mSettings.size,                                         // VkDeviceSize           size;
-		VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,                     // VkBufferUsageFlags     usage;
+		VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT 
+		| VK_BUFFER_USAGE_INDEX_BUFFER_BIT
+		| VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,                    // VkBufferUsageFlags     usage;
 		VK_SHARING_MODE_EXCLUSIVE,                              // VkSharingMode          sharingMode;
 		0,                                                      // uint32_t               queueFamilyIndexCount;
 		nullptr,                                                // const uint32_t*        pQueueFamilyIndices;
