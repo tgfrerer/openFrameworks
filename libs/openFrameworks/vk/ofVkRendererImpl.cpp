@@ -724,7 +724,6 @@ void ofVkRenderer::endRenderPass(){
 	vkCmdEndRenderPass( mDrawCmdBuffer[mSwapchain.getCurrentImageIndex()] );
 };
 
-
 // ----------------------------------------------------------------------
 
 void ofVkRenderer::finishRender(){
@@ -853,17 +852,13 @@ void ofVkRenderer::finishRender(){
 
 // ----------------------------------------------------------------------
 
-void ofVkRenderer::draw( const ofMesh & vertexData, ofPolyRenderMode renderType, bool useColors, bool useTextures, bool useNormals ) const{
+void ofVkRenderer::draw( const ofMesh & mesh_, ofPolyRenderMode renderType, bool useColors, bool useTextures, bool useNormals ) const{
 
-	// create transitent buffers to hold 
-	// + indices
-	// + positions
-	// + normals
+	// store uniforms if needed
 
 	std::vector<uint32_t> dynamicOffsets = { 
 		(uint32_t)mContext->getCurrentMatrixStateOffset(),
 	};
-	
 
 	auto & currentShader = mShaders[0];
 
@@ -889,29 +884,33 @@ void ofVkRenderer::draw( const ofMesh & vertexData, ofPolyRenderMode renderType,
 	// Bind the rendering pipeline (including the shaders)
 	vkCmdBindPipeline( cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, mPipelines.solid );
 
-	// Bind triangle vertices
-	// todo: offsets are the offsets into the vertex data buffers used to store data for the
-	// mesh - these can be handled in the same way as the offsets into the matrix uniform buffer.
-	VkDeviceSize offsets[2]{ 0, 0 };
+	// temp-allocate mesh memory and 
 
-	auto tempPositions = TransientVertexBuffer::create( const_cast<ofVkRenderer*>( this ), vertexData.getVertices() );
-	auto tempColors    = TransientVertexBuffer::create( const_cast<ofVkRenderer*>( this ), vertexData.getNormals() );
+	std::vector<VkDeviceSize> vertexOffsets;
+	std::vector<VkDeviceSize> indexOffsets;
 
-	std::array<VkBuffer, 2> vertexBuffers = {
-	  tempPositions->buf,
-	  tempColors->buf,
-	};
-	vkCmdBindVertexBuffers( cmd, 0, vertexBuffers.size(), vertexBuffers.data(), offsets );
+	// store vertex data using context
+	// context will return memory offsets into vertices, indices, 
+	// based on current context memory buffer
+	mContext->storeMesh( mesh_, vertexOffsets, indexOffsets);
 
-	// This transient buffer will: 
-	// + upload the vector to GPU memory.
-	// + automatically get deleted on the next frame.
-	auto tempIndices = TransientIndexBuffer::create( const_cast<ofVkRenderer*>( this ), vertexData.getIndices() );
-	// Bind triangle indices
-	vkCmdBindIndexBuffer( cmd, tempIndices->buf, 0, VK_INDEX_TYPE_UINT32 );
+	vector<VkBuffer> bufferRefs( vertexOffsets.size(), mContext->getVkBuffer() );
+	
+	vkCmdBindVertexBuffers( cmd, 0, bufferRefs.size(), bufferRefs.data(), vertexOffsets.data() );
 
-	// Draw indexed triangle
-	vkCmdDrawIndexed( cmd, tempIndices->num_elements, 1, 0, 0, 1 );
+	//// This transient buffer will: 
+	//// + upload the vector to GPU memory.
+	//// + automatically get deleted on the next frame.
+	//auto tempIndices = TransientIndexBuffer::create( const_cast<ofVkRenderer*>( this ), vertexData.getIndices() );
+	
+	if ( indexOffsets.empty() ){
+		// non-indexed draw
+		vkCmdDraw( cmd, mesh_.getNumVertices(), 1, 0, 1 );
+	} else{
+		// indexed draw
+		vkCmdBindIndexBuffer( cmd, bufferRefs[0], indexOffsets[0], VK_INDEX_TYPE_UINT32 );
+		vkCmdDrawIndexed( cmd, mesh_.getNumIndices(), 1, 0, 0, 1 );
+	}
 }  
 
 // ----------------------------------------------------------------------

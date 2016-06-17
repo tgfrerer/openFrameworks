@@ -2,7 +2,7 @@
 
 #include <vulkan/vulkan.h>
 #include "ofMatrix4x4.h"
-
+#include "ofMesh.h"
 
 /// Context manages all transient state
 /// + transformation matrices
@@ -20,8 +20,13 @@ You draw inside a context and can expect it to work
 in a similar way to OpenGL immediate mode. But without the OpenGL 
 "under the hood" driver optimisations.
 
-If you want proper Vulkan performance, do your rendering 
-in a more parallel, Vulkan-ic way.
+It may be possible to use context to pre-record memory
+and command buffers - and to use this to playback "canned" 
+framebuffers.
+
+For this to work, you would use a static context - a context 
+with one frame of backing memory - which is transferred from 
+host memory to GPU memory before being used to draw.
 
 */
 
@@ -75,13 +80,13 @@ class Context
 		// stack of all pushed or popped matrices.
 		// -1 indicates the matrix has not been saved yet
 		// positive integer indicates matrix index into savedmatrices
-		stack<int> mMatrixIdStack;
+		stack<int>              mMatrixIdStack;
 		std::stack<MatrixState> mMatrixStack;
 
-		int         mCurrentMatrixId = -1; // -1 means undefined, not yet used/saved
-		uint32_t    mCurrentMatrixStateOffset = 0; // offset into buffer to get current matrix
+		int                     mCurrentMatrixId = -1;         // -1 means undefined, not yet used/saved
+		VkDeviceSize            mCurrentMatrixStateOffset = 0; // offset into buffer to get current matrix
 
-		MatrixState mCurrentMatrixState;
+		MatrixState             mCurrentMatrixState;
 	};
 
 	// one ContextState element per swapchain image
@@ -89,19 +94,13 @@ class Context
 
 	int mSwapIdx = 0;
 
-	/// returns index of current matrix for generating 
-	/// the binding offset into host memory for the descriptor
-	/// \note as a side-effect will upload (stage) matrix 
-	// state data if current matrix state has not yet been 
-	// uploaded.
-	size_t getCurrentMatrixStateIdx();
-
+	bool storeCurrentMatrixState();
 
 public:
 
 	// get offset in bytes for the current matrix into the matrix memory buffer
 	// this must be a mutliple of  minUniformBufferOffsetAlignment
-	const uint32_t& getCurrentMatrixStateOffset();
+	const VkDeviceSize& getCurrentMatrixStateOffset();
 
 	// invalidates link to saved matrix from current matrix
 	// (forces saving out a separate matrix)
@@ -113,6 +112,7 @@ public:
 	// the descriptor is something like a view into the 
 	// memory, an alias so to say
 	VkDescriptorBufferInfo& getDescriptorBufferInfo();
+	const VkBuffer&         getVkBuffer() const;
 
 	// allocates memory on the GPU for each swapchain image (call rarely)
 	void setup(ofVkRenderer * renderer_, size_t numSwapchainImages_);
@@ -127,7 +127,6 @@ public:
 
 	// unmap uniform buffers 
 	void end();
-
 
 	// whenever a draw command occurs, the current matrix id has to be either
 
@@ -158,9 +157,15 @@ public:
 	// pop current Matrix state
 	void pop();
 
+	// vertex memory operations
+
+	// store vertex and index data inside the current dynamic memory frame
+	// return memory mapping offets based on current memory buffer.
+	bool storeMesh( const ofMesh& mesh_, std::vector<VkDeviceSize>& vertexOffsets, std::vector<VkDeviceSize>& indexOffsets );
+
+
+
 };
-
-
 
 } // namespace vk
 } // namespace of

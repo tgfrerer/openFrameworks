@@ -26,10 +26,10 @@ void of::vk::Allocator::setup(){
 	// physical device.
 
 	// make this dependent on the type of buffer this allocator stands for 
-	const_cast<uint32_t&>( mAlignment ) = mSettings.renderer->getVkPhysicalDeviceProperties().limits.minUniformBufferOffsetAlignment;
+	const_cast<VkDeviceSize&>( mAlignment )     = mSettings.renderer->getVkPhysicalDeviceProperties().limits.minUniformBufferOffsetAlignment;
 
 	// make sure reserved memory is multiple of alignment, and that we can fit in the number of requested frames.	
-	const_cast<uint32_t&>( mSettings.size ) = mSettings.frames * mAlignment * ( ( mSettings.size / mSettings.frames + mAlignment - 1 ) / mAlignment );
+	const_cast<VkDeviceSize&>( mSettings.size ) = mSettings.frames * mAlignment * ( ( mSettings.size / mSettings.frames + mAlignment - 1 ) / mAlignment );
 
 	// Vertex shader uniform buffer block
 	VkBufferCreateInfo bufferInfo{
@@ -75,8 +75,8 @@ void of::vk::Allocator::setup(){
 	// 2.4 Attach memory to buffer (buffer must not be already backed by memory)
 	vkBindBufferMemory( mSettings.device, mBuffer, mDeviceMemory, 0 );
 
-	mOffset.clear();
-	mOffset.resize( mSettings.frames, 0 );
+	mOffsetEnd.clear();
+	mOffsetEnd.resize( mSettings.frames, 0 );
 
 	mBaseAddress.clear();
 	mBaseAddress.resize( mSettings.frames, 0 );
@@ -112,21 +112,21 @@ void of::vk::Allocator::reset(){
 		mBuffer = nullptr;
 	}
 
-	mOffset.clear();
+	mOffsetEnd.clear();
 	mBaseAddress.clear();
 }
 
 // ----------------------------------------------------------------------
 
-bool of::vk::Allocator::allocate( size_t byteCount_, void*& pAddr, uint32_t& offset, size_t frame ){
+bool of::vk::Allocator::allocate( VkDeviceSize byteCount_, void*& pAddr, VkDeviceSize& offset, size_t frame ){
 	uint32_t alignedByteCount = mAlignment * ( ( byteCount_ + mAlignment - 1 ) / mAlignment );
 
-	if ( mOffset[frame] + alignedByteCount <= (mSettings.size / mSettings.frames) ){
+	if ( mOffsetEnd[frame] + alignedByteCount <= (mSettings.size / mSettings.frames) ){
 		// write out memory address
-		pAddr = mBaseAddress[frame] + mOffset[frame];
+		pAddr = mBaseAddress[frame] + mOffsetEnd[frame];
 		// write out offset 
-		offset = mOffset[frame];
-		mOffset[frame] += alignedByteCount;
+		offset = mOffsetEnd[frame];
+		mOffsetEnd[frame] += alignedByteCount;
 		// TODO: if you use non-coherent memory you need to invalidate the 
 		// cache for the memory that has been written to.
 		// What we will realistically do is to flush the full memory range occpuied by a frame
@@ -143,7 +143,7 @@ bool of::vk::Allocator::allocate( size_t byteCount_, void*& pAddr, uint32_t& off
 
 // ----------------------------------------------------------------------
 void of::vk::Allocator::free(size_t frame){
-	mOffset[frame] = 0;
+	mOffsetEnd[frame] = 0;
 }
 
 // ----------------------------------------------------------------------

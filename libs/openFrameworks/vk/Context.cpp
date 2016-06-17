@@ -60,6 +60,10 @@ VkDescriptorBufferInfo & of::vk::Context::getDescriptorBufferInfo(){
 	return mMatrixStateBufferInfo;
 }
 
+const VkBuffer & of::vk::Context::getVkBuffer() const {
+	return mAlloc->getBuffer();
+}
+
 // ----------------------------------------------------------------------
 
 void of::vk::Context::push(){
@@ -85,22 +89,77 @@ void of::vk::Context::pop(){
 
 // ----------------------------------------------------------------------
 
-size_t of::vk::Context::getCurrentMatrixStateIdx(){
-	// return current matrix state index, if such index exists.
-	// if index does not exist, add the current matrix to the list of saved 
-	// matrixes, and generate a new index.
+bool of::vk::Context::storeMesh( const ofMesh & mesh_, std::vector<VkDeviceSize>& vertexOffsets, std::vector<VkDeviceSize>& indexOffsets ){
+	// TODO: add option to interleave 
+	
+	// store a
+	auto & f = mFrame[mSwapIdx];
+	
+	uint32_t numVertices   = mesh_.getVertices().size();
+	uint32_t numColors     = mesh_.getColors().size();
+	uint32_t numNormals    = mesh_.getNormals().size();
+	uint32_t numTexCooords = mesh_.getTexCoords().size();
 
-	// only when a matrix state id is requested,
-	// is matrix data saved to gpu accessible memory
+	uint32_t numIndices    = mesh_.getIndices().size();
+
+	// TODO: add error checking - make sure 
+	// numVertices == numColors == numNormals == numTexCooords
+
+	// For now, only store vertices, normals
+	// and indices.
+
+	// Q: how do we deal with meshes that don't have data for all possible attributes?
+	// Q: should we cache meshes to save memory and potentially time?
+
+	void*    pData    = nullptr;
+	uint32_t numBytes = 0;
+
+	vertexOffsets.resize( 4, 0 ); 
+
+	numBytes = numVertices * sizeof( ofVec3f );
+	
+	if ( mAlloc->allocate( numBytes, pData, vertexOffsets[0], mSwapIdx ) ){
+		memcpy( pData, mesh_.getVerticesPointer(), numBytes );
+	};
+
+	numBytes = numColors * sizeof( ofFloatColor );
+	if ( mAlloc->allocate( numBytes, pData, vertexOffsets[1], mSwapIdx ) ){
+		memcpy( pData, mesh_.getColorsPointer(), numBytes );
+	};
+
+	numBytes = numNormals * sizeof( ofVec3f );
+	if ( mAlloc->allocate( numBytes, pData, vertexOffsets[2], mSwapIdx ) ){
+		memcpy( pData, mesh_.getNormalsPointer(), numBytes );
+	};
+
+	VkDeviceSize indexOffset = 0;
+	numBytes = numIndices * sizeof( ofIndexType );
+	if ( mAlloc->allocate( numBytes, pData, indexOffset, mSwapIdx ) ){
+		indexOffsets.push_back( indexOffset );
+		memcpy( pData, mesh_.getIndexPointer(), numBytes );
+	};
+
+	return false;
+}
+
+// ----------------------------------------------------------------------
+
+bool of::vk::Context::storeCurrentMatrixState(){
+	// matrix data is uploaded only 
+	// when current matrix id is -1, meaning there
+	// was no current matrix or the current matrix
+	// was invalidated
 	
 	auto & f = mFrame[mSwapIdx];
 
 	if ( f.mCurrentMatrixId == -1 ){
 
 		void * pData = nullptr;
-		if ( ! mAlloc->allocate( sizeof( MatrixState ), pData, f.mCurrentMatrixStateOffset, mSwapIdx )){
+		auto success = mAlloc->allocate( sizeof( MatrixState ), pData, f.mCurrentMatrixStateOffset, mSwapIdx );
+		
+		if ( !success ){
 			ofLogError() << "out of matrix space.";
-			return ( 0 );
+			return false;
 		}
 
 		// ----------| invariant: allocation successful
@@ -109,17 +168,16 @@ size_t of::vk::Context::getCurrentMatrixStateIdx(){
 		memcpy( pData, &f.mCurrentMatrixState, sizeof( MatrixState ));
 
 		f.mCurrentMatrixId = f.mSavedMatricesLastElement;
-
 		++ f.mSavedMatricesLastElement;
 		
 	}
-	return f.mCurrentMatrixId;
+	return true;
 }
 
 // ----------------------------------------------------------------------
 
-const uint32_t& of::vk::Context::getCurrentMatrixStateOffset(){
-	getCurrentMatrixStateIdx();
+const VkDeviceSize& of::vk::Context::getCurrentMatrixStateOffset(){
+	storeCurrentMatrixState();
 	return mFrame[mSwapIdx].mCurrentMatrixStateOffset;
 }
 

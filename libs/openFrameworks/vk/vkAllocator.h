@@ -19,7 +19,7 @@ public:
 		//	Uniform,
 		//	Texture,
 		//} mAllocatorType;
-		uint32_t                         size       = 0; // how much memory to reserve on hardware for this allocator
+		VkDeviceSize                     size       = 0; // how much memory to reserve on hardware for this allocator
 		ofVkRenderer                    *renderer   = nullptr;
 		VkDevice                         device     = nullptr;
 		uint32_t                         frames     = 1; // number of frames to reserve within this allocator
@@ -42,7 +42,7 @@ public:
 
 	/// @brief  sub-allocate a chunk of memory from GPU
 	/// 
-	bool allocate(size_t byteCount_, void*& pAddr, uint32_t& offset, size_t frame_);
+	bool allocate(VkDeviceSize byteCount_, void*& pAddr, VkDeviceSize& offset, size_t frame_);
 	
 	/// @brief  remove all sub-allocations within the given frame
 	/// @note   this does not free GPU memory, it just marks it as unused
@@ -53,14 +53,14 @@ public:
 	};
 
 private:
-	const Settings         mSettings;
-	const uint32_t         mAlignment = 0;    // alignment is calculated on setup
+	const Settings             mSettings;
+	const VkDeviceSize         mAlignment = 0;    // alignment is calculated on setup
 
-	std::vector<uint32_t>  mOffset;           // next free location for allocations
-	std::vector<uint8_t*>  mBaseAddress;      // base address for mapped memory
-
-	VkBuffer               mBuffer;			  // owning
-	VkDeviceMemory         mDeviceMemory;	  // owning
+	std::vector<VkDeviceSize>  mOffsetEnd;        // next free location for allocations
+	std::vector<uint8_t*>      mBaseAddress;      // base address for mapped memory
+						       
+	VkBuffer                   mBuffer;			  // owning
+	VkDeviceMemory             mDeviceMemory;	  // owning
 
 };
 
