@@ -55,13 +55,11 @@ This renderer tries to keep things fairly fun by taking care of the
 boilerplate, and to provide - where this makes sense - prefabricated
 building blocks pre-initialised to sensible defaults.
 
-
 The idea is that you might want to prototype your app by slapping
 together some of these building blocks, and then, replacing some of
 these blocks (the ones that actually make a difference in speed, usability or aesthetics) with customised elements.
 
-Generators for a whide range of common Vulkan objects which are ready to be used together or not at all if need be. Using these generators we can create a default renderer environment, the Context, which may function as a starting
-point for exploration.
+Generators should exist for a whide range of common Vulkan objects which are ready to be used together or not at all if need be. Using these generators we can create a default renderer environment, the Context, which may function as a starting point for exploration.
 
 Advanced users will probably want to write their own scene graphs, renderer addons etc. Great! We should make sure that this is possible.
 
@@ -181,9 +179,13 @@ ofMatrix4x4 clip(1.0f,  0.0f, 0.0f, 0.0f,
 
 # TODO
 
-- [ ] Unify transient vertex and index buffers and Context
+- [x] Unify transient vertex and index buffers and Context
 - [ ] Define default pipeline layout based on default descriptor set layout
 - [ ] Define default pipelines based on default shaders
+- [ ] Take into account usingNormals, usingTexCoords etc. when rendering meshes
+- [ ] Add vertex color support
+- [ ] Add support for drawing wireframes (part of default pipeline generation)
+- [ ] Add texture support
 
 ----------------------------------------------------------------------
 
