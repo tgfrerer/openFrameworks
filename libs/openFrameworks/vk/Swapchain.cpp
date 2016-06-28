@@ -143,21 +143,6 @@ void Swapchain::setup(
 
 		mImages[i].imageRef = swapchainImages[i];
 
-		auto transferBarrier = of::vk::createImageBarrier( mImages[i].imageRef,
-			VK_IMAGE_ASPECT_COLOR_BIT,
-			VK_IMAGE_LAYOUT_UNDEFINED,
-			VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL );
-
-		// Append pipeline barrier to commandBuffer
-		vkCmdPipelineBarrier(
-			cmdBuffer,
-			VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-			VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-			0,
-			0, nullptr,
-			0, nullptr,
-			1, &transferBarrier );
-
 		colorAttachmentView.image = mImages[i].imageRef;
 
 		err = vkCreateImageView( mDevice, &colorAttachmentView, nullptr, &mImages[i].view );

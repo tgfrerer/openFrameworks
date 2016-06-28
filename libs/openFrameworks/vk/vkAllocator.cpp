@@ -134,7 +134,7 @@ bool of::vk::Allocator::allocate( VkDeviceSize byteCount_, void*& pAddr, VkDevic
 		return true;
 	} else{
 		ofLogError() << "Allocator: out of memory";
-		// TODO: try to recover by re-allocating or soemthing.
+		// TODO: try to recover by re-allocating or something.
 		// Whatever we do here, it will be very costly and should 
 		// be avoided.
 	}
