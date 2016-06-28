@@ -30,10 +30,15 @@ modifications.
 
 2. update GLFW using apothecary
    
+   Check the apothecary headers to make sure they are at version 3.2
+
+    If they aren't it's possible you might have to temporarily checkout [this PR](https://github.com/openframeworks/openFrameworks/pull/5099) to update the apothecary GLFW recipe, and recompile the GLFW library.
+
+    Once the update-glfw PR has been merged with openFrameworks/master, this step will hopefully be less awkward.
+
     ```cd openFrameworks/scripts/apothecary
     ./apothecary update glfw```
 
-   Check the apothecary headers to make sure they are at version 3.2
 
 3. In apps/devApps you'll find a project called `testVk`, that's where
    some things can be tested.

@@ -22,7 +22,7 @@ in a similar way to OpenGL immediate mode. But without the OpenGL
 
 It may be possible to use context to pre-record memory
 and command buffers - and to use this to playback "canned" 
-framebuffers.
+command buffers.
 
 For this to work, you would use a static context - a context 
 with one frame of backing memory - which is transferred from 
@@ -43,7 +43,7 @@ class Allocator; // ffdecl.
 
 // The context holds a number of frames, dependent on the 
 // number of swapchain images. For each swapchain image,
-// there is a context. 
+// there is a state memory frame within the context. 
 
 // The context has one allocator, which holds one buffer which is backed
 // by one large chunk device memory. Device memory is segmented into 
