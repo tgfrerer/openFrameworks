@@ -105,12 +105,29 @@ void ofApp::draw(){
 	
 	// look at nvidia vulkan demo and at how they structure rendering.
 
-	static ofMesh m = ofMesh::icosphere(200,3);
+	static ofMesh ico = ofMesh::icosphere(50, 3);
+	static ofMesh box = ofMesh::box( 50, 50,50 );
+	
 	ofPushMatrix();
-	ofTranslate( -200, +100, 0 );
-	m.draw();
+	ofTranslate( -200, +200, 100 );
+	ico.draw();
 	ofPopMatrix();
 	
+	ofPushMatrix();
+	ofTranslate( -200, -200, -200 );
+	ico.draw();
+	ofPopMatrix();
+
+	ofPushMatrix();
+	ofTranslate( 200, +200, -200 );
+	ico.draw();
+	ofPopMatrix();
+
+	ofPushMatrix();
+	ofTranslate( 200, -200, 200 );
+	ico.draw();
+	ofPopMatrix();
+
 	mFontMesh.draw();
 
 	ofPushMatrix();
@@ -120,7 +137,7 @@ void ofApp::draw(){
 
 	ofPushMatrix();
 	ofTranslate( 200, 0 );
-	ofRotate( 360.f * ((ofGetElapsedTimeMillis() % 1000) / 1000.f) ); // this should rotate at a speed of one revolution every 6 seconds. 
+	ofRotate( 360.f * ((ofGetElapsedTimeMillis() % 6000) / 6000.f) ); // this should rotate at a speed of one revolution every 6 seconds. 
 	mLMesh.draw();
 	ofPopMatrix();
 
