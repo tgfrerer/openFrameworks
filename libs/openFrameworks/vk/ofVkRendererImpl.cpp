@@ -808,7 +808,7 @@ void ofVkRenderer::finishRender(){
 			auto transferBarrier = of::vk::createImageBarrier(	
 				mSwapchain.getImage( mSwapchain.getCurrentImageIndex() ).imageRef,
 				VK_IMAGE_ASPECT_COLOR_BIT,
-				VK_IMAGE_LAYOUT_UNDEFINED,
+				VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
 				VK_IMAGE_LAYOUT_PRESENT_SRC_KHR );
 
 			// Append pipeline barrier to commandBuffer
