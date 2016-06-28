@@ -487,61 +487,78 @@ void ofVkRenderer::setupDepthStencil(){
 // ----------------------------------------------------------------------
 
 void ofVkRenderer::setupRenderPass(){
-	VkAttachmentDescription attachments[2] = {};
+	
+	VkAttachmentDescription attachments[2] = {
+		{   // Color attachment
+	    
+			// Note that we keep initialLayout of this color attachment 
+			// `VK_IMAGE_LAYOUT_UNDEFINED` -- we do this to say we effectively don't care
+			// about the initial layout and contents of (swapchain) images which 
+			// are attached here. See also: 
+			// http://stackoverflow.com/questions/37524032/how-to-deal-with-the-layouts-of-presentable-images
+			//
+			// We might re-investigate this and pre-transfer images to COLOR_OPTIMAL, but only on initial use, 
+			// if we wanted to be able to accumulate drawing into this buffer.
+			
+			0,                                                 // VkAttachmentDescriptionFlags    flags;
+			mWindowColorFormat.format,                         // VkFormat                        format;
+			VK_SAMPLE_COUNT_1_BIT,                             // VkSampleCountFlagBits           samples;
+			VK_ATTACHMENT_LOAD_OP_CLEAR,                       // VkAttachmentLoadOp              loadOp;
+			VK_ATTACHMENT_STORE_OP_STORE,                      // VkAttachmentStoreOp             storeOp;
+			VK_ATTACHMENT_LOAD_OP_DONT_CARE,                   // VkAttachmentLoadOp              stencilLoadOp;
+			VK_ATTACHMENT_STORE_OP_DONT_CARE,                  // VkAttachmentStoreOp             stencilStoreOp;
+			VK_IMAGE_LAYOUT_UNDEFINED,                         // VkImageLayout                   initialLayout;
+			VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,          // VkImageLayout                   finalLayout; 
+		},
+		{   // Depth attachment
+			0,                                                 // VkAttachmentDescriptionFlags    flags;
+			mDepthFormat,                                      // VkFormat                        format;
+			VK_SAMPLE_COUNT_1_BIT,                             // VkSampleCountFlagBits           samples;
+			VK_ATTACHMENT_LOAD_OP_CLEAR,                       // VkAttachmentLoadOp              loadOp;
+			VK_ATTACHMENT_STORE_OP_STORE,                      // VkAttachmentStoreOp             storeOp;
+			VK_ATTACHMENT_LOAD_OP_DONT_CARE,                   // VkAttachmentLoadOp              stencilLoadOp;
+			VK_ATTACHMENT_STORE_OP_DONT_CARE,                  // VkAttachmentStoreOp             stencilStoreOp;
+			VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,  // VkImageLayout                   initialLayout;
+			VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,  // VkImageLayout                   finalLayout; 
+		},
+	};
 
-	// Color attachment
-	attachments[0].format = mWindowColorFormat.format;
-	attachments[0].samples = VK_SAMPLE_COUNT_1_BIT;
-	attachments[0].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-	attachments[0].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-	attachments[0].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-	attachments[0].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-	attachments[0].initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-	attachments[0].finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+	VkAttachmentReference colorReference = {
+		0,                                                     // uint32_t         attachment;
+		VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,              // VkImageLayout    layout;
+	};
 
-	// Depth attachment
-	attachments[1].format = mDepthFormat;
-	attachments[1].samples = VK_SAMPLE_COUNT_1_BIT;
-	attachments[1].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-	attachments[1].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-	attachments[1].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-	attachments[1].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-	attachments[1].initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-	attachments[1].finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+	VkAttachmentReference depthReference = {
+		1,                                                     // uint32_t         attachment;
+		VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,      // VkImageLayout    layout;
+	};
 
-	VkAttachmentReference colorReference = {};
-	colorReference.attachment = 0;
-	colorReference.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+	VkSubpassDescription subpass = {
+		0,                                                     // VkSubpassDescriptionFlags       flags;
+		VK_PIPELINE_BIND_POINT_GRAPHICS,                       // VkPipelineBindPoint             pipelineBindPoint;
+		0,                                                     // uint32_t                        inputAttachmentCount;
+		nullptr,                                               // const VkAttachmentReference*    pInputAttachments;
+		1,                                                     // uint32_t                        colorAttachmentCount;
+		&colorReference,                                       // const VkAttachmentReference*    pColorAttachments;
+		nullptr,                                               // const VkAttachmentReference*    pResolveAttachments;
+		&depthReference,                                       // const VkAttachmentReference*    pDepthStencilAttachment;
+		0,                                                     // uint32_t                        preserveAttachmentCount;
+		nullptr,                                               // const uint32_t*                 pPreserveAttachments;
+	};
 
-	VkAttachmentReference depthReference = {};
-	depthReference.attachment = 1;
-	depthReference.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+	VkRenderPassCreateInfo renderPassInfo = {
+		VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,             // VkStructureType                   sType;
+		nullptr,                                               // const void*                       pNext;
+		0,                                                     // VkRenderPassCreateFlags           flags;
+		2,                                                     // uint32_t                          attachmentCount;
+		attachments,                                           // const VkAttachmentDescription*    pAttachments;
+		1,                                                     // uint32_t                          subpassCount;
+		&subpass,                                              // const VkSubpassDescription*       pSubpasses;
+		0,                                                     // uint32_t                          dependencyCount;
+		nullptr,                                               // const VkSubpassDependency*        pDependencies;
+	};
 
-	VkSubpassDescription subpass = {};
-	subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-	subpass.flags = 0;
-	subpass.inputAttachmentCount = 0;
-	subpass.pInputAttachments = NULL;
-	subpass.colorAttachmentCount = 1;
-	subpass.pColorAttachments = &colorReference;
-	subpass.pResolveAttachments = NULL;
-	subpass.pDepthStencilAttachment = &depthReference;
-	subpass.preserveAttachmentCount = 0;
-	subpass.pPreserveAttachments = NULL;
-
-	VkRenderPassCreateInfo renderPassInfo = {};
-	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-	renderPassInfo.pNext = NULL;
-	renderPassInfo.attachmentCount = 2;
-	renderPassInfo.pAttachments = attachments;
-	renderPassInfo.subpassCount = 1;
-	renderPassInfo.pSubpasses = &subpass;
-	renderPassInfo.dependencyCount = 0;
-	renderPassInfo.pDependencies = NULL;
-
-	VkResult err;
-
-	err = vkCreateRenderPass(mDevice, &renderPassInfo, nullptr, &mRenderPass);
+	VkResult err = vkCreateRenderPass(mDevice, &renderPassInfo, nullptr, &mRenderPass);
 	assert(!err);
 };
 
@@ -686,6 +703,25 @@ void ofVkRenderer::startRender(){
 	err = mSwapchain.acquireNextImage( mSemaphorePresentComplete, &swapIdx);
 	assert( !err );
 
+	// todo: transfer image from undefined to COLOR_ATTACHMENT_OPTIMAL 
+	// when we're looking at the first use of this image.
+
+	//auto transferBarrier = of::vk::createImageBarrier( mImages[i].imageRef,
+	//	VK_IMAGE_ASPECT_COLOR_BIT,
+	//	VK_IMAGE_LAYOUT_UNDEFINED,
+	//	VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL );
+
+	//// Append pipeline barrier to commandBuffer
+	//vkCmdPipelineBarrier(
+	//	cmdBuffer,
+	//	VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+	//	VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+	//	0,
+	//	0, nullptr,
+	//	0, nullptr,
+	//	1, &transferBarrier );
+
+
 	{
 		if ( mDrawCmdBuffer.size() == mSwapchain.getImageCount() ){
 			// if command buffer has been previously recorded, we want to re-use it.
@@ -772,7 +808,7 @@ void ofVkRenderer::finishRender(){
 			auto transferBarrier = of::vk::createImageBarrier(	
 				mSwapchain.getImage( mSwapchain.getCurrentImageIndex() ).imageRef,
 				VK_IMAGE_ASPECT_COLOR_BIT,
-				VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+				VK_IMAGE_LAYOUT_UNDEFINED,
 				VK_IMAGE_LAYOUT_PRESENT_SRC_KHR );
 
 			// Append pipeline barrier to commandBuffer
