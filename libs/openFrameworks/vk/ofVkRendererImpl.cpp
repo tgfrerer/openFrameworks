@@ -55,7 +55,7 @@ void ofVkRenderer::setup(){
 	// information
 	setupDescriptorSets();
 
-	setupPipelines();
+	setupPipelines();					  
 	
 }
 
@@ -285,7 +285,7 @@ void ofVkRenderer::querySurfaceCapabilities(){
 	assert( !err );
 
 	// If the surface format list only includes one entry with VK_FORMAT_UNDEFINED,
-	// there is no preferered format, so we assume VK_FORMAT_B8G8R8A8_UNORM
+	// there is no preferred format, so we assume VK_FORMAT_B8G8R8A8_UNORM
 	if ( ( formatCount == 1 ) && ( surfaceFormats[0].format == VK_FORMAT_UNDEFINED ) ){
 		mWindowColorFormat.format = VK_FORMAT_B8G8R8A8_UNORM;
 	}
@@ -795,6 +795,17 @@ void ofVkRenderer::finishRender(){
 	assert( !err );
 
 	{  // pre-present
+
+		/*
+		
+		We have to transfer the image layout of our current color attachment 
+		from VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL to VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
+		so that it can be handed over to the swapchain, ready for presenting. 
+		
+		The attachment arrives in VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL because that's 
+		how our main renderpass, mRenderPass, defines it in its finalLayout parameter.
+		
+		*/
 
 		VkCommandBufferBeginInfo beginInfo = {
 			VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,     // VkStructureType                          sType;
