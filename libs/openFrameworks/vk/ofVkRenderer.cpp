@@ -45,7 +45,12 @@ ofVkRenderer::ofVkRenderer(const ofAppBaseWindow * _window)
 	setupDebugLayers();
 
 #ifdef OF_TARGET_API_VULKAN
+#ifdef TARGET_LINUX
+	mInstanceExtensions.push_back( "VK_KHR_xcb_surface" );
+#endif
+#ifdef TARGET_WIN32
 	mInstanceExtensions.push_back( "VK_KHR_win32_surface" );
+#endif
 	mInstanceExtensions.push_back( "VK_KHR_surface" );
 	mDeviceExtensions.push_back( "VK_KHR_swapchain" );
 #endif
@@ -171,7 +176,7 @@ void ofVkRenderer::destroySurface(){
 	auto err = vkCreateInstance(&instanceCreateInfo, nullptr, &mInstance);
 
 	if (err != VK_SUCCESS) {
-		ofLogError() << "Could not create Instance";
+		ofLogError() << "Could not create Instance: " << err;
 		ofExit(-1);
 	}
 

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "vulkan\vulkan.h"
+#include "vulkan/vulkan.h"
 #include <string>
 
 #include "ofFileUtils.h"
@@ -249,17 +249,19 @@ static std::shared_ptr<VkPipelineLayout> createPipelineLayout( const VkDevice& d
 
 	auto pipelineLayout = shared_ptr<VkPipelineLayout>(
 		new VkPipelineLayout,
-		[&device = device_]( VkPipelineLayout * pl )
+	    [device_]( VkPipelineLayout * pl )
 	{
-		vkDestroyPipelineLayout( device, *pl, nullptr );
+	    vkDestroyPipelineLayout( device_, *pl, nullptr );
 		delete pl;
 	} );
+
+	uint32_t sz = dsl_.size();
 
 	VkPipelineLayoutCreateInfo pPipelineLayoutCreateInfo{
 		VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,       // VkStructureType                 sType;
 		nullptr,                                             // const void*                     pNext;
 		0,                                                   // VkPipelineLayoutCreateFlags     flags;
-		dsl_.size(),                                         // uint32_t                        setLayoutCount;
+		sz,                                         // uint32_t                        setLayoutCount;
 		dsl_.data(),                                         // const VkDescriptorSetLayout*    pSetLayouts;
 		0,                                                   // uint32_t                        pushConstantRangeCount;
 		nullptr,                                             // const VkPushConstantRange*      pPushConstantRanges;

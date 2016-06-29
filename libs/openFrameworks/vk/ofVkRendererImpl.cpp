@@ -893,7 +893,7 @@ void ofVkRenderer::draw( const ofMesh & mesh_, ofPolyRenderMode renderType, bool
 	// store uniforms if needed
 
 	std::vector<uint32_t> dynamicOffsets = { 
-		(uint32_t)mContext->getCurrentMatrixStateOffset(),
+	    uint32_t(mContext->getCurrentMatrixStateOffset()),
 	};
 
 	auto & currentShader = mShaders[0];
@@ -908,13 +908,13 @@ void ofVkRenderer::draw( const ofMesh & mesh_, ofPolyRenderMode renderType, bool
 	// Bind uniforms (the first set contains the matrices)
 	vkCmdBindDescriptorSets(
 		cmd,
-		VK_PIPELINE_BIND_POINT_GRAPHICS,     // use graphics, not compute pipeline
-		*mPipelineLayouts[0],                // which pipeline layout (contains the bindings programmed from an sequence of descriptor sets )
-		0, 						             // firstset: first set index (of the above) to bind to - mDescriptorSet[0] will be bound to pipeline layout [firstset]
-		currentlyBoundDescriptorsets.size(), // setCount: how many sets to bind
-		currentlyBoundDescriptorsets.data(), // the descriptor sets to match up with our mPipelineLayout (need to be compatible)
-		dynamicOffsets.size(),               // dynamic offsets count how many dynamic offsets
-		dynamicOffsets.data()                // dynamic offsets for each 
+	    VK_PIPELINE_BIND_POINT_GRAPHICS,                // use graphics, not compute pipeline
+	    *mPipelineLayouts[0],                           // which pipeline layout (contains the bindings programmed from an sequence of descriptor sets )
+	    0, 						                        // firstset: first set index (of the above) to bind to - mDescriptorSet[0] will be bound to pipeline layout [firstset]
+	    uint32_t(currentlyBoundDescriptorsets.size()),  // setCount: how many sets to bind
+	    currentlyBoundDescriptorsets.data(),            // the descriptor sets to match up with our mPipelineLayout (need to be compatible)
+	    uint32_t(dynamicOffsets.size()),                // dynamic offsets count how many dynamic offsets
+	    dynamicOffsets.data()                           // dynamic offsets for each
 	);
 
 	// Bind the rendering pipeline (including the shaders)
@@ -932,7 +932,7 @@ void ofVkRenderer::draw( const ofMesh & mesh_, ofPolyRenderMode renderType, bool
 
 	vector<VkBuffer> bufferRefs( vertexOffsets.size(), mContext->getVkBuffer() );
 	
-	vkCmdBindVertexBuffers( cmd, 0, bufferRefs.size(), bufferRefs.data(), vertexOffsets.data() );
+	vkCmdBindVertexBuffers( cmd, 0, uint32_t(bufferRefs.size()), bufferRefs.data(), vertexOffsets.data() );
 
 	//// This transient buffer will: 
 	//// + upload the vector to GPU memory.
@@ -941,11 +941,11 @@ void ofVkRenderer::draw( const ofMesh & mesh_, ofPolyRenderMode renderType, bool
 	
 	if ( indexOffsets.empty() ){
 		// non-indexed draw
-		vkCmdDraw( cmd, mesh_.getNumVertices(), 1, 0, 1 );
+		vkCmdDraw( cmd, uint32_t(mesh_.getNumVertices()), 1, 0, 1 );
 	} else{
 		// indexed draw
 		vkCmdBindIndexBuffer( cmd, bufferRefs[0], indexOffsets[0], VK_INDEX_TYPE_UINT32 );
-		vkCmdDrawIndexed( cmd, mesh_.getNumIndices(), 1, 0, 0, 1 );
+		vkCmdDrawIndexed( cmd, uint32_t(mesh_.getNumIndices()), 1, 0, 0, 1 );
 	}
 }  
 
@@ -955,11 +955,11 @@ shared_ptr<ofVkRenderer::BufferObject> ofVkRenderer::TransientVertexBuffer::crea
 	
 	auto &device_ = renderer_->getVkDevice();
 
-	auto obj = shared_ptr<TransientVertexBuffer>( new TransientVertexBuffer, [&device = device_](BufferObject* obj){
+	auto obj = shared_ptr<TransientVertexBuffer>( new TransientVertexBuffer, [device_](BufferObject* obj){
 		// destructor
 		
-		vkFreeMemory( device, obj->mem, nullptr );
-		vkDestroyBuffer( device, obj->buf, nullptr );
+	    vkFreeMemory( device_, obj->mem, nullptr );
+	    vkDestroyBuffer( device_, obj->buf, nullptr );
 
 		delete obj;
 		obj = nullptr;
@@ -1006,11 +1006,11 @@ shared_ptr<ofVkRenderer::BufferObject> ofVkRenderer::TransientVertexBuffer::crea
 shared_ptr<ofVkRenderer::BufferObject> ofVkRenderer::TransientIndexBuffer::create(  ofVkRenderer* renderer_, const vector<uint32_t> & vec_ ){
 	auto &device_ = renderer_->getVkDevice();
 
-	auto obj = shared_ptr<TransientIndexBuffer>( new TransientIndexBuffer, [&device = device_]( TransientIndexBuffer* obj ){
+	auto obj = shared_ptr<TransientIndexBuffer>( new TransientIndexBuffer, [device_]( TransientIndexBuffer* obj ){
 		// destructor
 
-		vkFreeMemory( device, obj->mem, nullptr );
-		vkDestroyBuffer( device, obj->buf, nullptr );
+	    vkFreeMemory( device_, obj->mem, nullptr );
+	    vkDestroyBuffer( device_, obj->buf, nullptr );
 
 		delete obj;
 		obj = nullptr;

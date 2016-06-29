@@ -1,10 +1,10 @@
 #pragma once
 #include <string>
 #include <map>
-#include "vulkan\vulkan.h"
-#include "spirv_cross.hpp"
+#include "vulkan/vulkan.h"
 
 #include "ofFileUtils.h"
+#include "spirv_cross.hpp"
 
 
 namespace of{
@@ -302,7 +302,7 @@ public:
 	std::shared_ptr<VkDescriptorSetLayout> createDescriptorSetLayout(){
 		
 		auto dsl = std::shared_ptr<VkDescriptorSetLayout>( new VkDescriptorSetLayout,
-			[&device = mSettings.device]( VkDescriptorSetLayout * dsl )
+		    [device = mSettings.device]( VkDescriptorSetLayout * dsl )
 		{
 			vkDestroyDescriptorSetLayout( device, *dsl, nullptr );
 			delete dsl;
@@ -317,7 +317,7 @@ public:
 			VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO, // VkStructureType                        sType;
 			nullptr,                                             // const void*                            pNext;
 			0,                                                   // VkDescriptorSetLayoutCreateFlags       flags;
-			tmpFlattenedBindings.size(),                         // uint32_t                               bindingCount;
+			static_cast<uint32_t>(tmpFlattenedBindings.size()),  // uint32_t                               bindingCount;
 			tmpFlattenedBindings.data()                          // const VkDescriptorSetLayoutBinding*    pBindings;
 		};
 

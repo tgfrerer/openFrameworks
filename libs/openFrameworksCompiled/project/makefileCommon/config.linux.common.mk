@@ -308,10 +308,12 @@ ifneq ($(PLATFORM_ARCH),armv6l)
     PLATFORM_LIBRARIES += X11 
     PLATFORM_LIBRARIES += Xrandr
     PLATFORM_LIBRARIES += Xxf86vm 
-    PLATFORM_LIBRARIES += Xi 
+    PLATFORM_LIBRARIES += Xi
+    PLATFORM_LIBRARIES += Xinerama
     PLATFORM_LIBRARIES += Xcursor 
     PLATFORM_LIBRARIES += dl 
     PLATFORM_LIBRARIES += pthread
+    PLATFORM_LIBRARIES += vulkan
 endif
     
 PLATFORM_LIBRARIES += freeimage
@@ -397,6 +399,7 @@ endif
 ################################################################################
 
 PLATFORM_LIBRARY_SEARCH_PATHS =
+PLATFORM_LIBRARY_SEARCH_PATHS += $(VULKAN_SDK)/lib
 
 ################################################################################
 # PLATFORM FRAMEWORKS
