@@ -109,6 +109,14 @@ bool of::vk::Context::storeMesh( const ofMesh & mesh_, std::vector<VkDeviceSize>
 	// and indices.
 
 	// Q: how do we deal with meshes that don't have data for all possible attributes?
+	// 
+	// A: we could go straight ahead here, but the method actually 
+	//    generating the command buffer would cull "empty" slots 
+	//    by interrogating the mesh for missing data in vectors.
+	//    We know that a mesh does not have normals, for example, if the count of 
+	//    normals is 0.
+	//
+
 	// Q: should we cache meshes to save memory and potentially time?
 
 	void*    pData    = nullptr;
@@ -116,21 +124,29 @@ bool of::vk::Context::storeMesh( const ofMesh & mesh_, std::vector<VkDeviceSize>
 
 	vertexOffsets.resize( 4, 0 ); 
 
+	// binding number 0
 	numBytes = numVertices * sizeof( ofVec3f );
-	
 	if ( mAlloc->allocate( numBytes, pData, vertexOffsets[0], mSwapIdx ) ){
 		memcpy( pData, mesh_.getVerticesPointer(), numBytes );
 	};
 
+	// binding number 1
 	numBytes = numColors * sizeof( ofFloatColor );
 	if ( mAlloc->allocate( numBytes, pData, vertexOffsets[1], mSwapIdx ) ){
 		memcpy( pData, mesh_.getColorsPointer(), numBytes );
 	};
 
+	// binding number 2
 	numBytes = numNormals * sizeof( ofVec3f );
 	if ( mAlloc->allocate( numBytes, pData, vertexOffsets[2], mSwapIdx ) ){
 		memcpy( pData, mesh_.getNormalsPointer(), numBytes );
 	};
+
+	numBytes = numTexCooords * sizeof( ofVec2f );
+	if ( mAlloc->allocate( numBytes, pData, vertexOffsets[3], mSwapIdx ) ){
+		memcpy( pData, mesh_.getTexCoordsPointer(), numBytes );
+	};
+
 
 	VkDeviceSize indexOffset = 0;
 	numBytes = numIndices * sizeof( ofIndexType );
