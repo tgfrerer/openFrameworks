@@ -16,28 +16,28 @@ VkPipeline && vk::GraphicsPipelineState::createPipeline( const VkDevice & device
 		
 		// derive stages from shader
 		// TODO: only re-assign if shader has changed.
-		auto stageCreateInfo = mShader->getShaderStageCreateInfo();
+		auto & stageCreateInfo = mShader->getShaderStageCreateInfo();
 		
 		VkGraphicsPipelineCreateInfo createInfo{
-			VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO, // VkStructureType                                  sType;
-			nullptr,                                         // const void*                                      pNext;
-			0,                                               // VkPipelineCreateFlags                            flags;
-			stageCreateInfo.size(),                          // uint32_t                                         stageCount;
-			stageCreateInfo.data(),                          // const VkPipelineShaderStageCreateInfo*           pStages;
-			&mShader->getVertexInputState(),                 // const VkPipelineVertexInputStateCreateInfo*      pVertexInputState;
-			&mInputAssemblyState,                            // const VkPipelineInputAssemblyStateCreateInfo*    pInputAssemblyState;
-			&mTessellationState,                             // const VkPipelineTessellationStateCreateInfo*     pTessellationState;
-			&mViewportState,                                 // const VkPipelineViewportStateCreateInfo*         pViewportState;
-			&mRasterizationState,                            // const VkPipelineRasterizationStateCreateInfo*    pRasterizationState;
-			&mMultisampleState,                              // const VkPipelineMultisampleStateCreateInfo*      pMultisampleState;
-			&mDepthStencilState,                             // const VkPipelineDepthStencilStateCreateInfo*     pDepthStencilState;
-			&mColorBlendState,                               // const VkPipelineColorBlendStateCreateInfo*       pColorBlendState;
-			&mDynamicState,                                  // const VkPipelineDynamicStateCreateInfo*          pDynamicState;
-			*mLayout,                                        // VkPipelineLayout                                 layout;
-			mRenderPass,                                     // VkRenderPass                                     renderPass;
-			mSubpass,                                        // uint32_t                                         subpass;
-			mBasePipelineHandle,                             // VkPipeline                                       basePipelineHandle;
-			mBasePipelineIndex                               // int32_t                                          basePipelineIndex;
+            VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO, // VkStructureType                                  sType;
+            nullptr,                                         // const void*                                      pNext;
+            0,                                               // VkPipelineCreateFlags                            flags;
+            stageCreateInfo.size(),                          // uint32_t                                         stageCount;
+            stageCreateInfo.data(),                          // const VkPipelineShaderStageCreateInfo*           pStages;
+            &mShader->getVertexInputState(),                 // const VkPipelineVertexInputStateCreateInfo*      pVertexInputState;
+            &mInputAssemblyState,                            // const VkPipelineInputAssemblyStateCreateInfo*    pInputAssemblyState;
+            &mTessellationState,                             // const VkPipelineTessellationStateCreateInfo*     pTessellationState;
+            &mViewportState,                                 // const VkPipelineViewportStateCreateInfo*         pViewportState;
+            &mRasterizationState,                            // const VkPipelineRasterizationStateCreateInfo*    pRasterizationState;
+            &mMultisampleState,                              // const VkPipelineMultisampleStateCreateInfo*      pMultisampleState;
+            &mDepthStencilState,                             // const VkPipelineDepthStencilStateCreateInfo*     pDepthStencilState;
+            &mColorBlendState,                               // const VkPipelineColorBlendStateCreateInfo*       pColorBlendState;
+            &mDynamicState,                                  // const VkPipelineDynamicStateCreateInfo*          pDynamicState;
+            *mLayout,                                        // VkPipelineLayout                                 layout;
+            mRenderPass,                                     // VkRenderPass                                     renderPass;
+            mSubpass,                                        // uint32_t                                         subpass;
+            mBasePipelineHandle,                             // VkPipeline                                       basePipelineHandle;
+            mBasePipelineIndex                               // int32_t                                          basePipelineIndex;
 		};
 
 		auto err = vkCreateGraphicsPipelines( device, pipelineCache, 1, &createInfo, nullptr, &pipeline );

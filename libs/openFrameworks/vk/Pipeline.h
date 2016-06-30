@@ -91,7 +91,7 @@ public:	// default state for pipeline
 		nullptr,                                                     // const void*                                pNext;
 		0,                                                           // VkPipelineTessellationStateCreateFlags     flags;
 		0,                                                           // uint32_t                                   patchControlPoints;
-	};																 
+	};
 	
 	VkPipelineViewportStateCreateInfo mViewportState {				 
 		VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,       // VkStructureType                            sType;
@@ -101,7 +101,7 @@ public:	// default state for pipeline
 		nullptr,                                                     // const VkViewport*                          pViewports;
 		1,                                                           // uint32_t                                   scissorCount;
 		nullptr,                                                     // const VkRect2D*                            pScissors;
-	};																 
+	};
 	
 	VkPipelineRasterizationStateCreateInfo mRasterizationState {	 
 		VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,  // VkStructureType                            sType;
@@ -117,7 +117,7 @@ public:	// default state for pipeline
 		0.f,                                                         // float                                      depthBiasClamp;
 		0.f,                                                         // float                                      depthBiasSlopeFactor;
 		1.f,                                                         // float                                      lineWidth;
-	};																 
+	};
 	
 	VkPipelineMultisampleStateCreateInfo mMultisampleState {													   
 		VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,    // VkStructureType                            sType;

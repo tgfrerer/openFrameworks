@@ -84,7 +84,7 @@ void ofApp::draw(){
 
 	// now that the buffer have been submitted eagerly, 
 	// we need to have a memory barrier here to make sure that that
-	// buffer has finished transfering to GPU before the draw happens. 															   
+	// buffer has finished transfering to GPU before the draw happens.
 
 	// -----
 	// draw command issued here:
