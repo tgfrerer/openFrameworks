@@ -926,25 +926,28 @@ void ofVkRenderer::draw( const ofMesh & mesh_, ofPolyRenderMode renderType, bool
 	// Bind the rendering pipeline (including the shaders)
 	vkCmdBindPipeline( cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, mPipelines.solid );
 
-	// temp-allocate mesh memory and 
-
 	std::vector<VkDeviceSize> vertexOffsets;
 	std::vector<VkDeviceSize> indexOffsets;
 
-	// store vertex data using context
-	// context will return memory offsets into vertices, indices, 
-	// based on current context memory buffer
+	// Store vertex data using Context.
+	// - this uses Allocator to store mesh data in the current frame' s dynamic memory
+	// Context will return memory offsets into vertices, indices, based on current context memory buffer
+	// 
+	// TODO: check if it made sense to cache already stored meshes, 
+	//       so that meshes which have already been stored this frame 
+	//       may be re-used.
 	mContext->storeMesh( mesh_, vertexOffsets, indexOffsets);
 
+	// TODO: cull vertexOffsets which refer to empty vertex attribute data
+	//       make sure that a pipeline with the correct bindings is bound to match the 
+	//       presence or non-presence of mesh data.
+
+	// Bind vertex data buffers to current pipeline. 
+	// The vector indices into bufferRefs, vertexOffsets correspond to [binding numbers] of the currently bound pipeline.
+	// See Shader.h for an explanation of how this is mapped to shader attribute locations
 	vector<VkBuffer> bufferRefs( vertexOffsets.size(), mContext->getVkBuffer() );
-	
 	vkCmdBindVertexBuffers( cmd, 0, uint32_t(bufferRefs.size()), bufferRefs.data(), vertexOffsets.data() );
 
-	//// This transient buffer will: 
-	//// + upload the vector to GPU memory.
-	//// + automatically get deleted on the next frame.
-	//auto tempIndices = TransientIndexBuffer::create( const_cast<ofVkRenderer*>( this ), vertexData.getIndices() );
-	
 	if ( indexOffsets.empty() ){
 		// non-indexed draw
 		vkCmdDraw( cmd, uint32_t(mesh_.getNumVertices()), 1, 0, 1 );

@@ -117,16 +117,20 @@ void of::vk::Allocator::reset(){
 }
 
 // ----------------------------------------------------------------------
-
-bool of::vk::Allocator::allocate( VkDeviceSize byteCount_, void*& pAddr, VkDeviceSize& offset, size_t frame ){
+// brief   linear allocator
+// param   byteCount number of bytes to allocate
+// param   current swapchain image index
+// returns pAddr writeable memory address
+// returns offsset memory offset in bytes relative to start of buffer to reach address
+bool of::vk::Allocator::allocate( VkDeviceSize byteCount_, void*& pAddr, VkDeviceSize& offset, size_t swapIdx ){
 	uint32_t alignedByteCount = mAlignment * ( ( byteCount_ + mAlignment - 1 ) / mAlignment );
 
-	if ( mOffsetEnd[frame] + alignedByteCount <= (mSettings.size / mSettings.frames) ){
+	if ( mOffsetEnd[swapIdx] + alignedByteCount <= (mSettings.size / mSettings.frames) ){
 		// write out memory address
-		pAddr = mBaseAddress[frame] + mOffsetEnd[frame];
+		pAddr = mBaseAddress[swapIdx] + mOffsetEnd[swapIdx];
 		// write out offset 
-		offset = mOffsetEnd[frame];
-		mOffsetEnd[frame] += alignedByteCount;
+		offset = mOffsetEnd[swapIdx];
+		mOffsetEnd[swapIdx] += alignedByteCount;
 		// TODO: if you use non-coherent memory you need to invalidate the 
 		// cache for the memory that has been written to.
 		// What we will realistically do is to flush the full memory range occpuied by a frame
