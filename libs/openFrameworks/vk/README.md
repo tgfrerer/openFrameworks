@@ -26,11 +26,13 @@ modifications.
 
 1. Install the Vulkan SDK from LunarG
 
-   download from: https://vulkan.lunarg.com
+	* download from: https://vulkan.lunarg.com
+	* [win] run installer to install sdk
+	* [win] install VulkanRT from RunTimeInstaller
 
 2. update GLFW using apothecary
    
-   Check the apothecary headers to make sure they are at version 3.2
+   Check the apothecary GLFW headers to make sure they are at version 3.2
 
     If they aren't it's possible you might have to temporarily checkout [this PR](https://github.com/openframeworks/openFrameworks/pull/5099) to update the apothecary GLFW recipe, and recompile the GLFW library.
 
