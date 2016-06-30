@@ -689,9 +689,6 @@ void ofVkRenderer::startRender(){
 	
 	// vkDeviceWaitIdle( mDevice );
 
-	// remove any transient buffer objects from one frame ago.
-	mTransientBufferObjects.clear();
-
 	// start of new frame
 	VkResult err;
 
@@ -892,8 +889,6 @@ void ofVkRenderer::finishRender(){
 
 	err = vkQueueSubmit( mQueue, 1, &submitInfo, VK_NULL_HANDLE );
 	err = vkQueueWaitIdle( mQueue );
-	
-	// vkDeviceWaitIdle( mDevice );
 
 }
 
@@ -960,105 +955,3 @@ void ofVkRenderer::draw( const ofMesh & mesh_, ofPolyRenderMode renderType, bool
 	}
 }  
 
-// ----------------------------------------------------------------------
-
-shared_ptr<ofVkRenderer::BufferObject> ofVkRenderer::TransientVertexBuffer::create(  ofVkRenderer* renderer_, const vector<ofVec3f>& vec_ ){
-	
-	auto &device_ = renderer_->getVkDevice();
-
-	auto obj = shared_ptr<TransientVertexBuffer>( new TransientVertexBuffer, [device_](BufferObject* obj){
-		// destructor
-		
-	    vkFreeMemory( device_, obj->mem, nullptr );
-	    vkDestroyBuffer( device_, obj->buf, nullptr );
-
-		delete obj;
-		obj = nullptr;
-	} );
-
-	VkBufferCreateInfo createInfo{};
-	createInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-	createInfo.pNext = nullptr;
-	createInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
-	createInfo.flags = 0;
-	createInfo.size = vec_.size() * sizeof( ofVec3f );
-
-	vkCreateBuffer( device_, &createInfo, nullptr, &obj->buf );
-	
-	
-	VkMemoryRequirements memReqs;
-	vkGetBufferMemoryRequirements( device_, obj->buf, &memReqs );
-
-	VkMemoryAllocateInfo allocInfo; 
-	renderer_->getMemoryAllocationInfo( memReqs, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, allocInfo );
-
-	// allocate memory
-	vkAllocateMemory( device_, &allocInfo, nullptr, &obj->mem );
-	
-	// upload vector data to gpu
-	void* data;
-	vkMapMemory( device_, obj->mem, 0, allocInfo.allocationSize, 0, &data );
-	memcpy( data, vec_.data(), createInfo.size );
-	vkUnmapMemory( device_, obj->mem );
-
-	// bind memory to buffer
-	vkBindBufferMemory( device_, obj->buf, obj->mem, 0 );
-
-	obj->num_elements = vec_.size();
-
-	// push element onto list of transient buffer objects
-	// these will get deleted after the next frame.
-	renderer_->mTransientBufferObjects.push_back( obj );
-
-	return obj;
-}
-// ----------------------------------------------------------------------
-
-shared_ptr<ofVkRenderer::BufferObject> ofVkRenderer::TransientIndexBuffer::create(  ofVkRenderer* renderer_, const vector<uint32_t> & vec_ ){
-	auto &device_ = renderer_->getVkDevice();
-
-	auto obj = shared_ptr<TransientIndexBuffer>( new TransientIndexBuffer, [device_]( TransientIndexBuffer* obj ){
-		// destructor
-
-	    vkFreeMemory( device_, obj->mem, nullptr );
-	    vkDestroyBuffer( device_, obj->buf, nullptr );
-
-		delete obj;
-		obj = nullptr;
-	} );
-
-	VkBufferCreateInfo createInfo{};
-	createInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-	createInfo.pNext = nullptr;
-	createInfo.usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
-	createInfo.flags = 0;
-	createInfo.size = vec_.size() * sizeof( uint32_t );
-
-	vkCreateBuffer( device_, &createInfo, nullptr, &obj->buf );
-
-	VkMemoryRequirements memReqs;
-	vkGetBufferMemoryRequirements( device_, obj->buf, &memReqs );
-
-	VkMemoryAllocateInfo allocInfo;
-	renderer_->getMemoryAllocationInfo( memReqs, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, allocInfo );
-
-	// allocate memory
-	vkAllocateMemory( device_, &allocInfo, nullptr, &obj->mem );
-
-	// upload vector data to gpu
-	void* data;
-	vkMapMemory( device_, obj->mem, 0, allocInfo.allocationSize, 0, &data );
-	memcpy( data, vec_.data(), createInfo.size );
-	vkUnmapMemory( device_, obj->mem );
-	
-	// bind memory to buffer
-	vkBindBufferMemory( device_, obj->buf, obj->mem, 0 );
-	obj->num_elements = vec_.size();
-
-	// push element onto list of transient buffer objects
-	// these will get deleted after the next frame.
-	renderer_->mTransientBufferObjects.push_back( obj );
-
-	return obj;
-}
-// ----------------------------------------------------------------------

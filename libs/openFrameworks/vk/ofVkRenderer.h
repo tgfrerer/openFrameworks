@@ -384,21 +384,6 @@ private:
 		size_t num_elements;
 	};
 
-	// buffer allocated on the fly for dynamic vertex data
-	class TransientVertexBuffer : public BufferObject
-	{
-	public:
-		static shared_ptr<BufferObject> create(  ofVkRenderer* renderer_, const vector<ofVec3f>& vec_);
-	};
-
-	// buffer allocated on the fly for dynamic index data
-	struct TransientIndexBuffer	: public BufferObject
-	{
-		static shared_ptr<BufferObject>	create(  ofVkRenderer* renderer_, const vector<uint32_t>& vec_ );
-	};
-
-	std::list<shared_ptr<BufferObject>> mTransientBufferObjects;
-	
 public:
 
 	const VkInstance& getInstance();
