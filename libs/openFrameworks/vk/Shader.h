@@ -6,6 +6,23 @@
 #include "ofFileUtils.h"
 #include "spirv_cross.hpp"
 
+//	 Here is a diagram on how vertex attribute binding works, based on vkspec 1.0, pp.389
+//
+//
+//     SHADER                                                       | Pipeline setup                               PIPELINE              |  COMMAND BUFFER   | BUFFERS (GPU MEMORY)
+//   ---------------------------------------------------------------|--------------------------------------------|-----------------------|-------------------|---------------------
+//     shader variable  => associated with => input attribute number| association on per-pipeline basis          | vertex input bindings |  association on a per-draw basis
+//                                            in GLSL, set through  | when defining the pipeline with            |                       |  when binding buffers using
+//                                           "location" qualifier   | "VkPipelineVertexInputStateCreateInfo"     | "binding number"      |  "vkCmdBindVertexBuffers"
+//                                                                  |                                            |                       |                   |
+//                                                                  | attributeDescription -> bindingDescription |                       |                   |
+//                                                                  |    "location"        -> "binding"          |                       |                   |
+//    vec3  inPos                   =>        (location = 0)        | --------------------.  .------------------ | [0] ----------------- |  ------.  .------ |   buffer A
+//                                                                  |                      \/                    |                       |         \/        |
+//                                                                  |                      /\                    |                       |         /\        |
+//    vec3  inNormal                =>        (location = 1)        | --------------------'  '------------------ | [1] ----------------- |  ------'  '------ |   buffer B
+//
+
 
 namespace of{
 namespace vk{
@@ -19,20 +36,10 @@ class Shader
 	{	
 		uint32_t                      set;
 		VkDescriptorSetLayoutBinding  layout;
-		//VkDescriptorBufferInfo        buffer; // we may need to store the buffer with the bindings so that we can use this to fill in the writeDescriptorSet.
 	};
 
 	std::map<std::string, Binding> mBindings; // map from block name to binding
 	std::map<VkShaderStageFlagBits, std::shared_ptr<spirv_cross::Compiler>> mCompilers;
-
-	// contains bindings programmed from a flattened list of descriptorSetLayouts
-	// "represents a sequence of descriptor sets with each having a specific layout"
-	//
-	// The pipeline layout describes which descriptor sets you are using as well as push 
-	// constants. This serves as the "function prototype" for your shader.
-	// see: https://community.arm.com/groups/arm-mali-graphics/blog/2016/04/18/spirv-cross
-	//std::shared_ptr<VkPipelineLayout> mPipelineLayout;
-	
 
 public:
 
@@ -44,13 +51,13 @@ public:
 
 	struct VertexInfo
 	{
-		std::vector<VkVertexInputBindingDescription>   binding;
-		std::vector<VkVertexInputAttributeDescription> attribute;
+		std::vector<VkVertexInputBindingDescription>   bindingDescription;	  // describes data input parameters for pipeline slots
+		std::vector<VkVertexInputAttributeDescription> attribute;	          // mapping of attribute locations to pipeline slots
 		VkPipelineVertexInputStateCreateInfo vi;
 	} mVertexInfo;
 
 	// ----------------------------------------------------------------------
-	// derive bindings from shader reflection using SPIR-V Cross
+	// Derive bindings from shader reflection using SPIR-V Cross.
 	// we want to extract as much information out of the shader metadata as possible
 	// all this data helps us to create descriptors, and also to create layouts fit
 	// for our pipelines.
@@ -152,45 +159,55 @@ public:
 				ofLog() << "Vertex Attribute locations";
 
 				mVertexInfo.attribute.resize( shaderResources.stage_inputs.size() );
-				mVertexInfo.binding.resize( shaderResources.stage_inputs.size() );
+				mVertexInfo.bindingDescription.resize( shaderResources.stage_inputs.size() );
 
 				for ( uint32_t i = 0; i != shaderResources.stage_inputs.size(); ++i ){
-					auto & input = shaderResources.stage_inputs[i];
 
-					ofLog() << "Vertex Attribute: [" << i << "] : " << input.name;
+					auto & attributeInput = shaderResources.stage_inputs[i];
+					auto attributeType = compiler.get_type( attributeInput.type_id );
+					
+					uint32_t location = i; // shader location qualifier mapped to binding number
 
-					auto type = compiler.get_type( input.type_id );
+					if ( ( 1ull << spv::DecorationLocation ) & compiler.get_decoration_mask( attributeInput.id ) ){
+						location = compiler.get_decoration( attributeInput.id, spv::DecorationLocation );
+					}
 
-					// binding description: how memory is mapped to the input assembly
-					mVertexInfo.binding[i].binding = i;
-					mVertexInfo.binding[i].stride = (type.width/8) * type.vecsize * type.columns;
-					mVertexInfo.binding[i].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+					ofLog() << "Vertex Attribute: [" << i << "] : " << attributeInput.name << ", location = " << location;;
 
-					// attribute decription: how memory is read from the input assembly
-					mVertexInfo.attribute[i].binding = i;
-					mVertexInfo.attribute[i].format = VK_FORMAT_R32G32B32_SFLOAT;	 // 3-part float
-					mVertexInfo.attribute[i].location = i;
+					// Binding Description: Describe how to read data from buffer based on binding number
+					mVertexInfo.bindingDescription[i].binding   = location;  // which binding number we are describing
+					mVertexInfo.bindingDescription[i].stride    = (attributeType.width/8) * attributeType.vecsize * attributeType.columns;
+					mVertexInfo.bindingDescription[i].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+
+					// Attribute description: Map shader location to pipeline binding number
+					mVertexInfo.attribute[i].location = location;   // .location == which shader attribute location
+					mVertexInfo.attribute[i].binding  = location;   // .binding  == pipeline binding number == where attribute takes data from
+					
+					switch ( attributeType.vecsize ){
+					case 3:
+						mVertexInfo.attribute[i].format = VK_FORMAT_R32G32B32_SFLOAT;	     // 3-part float
+						break;
+					case 4: 
+						mVertexInfo.attribute[i].format = VK_FORMAT_R32G32B32A32_SFLOAT;	 // 4-part float
+						break;
+					default:
+						break;
+					}
 				}
 
-				if ( !shaderResources.stage_inputs.empty() ){
-					VkPipelineVertexInputStateCreateInfo vi{
-						VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO, // VkStructureType                             sType;
-						nullptr,                                                   // const void*                                 pNext;
-						0,                                                         // VkPipelineVertexInputStateCreateFlags       flags;
-						mVertexInfo.binding.size(),                                // uint32_t                                    vertexBindingDescriptionCount;
-						mVertexInfo.binding.data(),                                // const VkVertexInputBindingDescription*      pVertexBindingDescriptions;
-						mVertexInfo.attribute.size(),                              // uint32_t                                    vertexAttributeDescriptionCount;
-						mVertexInfo.attribute.data()                               // const VkVertexInputAttributeDescription*    pVertexAttributeDescriptions;
-					};
+				VkPipelineVertexInputStateCreateInfo vi{
+					VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO, // VkStructureType                             sType;
+					nullptr,                                                   // const void*                                 pNext;
+					0,                                                         // VkPipelineVertexInputStateCreateFlags       flags;
+					mVertexInfo.bindingDescription.size(),                     // uint32_t                                    vertexBindingDescriptionCount;
+					mVertexInfo.bindingDescription.data(),                     // const VkVertexInputBindingDescription*      pVertexBindingDescriptions;
+					mVertexInfo.attribute.size(),                              // uint32_t                                    vertexAttributeDescriptionCount;
+					mVertexInfo.attribute.data()                               // const VkVertexInputAttributeDescription*    pVertexAttributeDescriptions;
+				};
 
-					mVertexInfo.vi = std::move( vi );
-				}
-				else{
-					// this is kind of weird, but not unheard of (full-screen triangles 
-					// may want to do this for example):
-					// no vertex attributes = inputs have been defined.
-				}
-			}
+				mVertexInfo.vi = std::move( vi );
+
+			} // end shaderStage & VK_SHADER_STAGE_VERTEX_BIT
 		}  // end for : mCompilers
 	};
 
@@ -226,8 +243,8 @@ public:
 				VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,	            // VkStructureType              sType;
 				nullptr,	                                                // const void*                  pNext;
 				0,	                                                        // VkShaderModuleCreateFlags    flags;
-				spirCode.size() * sizeof(uint32_t),	                // size_t                       codeSize;
-				spirCode.data()                                     // const uint32_t*              pCode;
+				spirCode.size() * sizeof(uint32_t),	                        // size_t                       codeSize;
+				spirCode.data()                                             // const uint32_t*              pCode;
 			};
 
 			auto err = vkCreateShaderModule( mSettings.device, &info, nullptr, &module );
@@ -237,7 +254,7 @@ public:
 				mModules[s.first] = module;
 
 				VkPipelineShaderStageCreateInfo shaderStage{
-					VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,	// VkStructureType                     sType;
+					VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,    // VkStructureType                     sType;
 					nullptr,	                                            // const void*                         pNext;
 					0,	                                                    // VkPipelineShaderStageCreateFlags    flags;
 					s.first,	                                            // VkShaderStageFlagBits               stage;

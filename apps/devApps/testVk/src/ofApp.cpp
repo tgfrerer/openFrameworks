@@ -32,8 +32,11 @@ void ofApp::setup(){
 
 		vector<ofVec3f> norm( vert.size(), { 0, 0, 1.f } );
 
+		vector<ofFloatColor> col( vert.size(), ofColor::white );
+
 		mLMesh.addVertices( vert );
 		mLMesh.addNormals( norm );
+		mLMesh.addColors( col );
 		mLMesh.addIndices( idx );
 
 	};

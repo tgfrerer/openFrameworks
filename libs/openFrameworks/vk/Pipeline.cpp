@@ -16,20 +16,15 @@ VkPipeline && vk::GraphicsPipelineState::createPipeline( const VkDevice & device
 		
 		// derive stages from shader
 		// TODO: only re-assign if shader has changed.
-		//
-		mStages           = mShader->getShaderStageCreateInfo();
-		mVertexInputState = mShader->getVertexInputState();
-		
-		// TODO: fix this - it doesn't feel right that the pipeline owns a layout created by a shader.
-		// 									   
+		auto stageCreateInfo = mShader->getShaderStageCreateInfo();
 		
 		VkGraphicsPipelineCreateInfo createInfo{
 			VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO, // VkStructureType                                  sType;
 			nullptr,                                         // const void*                                      pNext;
 			0,                                               // VkPipelineCreateFlags                            flags;
-			mStages.size(),                                  // uint32_t                                         stageCount;
-			mStages.data(),                                  // const VkPipelineShaderStageCreateInfo*           pStages;
-			&mVertexInputState,                              // const VkPipelineVertexInputStateCreateInfo*      pVertexInputState;
+			stageCreateInfo.size(),                          // uint32_t                                         stageCount;
+			stageCreateInfo.data(),                          // const VkPipelineShaderStageCreateInfo*           pStages;
+			&mShader->getVertexInputState(),                 // const VkPipelineVertexInputStateCreateInfo*      pVertexInputState;
 			&mInputAssemblyState,                            // const VkPipelineInputAssemblyStateCreateInfo*    pInputAssemblyState;
 			&mTessellationState,                             // const VkPipelineTessellationStateCreateInfo*     pTessellationState;
 			&mViewportState,                                 // const VkPipelineViewportStateCreateInfo*         pViewportState;

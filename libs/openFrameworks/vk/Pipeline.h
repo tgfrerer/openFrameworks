@@ -75,15 +75,6 @@ class GraphicsPipelineState
 	// 
 	// if it is, we bind that pipeline.
 
-	
-
-public: // these elements are set at pipeline instantiation
-
-	// TODO: const, shader-dependent (build using spirv-cross)
-	std::vector<VkPipelineShaderStageCreateInfo>     mStages {};
-
-	// TODO: const, shader-dependent (build using spirv-cross)
-	 VkPipelineVertexInputStateCreateInfo mVertexInputState {};
 
 public:	// default state for pipeline
 

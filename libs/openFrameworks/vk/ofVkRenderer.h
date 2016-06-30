@@ -286,15 +286,7 @@ private:
 	void beginRenderPass( VkCommandBuffer& cmdBuf_, VkFramebuffer& frameBuf_ );
 	void endRenderPass();
 
-	struct
-	{
-		std::vector<VkVertexInputBindingDescription> binding;
-		std::vector<VkVertexInputAttributeDescription> attribute;
-		VkPipelineVertexInputStateCreateInfo vi;
-	} mVertexInfo;
-
 	VkPipelineCache       mPipelineCache;
-
 
 	// TODO: make this a dymanic sctucture.
 	// this is only there to store pipelines once they have been set up.
