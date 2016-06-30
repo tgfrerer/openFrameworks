@@ -175,7 +175,7 @@ void ofVkRenderer::destroySurface(){
 
 	if (err != VK_SUCCESS) {
 		ofLogError() << "Could not create Instance: " << err;
-		ofExit(-1);
+		std::exit(-1);
 	}
 
 	ofLog() << "Successfully created instance.";
