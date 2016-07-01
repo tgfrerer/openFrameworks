@@ -4,7 +4,7 @@
 #include "vulkan/vulkan.h"
 
 #include "ofFileUtils.h"
-#include "spirv_cross.hpp"
+#include "vk/spirv-cross/include/spirv_cross.hpp"
 
 //	 Here is a diagram on how vertex attribute binding works, based on vkspec 1.0, pp.389
 //

@@ -3,7 +3,6 @@
 #include "vk/Shader.h"
 #include "vk/vkUtils.h"
 
-#include "spirv_cross.hpp"
 #include <algorithm>
 
 // ----------------------------------------------------------------------
@@ -901,8 +900,6 @@ void ofVkRenderer::draw( const ofMesh & mesh_, ofPolyRenderMode renderType, bool
 	std::vector<uint32_t> dynamicOffsets = { 
 	    uint32_t(mContext->getCurrentMatrixStateOffset()),
 	};
-
-	auto & currentShader = mShaders[0];
 
 	vector<VkDescriptorSet>  currentlyBoundDescriptorsets = {
 		mDescriptorSets[0],                  // default matrix uniforms

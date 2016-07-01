@@ -43,6 +43,12 @@
     <Filter Include="libs\openFrameworks\vk">
       <UniqueIdentifier>{c1f2e415-98e7-4467-b229-2b63cbf8a5cc}</UniqueIdentifier>
     </Filter>
+    <Filter Include="libs\openFrameworks\vk\spirv-cross">
+      <UniqueIdentifier>{4f020de7-d278-4ec6-b74f-0caec8f65c08}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="libs\openFrameworks\vk\spirv-cross\src">
+      <UniqueIdentifier>{4529febf-3b1a-42fc-9732-f1505f889d94}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\openFrameworks\ofMain.h">
@@ -526,6 +532,9 @@
     </ClCompile>
     <ClCompile Include="..\..\..\openFrameworks\vk\vkAllocator.cpp">
       <Filter>libs\openFrameworks\vk</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\openFrameworks\vk\spirv-cross\include\spirv_cross.cpp">
+      <Filter>libs\openFrameworks\vk\spirv-cross\src</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>
