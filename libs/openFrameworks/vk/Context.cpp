@@ -15,9 +15,7 @@ void of::vk::Context::setup(ofVkRenderer* renderer_, size_t numSwapchainImages_ 
 	settings.device = mRenderer->getVkDevice();
 	settings.renderer = mRenderer;
 	settings.frames = numSwapchainImages_;
-	settings.size =  ( (2UL << 24)); // (32 MB * number of swapchain images)
-	
-	settings.size = settings.size * numSwapchainImages_ ;
+	settings.size = ( 2UL << 24 ) * numSwapchainImages_ ;  // (16 MB * number of swapchain images)
 
 	mAlloc = std::make_shared<of::vk::Allocator>(settings);
 	mAlloc->setup();
@@ -56,7 +54,11 @@ void of::vk::Context::reset(){
 
 // ----------------------------------------------------------------------
 
-VkDescriptorBufferInfo & of::vk::Context::getDescriptorBufferInfo(){
+VkDescriptorBufferInfo & of::vk::Context::getDescriptorBufferInfo(std::string uboName_){
+	// TODO: IMPLEMENT!!! return correct buffer for ubo name
+	// this means, we might have more than one UBO for the context. 
+	// next to the matrices, we might want to set global colors and other dynamic 
+	// uniform parameters for the default shaders via ubo
 	return mMatrixStateBufferInfo;
 }
 

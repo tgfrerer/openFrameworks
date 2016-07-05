@@ -102,16 +102,9 @@ public:
 	// this must be a mutliple of  minUniformBufferOffsetAlignment
 	const VkDeviceSize& getCurrentMatrixStateOffset();
 
-	// invalidates link to saved matrix from current matrix
-	// (forces saving out a separate matrix)
-	/*void dirtyCurrentMatrixState(){
-		mCurrentMatrixId = -1;
-	};*/
-
-	
-	// the descriptor is something like a view into the 
-	// memory, an alias so to say
-	VkDescriptorBufferInfo& getDescriptorBufferInfo();
+	// return buffer info for buffer mapped to ubo with name uboName_
+	// uboName is queried automatically from spirV shader file in reflection stage.
+	VkDescriptorBufferInfo& getDescriptorBufferInfo(std::string uboName_);
 	const VkBuffer&         getVkBuffer() const;
 
 	// allocates memory on the GPU for each swapchain image (call rarely)
