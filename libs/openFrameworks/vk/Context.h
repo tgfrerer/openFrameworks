@@ -90,7 +90,7 @@ class Context
 	};
 
 	// one ContextState element per swapchain image
-	std::vector<ContextState> mFrame;
+	std::vector<ContextState> mFrames;
 
 	int mSwapIdx = 0;
 
@@ -133,17 +133,17 @@ public:
 	inline const ofMatrix4x4 & getViewMatrix() const {
 		// TODO: add error checking: if mSwapIdx == -1
 		// we are not allowed to getViewMatrix, since we are not within an open Context.
-		return mFrame[mSwapIdx].mCurrentMatrixState.viewMatrix;
+		return mFrames[mSwapIdx].mCurrentMatrixState.viewMatrix;
 	};
 
 	inline const ofMatrix4x4 & getModelMatrix() const {
 		// TODO: add error checking: if mSwapIdx == -1
-		return mFrame[mSwapIdx].mCurrentMatrixState.modelMatrix;
+		return mFrames[mSwapIdx].mCurrentMatrixState.modelMatrix;
 	};
 
 	inline const ofMatrix4x4 & projectionMatrix() const {
 		// TODO: add error checking: if mSwapIdx == -1
-		return mFrame[mSwapIdx].mCurrentMatrixState.projectionMatrix;
+		return mFrames[mSwapIdx].mCurrentMatrixState.projectionMatrix;
 	}
 
 	void setViewMatrix( const ofMatrix4x4& mat_ );

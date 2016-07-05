@@ -28,9 +28,9 @@ void of::vk::Context::setup(ofVkRenderer* renderer_, size_t numSwapchainImages_ 
 		sizeof(MatrixState),   // VkDeviceSize    range;
 	};
 
-	if (!mFrame.empty())
-		mFrame.clear();
-	mFrame.resize( numSwapchainImages_, ContextState() );
+	if (!mFrames.empty())
+		mFrames.clear();
+	mFrames.resize( numSwapchainImages_, ContextState() );
 
 }
 
@@ -39,7 +39,7 @@ void of::vk::Context::setup(ofVkRenderer* renderer_, size_t numSwapchainImages_ 
 void of::vk::Context::begin(size_t frame_){
 	mSwapIdx = frame_;
 	mAlloc->free(frame_);
-	mFrame[mSwapIdx].mCurrentMatrixState = {}; // reset matrix state
+	mFrames[mSwapIdx].mCurrentMatrixState = {}; // reset matrix state
 }
 
 // ----------------------------------------------------------------------
@@ -67,7 +67,7 @@ const VkBuffer & of::vk::Context::getVkBuffer() const {
 // ----------------------------------------------------------------------
 
 void of::vk::Context::push(){
-	auto & f = mFrame[mSwapIdx];
+	auto & f = mFrames[mSwapIdx];
 	f.mMatrixStack.push( f.mCurrentMatrixState );
 	f.mMatrixIdStack.push( f.mCurrentMatrixId );
 	f.mCurrentMatrixId = -1;
@@ -76,7 +76,7 @@ void of::vk::Context::push(){
 // ----------------------------------------------------------------------
 
 void of::vk::Context::pop(){
-	auto & f = mFrame[mSwapIdx];
+	auto & f = mFrames[mSwapIdx];
 
 	if ( !f.mMatrixStack.empty() ){
 		f.mCurrentMatrixState = f.mMatrixStack.top(); f.mMatrixStack.pop();
@@ -92,8 +92,7 @@ void of::vk::Context::pop(){
 bool of::vk::Context::storeMesh( const ofMesh & mesh_, std::vector<VkDeviceSize>& vertexOffsets, std::vector<VkDeviceSize>& indexOffsets ){
 	// TODO: add option to interleave 
 	
-	// store a
-	auto & f = mFrame[mSwapIdx];
+	auto & f = mFrames[mSwapIdx];
 	
 	uint32_t numVertices   = mesh_.getVertices().size();
 	uint32_t numColors     = mesh_.getColors().size();
@@ -161,12 +160,12 @@ bool of::vk::Context::storeMesh( const ofMesh & mesh_, std::vector<VkDeviceSize>
 // ----------------------------------------------------------------------
 
 bool of::vk::Context::storeCurrentMatrixState(){
-	// matrix data is uploaded only 
-	// when current matrix id is -1, meaning there
-	// was no current matrix or the current matrix
+	
+	// Matrix data is only uploaded if current matrix id is -1, 
+	// meaning there was no current matrix or the current matrix
 	// was invalidated
 	
-	auto & f = mFrame[mSwapIdx];
+	auto & f = mFrames[mSwapIdx];
 
 	if ( f.mCurrentMatrixId == -1 ){
 
@@ -180,7 +179,7 @@ bool of::vk::Context::storeCurrentMatrixState(){
 
 		// ----------| invariant: allocation successful
 
-		// save matrix state into buffer
+		// Save current matrix state into GPU buffer
 		memcpy( pData, &f.mCurrentMatrixState, sizeof( MatrixState ));
 
 		f.mCurrentMatrixId = f.mSavedMatricesLastElement;
@@ -194,13 +193,13 @@ bool of::vk::Context::storeCurrentMatrixState(){
 
 const VkDeviceSize& of::vk::Context::getCurrentMatrixStateOffset(){
 	storeCurrentMatrixState();
-	return mFrame[mSwapIdx].mCurrentMatrixStateOffset;
+	return mFrames[mSwapIdx].mCurrentMatrixStateOffset;
 }
 
 // ----------------------------------------------------------------------
 
 void of::vk::Context::setViewMatrix( const ofMatrix4x4 & mat_ ){
-	auto & f = mFrame[mSwapIdx]; 
+	auto & f = mFrames[mSwapIdx]; 
 	f.mCurrentMatrixId = -1;
 	f.mCurrentMatrixState.viewMatrix = mat_;
 }
@@ -208,7 +207,7 @@ void of::vk::Context::setViewMatrix( const ofMatrix4x4 & mat_ ){
 // ----------------------------------------------------------------------
 
 void of::vk::Context::setProjectionMatrix( const ofMatrix4x4 & mat_ ){
-	auto & f = mFrame[mSwapIdx]; 
+	auto & f = mFrames[mSwapIdx]; 
 	f.mCurrentMatrixId = -1;
 	f.mCurrentMatrixState.projectionMatrix = mat_;
 }
@@ -216,7 +215,7 @@ void of::vk::Context::setProjectionMatrix( const ofMatrix4x4 & mat_ ){
 // ----------------------------------------------------------------------
 
 void of::vk::Context::translate( const ofVec3f& v_ ){
-	auto & f = mFrame[mSwapIdx];
+	auto & f = mFrames[mSwapIdx];
 	f.mCurrentMatrixId = -1;
 	f.mCurrentMatrixState.modelMatrix.glTranslate( v_ );
 }
@@ -224,7 +223,7 @@ void of::vk::Context::translate( const ofVec3f& v_ ){
 // ----------------------------------------------------------------------
 
 void of::vk::Context::rotate( const float& degrees_, const ofVec3f& axis_ ){
-	auto & f = mFrame[mSwapIdx];
+	auto & f = mFrames[mSwapIdx];
 	f.mCurrentMatrixId = -1;
 	f.mCurrentMatrixState.modelMatrix.glRotate( degrees_, axis_.x, axis_.y, axis_.z );
 }
