@@ -246,13 +246,12 @@ static std::shared_ptr<VkPipelineLayout> createPipelineLayout( const VkDevice& d
 		delete pl;
 	} );
 
-	uint32_t sz = dsl_.size();
 
 	VkPipelineLayoutCreateInfo pPipelineLayoutCreateInfo{
 		VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,       // VkStructureType                 sType;
 		nullptr,                                             // const void*                     pNext;
 		0,                                                   // VkPipelineLayoutCreateFlags     flags;
-		sz,                                         // uint32_t                        setLayoutCount;
+		uint32_t(dsl_.size()),                               // uint32_t                        setLayoutCount;
 		dsl_.data(),                                         // const VkDescriptorSetLayout*    pSetLayouts;
 		0,                                                   // uint32_t                        pushConstantRangeCount;
 		nullptr,                                             // const VkPushConstantRange*      pPushConstantRanges;
