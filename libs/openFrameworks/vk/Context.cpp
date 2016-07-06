@@ -139,6 +139,11 @@ bool of::vk::Context::setupDescriptorSetsFromShaders(){
 		mDescriptorSetBindings[u.second.set].push_back( u.second.binding );
 	}
 
+	// sort descriptorset bindings vectors by binding number ascending
+	for ( auto & b : mDescriptorSetBindings ){
+		std::sort( b.second.begin(), b.second.end(), []( const VkDescriptorSetLayoutBinding&lhs, const VkDescriptorSetLayoutBinding&rhs )->bool{return lhs.binding < rhs.binding; } );
+	}
+
 	for ( const auto &s : mDescriptorSetBindings ){
 
 		// create descriptorSetLayouts
@@ -173,6 +178,8 @@ bool of::vk::Context::setupDescriptorSetsFromShaders(){
 	return true;
 }
 
+// ----------------------------------------------------------------------
+
 void of::vk::Context::writeDescriptorSets(){
 	// At this point the descriptors within the set are untyped 
 	// so we have to write type information into it, 
@@ -180,7 +187,10 @@ void of::vk::Context::writeDescriptorSets(){
 
 	std::vector<VkWriteDescriptorSet> writeDescriptorSets;
 	writeDescriptorSets.reserve( mDescriptorSets.size() );
-
+	// we need to store buffer info temporarily as the VkWriteDescriptorSet needs 
+	// to point to a resource outside of the scope of the for loop it is created
+	// within.
+	std::map < uint32_t, std::vector<VkDescriptorBufferInfo>> bufferInfoStore; 
 
 	for (auto & dsb : mDescriptorSetBindings )
 	{
@@ -194,7 +204,7 @@ void of::vk::Context::writeDescriptorSets(){
 		// this is a crass simplification, but if we can get away with it, the better =)
 
 		// note that here, you point the writeDescriptorSet to dstBinding and dstSet, 
-		// if descriptorCount is greater then the number of bindings in the set, 
+		// if descriptorCount is greater than the number of bindings in the set, 
 		// the next bindings will be overwritten.
 
 		uint32_t descriptor_count = 0;
@@ -213,6 +223,11 @@ void of::vk::Context::writeDescriptorSets(){
 		// for now, assume all elements within a descriptorSet are of the same type as the first element
 		auto descriptorType = dsb.second.front().descriptorType;
 
+		bufferInfoStore[dsb.first] = getDescriptorBufferInfo( "" );
+
+		// it appears that writeDescriptorSet does not immediately consume VkDescriptorBufferInfo*
+		// so we must make sure that this is around for when we need it.
+
 		VkWriteDescriptorSet tmpDescriptorSet{
 			VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,                    // VkStructureType                  sType;
 			nullptr,                                                   // const void*                      pNext;
@@ -222,7 +237,7 @@ void of::vk::Context::writeDescriptorSets(){
 			descriptor_count,                                          // uint32_t                         descriptorCount;
 			descriptorType,                                            // VkDescriptorType                 descriptorType;
 			nullptr,                                                   // const VkDescriptorImageInfo*     pImageInfo;
-			getDescriptorBufferInfo( "" ),                             // const VkDescriptorBufferInfo*    pBufferInfo;
+			bufferInfoStore[dsb.first].data(),                         // const VkDescriptorBufferInfo*    pBufferInfo;
 			nullptr,                                                   // const VkBufferView*              pTexelBufferView;
 		};
 		writeDescriptorSets.push_back( std::move(tmpDescriptorSet));
@@ -270,12 +285,12 @@ void of::vk::Context::reset(){
 
 // ----------------------------------------------------------------------
 
-VkDescriptorBufferInfo * of::vk::Context::getDescriptorBufferInfo(std::string uboName_){
+std::vector<VkDescriptorBufferInfo> of::vk::Context::getDescriptorBufferInfo(std::string uboName_){
 	// !TODO: IMPLEMENT!!! return correct buffer for ubo name
 	// this means, we might have more than one UBO for the context. 
 	// next to the matrices, we might want to set global colors and other dynamic 
 	// uniform parameters for the default shaders via ubo
-	return &mMatrixStateBufferInfo;
+	return{ mMatrixStateBufferInfo };
 }
 
 const VkBuffer & of::vk::Context::getVkBuffer() const {

@@ -159,8 +159,7 @@ public:
 	};
 
 	// return buffer info for buffer mapped to ubo with name uboName_
-	// uboName is queried automatically from spirV shader file in reflection stage.
-	VkDescriptorBufferInfo* getDescriptorBufferInfo(std::string uboName_);
+	std::vector<VkDescriptorBufferInfo> getDescriptorBufferInfo(std::string uboName_);
 	const VkBuffer&         getVkBuffer() const;
 
 	// allocates memory on the GPU for each swapchain image (call rarely)
