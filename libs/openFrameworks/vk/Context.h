@@ -1,6 +1,7 @@
 #pragma once
 
 #include <vulkan/vulkan.h>
+#include "vk/Shader.h"
 #include "ofMatrix4x4.h"
 #include "ofMesh.h"
 
@@ -28,6 +29,8 @@ For this to work, you would use a static context - a context
 with one frame of backing memory - which is transferred from 
 host memory to GPU memory before being used to draw.
 
+
+
 */
 
 
@@ -54,9 +57,6 @@ class Allocator; // ffdecl.
 
 class Context
 {
-	
-	ofVkRenderer * mRenderer;
-
 	shared_ptr<of::vk::Allocator> mAlloc;
 
 	// A GPU-backed buffer object to back these
@@ -96,19 +96,75 @@ class Context
 
 	bool storeCurrentMatrixState();
 
+	// --------- pipeline info
+
+	std::map<uint32_t, std::vector<VkDescriptorSetLayoutBinding>> mDescriptorSetBindings;
+	// pool where all descriptors of this context are allocated from
+	VkDescriptorPool                                 mDescriptorPool;
+	// map from set id to descriptorSetLayout        
+	std::map<uint32_t, VkDescriptorSetLayout>        mDescriptorSetLayouts;
+	// map from set id to descriptorSet		         
+	std::map<uint32_t, VkDescriptorSet>              mDescriptorSets;
+
+	bool setupDescriptorSetsFromShaders();
+	void setupDescriptorPool( uint32_t setCount_, const std::vector<VkDescriptorPoolSize> & poolSizes_);
+	void writeDescriptorSets();
+
 public:
+
+	struct Settings
+	{
+		VkDevice                                     device;
+		size_t                                       numSwapchainImages;
+
+		// context is initialised with a vector of shaders
+		// all these shaders contribute to the shared pipeline layout 
+		// for this context. The shaders need to be compatible in their
+		// sets/bindings so that there can be a shared pipeline layout 
+		// for the whole context.
+		std::vector<std::shared_ptr<of::vk::Shader>> shaders;
+	} const mSettings;
+
+	// must be constructed with this method, default constructor
+	// copy, and move constructor
+	// have been implicitly deleted by defining mSettings const
+	Context( const of::vk::Context::Settings& settings_ );
 
 	// get offset in bytes for the current matrix into the matrix memory buffer
 	// this must be a mutliple of  minUniformBufferOffsetAlignment
 	const VkDeviceSize& getCurrentMatrixStateOffset();
 
+	// get descriptorSet with set index setId_
+	std::vector<VkDescriptorSet> getBoundDescriptorSets(){
+		// !TODO: make bound descriptorSets depend on which shader/pipeline is bound
+		// within the context.
+		std::vector<VkDescriptorSet> ret;
+		if ( !mDescriptorSets.empty() ){
+			// Caution: we just assume there is a descriptorset 0!
+			ret.push_back( mDescriptorSets[0] );
+		}
+		return ret;
+	};
+
+	// get descriptorSetLayout for a shader
+	std::vector<VkDescriptorSetLayout> getDescriptorSetLayoutForShader(){
+		// !TODO: make bound descriptorSetLayouts depend on shader
+		// add shader as parameter
+		std::vector<VkDescriptorSetLayout> ret;
+		if ( !mDescriptorSetLayouts.empty() ){
+			// Caution: we just assume there is a descriptorset 0!
+			ret.push_back( mDescriptorSetLayouts[0] );
+		}
+		return ret;
+	};
+
 	// return buffer info for buffer mapped to ubo with name uboName_
 	// uboName is queried automatically from spirV shader file in reflection stage.
-	VkDescriptorBufferInfo& getDescriptorBufferInfo(std::string uboName_);
+	VkDescriptorBufferInfo* getDescriptorBufferInfo(std::string uboName_);
 	const VkBuffer&         getVkBuffer() const;
 
 	// allocates memory on the GPU for each swapchain image (call rarely)
-	void setup(ofVkRenderer * renderer_, size_t numSwapchainImages_);
+	void setup( ofVkRenderer* renderer );
 
 	// destroys memory allocations
 	void reset();

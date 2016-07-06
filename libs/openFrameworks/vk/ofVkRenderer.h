@@ -278,7 +278,7 @@ private:
 	void setupShaders();
 	void setupDescriptorSets();
 	void setupPipelines();
-	void setupDescriptorPool();
+	//void setupDescriptorPool();
 
 	void beginDrawCommandBuffer( VkCommandBuffer& cmdBuf_ );
 	void endDrawCommandBuffer();
@@ -298,37 +298,45 @@ private:
 		VkPipeline wireframe; // wireframe render pipeline
 	} mPipelines;
 	
-	// the pool where all descriptors will be allocated from
-	VkDescriptorPool      mDescriptorPool;
 
 	/*
 	
-	descriptor sets are owned by the renderer
+	Descriptor sets are owned by the renderer
 	as these are used with multiple pipelines
 	and bindings.
 
-	they are initially derived from iterating over
+	They are initially derived from iterating over
 	all shaders
 	
 	*/
 	
+	//struct DescriptorSet
+	//{
 
-	// a descriptor set is a sequence of descriptors,
-	// laid out in a way specified by its descriptorSetLayout
-	vector<VkDescriptorSet>  mDescriptorSets;
+	//	struct Binding
+	//	{
+	//		// uniform (ubo/sampler) name for binding in shader
+	//		std::string name;
+	//		// mapping of binding number to descriptor type and count of descriptors
+	//		VkDescriptorSetLayoutBinding binding;
+	//	};
 
-	// ideally, descriptorsets are kept within a map 
-	// so that they can be referenced by their ubo name from the shader.
-	// but it's important that these then match!
+	//	// storage for set defined by layout
+	//	VkDescriptorSet descriptors;
 
-	// describes the layout for a descriptorset, i.e. the count and ordering
-	// of descriptors within a set
-	//
-	// each descriptorset is derived from a layout
-	// multiple descriptorsets may be derived from the same layout
-	std::vector<std::shared_ptr<VkDescriptorSetLayout>> mDescriptorSetLayouts;
+	//	// type and ordering for elements in layout
+	//	// created using a vector of DescriptorSetLayoutBinding in bindings
+	//	VkDescriptorSetLayout layout;
 
-	std::vector<std::shared_ptr<VkPipelineLayout>> mPipelineLayouts;
+	//	// each layout is made from a collection of bindings
+	//	vector<Binding> bindings;
+	//};
+
+
+	
+
+	// pipeline layouts are derived from DescriptorSetLayouts
+	std::vector<shared_ptr<VkPipelineLayout>> mPipelineLayouts;
 
 	// our main (primary) gpu queue. all commandbuffers are submitted to this queue
 	// as are present commands.

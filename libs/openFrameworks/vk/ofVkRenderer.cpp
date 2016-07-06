@@ -105,7 +105,10 @@ ofVkRenderer::~ofVkRenderer()
 	}
 	mFrameBuffers.clear();
 
-	mDescriptorSetLayouts.clear();
+	
+	// TODO: [!!] proper teardown of mBindings
+
+	//mDescriptorSetLayouts.clear();
 	mPipelineLayouts.clear();
 
 	mShaders.clear();
@@ -117,8 +120,6 @@ ofVkRenderer::~ofVkRenderer()
 	vkDestroyImageView( mDevice, mDepthStencil.view, nullptr );
 	vkDestroyImage( mDevice, mDepthStencil.image, nullptr );
 	vkFreeMemory( mDevice, mDepthStencil.mem, nullptr );
-
-	vkDestroyDescriptorPool( mDevice, mDescriptorPool, nullptr );
 
 	vkDestroyCommandPool( mDevice, mCommandPool, VK_NULL_HANDLE );
 	vkDestroySemaphore( mDevice, mSemaphorePresentComplete, nullptr );

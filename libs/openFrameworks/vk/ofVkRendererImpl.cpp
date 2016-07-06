@@ -35,24 +35,39 @@ void ofVkRenderer::setup(){
 	
 	createSemaphores();
 
-	// Set up as many Contexts as swapchains.
-	// A context holds dynamic frame state + manages GPU memory for "immediate" mode
-	
-	
-	mContext = make_shared<of::vk::Context>();
-	mContext->setup( this, mSwapchain.getImageCount() );
-	
-
 	// shaders will let us know about descriptorSetLayouts.
 	setupShaders();
 
+	// Set up Context
+	// A Context holds dynamic frame state + manages GPU memory for "immediate" mode
+	
+	of::vk::Context::Settings contextSettings;
+	contextSettings.device = mDevice;
+	contextSettings.numSwapchainImages = mSwapchain.getImageCount();
+	contextSettings.shaders = { mShaders };
+	mContext = make_shared<of::vk::Context>(contextSettings);
+
+	mContext->setup( this );
+	
+	// really, shaders and pipelines and descriptors should 
+	// be owned by a context - that way, a context can hold
+	// any information that needs to be dealt with on a per-
+	// thread basis. Effectively this could allow us to spin
+	// off as many threads as we want to have contexts.
+	// this would mean that each context has its own 
+	// descriptor pool and memory pool - and other pools - to 
+	// allocate from.
+
+
+	
+
 	// create a descriptor pool from which descriptor sets can be allocated
-	setupDescriptorPool();
+	//setupDescriptorPool();
 
 	// once we know the layout for the descriptorSets, we
 	// can allocate them from the pool based on the layout
 	// information
-	setupDescriptorSets();
+	//setupDescriptorSets();
 
 	setupPipelines();					  
 	
@@ -60,130 +75,127 @@ void ofVkRenderer::setup(){
 
 // ----------------------------------------------------------------------
 
-void ofVkRenderer::setupDescriptorSets(){
-	
-	// descriptor sets are there to describe how uniforms are fed to a pipeline
+//void ofVkRenderer::setupDescriptorSets(){
+//	
+//
+//	// 1. accumulate all bindings from all shaders.
+//	// 2. retain only unique bindings.
+//
+//	std::map<std::string, of::vk::Shader::Binding> bindings;
+//	for ( auto &s : mShaders ){
+//		auto & b= s->getBindings();
+//
+//		// todo: we need to make sure bindings with the same name are perfectly identical!!!
+//		// this also includes the binding's layout - otherwise we will have to either
+//		// warn or do some spirv-cross magic and remap layouts.
+//		bindings.insert( b.begin(), b.end());
+//	}
+//
+//	
+//	mBindings.uboName.resize( bindings.size() );
+//	mBindings.descriptorSet.resize( bindings.size() );
+//	mBindings.descriptorSetLayout.resize( bindings.size() );
+//
+//	vector<VkDescriptorSetLayoutBinding> tmpFlattenedBindings( bindings.size() );
+//	for ( auto & b : bindings ){
+//		tmpFlattenedBindings[b.second.set] = b.second.layout;
+//		// store name of binding
+//		mBindings.uboName[b.second.set] =  b.first ;
+//		
+//	}
+//	{	// create descriptorsetlayout
+//		VkDescriptorSetLayoutCreateInfo ci{
+//			VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,              // VkStructureType                        sType;
+//			nullptr,                                                          // const void*                            pNext;
+//			0,                                                                // VkDescriptorSetLayoutCreateFlags       flags;
+//			static_cast<uint32_t>( tmpFlattenedBindings.size() ),             // uint32_t                               bindingCount;
+//			tmpFlattenedBindings.data()                                       // const VkDescriptorSetLayoutBinding*    pBindings;
+//		};
+//		vkCreateDescriptorSetLayout( mDevice, &ci, nullptr, mBindings.descriptorSetLayout.data() );
+//	}
+//	
+//	auto pl = of::vk::createPipelineLayout( mDevice, mBindings.descriptorSetLayout );
+//
+//	mPipelineLayouts.emplace_back( pl );
+//
+//	// descriptor sets are there to describe how uniforms are fed to a pipeline
+//
+//	// descriptor set is allocated from pool mDescriptorPool
+//	// based on information from descriptorSetLayout which was derived from shader code reflection 
+//	// 
+//	// a descriptorSetLayout describes a descriptor set, it tells us the 
+//	// number and ordering of descriptors within the set.
+//	
+//	{	// create descriptorsets based on layouts
+//		
+//		VkDescriptorSetAllocateInfo allocInfo = {
+//			VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,                  // VkStructureType                 sType;
+//			nullptr,                                                         // const void*                     pNext;
+//			mDescriptorPool,                                                 // VkDescriptorPool                descriptorPool;      // where to allocate from
+//			uint32_t( mBindings.descriptorSetLayout.size()),                 // uint32_t                        descriptorSetCount;  // how many descriptorSets
+//			mBindings.descriptorSetLayout.data(),                            // const VkDescriptorSetLayout*    pSetLayouts;         // how is each descriptorSet laid out
+//		};
+//		
+//		vkAllocateDescriptorSets( mDevice, &allocInfo, mBindings.descriptorSet.data() );	// allocates mDescriptorSets
+//	}
+//	
+//		 
+//}
 
-	// descriptor set is allocated from pool mDescriptorPool
-	// based on information from descriptorSetLayout which was derived from shader code reflection 
-	// 
-	// a descriptorSetLayout describes a descriptor set, it tells us the 
-	// number and ordering of descriptors within the set.
-	
-	{
-		std::vector<VkDescriptorSetLayout> dsl( mDescriptorSetLayouts.size() );
-		for ( size_t i = 0; i != dsl.size(); ++i ){
-			dsl[i] = *mDescriptorSetLayouts[i];
-		}
-
-		VkDescriptorSetAllocateInfo allocInfo = {};
-		allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-		allocInfo.descriptorPool = mDescriptorPool;		              // pool  : tells us where to allocate from
-		allocInfo.descriptorSetCount = dsl.size();  // count : tells us how many descriptor set layouts 
-		allocInfo.pSetLayouts = dsl.data();         // layout: tells us how many descriptors, and how these are laid out 
-		allocInfo.pNext = VK_NULL_HANDLE;
-
-		mDescriptorSets.resize( mDescriptorSetLayouts.size() );
-		vkAllocateDescriptorSets( mDevice, &allocInfo, mDescriptorSets.data() );	// allocates mDescriptorSets
-	}
-	
-	// At this point the descriptors within the set are untyped 
-	// so we have to write type information into it, 
-	// as well as binding information so the set knows how to ingest data from memory
-	
-	// TODO: write descriptor information to all *unique* bindings over all shaders
-	// make sure to re-use descriptors for shared bindings.
-
-	// get bindings from shader
-	auto bindings = mShaders[0]->getBindings();
-
-	std::vector<VkWriteDescriptorSet> writeDescriptorSets(bindings.size());
-
-	{
-		// Careful! bufferInfo must be retrieved from somewhere... 
-		// this means probably that we shouldn't write to our 
-		// descriptors before we know the buffer that is going to 
-		// be used with them.
-
-		// TODO: query context for matching descriptor set 
-		// binding name -> match default Uniform to default uniform for example!
-
-		size_t i = 0;
-		for ( auto &b : bindings ){
-			writeDescriptorSets[i] = {
-				VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,                    // VkStructureType                  sType;
-				nullptr,                                                   // const void*                      pNext;
-				mDescriptorSets[0],                       //<-- check      // VkDescriptorSet                  dstSet;
-				b.second.layout.binding,                  //<-- check      // uint32_t                         dstBinding;
-				0,                                                         // uint32_t                         dstArrayElement;
-				1,                                                         // uint32_t                         descriptorCount;
-				b.second.layout.descriptorType,           //<-- check      // VkDescriptorType                 descriptorType;
-				nullptr,                                                   // const VkDescriptorImageInfo*     pImageInfo;
-				&mContext->getDescriptorBufferInfo(),                      // const VkDescriptorBufferInfo*    pBufferInfo;
-				nullptr,                                                   // const VkBufferView*              pTexelBufferView;
-
-			};
-		}
-		++i;
-	}
-
-	vkUpdateDescriptorSets( mDevice, writeDescriptorSets.size(), writeDescriptorSets.data(), 0, NULL );	 
-}
-
-// ----------------------------------------------------------------------
-
-void ofVkRenderer::setupDescriptorPool(){
-	// descriptors are allocated from a per-thread pool
-	// the pool needs to reserve size based on the 
-	// maximum number for each type of descriptor
-
-	// list of all descriptors types and their count
-	std::vector<VkDescriptorPoolSize> typeCounts;
-
-	uint32_t maxSets = 0;
-
-	// iterate over descriptorsetlayouts to find out what we need
-	// and to populate list above
-	{	
-		// count all necessary descriptor of all necessary types over
-		// all currently known shaders.
-		std::map<VkDescriptorType, uint32_t> descriptorTypes;
-		
-		for ( const auto & s : mShaders ){
-			for ( const auto & b : s->getBindings() ){
-				if ( descriptorTypes.find( b.second.layout.descriptorType ) == descriptorTypes.end() ){
-					// first of this kind
-					descriptorTypes[b.second.layout.descriptorType] = 1;
-				}
-				else{
-					++descriptorTypes[b.second.layout.descriptorType];
-				}
-			}
-		}
-			
-		// accumulate total number of descriptor sets
-		// TODO: find out: is this the max number of descriptor sets or the max number of descriptors?
-		for ( const auto &t : descriptorTypes ){
-			typeCounts.push_back( {t.first, t.second} );
-			maxSets += t.second;
-		}
-
-	}
-
-	// Create the global descriptor pool
-	// All descriptors used in this example are allocated from this pool
-	VkDescriptorPoolCreateInfo descriptorPoolInfo = {
-		VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,             // VkStructureType                sType;
-		nullptr,                                                   // const void*                    pNext;
-		0,                                                         // VkDescriptorPoolCreateFlags    flags;
-		maxSets,                                                   // uint32_t                       maxSets;
-		typeCounts.size(),                                         // uint32_t                       poolSizeCount;
-		typeCounts.data(),                                         // const VkDescriptorPoolSize*    pPoolSizes;
-	};
-
-	VkResult vkRes = vkCreateDescriptorPool( mDevice, &descriptorPoolInfo, nullptr, &mDescriptorPool );
-	assert( !vkRes );
-}
+//// ----------------------------------------------------------------------
+//
+//void ofVkRenderer::setupDescriptorPool(){
+//	// descriptors are allocated from a per-thread pool
+//	// the pool needs to reserve size based on the 
+//	// maximum number for each type of descriptor
+//
+//	// list of all descriptors types and their count
+//	std::vector<VkDescriptorPoolSize> typeCounts;
+//
+//	uint32_t maxSets = 0;
+//
+//	// iterate over descriptorsetlayouts to find out what we need
+//	// and to populate list above
+//	{	
+//		// count all necessary descriptor of all necessary types over
+//		// all currently known shaders.
+//		std::map<VkDescriptorType, uint32_t> descriptorTypes;
+//		
+//		for ( const auto & s : mShaders ){
+//			for ( const auto & b : s->getBindings() ){
+//				if ( descriptorTypes.find( b.second.layout.descriptorType ) == descriptorTypes.end() ){
+//					// first of this kind
+//					descriptorTypes[b.second.layout.descriptorType] = 1;
+//				}
+//				else{
+//					++descriptorTypes[b.second.layout.descriptorType];
+//				}
+//			}
+//		}
+//			
+//		// accumulate total number of descriptor sets
+//		// TODO: find out: is this the max number of descriptor sets or the max number of descriptors?
+//		for ( const auto &t : descriptorTypes ){
+//			typeCounts.push_back( {t.first, t.second} );
+//			maxSets += t.second;
+//		}
+//
+//	}
+//
+//	// Create the global descriptor pool
+//	// All descriptors used in this example are allocated from this pool
+//	VkDescriptorPoolCreateInfo descriptorPoolInfo = {
+//		VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,             // VkStructureType                sType;
+//		nullptr,                                                   // const void*                    pNext;
+//		0,                                                         // VkDescriptorPoolCreateFlags    flags;
+//		maxSets,                                                   // uint32_t                       maxSets;
+//		typeCounts.size(),                                         // uint32_t                       poolSizeCount;
+//		typeCounts.data(),                                         // const VkDescriptorPoolSize*    pPoolSizes;
+//	};
+//
+//	VkResult vkRes = vkCreateDescriptorPool( mDevice, &descriptorPoolInfo, nullptr, &mDescriptorPool );
+//	assert( !vkRes );
+//}
 
 // ----------------------------------------------------------------------
 
@@ -200,18 +212,6 @@ void ofVkRenderer::setupShaders(){
 
 	auto shader = std::make_shared<of::vk::Shader>( settings );
 	mShaders.emplace_back( shader );
-	auto descriptorSetLayout = shader->createDescriptorSetLayout();
-	mDescriptorSetLayouts.emplace_back( descriptorSetLayout );
-
-	// create temporary object which may be borrowed by createPipeline method
-	std::vector<VkDescriptorSetLayout> dsl( mDescriptorSetLayouts.size() );
-	// fill with elements borrowed from mDescriptorSets	
-	std::transform( mDescriptorSetLayouts.begin(), mDescriptorSetLayouts.end(), dsl.begin(), 
-		[]( auto & lhs )->VkDescriptorSetLayout { return *lhs; } );
-
-	auto pl = of::vk::createPipelineLayout(mDevice, dsl );
-
-	mPipelineLayouts.emplace_back( pl );
 
 }
 
@@ -219,9 +219,15 @@ void ofVkRenderer::setupShaders(){
 
 void ofVkRenderer::setupPipelines(){
 
+	// !TODO: move pipelines into context
+
+	// pipelines should, like shaders, be part of the context
+	// so that the context can be encapsulated fully within its
+	// own thread if it wanted so.
+
 	// GraphicsPipelineState comes with sensible defaults
 	// and is able to produce pipelines based on its current state.
-	// the idea will be to a dynamic version of this object to
+	// the idea will be to have a dynamic version of this object to
 	// keep track of current context state and create new pipelines
 	// on the fly if needed, or, alternatively, create all pipeline
 	// combinatinons upfront based on a .json file which lists each
@@ -231,8 +237,16 @@ void ofVkRenderer::setupPipelines(){
 	// TODO: let us choose which shader we want to use with our pipeline.
 	defaultPSO.mShader           = mShaders[0];
 	defaultPSO.mRenderPass       = mRenderPass;
-	defaultPSO.mLayout           = mPipelineLayouts[0];
 	
+	// create pipeline layout based on vector of descriptorSetLayouts queried from mContext
+	// this is way crude, and pipeline should be inside of context, context
+	// should return the layout based on shader paramter (derive layout from shader bindings) 
+	defaultPSO.mLayout = of::vk::createPipelineLayout( mDevice, mContext->getDescriptorSetLayoutForShader(/* TODO: add shader parameter */));
+	
+	// TODO: fix this - this should not be part of the renderer, 
+	// but of the context.
+	mPipelineLayouts.emplace_back( defaultPSO.mLayout );
+
 	mPipelines.solid = defaultPSO.createPipeline( mDevice, mPipelineCache );
 	
 	defaultPSO.mRasterizationState.polygonMode = VK_POLYGON_MODE_LINE;
@@ -625,6 +639,48 @@ void ofVkRenderer::flushSetupCommandBuffer(){
 
 // ----------------------------------------------------------------------
 
+void ofVkRenderer::startRender(){
+
+	// vkDeviceWaitIdle( mDevice );
+
+	// start of new frame
+	VkResult err;
+
+	// + block cpu until swapchain can get next image, 
+	// + get index for swapchain image we may render into,
+	// + signal presentComplete once the image has been acquired
+	uint32_t swapIdx;
+
+	err = mSwapchain.acquireNextImage( mSemaphorePresentComplete, &swapIdx );
+	assert( !err );
+
+	{
+		if ( mDrawCmdBuffer.size() == mSwapchain.getImageCount() ){
+			// if command buffer has been previously recorded, we want to re-use it.
+			vkResetCommandBuffer( mDrawCmdBuffer[swapIdx], 0 );
+		} else{
+			// allocate a draw command buffer for each swapchain image
+			mDrawCmdBuffer.resize( mSwapchain.getImageCount() );
+			// (re)allocate command buffer used for draw commands
+			VkCommandBufferAllocateInfo allocInfo = {
+				VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,                 // VkStructureType         sType;
+				nullptr,                                                        // const void*             pNext;
+				mCommandPool,                                                   // VkCommandPool           commandPool;
+				VK_COMMAND_BUFFER_LEVEL_PRIMARY,                                // VkCommandBufferLevel    level;
+				mDrawCmdBuffer.size()                                           // uint32_t                commandBufferCount;
+			};
+
+			vkAllocateCommandBuffers( mDevice, &allocInfo, mDrawCmdBuffer.data() );
+		}
+	}
+
+	mContext->begin( swapIdx );
+	beginDrawCommandBuffer( mDrawCmdBuffer[swapIdx] );
+
+}
+
+// ----------------------------------------------------------------------
+
 void ofVkRenderer::beginDrawCommandBuffer(VkCommandBuffer& cmdBuf_){
 	VkCommandBufferBeginInfo cmdBufInfo = {};
 	cmdBufInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -682,66 +738,7 @@ void ofVkRenderer::beginRenderPass(VkCommandBuffer& cmdBuf_, VkFramebuffer& fram
 	vkCmdBeginRenderPass( cmdBuf_, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE );
 };
 
-// ----------------------------------------------------------------------
 
-void ofVkRenderer::startRender(){
-	
-	// vkDeviceWaitIdle( mDevice );
-
-	// start of new frame
-	VkResult err;
-
-	// + block cpu until swapchain can get next image, 
-	// + get index for swapchain image we may render into,
-	// + signal presentComplete once the image has been acquired
-	uint32_t swapIdx;
-
-	err = mSwapchain.acquireNextImage( mSemaphorePresentComplete, &swapIdx);
-	assert( !err );
-
-	// todo: transfer image from undefined to COLOR_ATTACHMENT_OPTIMAL 
-	// when we're looking at the first use of this image.
-
-	//auto transferBarrier = of::vk::createImageBarrier( mImages[i].imageRef,
-	//	VK_IMAGE_ASPECT_COLOR_BIT,
-	//	VK_IMAGE_LAYOUT_UNDEFINED,
-	//	VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL );
-
-	//// Append pipeline barrier to commandBuffer
-	//vkCmdPipelineBarrier(
-	//	cmdBuffer,
-	//	VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-	//	VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-	//	0,
-	//	0, nullptr,
-	//	0, nullptr,
-	//	1, &transferBarrier );
-
-
-	{
-		if ( mDrawCmdBuffer.size() == mSwapchain.getImageCount() ){
-			// if command buffer has been previously recorded, we want to re-use it.
-			vkResetCommandBuffer( mDrawCmdBuffer[swapIdx], 0 );
-		} else {
-			// allocate a draw command buffer for each swapchain image
-			mDrawCmdBuffer.resize( mSwapchain.getImageCount() );
-			// (re)allocate command buffer used for draw commands
-			VkCommandBufferAllocateInfo allocInfo = {
-				VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,                 // VkStructureType         sType;
-				nullptr,                                                        // const void*             pNext;
-				mCommandPool,                                                   // VkCommandPool           commandPool;
-				VK_COMMAND_BUFFER_LEVEL_PRIMARY,                                // VkCommandBufferLevel    level;
-				mDrawCmdBuffer.size()                                           // uint32_t                commandBufferCount;
-			};
-			
-			vkAllocateCommandBuffers( mDevice, &allocInfo, mDrawCmdBuffer.data() );
-		}
-	}
-	
-	mContext->begin( swapIdx );
-	beginDrawCommandBuffer(mDrawCmdBuffer[swapIdx]);
-
-}
 
 // ----------------------------------------------------------------------
 
@@ -897,14 +894,17 @@ void ofVkRenderer::draw( const ofMesh & mesh_, ofPolyRenderMode renderType, bool
 
 	// store uniforms if needed
 
+	// !TODO: move uniforms binding into context.
+
 	std::vector<uint32_t> dynamicOffsets = { 
-	    uint32_t(mContext->getCurrentMatrixStateOffset()),
+	    uint32_t(mContext->getCurrentMatrixStateOffset()),	   // dynamic offset for descriptor set 0   ((firstset==0) + 0 )
 	};
 
-	vector<VkDescriptorSet>  currentlyBoundDescriptorsets = {
-		mDescriptorSets[0],                  // default matrix uniforms
-		                                     // if there were any other uniforms bound
-	};
+	
+	// as context knows which shader/pipeline is currently bound the context knows which
+	// descriptorsets are currently required.
+	// 
+	vector<VkDescriptorSet> currentlyBoundDescriptorsets = mContext->getBoundDescriptorSets();
 
 	auto & cmd = mDrawCmdBuffer[mSwapchain.getCurrentImageIndex()];
 
