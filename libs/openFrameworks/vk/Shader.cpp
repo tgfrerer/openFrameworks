@@ -5,11 +5,38 @@
 void of::vk::Shader::reflectShaderResources()
 {
 
+	/*
+	
+	when we analyse shader uniform resouces, we first need to group bindings by set.
+
+	The smallest unit we bind in Vulkan are sets - and for each set we will have to specify offsets for each descriptor.
+	
+	set - binding 0 - descriptor 0
+	    - binding 1 - decriptors[] 1,2,3
+	    - <empty>
+	    - binding 3 - descriptor 4
+	
+	there does not seem to be a maximum number of descriptor that we can allocate - as long as we don't use them all at the same time
+
+	is there a maximum number of descriptorsets that we can allocate?
+	
+	*/
+
+
+
+
+
 	// for all shader stages
 	for ( auto &c : mCompilers ){
 
 		auto & compiler = *c.second;
 		auto & shaderStage = c.first;
+
+		if ( shaderStage & VK_SHADER_STAGE_VERTEX_BIT ){
+			ofLog() << std::endl << "Vertex Stage" << endl << string( 70, '-' );
+		} else if ( shaderStage & VK_SHADER_STAGE_FRAGMENT_BIT ){
+			ofLog() << std::endl << "Fragment Stage" << endl << string( 70, '-' );
+		}
 
 		auto shaderResources = compiler.get_shader_resources();
 
@@ -33,6 +60,11 @@ void of::vk::Shader::reflectShaderResources()
 
 			// get a bitmask representing uniform decorations 
 			uint64_t decorationMask = compiler.get_decoration_mask( ubo.id );
+			
+			// get the storage type for this ubo
+			auto storageType = compiler.get_type( ubo.type_id );
+			// get the storageSize (in bytes) for this ubo
+			uint32_t storageSize = compiler.get_declared_struct_size( storageType );
 
 			if ( ( 1ull << spv::DecorationDescriptorSet ) & decorationMask ){
 				descriptor_set = compiler.get_decoration( ubo.id, spv::DecorationDescriptorSet );
@@ -54,12 +86,12 @@ void of::vk::Shader::reflectShaderResources()
 			ofLog() << "Uniform Block: '" << ubo.name << "'" << os.str();
 
 			auto type = compiler.get_type( ubo.type_id );
-
+				   
 			// type for ubo descriptors is struct
 			// such structs will have member types, that is, they have elements within.
 			for ( uint32_t tI = 0; tI != type.member_types.size(); ++tI ){
 				auto mn = compiler.get_member_name( ubo.type_id, tI );
-				ofLog() << "Member Name: " << ubo.name << "[" << tI << "] : " << mn;
+				ofLog() << "\\-" << "[" << tI << "] : " << mn;
 			}
 
 			{
@@ -95,7 +127,7 @@ void of::vk::Shader::reflectShaderResources()
 					}
 				}
 
-				mUniforms[ubo.name] = { descriptor_set, newBinding };
+				mUniforms[ubo.name] = { descriptor_set, newBinding, storageSize };
 			}
 			// TODO: check under which circumstances descriptorCount needs to be other
 			// than 1.

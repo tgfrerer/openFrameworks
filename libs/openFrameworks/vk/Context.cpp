@@ -30,6 +30,12 @@ void of::vk::Context::setup(ofVkRenderer* renderer_){
 		sizeof(MatrixState),   // VkDeviceSize    range;
 	};
 
+	mStyleStateBufferInfo = {
+		mAlloc->getBuffer(),
+		0,
+		sizeof( StyleState ),
+	};
+
 	if (!mFrames.empty())
 		mFrames.clear();
 	mFrames.resize( mSettings.numSwapchainImages, ContextState() );
@@ -69,6 +75,7 @@ bool of::vk::Context::setupDescriptorSetsFromShaders(){
 					|| sU.second.binding.binding != foundUniformIt->second.binding.binding
 					|| sU.second.binding.descriptorCount != foundUniformIt->second.binding.descriptorCount
 					|| sU.second.binding.descriptorType != foundUniformIt->second.binding.descriptorType
+					|| sU.second.binding.stageFlags != foundUniformIt->second.binding.stageFlags
 					){
 					// houston, we have a problem.
 					// the uniform is not identical in detail 
@@ -77,9 +84,10 @@ bool of::vk::Context::setupDescriptorSetsFromShaders(){
 					ostringstream definitions;
 
 					definitions << "\t\t" << sU.first << "\t\t|\t\t" << foundUniformIt->first << endl <<
-						sU.second.set << "|" << foundUniformIt->second.set << endl <<
-						sU.second.binding.binding << "|" << foundUniformIt->second.binding.binding << endl <<
-						sU.second.binding.descriptorCount << "|" << foundUniformIt->second.binding.descriptorCount << endl;
+						"set: " <<  sU.second.set << "|" << foundUniformIt->second.set << endl <<
+						"binding: " << sU.second.binding.binding << "|" << foundUniformIt->second.binding.binding << endl <<
+						"descriptorCount: " << sU.second.binding.descriptorCount << "|" << foundUniformIt->second.binding.descriptorCount << endl <<
+						"stageFlags: "<< sU.second.binding.stageFlags << "|" << foundUniformIt->second.binding.stageFlags << endl;
 
 					ofLogError() << "ERR Uniform: '" << sU.first << "' has conflicting definitions:" << endl << definitions.str();
 					
@@ -94,9 +102,12 @@ bool of::vk::Context::setupDescriptorSetsFromShaders(){
 		}
 	}
 
-	// ----------| invariant: `uniforms` contains a map of unique uniforms
+	// ----------| invariant: `uniforms` contains a map of unique uniforms, indexed by name
 
-	{   // set up descriptorPool, so we have somewhere to allocate descriptors from
+	{   // Set up descriptorPool, so we have somewhere to allocate descriptors from
+		
+		// To know how many descriptors of each type to allocate, 
+		// we group descriptors over all uniforms by type and count each group.
 		
 		// Group descriptors by type over all unique uniforms
 		std::map<VkDescriptorType, uint32_t> poolCounts; // size of pool necessary for each descriptor type
@@ -120,7 +131,10 @@ bool of::vk::Context::setupDescriptorSetsFromShaders(){
 			poolSizes.push_back( { p.first, p.second } );
 		}
 		
-		uint32_t setCount = uniforms.size(); // number of descriptorSets, assuming each uniform represents one descriptorSet
+		// TODO: setCount needs to be calculated by grouping uniforms of each shader by set number, 
+		// then counting the resulting groups.
+
+		uint32_t setCount = uniforms.size(); 
 		setupDescriptorPool( setCount, poolSizes );
 
 	}
@@ -167,7 +181,7 @@ bool of::vk::Context::setupDescriptorSetsFromShaders(){
 			nullptr,	                                                      // const void*                     pNext;
 			mDescriptorPool,                                                  // VkDescriptorPool                descriptorPool;
 			1,                                                                // uint32_t                        descriptorSetCount;
-			&newDescriptorSetLayout                                                    // const VkDescriptorSetLayout*    pSetLayouts;
+			&newDescriptorSetLayout                                           // const VkDescriptorSetLayout*    pSetLayouts;
 		};
 		vkAllocateDescriptorSets( mSettings.device, &allocInfo, &newDescriptorSet );
 	}
@@ -192,6 +206,7 @@ void of::vk::Context::writeDescriptorSets(){
 	// within.
 	std::map < uint32_t, std::vector<VkDescriptorBufferInfo>> bufferInfoStore; 
 
+	// iterate over all descriptorSets (since each vector of descriptorSetBindings corresponds to a descriptorSet)
 	for (auto & dsb : mDescriptorSetBindings )
 	{
 		// !TODO: deal with bindings which are not uniform buffers.
@@ -223,10 +238,16 @@ void of::vk::Context::writeDescriptorSets(){
 		// for now, assume all elements within a descriptorSet are of the same type as the first element
 		auto descriptorType = dsb.second.front().descriptorType;
 
-		bufferInfoStore[dsb.first] = getDescriptorBufferInfo( "" );
-
-		// it appears that writeDescriptorSet does not immediately consume VkDescriptorBufferInfo*
-		// so we must make sure that this is around for when we need it.
+		// It appears that writeDescriptorSet does not immediately consume VkDescriptorBufferInfo*
+		// so we must make sure that this is around for when we need it:
+		//bufferInfoStore[dsb.first].reserve( dsb.second.size() );
+		//for ( auto & bindingInfo : dsb.second ){
+		//	// you should be able to create bufferInfo objects from uniformInfo.size
+		//	// based on the uniform bindings for the current descriptorSet
+		//	bufferInfoStore[dsb.first].push_back( {mAlloc->getBuffer(),bindingInfo.} );
+		//}
+		bufferInfoStore[dsb.first] = { mMatrixStateBufferInfo,mStyleStateBufferInfo };
+		
 
 		VkWriteDescriptorSet tmpDescriptorSet{
 			VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,                    // VkStructureType                  sType;
@@ -290,7 +311,7 @@ std::vector<VkDescriptorBufferInfo> of::vk::Context::getDescriptorBufferInfo(std
 	// this means, we might have more than one UBO for the context. 
 	// next to the matrices, we might want to set global colors and other dynamic 
 	// uniform parameters for the default shaders via ubo
-	return{ mMatrixStateBufferInfo };
+	return{ mMatrixStateBufferInfo, mStyleStateBufferInfo };
 }
 
 const VkBuffer & of::vk::Context::getVkBuffer() const {

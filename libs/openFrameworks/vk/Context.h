@@ -63,7 +63,6 @@ class Context
 	// matrices.
 
 	VkDescriptorBufferInfo mMatrixStateBufferInfo;
-
 	struct MatrixState
 	{
 		// IMPORTANT: this sequence needs to map the sequence in the UBO block 
@@ -71,6 +70,12 @@ class Context
 		ofMatrix4x4 projectionMatrix;
 		ofMatrix4x4 modelMatrix;
 		ofMatrix4x4 viewMatrix;
+	};
+
+	VkDescriptorBufferInfo mStyleStateBufferInfo;
+	struct StyleState
+	{
+		ofVec4f globalColor;
 	};
 
 	struct ContextState
@@ -103,7 +108,9 @@ class Context
 	VkDescriptorPool                                 mDescriptorPool;
 	// map from set id to descriptorSetLayout        
 	std::map<uint32_t, VkDescriptorSetLayout>        mDescriptorSetLayouts;
-	// map from set id to descriptorSet		         
+	
+	// !TODO: descriptorsets should be indexed by unique name, not set id
+	// map from set id to descriptorSet 
 	std::map<uint32_t, VkDescriptorSet>              mDescriptorSets;
 
 	bool setupDescriptorSetsFromShaders();

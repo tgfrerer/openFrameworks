@@ -896,8 +896,14 @@ void ofVkRenderer::draw( const ofMesh & mesh_, ofPolyRenderMode renderType, bool
 
 	// !TODO: move uniforms binding into context.
 
+
+	// we build dynamic offsets by going over each of the currently bound descriptorSets in 
+	// currentlyBoundDescriptorsets, and for each dynamic binding within these sets, we add an offset to the list.
+	// we must guarantee that dynamicOffsets has the same number of elements as currentlBoundDescriptorSets has descriptors
+	// the number of descriptors is calculated by summing up all descriptorCounts per binding per descriptorSet
 	std::vector<uint32_t> dynamicOffsets = { 
 	    uint32_t(mContext->getCurrentMatrixStateOffset()),	   // dynamic offset for descriptor set 0   ((firstset==0) + 0 )
+		0,
 	};
 
 	

@@ -67,6 +67,7 @@ public:
 		uint32_t set;							   // Descriptor set this binding belongs to
 		VkDescriptorSetLayoutBinding binding;	   // Describes mapping of binding number to descriptors, 
 		                                           // number and type of descriptors under a binding.
+		uint32_t size;						       // size in bytes
 	};
 
 private:
@@ -86,6 +87,8 @@ private:
 	// all this data helps us to create descriptors, and also to create layouts fit
 	// for our pipelines.
 	void reflectShaderResources();
+
+	std::vector<uint64_t> uniformSetIds;
 
 public:
 
