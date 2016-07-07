@@ -49,6 +49,9 @@
     <Filter Include="libs\openFrameworks\vk\spirv-cross\src">
       <UniqueIdentifier>{4529febf-3b1a-42fc-9732-f1505f889d94}</UniqueIdentifier>
     </Filter>
+    <Filter Include="libs\openFrameworks\vk\spooky">
+      <UniqueIdentifier>{9d97bcdb-c7d3-4928-adce-1409e2e9fa5d}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\openFrameworks\ofMain.h">
@@ -312,6 +315,9 @@
     <ClInclude Include="..\..\..\openFrameworks\vk\vkAllocator.h">
       <Filter>libs\openFrameworks\vk</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\..\openFrameworks\vk\spooky\SpookyV2.h">
+      <Filter>libs\openFrameworks\vk\spooky</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\openFrameworks\app\ofAppGlutWindow.cpp">
@@ -538,6 +544,9 @@
     </ClCompile>
     <ClCompile Include="..\..\..\openFrameworks\vk\Shader.cpp">
       <Filter>libs\openFrameworks\vk</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\openFrameworks\vk\spooky\SpookyV2.cpp">
+      <Filter>libs\openFrameworks\vk\spooky</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>
