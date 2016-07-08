@@ -1,8 +1,9 @@
 #include "vk/Shader.h"
 #include "ofLog.h"
 #include "ofFileUtils.h"
+#include "spooky/SpookyV2.h"
 
-void of::vk::Shader::reflectShaderResources()
+void of::vk::Shader::reflect()
 {
 
 	/*
@@ -20,10 +21,13 @@ void of::vk::Shader::reflectShaderResources()
 
 	is there a maximum number of descriptorsets that we can allocate?
 	
+	here's some more information about the vulkan binding model:
+	https://developer.nvidia.com/vulkan-shader-resource-binding
+
+	Some information on descriptor sets and fast paths
+	http://gpuopen.com/wp-content/uploads/2016/03/VulkanFastPaths.pdf
+
 	*/
-
-
-
 
 
 	// for all shader stages
@@ -70,7 +74,8 @@ void of::vk::Shader::reflectShaderResources()
 				descriptor_set = compiler.get_decoration( ubo.id, spv::DecorationDescriptorSet );
 				os << ", set = " << descriptor_set;
 			} else{
-				ofLogWarning() << "shader uniform " << ubo.name << "does not specify set id";
+				ofLogWarning() << "Warning: Shader uniform " << ubo.name << "does not specify set id, and will " << endl
+					<< "therefore be mapped to set 0 - this might have unintended consequences.";
 				// If undefined, set descriptor set id to 0. This is conformant with:
 				// https://www.khronos.org/registry/vulkan/specs/misc/GL_KHR_vulkan_glsl.txt
 				descriptor_set = 0;
@@ -194,8 +199,86 @@ void of::vk::Shader::reflectShaderResources()
 
 		} // end shaderStage & VK_SHADER_STAGE_VERTEX_BIT
 	}  // end for : mCompilers
-};
 
+	// now we have been going over vertex and other shader stages, and 
+	// we should have a pretty good idea of all the uniforms
+	// referenced in all shader stages.
+	// Q: i wonder if there is a way to link the different shader stages, 
+	//    so that we can see if the different visibility options for shader stages are allowed...
+
+	{	// build set layouts
+
+		// group UniformInfo by "set"
+		std::map<uint32_t, vector<UniformInfo>> uniformInfoMap;
+		for ( auto & binding : mUniforms ){
+			uniformInfoMap[binding.second.set].push_back( binding.second );
+		};
+
+		// go over all sets, and sort uniforms by binding number asc.
+		for ( auto & s : uniformInfoMap ){
+			auto & id = s.first;
+			auto & uniformInfoVec = s.second;
+			std::sort( uniformInfoVec.begin(), uniformInfoVec.end(), []( const UniformInfo& lhs, const UniformInfo& rhs )->bool{
+				return lhs.binding.binding < rhs.binding.binding;
+			} );
+		}
+
+		// now uniformInfoMap contains grouped, and sorted uniform infos.
+		// the groups are sorted too, as that's what map<> does 
+
+		clearSetLayouts();
+
+		mSetLayouts.reserve( uniformInfoMap.size() );
+		mSetLayoutKeys.reserve( uniformInfoMap.size() );
+
+		uint32_t i = 0;
+		for ( auto & s : uniformInfoMap ){
+			if ( s.first != i ){
+				// Q: is this really the case? it could be possible that shaders define sets they are not using. 
+				//    and these sets would not require memory to be bound.
+				ofLogError() << "DescriptorSet ids in shader cannot be sparse. Missing definition for descriptorSet: " << i;
+			}
+
+			// add empty setLayout to our sequence of setLayouts
+			mSetLayouts.push_back( SetLayout() );
+
+			const auto & setInfoVec    = s.second;
+			auto & currentLayout = mSetLayouts.back();
+
+			std::vector<VkDescriptorSetLayoutBinding> flatBindings; // flat binding vector for initialisation
+			flatBindings.reserve( setInfoVec.size() );
+
+			// build add all bindings to current set
+			for ( const auto & info : setInfoVec ){
+				currentLayout.bindingInfo.push_back( { info.binding , info.size } );
+				flatBindings.push_back( info.binding );
+			}
+
+			// calculate hash key for current set
+
+			currentLayout.calculateKey();
+			mSetLayoutKeys.push_back( currentLayout.key ); // store key
+
+			// create & store descriptorSetLayout based on bindings for this set
+
+			VkDescriptorSetLayoutCreateInfo createInfo{
+				VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,    // VkStructureType                        sType;
+				nullptr,                                                // const void*                            pNext;
+				0,                                                      // VkDescriptorSetLayoutCreateFlags       flags;
+				uint32_t( flatBindings.size() ),                        // uint32_t                               bindingCount;
+				flatBindings.data()                                     // const VkDescriptorSetLayoutBinding*    pBindings;
+			};
+
+			vkCreateDescriptorSetLayout( mSettings.device, &createInfo, nullptr, &currentLayout.vkLayout );
+
+			ofLog() << "DescriptorSet #" << std::setw( 4 ) << i << " | hash: " << std::hex << currentLayout.key;
+
+			++i;
+		}
+
+	}  // end build set layouts
+
+}
 
 // ----------------------------------------------------------------------
 
@@ -256,6 +339,32 @@ of::vk::Shader::Shader( const Settings & settings_ )
 			ofLog() << "Error creating shader module: " << s.second;
 		}
 	}  // for : mSettings.sources
-	reflectShaderResources();
+	reflect();
 	//mPipelineLayout = createPipelineLayout();
+}
+
+// ----------------------------------------------------------------------
+
+void of::vk::Shader::SetLayout::calculateKey(){
+	// calculate hash key based on current contents
+	// of bindings and bindingSizes
+	void * baseAddr = (void*)bindingInfo.data();
+	
+	// We can calculate the size and be pretty sure that there will be no random
+	// padding data caught in the vector, as sizeof(BindingInfo) is 32, which 
+	// nicely aligns to 8 byte.
+	
+	auto msgSize = bindingInfo.size() * sizeof( BindingInfo );
+
+	this->key = SpookyHash::Hash64(baseAddr , msgSize, 0 );
+}
+
+// ----------------------------------------------------------------------
+
+void of::vk::Shader::clearSetLayouts(){
+	// clear (and possibly destroy) old descriptorSetLayouts
+	for ( auto & l : mSetLayouts ){
+		vkDestroyDescriptorSetLayout( mSettings.device, l.vkLayout, nullptr );
+	}
+	mSetLayouts.clear();
 }

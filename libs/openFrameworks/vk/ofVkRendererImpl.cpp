@@ -241,7 +241,7 @@ void ofVkRenderer::setupPipelines(){
 	// create pipeline layout based on vector of descriptorSetLayouts queried from mContext
 	// this is way crude, and pipeline should be inside of context, context
 	// should return the layout based on shader paramter (derive layout from shader bindings) 
-	defaultPSO.mLayout = of::vk::createPipelineLayout( mDevice, mContext->getDescriptorSetLayoutForShader(/* TODO: add shader parameter */));
+	defaultPSO.mLayout = of::vk::createPipelineLayout( mDevice, mContext->getDescriptorSetLayoutForShader(mShaders[0]));
 	
 	// TODO: fix this - this should not be part of the renderer, 
 	// but of the context.
@@ -894,23 +894,20 @@ void ofVkRenderer::draw( const ofMesh & mesh_, ofPolyRenderMode renderType, bool
 
 	// store uniforms if needed
 
-	// !TODO: move uniforms binding into context.
+	mContext->setUniform4f( &ofFloatColor( 0.f, 0.f, 1.f, 1.f ) /* "globalColor", &ofFloatColor(1.f, 1.f, 0.f, 1.f) */ );
+	mContext->storeCurrentMatrixState();
 
+	// as context knows which shader/pipeline is currently bound the context knows which
+	// descriptorsets are currently required.
+	// 
+	vector<VkDescriptorSet> currentlyBoundDescriptorsets = mContext->getBoundDescriptorSets();
 
 	// we build dynamic offsets by going over each of the currently bound descriptorSets in 
 	// currentlyBoundDescriptorsets, and for each dynamic binding within these sets, we add an offset to the list.
 	// we must guarantee that dynamicOffsets has the same number of elements as currentlBoundDescriptorSets has descriptors
 	// the number of descriptors is calculated by summing up all descriptorCounts per binding per descriptorSet
-	std::vector<uint32_t> dynamicOffsets = { 
-	    uint32_t(mContext->getCurrentMatrixStateOffset()),	   // dynamic offset for descriptor set 0   ((firstset==0) + 0 )
-		0,
-	};
 
-	
-	// as context knows which shader/pipeline is currently bound the context knows which
-	// descriptorsets are currently required.
-	// 
-	vector<VkDescriptorSet> currentlyBoundDescriptorsets = mContext->getBoundDescriptorSets();
+	const auto & dynamicOffsets = mContext->getDynamicOffsetsForDescriptorSets();
 
 	auto & cmd = mDrawCmdBuffer[mSwapchain.getCurrentImageIndex()];
 

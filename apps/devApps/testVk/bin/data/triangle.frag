@@ -6,17 +6,17 @@
 layout (location = 0) in vec4 inColor;
 layout (location = 1) in vec3 inNormal;
 
-// uniforms (resources)
-layout (set = 0, binding = 0) uniform DefaultMatrices 
-{
-	mat4 projectionMatrix;
-	mat4 modelMatrix;
-	mat4 viewMatrix;
-} ubo;
-layout (set = 0, binding = 1) uniform StyleSet
-{
-	vec4 globalColor;
-} style;
+// // uniforms (resources)
+// layout (set = 0, binding = 0) uniform DefaultMatrices 
+// {
+// 	mat4 projectionMatrix;
+// 	mat4 modelMatrix;
+// 	mat4 viewMatrix;
+// };
+// layout (set = 1, binding = 0) uniform StyleSet
+// {
+// 	vec4 globalColor;
+// } style;
 
 
 layout (location = 0) out vec4 outFragColor;

@@ -121,7 +121,7 @@ void of::vk::Allocator::reset(){
 // param   byteCount number of bytes to allocate
 // param   current swapchain image index
 // returns pAddr writeable memory address
-// returns offsset memory offset in bytes relative to start of buffer to reach address
+// returns offset memory offset in bytes relative to start of buffer to reach address
 bool of::vk::Allocator::allocate( VkDeviceSize byteCount_, void*& pAddr, VkDeviceSize& offset, size_t swapIdx ){
 	uint32_t alignedByteCount = mAlignment * ( ( byteCount_ + mAlignment - 1 ) / mAlignment );
 

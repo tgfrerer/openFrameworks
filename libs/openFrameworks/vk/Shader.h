@@ -42,53 +42,59 @@ namespace vk{
 
 class Shader
 {
-public:
-	
-	//struct DescriptorSet
-	//{
-	//	// map from descriptor names to descriptor binding info
-	//	// this maps closest to a shader uniform as it combines
-	//	// binding number, name, descriptor type, and array size
-	//	std::map < std::string, VkDescriptorSetLayoutBinding > uniforms;
+public: 
+	struct BindingInfo	// all the information used to create a key(hash)
+	{
+		VkDescriptorSetLayoutBinding binding;
+		uint32_t                     size;		 // size in bytes for each binding, each item describes binding with corresponding index
+	};
 
-	//	// layout is generated from a flattened list of all uniforms
-	//	VkDescriptorSetLayout layout = nullptr;
-	//	// set is storage for the descriptors described in layout as collection of uniforms
-	//	VkDescriptorSet set = nullptr;
-	//};
-
-	//// map from "desciptor set" number to descriptorSet,
-	//// we use a map instead of vector, since this collection may be sparse
-	//// and idx indices ommitted. 
-	//std::map<uint32_t, DescriptorSet> mDescriptorSets;
-	
+	// layout for a descriptorSet
+	// use this to create vkDescriptorSetLayout
+	struct SetLayout
+	{
+		std::vector<BindingInfo> bindingInfo; // must be in ascending order, but may be sparse
+		uint64_t key;
+		VkDescriptorSetLayout vkLayout = nullptr;
+		void calculateKey();
+	};
+private:
 	struct UniformInfo
 	{
 		uint32_t set;							   // Descriptor set this binding belongs to
 		VkDescriptorSetLayoutBinding binding;	   // Describes mapping of binding number to descriptors, 
 		                                           // number and type of descriptors under a binding.
 		uint32_t size;						       // size in bytes
+
+		// TODO: store byte offset into untyped memory used for the whole 
+		std::vector<uint32_t> offsets;
+		std::vector< std::string> members;         // each ubo descriptor binding might point to an ubo 
+		                                           // which has members with names ("projectionMatrix", "viewMatrix", ...) 
 	};
 
-private:
 	std::map<VkShaderStageFlagBits, VkShaderModule>         mModules;
 	std::vector<VkPipelineShaderStageCreateInfo>	        mStages;
 
-	//std::map<std::string, Binding> mBindings; // map from ubo block name to binding
 	std::map<VkShaderStageFlagBits, std::shared_ptr<spirv_cross::Compiler>> mCompilers;
 	
 	// map from uniform name to uniform set and binding info 
 	// when we say "uniform" this may be any of VkDescriptorType, so: UBOs, samplers ...
 	std::map<std::string, UniformInfo> mUniforms;
 
+	// sequence of setLayouts forming the pipelineLayout for this shader
+	std::vector<SetLayout> mSetLayouts;
+	
+	// sequence of hashes of setLayouts
+	std::vector<uint64_t>  mSetLayoutKeys;  
+
 	// ----------------------------------------------------------------------
 	// Derive bindings from shader reflection using SPIR-V Cross.
 	// we want to extract as much information out of the shader metadata as possible
 	// all this data helps us to create descriptors, and also to create layouts fit
 	// for our pipelines.
-	void reflectShaderResources();
+	void reflect();
 
-	std::vector<uint64_t> uniformSetIds;
+	void clearSetLayouts();
 
 public:
 
@@ -124,22 +130,33 @@ public:
 		}
 		mModules.clear();
 		mStages.clear();
+		clearSetLayouts();
 	}
 
 	// ----------------------------------------------------------------------
 
-	const std::map <std::string, UniformInfo>& getUniforms() const{
+	/*const std::map <std::string, UniformInfo>& getUniforms() const{
 		return mUniforms;
-	}
+	}*/
 
 	// ----------------------------------------------------------------------
 
-	// returns an ordered list of descriptor set names 
-	// order is based on uniform set index, that is the order of elements
-	// in this vector defines the layout of descriptorSets for this shader/pipeline
-	// empty elements mean empty slots
-	const std::vector<std::string> getDescriptorSetLayoutNames(){
+	//// returns an ordered list of descriptor set names 
+	//// order is based on uniform set index, that is the order of elements
+	//// in this vector defines the layout of descriptorSets for this shader/pipeline
+	//// empty elements mean empty slots
+	//const std::vector<std::string> getDescriptorSetLayoutNames(){
+	//
+	//}
+
+	// ----------------------------------------------------------------------
 	
+	const std::vector<SetLayout>& getSetLayouts() const {
+		return mSetLayouts;
+	}
+
+	const std::vector<uint64_t>& getSetLayoutKeys() const{
+		return mSetLayoutKeys;
 	}
 
 	// ----------------------------------------------------------------------

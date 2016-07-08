@@ -11,7 +11,7 @@ layout (set = 0, binding = 0) uniform DefaultMatrices
 	mat4 viewMatrix;
 }; // note: if you don't specify a variable name for the block its elements will live in the global namespace.
 
-layout (set = 0, binding = 1) uniform StyleSet
+layout (set = 1, binding = 0) uniform StyleSet
 {
 	vec4 globalColor;
 } style;
@@ -28,6 +28,6 @@ layout (location = 1) out vec3 outNormal;
 void main() 
 {
 	outNormal   = (inverse(transpose( viewMatrix * modelMatrix)) * vec4(inNormal, 0.0)).xyz;
-	outColor    = inColor * style.globalColor;
+	outColor    = style.globalColor;
 	gl_Position = projectionMatrix * viewMatrix * modelMatrix * vec4(inPos.xyz, 1.0);
 }

@@ -61,7 +61,6 @@ class Context
 
 	// A GPU-backed buffer object to back these
 	// matrices.
-
 	VkDescriptorBufferInfo mMatrixStateBufferInfo;
 	struct MatrixState
 	{
@@ -89,40 +88,48 @@ class Context
 		std::stack<MatrixState> mMatrixStack;
 
 		int                     mCurrentMatrixId = -1;         // -1 means undefined, not yet used/saved
-		VkDeviceSize            mCurrentMatrixStateOffset = 0; // offset into buffer to get current matrix
+		//VkDeviceSize            mCurrentMatrixStateOffset = 0; // offset into buffer to get current matrix
 
 		MatrixState             mCurrentMatrixState;
 	};
 
 	// one ContextState element per swapchain image
 	std::vector<ContextState> mFrames;
+	std::vector<std::vector<uint32_t>> mDynamicOffsets;
 
 	int mSwapIdx = 0;
 
-	bool storeCurrentMatrixState();
 
 	// --------- pipeline info
 
-	std::map<uint32_t, std::vector<VkDescriptorSetLayoutBinding>> mDescriptorSetBindings;
+	// currently bound shader
+	std::shared_ptr<of::vk::Shader> mCurrentShader; 
+
+	//std::map<uint32_t, std::vector<VkDescriptorSetLayoutBinding>> mDescriptorSetBindings;
 	// pool where all descriptors of this context are allocated from
-	VkDescriptorPool                                 mDescriptorPool;
-	// map from set id to descriptorSetLayout        
-	std::map<uint32_t, VkDescriptorSetLayout>        mDescriptorSetLayouts;
+	VkDescriptorPool                                 mDescriptorPool = nullptr;
 	
-	// !TODO: descriptorsets should be indexed by unique name, not set id
-	// map from set id to descriptorSet 
-	std::map<uint32_t, VkDescriptorSet>              mDescriptorSets;
+	// map from unique shader descriptor set hash key to SetLayout information
+	std::map<uint64_t, of::vk::Shader::SetLayout>    mDescriptorSetLayouts;
+	
+	// map from unique shader descriptor set hash key to VkDescriptorSet
+	std::map<uint64_t, VkDescriptorSet>              mDescriptorSets;
 
 	bool setupDescriptorSetsFromShaders();
-	void setupDescriptorPool( uint32_t setCount_, const std::vector<VkDescriptorPoolSize> & poolSizes_);
-	void writeDescriptorSets();
+
+	void setupDescriptorPool( const std::map<uint64_t, of::vk::Shader::SetLayout>& setLayouts_, VkDescriptorPool& descriptorPool_, std::map<uint64_t, VkDescriptorSet>& descriptorSets_ );
+	
+	// allocate descriptorsets for all unique descriptorSetLayouts used in this context
+	void allocateDescriptorSets( const std::map<uint64_t, of::vk::Shader::SetLayout>& setLayouts_, const VkDescriptorPool& descriptorPool_, std::map<uint64_t, VkDescriptorSet>& descriptorSets_ );
+
+	void initialiseDescriptorSets( const std::map<uint64_t, of::vk::Shader::SetLayout>& setLayouts_, std::map<uint64_t, VkDescriptorSet>& descriptorSets_ );
 
 public:
 
 	struct Settings
 	{
-		VkDevice                                     device;
-		size_t                                       numSwapchainImages;
+		VkDevice                                     device = nullptr;
+		size_t                                       numSwapchainImages = 0 ;
 
 		// context is initialised with a vector of shaders
 		// all these shaders contribute to the shared pipeline layout 
@@ -137,30 +144,31 @@ public:
 	// have been implicitly deleted by defining mSettings const
 	Context( const of::vk::Context::Settings& settings_ );
 
-	// get offset in bytes for the current matrix into the matrix memory buffer
-	// this must be a mutliple of  minUniformBufferOffsetAlignment
-	const VkDeviceSize& getCurrentMatrixStateOffset();
+	// get dynamic offsets for all descriptorsets which are currently bound
+	const std::vector<uint32_t>& getDynamicOffsetsForDescriptorSets() const;
 
-	// get descriptorSet with set index setId_
+	// return a vector of descriptorsets which are currently bound
+	// in order of the current pipeline's descriptorSetLayout.
 	std::vector<VkDescriptorSet> getBoundDescriptorSets(){
-		// !TODO: make bound descriptorSets depend on which shader/pipeline is bound
-		// within the context.
 		std::vector<VkDescriptorSet> ret;
-		if ( !mDescriptorSets.empty() ){
+		const auto & keyVec = mCurrentShader->getSetLayoutKeys();
+		ret.reserve( keyVec.size() );
+		for ( auto & key : keyVec ){
 			// Caution: we just assume there is a descriptorset 0!
-			ret.push_back( mDescriptorSets[0] );
+			ret.push_back( mDescriptorSets[key] );
 		}
 		return ret;
 	};
 
 	// get descriptorSetLayout for a shader
-	std::vector<VkDescriptorSetLayout> getDescriptorSetLayoutForShader(){
-		// !TODO: make bound descriptorSetLayouts depend on shader
-		// add shader as parameter
+	std::vector<VkDescriptorSetLayout> getDescriptorSetLayoutForShader(const shared_ptr<of::vk::Shader>& shader_){
 		std::vector<VkDescriptorSetLayout> ret;
-		if ( !mDescriptorSetLayouts.empty() ){
+		auto & layouts = shader_->getSetLayouts();
+		if ( !layouts.empty() ){
 			// Caution: we just assume there is a descriptorset 0!
-			ret.push_back( mDescriptorSetLayouts[0] );
+			for ( const auto&layoutInfo : layouts ){
+				ret.push_back( layoutInfo.vkLayout);
+			}
 		}
 		return ret;
 	};
@@ -218,8 +226,10 @@ public:
 	// return memory mapping offets based on current memory buffer.
 	bool storeMesh( const ofMesh& mesh_, std::vector<VkDeviceSize>& vertexOffsets, std::vector<VkDeviceSize>& indexOffsets );
 
+	// write current matrix state to gpu backed memory if necessary
+	bool storeCurrentMatrixState();
 
-
+	bool setUniform4f(ofFloatColor * pSource);
 };
 
 } // namespace vk
