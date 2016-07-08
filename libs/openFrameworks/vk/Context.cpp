@@ -119,7 +119,7 @@ void of::vk::Context::setupDescriptorPool( const std::map<uint64_t, of::vk::Shad
 	for ( const auto &u : setLayouts_ ){
 
 		for ( const auto & bindingInfo : u.second.bindingInfo ){
-			auto & it = poolCounts.find( bindingInfo.binding.descriptorType );
+			const auto & it = poolCounts.find( bindingInfo.binding.descriptorType );
 			if ( it == poolCounts.end() ){
 				// descriptor of this type not yet found - insert new
 				poolCounts.emplace( bindingInfo.binding.descriptorType, bindingInfo.binding.descriptorCount );
@@ -156,7 +156,7 @@ void of::vk::Context::setupDescriptorPool( const std::map<uint64_t, of::vk::Shad
 		nullptr,                                                             // const void*                    pNext;
 		0,                                                                   // VkDescriptorPoolCreateFlags    flags;
 		setCount,                                                            // uint32_t                       maxSets;
-		poolSizes.size(),                                                    // uint32_t                       poolSizeCount;
+	    uint32_t(poolSizes.size()),                                          // uint32_t                       poolSizeCount;
 		poolSizes.data(),                                                    // const VkDescriptorPoolSize*    pPoolSizes;
 	};
 

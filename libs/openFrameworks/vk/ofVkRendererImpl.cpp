@@ -667,7 +667,7 @@ void ofVkRenderer::startRender(){
 				nullptr,                                                        // const void*             pNext;
 				mCommandPool,                                                   // VkCommandPool           commandPool;
 				VK_COMMAND_BUFFER_LEVEL_PRIMARY,                                // VkCommandBufferLevel    level;
-				mDrawCmdBuffer.size()                                           // uint32_t                commandBufferCount;
+			    uint32_t(mDrawCmdBuffer.size())                                 // uint32_t                commandBufferCount;
 			};
 
 			vkAllocateCommandBuffers( mDevice, &allocInfo, mDrawCmdBuffer.data() );
@@ -893,8 +893,8 @@ void ofVkRenderer::finishRender(){
 void ofVkRenderer::draw( const ofMesh & mesh_, ofPolyRenderMode renderType, bool useColors, bool useTextures, bool useNormals ) const{
 
 	// store uniforms if needed
-
-	mContext->setUniform4f( &ofFloatColor( 0.f, 0.f, 1.f, 1.f ) /* "globalColor", &ofFloatColor(1.f, 1.f, 0.f, 1.f) */ );
+	auto magenta = ofFloatColor( 1.f, 0.f, 1.f, 1.f );
+	mContext->setUniform4f( &magenta /* "globalColor", &ofFloatColor(1.f, 1.f, 0.f, 1.f) */ );
 	mContext->storeCurrentMatrixState();
 
 	// as context knows which shader/pipeline is currently bound the context knows which
