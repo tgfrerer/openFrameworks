@@ -141,12 +141,14 @@ Module{
                 "Xxf86vm",
                 "Xi",
                 "Xcursor",
+                "Xinerama",
                 "dl",
                 "pthread",
                 "freeimage",
                 "rtaudio",
                 "boost_filesystem",
                 "boost_system",
+                "vulkan",
             ];
         }else if(platform === "msys2"){
             return [
@@ -250,6 +252,10 @@ Module{
             if(libname!=""){
                 ret.push("-l" + libname);
             }
+        }
+        if(qbs.targetOS.contains("linux")){
+        	var vk_sdk = qbs.getEnv("VULKAN_SDK");
+        	ret.push("-L" + vk_sdk + "/lib");
         }
         if(qbs.targetOS.contains("windows")){
             ret.push("-L"+FileInfo.joinPaths(msys2root,"mingw32/lib"));
