@@ -95,7 +95,9 @@ class Context
 
 	// one ContextState element per swapchain image
 	std::vector<ContextState> mFrames;
-	std::vector<std::vector<uint32_t>> mDynamicOffsets;
+	// dynamic offsets for descriptor bindings, flattened by set
+	// so that we can feed this directly to vkCmdBindDescriptorSets
+	std::vector<std::vector<uint32_t>> mDynamicUniformBuffferOffsets;	  	   // VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC
 
 	int mSwapIdx = 0;
 
@@ -144,8 +146,12 @@ public:
 	// have been implicitly deleted by defining mSettings const
 	Context( const of::vk::Context::Settings& settings_ );
 
+	~Context(){
+		reset();
+	};
+
 	// get dynamic offsets for all descriptorsets which are currently bound
-	const std::vector<uint32_t>& getDynamicOffsetsForDescriptorSets() const;
+	const std::vector<uint32_t>& getDynamicUniformBufferOffsets() const;
 
 	// return a vector of descriptorsets which are currently bound
 	// in order of the current pipeline's descriptorSetLayout.

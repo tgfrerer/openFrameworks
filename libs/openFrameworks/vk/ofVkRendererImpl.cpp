@@ -900,14 +900,14 @@ void ofVkRenderer::draw( const ofMesh & mesh_, ofPolyRenderMode renderType, bool
 	// as context knows which shader/pipeline is currently bound the context knows which
 	// descriptorsets are currently required.
 	// 
-	vector<VkDescriptorSet> currentlyBoundDescriptorsets = mContext->getBoundDescriptorSets();
+	vector<VkDescriptorSet> currentlyBoundDescriptorSets = mContext->getBoundDescriptorSets();
 
 	// we build dynamic offsets by going over each of the currently bound descriptorSets in 
 	// currentlyBoundDescriptorsets, and for each dynamic binding within these sets, we add an offset to the list.
 	// we must guarantee that dynamicOffsets has the same number of elements as currentlBoundDescriptorSets has descriptors
 	// the number of descriptors is calculated by summing up all descriptorCounts per binding per descriptorSet
 
-	const auto & dynamicOffsets = mContext->getDynamicOffsetsForDescriptorSets();
+	const auto & dynamicOffsets = mContext->getDynamicUniformBufferOffsets();
 
 	auto & cmd = mDrawCmdBuffer[mSwapchain.getCurrentImageIndex()];
 
@@ -917,8 +917,8 @@ void ofVkRenderer::draw( const ofMesh & mesh_, ofPolyRenderMode renderType, bool
 	    VK_PIPELINE_BIND_POINT_GRAPHICS,                // use graphics, not compute pipeline
 	    *mPipelineLayouts[0],                           // which pipeline layout (contains the bindings programmed from an sequence of descriptor sets )
 	    0, 						                        // firstset: first set index (of the above) to bind to - mDescriptorSet[0] will be bound to pipeline layout [firstset]
-	    uint32_t(currentlyBoundDescriptorsets.size()),  // setCount: how many sets to bind
-	    currentlyBoundDescriptorsets.data(),            // the descriptor sets to match up with our mPipelineLayout (need to be compatible)
+	    uint32_t(currentlyBoundDescriptorSets.size()),  // setCount: how many sets to bind
+	    currentlyBoundDescriptorSets.data(),            // the descriptor sets to match up with our mPipelineLayout (need to be compatible)
 	    uint32_t(dynamicOffsets.size()),                // dynamic offsets count how many dynamic offsets
 	    dynamicOffsets.data()                           // dynamic offsets for each
 	);

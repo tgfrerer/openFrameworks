@@ -40,7 +40,7 @@ void of::vk::Context::setup(ofVkRenderer* renderer_){
 		mFrames.clear();
 	
 	mFrames.resize( mSettings.numSwapchainImages, ContextState() );
-	mDynamicOffsets.resize( mSettings.numSwapchainImages );
+	mDynamicUniformBuffferOffsets.resize( mSettings.numSwapchainImages );
 
 	mCurrentShader = mSettings.shaders.front();
 	setupDescriptorSetsFromShaders();
@@ -200,10 +200,8 @@ void of::vk::Context::initialiseDescriptorSets( const std::map<uint64_t, of::vk:
 		// we need to get the number of descriptors by accumulating the descriptorCount
 		// over each layoutBinding
 
-		std::vector<VkDescriptorBufferInfo> descriptorBufferInfo;
-		descriptorBufferInfo.reserve( layoutInfo.size() );
-
-		VkDeviceSize runningOffset = 0;
+		bufferInfoStore[key].reserve( layoutInfo.size() ); // reserve vector size because otherwise reallocation when pushing will invalidate pointers
+		
 		// go over each binding in descriptorSetLayout
 		for ( const auto &bindingInfo : layoutInfo ){
 			// how many array elements in this binding?
@@ -212,21 +210,13 @@ void of::vk::Context::initialiseDescriptorSets( const std::map<uint64_t, of::vk:
 			// It appears that writeDescriptorSet does not immediately consume VkDescriptorBufferInfo*
 			// so we must make sure that this is around for when we need it:
 
-			size_t firstBindingArrayIdx = 0;
-			// repeat for every element in the binding array 
-			for ( size_t i = 0; i != descriptor_array_count; ++i ){
-				bufferInfoStore[key].push_back( {
-					mAlloc->getBuffer(),                // VkBuffer        buffer;
-					runningOffset,                      // VkDeviceSize    offset;
-					bindingInfo.size                    // VkDeviceSize    range;
-				} );
-				
-				runningOffset += bindingInfo.size;
-				if ( i == 0 ){
-					// remember index for array element 0 for this binding array
-					firstBindingArrayIdx = bufferInfoStore[key].size() - 1;
-				}
-			}
+			bufferInfoStore[key].push_back( {
+				mAlloc->getBuffer(),                // VkBuffer        buffer;
+				0,                                  // VkDeviceSize    offset;		// we start any new binding at offset 0, as data for each descriptor will always be separately allocated and uploaded.
+				bindingInfo.size                    // VkDeviceSize    range;
+			} );
+			
+			const auto & bufElement = bufferInfoStore[key].back();
 
 			// TODO: Q: Is it possible that elements of a descriptorSet are of different types?
 			//          If so, this will complicate this assignment, as this method only allows
@@ -237,8 +227,6 @@ void of::vk::Context::initialiseDescriptorSets( const std::map<uint64_t, of::vk:
 			// for now, assume all elements within a descriptorSet are of the same type as the first element
 			auto descriptorType = bindingInfo.binding.descriptorType;
 			auto dstBinding     = bindingInfo.binding.binding;
-
-			
 
 			// we create a writeDescriptorSet per binding.
 
@@ -251,11 +239,12 @@ void of::vk::Context::initialiseDescriptorSets( const std::map<uint64_t, of::vk:
 				descriptor_array_count,                                    // uint32_t                         descriptorCount;
 				descriptorType,                                            // VkDescriptorType                 descriptorType;
 				nullptr,                                                   // const VkDescriptorImageInfo*     pImageInfo;
-				&bufferInfoStore[key][firstBindingArrayIdx],               // const VkDescriptorBufferInfo*    pBufferInfo;
+				&bufElement,                                               // const VkDescriptorBufferInfo*    pBufferInfo;
 				nullptr,                                                   // const VkBufferView*              pTexelBufferView;
 			};
 
 			writeDescriptorSets.push_back( std::move( tmpDescriptorSet ) );
+			
 		}
 
 		
@@ -274,7 +263,15 @@ void of::vk::Context::begin(size_t frame_){
 	mFrames[mSwapIdx].mCurrentMatrixState = {}; // reset matrix state
 	// we want as many dynamic offsets as descriptorSets, 
 	// and we want them all to start at 0, when we begin the context.
-	mDynamicOffsets[mSwapIdx] = std::vector<uint32_t>(mCurrentShader->getSetLayoutKeys().size(), 0);
+	size_t totalDynamicUboDescriptorCount = 0;		// TODO: this should be queryable as a const size_t from the shader layout
+	for ( const auto &l : mCurrentShader->getSetLayouts() ){
+		// we assume that ubos don't have arrays, otherwise we'd have to 
+		// make sure the total descriptorcount takes these into account, too.
+		for ( const auto &b : l.bindingInfo ){
+			totalDynamicUboDescriptorCount += b.binding.descriptorCount;
+		}
+	};
+	mDynamicUniformBuffferOffsets[mSwapIdx] = std::vector<uint32_t>(totalDynamicUboDescriptorCount, 0);
 }
 
 // ----------------------------------------------------------------------
@@ -287,6 +284,12 @@ void of::vk::Context::end(){
 
 void of::vk::Context::reset(){
 	mAlloc->reset();
+	// free any descriptorSets allocated if descriptorPool was already initialised.
+	if ( mDescriptorPool != nullptr ){
+		vkDestroyDescriptorPool( mSettings.device, mDescriptorPool, 0 );
+		mDescriptorPool = nullptr;
+		mDescriptorSets.clear();
+	}
 }
 
 // ----------------------------------------------------------------------
@@ -407,13 +410,15 @@ bool of::vk::Context::storeCurrentMatrixState(){
 	auto & f = mFrames[mSwapIdx];
 
 	if ( f.mCurrentMatrixId == -1 ){
+		
+		size_t descriptorIdx = 0; // !TODO: query descriptor index
 
 		void * pData = nullptr;
 		// we store the dynamic offset into the first frame
 		
 		VkDeviceSize newOffset = 0;	// conversion here is annoying, but can't be helped.
 		auto success = mAlloc->allocate( sizeof( MatrixState ), pData, newOffset, mSwapIdx );
-		mDynamicOffsets[mSwapIdx][0] = (uint32_t)newOffset;
+		mDynamicUniformBuffferOffsets[mSwapIdx][descriptorIdx] = (uint32_t)newOffset;
 
 		if ( !success ){
 			ofLogError() << "out of matrix space.";
@@ -440,11 +445,11 @@ bool of::vk::Context::setUniform4f(ofFloatColor* pSource){
 	// if the shader kept track of member names, and per-member binding information. 
 
 	void * pDst = nullptr;
-	size_t setId = 1;
+	size_t descriptorIdx = 1; // !TODO: query descriptor index
 	VkDeviceSize numBytes = 4 * sizeof( float );
 	VkDeviceSize newOffset = 0;	// conversion here is annoying, but can't be helped.
 	auto success = mAlloc->allocate( numBytes, pDst, newOffset, mSwapIdx );
-	mDynamicOffsets[mSwapIdx][setId] = (uint32_t)newOffset;
+	mDynamicUniformBuffferOffsets[mSwapIdx][descriptorIdx] = (uint32_t)newOffset;
 
 	if ( !success ){
 		ofLogError() << "out of buffer space.";
@@ -461,8 +466,8 @@ bool of::vk::Context::setUniform4f(ofFloatColor* pSource){
 
 // ----------------------------------------------------------------------
 
-const std::vector<uint32_t>& of::vk::Context::getDynamicOffsetsForDescriptorSets() const{
-	return  mDynamicOffsets[mSwapIdx];
+const std::vector<uint32_t>& of::vk::Context::getDynamicUniformBufferOffsets() const{
+	return  mDynamicUniformBuffferOffsets[mSwapIdx];
 }
 
 // ----------------------------------------------------------------------
