@@ -88,14 +88,24 @@ class Context
 		std::stack<MatrixState> mMatrixStack;
 
 		int                     mCurrentMatrixId = -1;         // -1 means undefined, not yet used/saved
-		//VkDeviceSize            mCurrentMatrixStateOffset = 0; // offset into buffer to get current matrix
-
 		MatrixState             mCurrentMatrixState;
 	};
 
 	// one ContextState element per swapchain image
 	std::vector<ContextState> mFrames;
-	// dynamic offsets for descriptor bindings, flattened by set
+
+
+	/*
+
+	Q: How do we get the correct number of dynamic offsets?
+	
+	A: This depends on the sum of all bindings over all sets. 
+
+	Q: Do bindings which are not uniform buffer bindings count, too?
+
+	*/
+
+	// dynamic offsets for descriptor bindings, flattened, by set
 	// so that we can feed this directly to vkCmdBindDescriptorSets
 	std::vector<std::vector<uint32_t>> mDynamicUniformBuffferOffsets;	  	   // VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC
 
@@ -107,7 +117,6 @@ class Context
 	// currently bound shader
 	std::shared_ptr<of::vk::Shader> mCurrentShader; 
 
-	//std::map<uint32_t, std::vector<VkDescriptorSetLayoutBinding>> mDescriptorSetBindings;
 	// pool where all descriptors of this context are allocated from
 	VkDescriptorPool                                 mDescriptorPool = nullptr;
 	

@@ -82,10 +82,6 @@ void ofApp::update(){
 void ofApp::draw(){
 	mCam1.begin();
 
-	// now that the buffer have been submitted eagerly, 
-	// we need to have a memory barrier here to make sure that that
-	// buffer has finished transfering to GPU before the draw happens.
-
 	// -----
 	// draw command issued here:
 
@@ -106,15 +102,22 @@ void ofApp::draw(){
 	// the batch draw command queries current render state from context 
 	// and submits this way.
 	
-	// look at nvidia vulkan demo and at how they structure rendering.
-
 	static ofMesh ico = ofMesh::icosphere(50, 3);
 	static ofMesh box = ofMesh::box( 50, 50,50 );
 	
-	ofPushMatrix();
-	ofTranslate( -200, +200, 100 );
-	ico.draw();
-	ofPopMatrix();
+
+	
+	{
+		//auto scope = context.shaders["shader1"].getScoped(); // scoped shader unbinds when out of scope
+		
+		//context->setUniform1f( "globalColor", ofColor::yellow );
+		ofPushMatrix();
+		ofTranslate( -200, +200, 100 );
+		ico.draw();
+		ofPopMatrix();
+		
+	} // end shader scope
+	
 	
 	ofPushMatrix();
 	ofTranslate( -200, -200, -200 );

@@ -14,6 +14,16 @@ Thoughts :
 	+ a shader can own uniform tables (complete with set and binding 
 	  numbers) - these should be publicly readable 
 
+
+	  todo: we need something like a table descriptorindices for 
+	  sets and bindings - and a way to look up the descritorIndex - 
+
+	  we can attach dynamic offsets to descriptorIndices when these are
+	  written to in context - these dynamic offsets are then used when 
+	  we bind descriptorsets in renderer::draw()
+
+	  the lookup should be superfast.
+
 */
 
 
@@ -61,15 +71,13 @@ public:
 private:
 	struct UniformInfo
 	{
-		uint32_t set;							   // Descriptor set this binding belongs to
+		uint32_t set;                              // Descriptor set this binding belongs to
 		VkDescriptorSetLayoutBinding binding;	   // Describes mapping of binding number to descriptors, 
 		                                           // number and type of descriptors under a binding.
-		uint32_t size;						       // size in bytes
+		uint32_t size;                             // size in bytes (corresponds to struct size of the UBO)
 
-		// TODO: store byte offset into untyped memory used for the whole 
-		std::vector<uint32_t> offsets;
-		std::vector< std::string> members;         // each ubo descriptor binding might point to an ubo 
-		                                           // which has members with names ("projectionMatrix", "viewMatrix", ...) 
+		std::vector<uint32_t>     memberOffsets;   // each ubo descriptor binding might point to an ubo 
+		std::vector< std::string> memberNames;     // which has members with names ("projectionMatrix", "viewMatrix", ...) 
 	};
 
 	std::map<VkShaderStageFlagBits, VkShaderModule>         mModules;

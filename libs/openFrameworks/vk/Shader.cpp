@@ -17,7 +17,7 @@ void of::vk::Shader::reflect()
 	    - <empty>
 	    - binding 3 - descriptor 4
 	
-	there does not seem to be a maximum number of descriptor that we can allocate - as long as we don't use them all at the same time
+	there does not seem to be a maximum number of descriptors that we can allocate - as long as we don't use them all at the same time
 
 	is there a maximum number of descriptorsets that we can allocate?
 	
@@ -98,7 +98,7 @@ void of::vk::Shader::reflect()
 				auto mn = compiler.get_member_name( ubo.type_id, tI );
 				ofLog() << "\\-" << "[" << tI << "] : " << mn;
 			}
-
+			
 			{
 				// let's look up if the current block name already exists in the 
 				// table of bindings for this shader, and if necessary update
@@ -110,7 +110,9 @@ void of::vk::Shader::reflect()
 				VkDescriptorSetLayoutBinding  newBinding{
 					bindingNumber,                                        // uint32_t              binding;
 					VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,            // VkDescriptorType      descriptorType;
-					1,                  // <- check:array?                // uint32_t              descriptorCount;
+					// Note that descriptorCount will always be 1 with UNIFORM_BUFFER_DYNAMIC, as 
+					// arrays of UBOs are not allowed:
+					1,                                                    // uint32_t              descriptorCount;
 					layoutAccessibleFromStages,                           // VkShaderStageFlags    stageFlags;
 					nullptr,                                              // const VkSampler*      pImmutableSamplers;
 				};
