@@ -11,7 +11,7 @@ layout (set = 0, binding = 0) uniform DefaultMatrices
 	mat4 viewMatrix;
 }; // note: if you don't specify a variable name for the block its elements will live in the global namespace.
 
-layout (set = 0, binding = 1) uniform StyleSet
+layout (set = 0, binding = 1) uniform Style
 {
 	vec4 globalColor;
 } style;

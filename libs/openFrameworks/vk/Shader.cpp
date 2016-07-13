@@ -99,6 +99,9 @@ void of::vk::Shader::reflect()
 				ofLog() << "\\-" << "[" << tI << "] : " << mn;
 			}
 			
+			
+
+
 			{
 				// let's look up if the current block name already exists in the 
 				// table of bindings for this shader, and if necessary update
@@ -134,7 +137,22 @@ void of::vk::Shader::reflect()
 					}
 				}
 
-				mUniforms[ubo.name] = { descriptor_set, newBinding, storageSize };
+				mUniforms[ubo.name].set = descriptor_set;
+				mUniforms[ubo.name].binding = newBinding;
+				mUniforms[ubo.name].size = storageSize;
+				mUniforms[ubo.name].name = ubo.name;
+
+				// add name, offsets and sizes for individual members inside this ubo binding.
+
+				// get offset and range for elements from buffer
+				auto bufferRanges = compiler.get_active_buffer_ranges( ubo.id );
+				
+				for ( const auto &r : bufferRanges ){
+					auto memberName = compiler.get_member_name( ubo.type_id, r.index );
+					mUniforms[ubo.name].memberRanges[memberName] = { r.offset, r.range };
+				}
+				
+
 			}
 			// TODO: check under which circumstances descriptorCount needs to be other
 			// than 1.
@@ -205,36 +223,37 @@ void of::vk::Shader::reflect()
 	// now we have been going over vertex and other shader stages, and 
 	// we should have a pretty good idea of all the uniforms
 	// referenced in all shader stages.
+
 	// Q: i wonder if there is a way to link the different shader stages, 
 	//    so that we can see if the different visibility options for shader stages are allowed...
 
 	{	// build set layouts
 
-		// group UniformInfo by "set"
-		std::map<uint32_t, vector<UniformInfo>> uniformInfoMap;
+		// group BindingInfo by "set"
+		std::map<uint32_t, vector<BindingInfo>> bindingInfoMap;
 		for ( auto & binding : mUniforms ){
-			uniformInfoMap[binding.second.set].push_back( binding.second );
+			bindingInfoMap[binding.second.set].push_back( binding.second );
 		};
 
 		// go over all sets, and sort uniforms by binding number asc.
-		for ( auto & s : uniformInfoMap ){
+		for ( auto & s : bindingInfoMap ){
 			auto & id = s.first;
 			auto & uniformInfoVec = s.second;
-			std::sort( uniformInfoVec.begin(), uniformInfoVec.end(), []( const UniformInfo& lhs, const UniformInfo& rhs )->bool{
+			std::sort( uniformInfoVec.begin(), uniformInfoVec.end(), []( const BindingInfo& lhs, const BindingInfo& rhs )->bool{
 				return lhs.binding.binding < rhs.binding.binding;
 			} );
 		}
 
-		// now uniformInfoMap contains grouped, and sorted uniform infos.
+		// now bindingInfoMap contains grouped, and sorted uniform infos.
 		// the groups are sorted too, as that's what map<> does 
 
 		clearSetLayouts();
 
-		mSetLayouts.reserve( uniformInfoMap.size() );
-		mSetLayoutKeys.reserve( uniformInfoMap.size() );
+		mSetLayouts.reserve( bindingInfoMap.size() );
+		mSetLayoutKeys.reserve( bindingInfoMap.size() );
 
 		uint32_t i = 0;
-		for ( auto & s : uniformInfoMap ){
+		for ( auto & s : bindingInfoMap ){
 			if ( s.first != i ){
 				// Q: is this really the case? it could be possible that shaders define sets they are not using. 
 				//    and these sets would not require memory to be bound.
@@ -251,14 +270,14 @@ void of::vk::Shader::reflect()
 			flatBindings.reserve( setInfoVec.size() );
 
 			// build add all bindings to current set
-			for ( const auto & info : setInfoVec ){
-				currentLayout.bindingInfo.push_back( { info.binding , info.size } );
-				flatBindings.push_back( info.binding );
+			for ( const auto & bindingInfo : setInfoVec ){
+				currentLayout.bindings.push_back( bindingInfo );
+				flatBindings.push_back( bindingInfo.binding );
 			}
 
 			// calculate hash key for current set
 
-			currentLayout.calculateKey();
+			currentLayout.calculateHash();
 			mSetLayoutKeys.push_back( currentLayout.key ); // store key
 
 			// create & store descriptorSetLayout based on bindings for this set
@@ -347,16 +366,36 @@ of::vk::Shader::Shader( const Settings & settings_ )
 
 // ----------------------------------------------------------------------
 
-void of::vk::Shader::SetLayout::calculateKey(){
+void of::vk::Shader::SetLayout::calculateHash(){
 	// calculate hash key based on current contents
-	// of bindings and bindingSizes
-	void * baseAddr = (void*)bindingInfo.data();
+	// of set, binding information, and size 
+	
+	// first, we have to convert the binding info
+	// to plain old data, otherwise the hash will 
+	// take into account the std::map for memberRanges, 
+	// and this would make the hash non-deterministic.
+
+	struct BindingInfoPOD
+	{
+		uint32_t set;
+		VkDescriptorSetLayoutBinding binding;
+		uint32_t size;
+	};
+
+	std::vector<BindingInfoPOD> podBindingInfo;
+	podBindingInfo.reserve( bindings.size() );
+
+	for ( const auto& b : bindings ){
+		podBindingInfo.push_back( { b.set, b.binding, b.size } );
+	}
+
+	void * baseAddr = (void*)podBindingInfo.data();
 	
 	// We can calculate the size and be pretty sure that there will be no random
-	// padding data caught in the vector, as sizeof(BindingInfo) is 32, which 
+	// padding data caught in the vector, as sizeof(BindingInfoPOD) is 40, which 
 	// nicely aligns to 8 byte.
 	
-	auto msgSize = bindingInfo.size() * sizeof( BindingInfo );
+	auto msgSize = podBindingInfo.size() * sizeof( BindingInfoPOD );
 
 	this->key = SpookyHash::Hash64(baseAddr , msgSize, 0 );
 }

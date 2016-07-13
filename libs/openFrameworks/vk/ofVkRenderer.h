@@ -136,8 +136,10 @@ public:
 	virtual void disableAntiAliasing(){};
 
 	virtual void setColor( int r, int g, int b ){};
-	virtual void setColor( int r, int g, int b, int a ){};
-	virtual void setColor( const ofColor & color ){};
+	virtual void setColor( int r, int g, int b, int a ){
+		setColor( ofColor( r, g, b, a ));
+	};
+	virtual void setColor( const ofColor & color );
 	virtual void setColor( const ofColor & color, int _a ){};
 	virtual void setColor( int gray ){};
 	virtual void setHexColor( int hexColor ){};

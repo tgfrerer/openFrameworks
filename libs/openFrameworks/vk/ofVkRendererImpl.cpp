@@ -675,6 +675,9 @@ void ofVkRenderer::startRender(){
 	}
 
 	mContext->begin( swapIdx );
+
+	mContext->setUniform( "modelMatrix", ofMatrix4x4() ); // initialise modelview with identity matrix.
+
 	beginDrawCommandBuffer( mDrawCmdBuffer[swapIdx] );
 
 }
@@ -890,12 +893,16 @@ void ofVkRenderer::finishRender(){
 
 // ----------------------------------------------------------------------
 
+void ofVkRenderer::setColor( const ofColor & color ){
+	mContext->setUniform( "globalColor", ofFloatColor(color) );
+}
+
+// ----------------------------------------------------------------------
+
 void ofVkRenderer::draw( const ofMesh & mesh_, ofPolyRenderMode renderType, bool useColors, bool useTextures, bool useNormals ) const{
 
 	// store uniforms if needed
-	auto magenta = ofFloatColor( 1.f, 0.f, 1.f, 1.f );
-	mContext->setUniform4f( &magenta /* "globalColor", &ofFloatColor(1.f, 1.f, 0.f, 1.f) */ );
-	mContext->storeCurrentMatrixState();
+	mContext->flushUniformBufferState();
 
 	// as context knows which shader/pipeline is currently bound the context knows which
 	// descriptorsets are currently required.

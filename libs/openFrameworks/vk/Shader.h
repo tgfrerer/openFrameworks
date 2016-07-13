@@ -53,32 +53,36 @@ namespace vk{
 class Shader
 {
 public: 
-	struct BindingInfo	// all the information used to create a key(hash)
+	struct BufferRange
 	{
-		VkDescriptorSetLayoutBinding binding;
-		uint32_t                     size;		 // size in bytes for each binding, each item describes binding with corresponding index
+		size_t offset;
+		size_t range;
+	};
+
+	struct BindingInfo
+	{
+		uint32_t set;                                     // Descriptor set this binding belongs to
+		VkDescriptorSetLayoutBinding binding;             // Describes mapping of binding number to descriptors, 
+		                                                  // number and type of descriptors under a binding.
+		uint32_t size;                                    // size in bytes (corresponds to struct size of the UBO)
+		                                                  // which has members with names ("projectionMatrix", "viewMatrix", ...) 
+		std::string name;                                 // Uniform Buffer Block name from shader
+		std::map< std::string, BufferRange> memberRanges; // offsets for members, indexed by name
 	};
 
 	// layout for a descriptorSet
 	// use this to create vkDescriptorSetLayout
 	struct SetLayout
 	{
-		std::vector<BindingInfo> bindingInfo; // must be in ascending order, but may be sparse
+		std::vector<BindingInfo> bindings; // must be in ascending order, but may be sparse
 		uint64_t key;
 		VkDescriptorSetLayout vkLayout = nullptr;
-		void calculateKey();
+		void calculateHash();
 	};
-private:
-	struct UniformInfo
-	{
-		uint32_t set;                              // Descriptor set this binding belongs to
-		VkDescriptorSetLayoutBinding binding;	   // Describes mapping of binding number to descriptors, 
-		                                           // number and type of descriptors under a binding.
-		uint32_t size;                             // size in bytes (corresponds to struct size of the UBO)
 
-		std::vector<uint32_t>     memberOffsets;   // each ubo descriptor binding might point to an ubo 
-		std::vector< std::string> memberNames;     // which has members with names ("projectionMatrix", "viewMatrix", ...) 
-	};
+private:
+	
+	
 
 	std::map<VkShaderStageFlagBits, VkShaderModule>         mModules;
 	std::vector<VkPipelineShaderStageCreateInfo>	        mStages;
@@ -87,7 +91,7 @@ private:
 	
 	// map from uniform name to uniform set and binding info 
 	// when we say "uniform" this may be any of VkDescriptorType, so: UBOs, samplers ...
-	std::map<std::string, UniformInfo> mUniforms;
+	std::map<std::string, BindingInfo> mUniforms;
 
 	// sequence of setLayouts forming the pipelineLayout for this shader
 	std::vector<SetLayout> mSetLayouts;
@@ -143,7 +147,7 @@ public:
 
 	// ----------------------------------------------------------------------
 
-	/*const std::map <std::string, UniformInfo>& getUniforms() const{
+	/*const std::map <std::string, BindingInfo>& getUniforms() const{
 		return mUniforms;
 	}*/
 

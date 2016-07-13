@@ -24,27 +24,53 @@ void of::vk::Context::setup(ofVkRenderer* renderer_){
 	mAlloc = std::make_shared<of::vk::Allocator>(settings);
 	mAlloc->setup();
 
-	mMatrixStateBufferInfo = {
-		mAlloc->getBuffer(),   // VkBuffer        buffer;
-		0,                     // VkDeviceSize    offset;
-		sizeof(MatrixState),   // VkDeviceSize    range;
-	};
+	mCurrentShader = mSettings.shaders.front();
 
-	mStyleStateBufferInfo = {
-		mAlloc->getBuffer(),
-		0,
-		sizeof( StyleState ),
-	};
-
-	if (!mFrames.empty())
-		mFrames.clear();
-	
-	mFrames.resize( mSettings.numSwapchainImages, ContextState() );
 	mDynamicUniformBuffferOffsets.resize( mSettings.numSwapchainImages );
 
-	mCurrentShader = mSettings.shaders.front();
 	setupDescriptorSetsFromShaders();
+	setupFrameStateFromShaders();
 	
+}
+// ----------------------------------------------------------------------
+
+void of::vk::Context::setupFrameStateFromShaders(){
+
+	Frame frame;
+
+	// set space aside to back all descriptorsets 
+	for ( const auto & l : mDescriptorSetLayouts ){
+		const auto & key = l.first;
+		const auto & layout = l.second;
+
+		auto & setState = frame.mUniformBufferState[key] = DescriptorSetState();
+		
+		setState.bindingOffsets.resize( layout.bindings.size(), 0 );
+
+		for ( const auto &binding : layout.bindings ){
+			UniformBufferState uboState;
+			uboState.name = binding.name;
+			uboState.struct_size = binding.size;
+			uboState.bindingId = binding.binding.binding;
+			uboState.state.data.resize( binding.size, 0 );
+
+			setState.bindings.emplace_back( std::move( uboState ));
+			UniformBufferState * lastUniformBufferStateAddr = &(setState.bindings.back());
+
+			for ( const auto & member : binding.memberRanges ){
+				const auto & range = member.second;
+				const auto & uniformName = member.first;
+				UniformMember m;
+				m.offset = range.offset;
+				m.range = range.range;
+				m.buffer = lastUniformBufferStateAddr;
+				frame.mUniformMembers[uniformName] = std::move( m );
+			}
+		}
+		
+	}
+
+	mCurrentFrameState = std::move( frame );
 }
 
 // ----------------------------------------------------------------------
@@ -104,7 +130,7 @@ void of::vk::Context::allocateDescriptorSets( const std::map<uint64_t, of::vk::S
 
 // ----------------------------------------------------------------------
 
-// create a descriptor pool that has enough of each descriptor type as
+// Create a descriptor pool that has enough of each descriptor type as
 // referenced in our map of SetLayouts held in mDescriptorSetLayout
 // this might, if a descriptorPool was previously allocated, 
 // reset that descriptorPool and also delete any descriptorSets associated
@@ -118,7 +144,7 @@ void of::vk::Context::setupDescriptorPool( const std::map<uint64_t, of::vk::Shad
 	std::map<VkDescriptorType, uint32_t> poolCounts; // size of pool necessary for each descriptor type
 	for ( const auto &u : setLayouts_ ){
 
-		for ( const auto & bindingInfo : u.second.bindingInfo ){
+		for ( const auto & bindingInfo : u.second.bindings ){
 			const auto & it = poolCounts.find( bindingInfo.binding.descriptorType );
 			if ( it == poolCounts.end() ){
 				// descriptor of this type not yet found - insert new
@@ -166,13 +192,15 @@ void of::vk::Context::setupDescriptorPool( const std::map<uint64_t, of::vk::Shad
 // ----------------------------------------------------------------------
 
 void of::vk::Context::initialiseDescriptorSets( const std::map<uint64_t, of::vk::Shader::SetLayout>& setLayouts_, std::map<uint64_t, VkDescriptorSet>& descriptorSets_ ){
+	
 	// At this point the descriptors within the set are untyped 
 	// so we have to write type information into it, 
 	// as well as binding information so the set knows how to ingest data from memory
 
 	std::vector<VkWriteDescriptorSet> writeDescriptorSets;
 	writeDescriptorSets.reserve( mDescriptorSets.size() );
-	// we need to store buffer info temporarily as the VkWriteDescriptorSet needs 
+	
+	// We need to store buffer info temporarily as the VkWriteDescriptorSet needs 
 	// to point to a resource outside of the scope of the for loop it is created
 	// within.
 	std::map < uint64_t, std::vector<VkDescriptorBufferInfo>> bufferInfoStore; 
@@ -181,28 +209,27 @@ void of::vk::Context::initialiseDescriptorSets( const std::map<uint64_t, of::vk:
 	for (auto & layout : setLayouts_ )
 	{
 		const auto& key = layout.first;
-		const auto& layoutInfo = layout.second.bindingInfo;
+		const auto& layoutInfo = layout.second.bindings;
 		// !TODO: deal with bindings which are not uniform buffers.
 
-		// since within context all our uniform bindings
+		// Since within context all our uniform bindings 
 		// are dynamic, we should be able to bind them all to the same buffer
-		// and the same base address. when drawing, the dynamic offset should point to 
+		// and the same base address. When drawing, the dynamic offset should point to 
 		// the correct memory location for each ubo element.
 		
-		// this is a crass simplification, but if we can get away with it, the better =)
-
-		// note that here, you point the writeDescriptorSet to dstBinding and dstSet, 
-		// if descriptorCount is greater than the number of bindings in the set, 
+		// Note that here, you point the writeDescriptorSet to dstBinding and dstSet; 
+		// if descriptorCount was greater than the number of bindings in the set, 
 		// the next bindings will be overwritten.
 
 		uint32_t descriptor_array_count = 0;
 
-		// we need to get the number of descriptors by accumulating the descriptorCount
+		// We need to get the number of descriptors by accumulating the descriptorCount
 		// over each layoutBinding
 
-		bufferInfoStore[key].reserve( layoutInfo.size() ); // reserve vector size because otherwise reallocation when pushing will invalidate pointers
+		// Reserve vector size because otherwise reallocation when pushing will invalidate pointers
+		bufferInfoStore[key].reserve( layoutInfo.size() ); 
 		
-		// go over each binding in descriptorSetLayout
+		// Go over each binding in descriptorSetLayout
 		for ( const auto &bindingInfo : layoutInfo ){
 			// how many array elements in this binding?
 			descriptor_array_count = bindingInfo.binding.descriptorCount;
@@ -218,17 +245,15 @@ void of::vk::Context::initialiseDescriptorSets( const std::map<uint64_t, of::vk:
 			
 			const auto & bufElement = bufferInfoStore[key].back();
 
-			// TODO: Q: Is it possible that elements of a descriptorSet are of different types?
-			//          If so, this will complicate this assignment, as this method only allows
-			//          us to write elements of the same type.
-			//       A: we can very strongly assume it is so, as any descriptors without named 
-			//          set are placed into set 0
-			// 
-			// for now, assume all elements within a descriptorSet are of the same type as the first element
+			// Q: Is it possible that elements of a descriptorSet are of different VkDescriptorType?
+			//
+			// A: Yes. This is why this method should write only one binding (= Descriptor) 
+			//    at a time - as all members of a binding must share the same VkDescriptorType.
+			
 			auto descriptorType = bindingInfo.binding.descriptorType;
 			auto dstBinding     = bindingInfo.binding.binding;
 
-			// we create a writeDescriptorSet per binding.
+			// Create one writeDescriptorSet per binding.
 
 			VkWriteDescriptorSet tmpDescriptorSet{
 				VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,                    // VkStructureType                  sType;
@@ -246,7 +271,6 @@ void of::vk::Context::initialiseDescriptorSets( const std::map<uint64_t, of::vk:
 			writeDescriptorSets.push_back( std::move( tmpDescriptorSet ) );
 			
 		}
-
 		
 	}
 
@@ -255,23 +279,22 @@ void of::vk::Context::initialiseDescriptorSets( const std::map<uint64_t, of::vk:
 
 // ----------------------------------------------------------------------
 
-// ----------------------------------------------------------------------
-
 void of::vk::Context::begin(size_t frame_){
 	mSwapIdx = frame_;
 	mAlloc->free(frame_);
-	mFrames[mSwapIdx].mCurrentMatrixState = {}; // reset matrix state
-	// we want as many dynamic offsets as descriptorSets, 
-	// and we want them all to start at 0, when we begin the context.
-	size_t totalDynamicUboDescriptorCount = 0;		// TODO: this should be queryable as a const size_t from the shader layout
-	for ( const auto &l : mCurrentShader->getSetLayouts() ){
-		// we assume that ubos don't have arrays, otherwise we'd have to 
-		// make sure the total descriptorcount takes these into account, too.
-		for ( const auto &b : l.bindingInfo ){
-			totalDynamicUboDescriptorCount += b.binding.descriptorCount;
-		}
-	};
-	mDynamicUniformBuffferOffsets[mSwapIdx] = std::vector<uint32_t>(totalDynamicUboDescriptorCount, 0);
+
+	// TODO: bind shader here
+	
+	// make sure all shader uniforms are marked dirty when context is started fresh.
+	for ( auto & uniformBuffer : mCurrentFrameState.mUniformMembers ){
+		auto & buffer = *uniformBuffer.second.buffer;
+		buffer.lastSavedStackId = -1;
+		buffer.stateStack.clear();
+		buffer.state.memoryOffset = 0;
+		buffer.state.stackId = -1;
+		buffer.state.data.resize( buffer.struct_size, 0 );
+	}
+
 }
 
 // ----------------------------------------------------------------------
@@ -294,47 +317,40 @@ void of::vk::Context::reset(){
 
 // ----------------------------------------------------------------------
 
-std::vector<VkDescriptorBufferInfo> of::vk::Context::getDescriptorBufferInfo(std::string uboName_){
-	// !TODO: IMPLEMENT!!! return correct buffer for ubo name
-	// this means, we might have more than one UBO for the context. 
-	// next to the matrices, we might want to set global colors and other dynamic 
-	// uniform parameters for the default shaders via ubo
-	return{ mMatrixStateBufferInfo, mStyleStateBufferInfo };
-}
-
 const VkBuffer & of::vk::Context::getVkBuffer() const {
 	return mAlloc->getBuffer();
 }
 
 // ----------------------------------------------------------------------
 
-void of::vk::Context::push(){
-	auto & f = mFrames[mSwapIdx];
-	f.mMatrixStack.push( f.mCurrentMatrixState );
-	f.mMatrixIdStack.push( f.mCurrentMatrixId );
-	f.mCurrentMatrixId = -1;
+void of::vk::Context::pushBuffer( const std::string & ubo_ ){
+	auto uboMemberWithParentWithName = std::find_if( mCurrentFrameState.mUniformMembers.begin(), mCurrentFrameState.mUniformMembers.end(),
+		[&ubo_]( const std::pair<std::string, UniformMember> & lhs ) -> bool{
+		return ( lhs.second.buffer->name == ubo_ );
+	} );
+
+	if ( uboMemberWithParentWithName != mCurrentFrameState.mUniformMembers.end() ){
+		( uboMemberWithParentWithName->second.buffer->push() );
+	}
 }
 
 // ----------------------------------------------------------------------
 
-void of::vk::Context::pop(){
-	auto & f = mFrames[mSwapIdx];
+void of::vk::Context::popBuffer( const std::string & ubo_ ){
+	auto uboMemberWithParentWithName = std::find_if( mCurrentFrameState.mUniformMembers.begin(), mCurrentFrameState.mUniformMembers.end(),
+		[&ubo_]( const std::pair<std::string, UniformMember> & lhs ) -> bool{
+		return ( lhs.second.buffer->name == ubo_ );
+	} );
 
-	if ( !f.mMatrixStack.empty() ){
-		f.mCurrentMatrixState = f.mMatrixStack.top(); f.mMatrixStack.pop();
-		f.mCurrentMatrixId = f.mMatrixIdStack.top(); f.mMatrixIdStack.pop();
-	}
-	else{
-		ofLogError() << "Context:: Cannot push Matrix state further back than 0";
+	if ( uboMemberWithParentWithName != mCurrentFrameState.mUniformMembers.end() ){
+		( uboMemberWithParentWithName->second.buffer->pop() );
 	}
 }
 
 // ----------------------------------------------------------------------
 
 bool of::vk::Context::storeMesh( const ofMesh & mesh_, std::vector<VkDeviceSize>& vertexOffsets, std::vector<VkDeviceSize>& indexOffsets ){
-	// TODO: add option to interleave 
-	
-	auto & f = mFrames[mSwapIdx];
+	// CONSIDER: add option to interleave 
 	
 	uint32_t numVertices   = mesh_.getVertices().size();
 	uint32_t numColors     = mesh_.getColors().size();
@@ -401,67 +417,64 @@ bool of::vk::Context::storeMesh( const ofMesh & mesh_, std::vector<VkDeviceSize>
 
 // ----------------------------------------------------------------------
 
-bool of::vk::Context::storeCurrentMatrixState(){
-	
-	// Matrix data is only uploaded if current matrix id is -1, 
-	// meaning there was no current matrix or the current matrix
-	// was invalidated
-	
-	auto & f = mFrames[mSwapIdx];
+void of::vk::Context::flushUniformBufferState( ){
 
-	if ( f.mCurrentMatrixId == -1 ){
+	mDynamicUniformBuffferOffsets[mSwapIdx].clear();
+
+	// iterate over all currently bound descriptorsets
+
+	for ( const auto& key : mCurrentShader->getSetLayoutKeys() ){
+		DescriptorSetState & descriptorSetState = mCurrentFrameState.mUniformBufferState[key];
+
+		std::vector<uint32_t>::iterator offsetIt = descriptorSetState.bindingOffsets.begin();
 		
-		size_t descriptorIdx = 0; // !TODO: query descriptor index
+		// iterate over all currently bound descriptors 
+		for ( auto &uniformBuffer : descriptorSetState.bindings ){
 
-		void * pData = nullptr;
-		// we store the dynamic offset into the first frame
-		
-		VkDeviceSize newOffset = 0;	// conversion here is annoying, but can't be helped.
-		auto success = mAlloc->allocate( sizeof( MatrixState ), pData, newOffset, mSwapIdx );
-		mDynamicUniformBuffferOffsets[mSwapIdx][descriptorIdx] = (uint32_t)newOffset;
+			// this is just for security.
+			if ( offsetIt == descriptorSetState.bindingOffsets.end() ){
+				ofLogError() << "Device offsets list is not of same size as uniformbuffer list.";
+				break;
+			}
 
-		if ( !success ){
-			ofLogError() << "out of matrix space.";
-			return false;
+			// only write to GPU if descriptor is dirty
+			if ( uniformBuffer.state.stackId == -1 ){
+
+				void * pDst = nullptr;
+				
+				VkDeviceSize numBytes = uniformBuffer.struct_size;
+				VkDeviceSize newOffset = 0;	// device GPU memory offset for this buffer 
+				auto success = mAlloc->allocate( numBytes, pDst, newOffset, mSwapIdx );
+				*offsetIt = (uint32_t)newOffset; // store offset into offsets list.
+				if ( !success ){
+					ofLogError() << "out of buffer space.";
+				}
+				// ----------| invariant: allocation successful
+
+				// Save data into GPU buffer
+				memcpy( pDst, uniformBuffer.state.data.data(), numBytes );
+				// store GPU memory offset with data
+				uniformBuffer.state.memoryOffset = newOffset;
+
+				++uniformBuffer.lastSavedStackId; 
+				uniformBuffer.state.stackId = uniformBuffer.lastSavedStackId;
+				
+			} else { 
+				// otherwise, just re-use old memory offset, and therefore old memory
+				*offsetIt = uniformBuffer.state.memoryOffset;
+			}
+
+			++offsetIt;
 		}
 
-		// ----------| invariant: allocation successful
+		// now append descriptorOffsets for this set to vector of descriptorOffsets for this layout
+		mDynamicUniformBuffferOffsets[mSwapIdx].insert(
+			mDynamicUniformBuffferOffsets[mSwapIdx].end(),
+			descriptorSetState.bindingOffsets.begin(), descriptorSetState.bindingOffsets.end() 
+		);
 
-		// Save current matrix state into GPU buffer
-		memcpy( pData, &f.mCurrentMatrixState, sizeof( MatrixState ));
+	}	// end for ( const auto& key : mCurrentShader->getSetLayoutKeys() )
 
-		f.mCurrentMatrixId = f.mSavedMatricesLastElement;
-		++ f.mSavedMatricesLastElement;
-		
-	}
-	return true;
-}
-
-// ----------------------------------------------------------------------
-bool of::vk::Context::setUniform4f(ofFloatColor* pSource){
-	
-	// TODO: let shader perform uniform lookup, so that we know where to write to
-	// The shader should be able to tell the offset per member for the buffer in question
-	// if the shader kept track of member names, and per-member binding information. 
-
-	void * pDst = nullptr;
-	size_t descriptorIdx = 1; // !TODO: query descriptor index
-	VkDeviceSize numBytes = 4 * sizeof( float );
-	VkDeviceSize newOffset = 0;	// conversion here is annoying, but can't be helped.
-	auto success = mAlloc->allocate( numBytes, pDst, newOffset, mSwapIdx );
-	mDynamicUniformBuffferOffsets[mSwapIdx][descriptorIdx] = (uint32_t)newOffset;
-
-	if ( !success ){
-		ofLogError() << "out of buffer space.";
-		return false;
-	}
-
-	// ----------| invariant: allocation successful
-
-	// Save data into GPU buffer
-	memcpy( pDst, pSource, numBytes );
-
-	return true;
 }
 
 // ----------------------------------------------------------------------
@@ -473,31 +486,24 @@ const std::vector<uint32_t>& of::vk::Context::getDynamicUniformBufferOffsets() c
 // ----------------------------------------------------------------------
 
 void of::vk::Context::setViewMatrix( const ofMatrix4x4 & mat_ ){
-	auto & f = mFrames[mSwapIdx]; 
-	f.mCurrentMatrixId = -1;
-	f.mCurrentMatrixState.viewMatrix = mat_;
+	setUniform( "viewMatrix", mat_ );
 }
 
 // ----------------------------------------------------------------------
 
 void of::vk::Context::setProjectionMatrix( const ofMatrix4x4 & mat_ ){
-	auto & f = mFrames[mSwapIdx]; 
-	f.mCurrentMatrixId = -1;
-	f.mCurrentMatrixState.projectionMatrix = mat_;
+	setUniform( "projectionMatrix", mat_ );
 }
 
 // ----------------------------------------------------------------------
 
 void of::vk::Context::translate( const ofVec3f& v_ ){
-	auto & f = mFrames[mSwapIdx];
-	f.mCurrentMatrixId = -1;
-	f.mCurrentMatrixState.modelMatrix.glTranslate( v_ );
+	getUniform<ofMatrix4x4>( "modelMatrix" ).glTranslate( v_ );
 }
 
 // ----------------------------------------------------------------------
 
 void of::vk::Context::rotate( const float& degrees_, const ofVec3f& axis_ ){
-	auto & f = mFrames[mSwapIdx];
-	f.mCurrentMatrixId = -1;
-	f.mCurrentMatrixState.modelMatrix.glRotate( degrees_, axis_.x, axis_.y, axis_.z );
+	getUniform<ofMatrix4x4>( "modelMatrix" ).glRotate( degrees_, axis_.x, axis_.y, axis_.z );
 }
+

@@ -516,13 +516,13 @@ ofMatrix4x4 ofVkRenderer::getCurrentOrientationMatrix() const
 // ----------------------------------------------------------------------
 
 void ofVkRenderer::pushMatrix(){
-	mContext->push();
+	mContext->pushMatrix();
 }
 
 // ----------------------------------------------------------------------
 
 void ofVkRenderer::popMatrix(){
-	mContext->pop();
+	mContext->popMatrix();
 }
 
 // ----------------------------------------------------------------------
@@ -589,6 +589,7 @@ ofFillFlag ofVkRenderer::getFillMode()
 
 // ----------------------------------------------------------------------
 
+
 ofColor ofVkRenderer::getBackgroundColor()
 {
 	return ofColor();
@@ -632,7 +633,7 @@ of3dGraphics & ofVkRenderer::get3dGraphics()
 // ----------------------------------------------------------------------
 
 void ofVkRenderer::bind( const ofCamera & camera, const ofRectangle & viewport ){
-	mContext->push();
+	mContext->pushMatrix();
 	mContext->setViewMatrix(camera.getModelViewMatrix());
 
 	// Clip space transform:
@@ -651,6 +652,6 @@ void ofVkRenderer::bind( const ofCamera & camera, const ofRectangle & viewport )
 // ----------------------------------------------------------------------
 
 void ofVkRenderer::unbind( const ofCamera& camera ){
-	mContext->pop();
+	mContext->popMatrix();
 }
 

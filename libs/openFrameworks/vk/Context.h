@@ -59,55 +59,79 @@ class Context
 {
 	shared_ptr<of::vk::Allocator> mAlloc;
 
-	// A GPU-backed buffer object to back these
-	// matrices.
-	VkDescriptorBufferInfo mMatrixStateBufferInfo;
-	struct MatrixState
-	{
-		// IMPORTANT: this sequence needs to map the sequence in the UBO block 
-		// within the shader!!!
-		ofMatrix4x4 projectionMatrix;
-		ofMatrix4x4 modelMatrix;
-		ofMatrix4x4 viewMatrix;
-	};
-
-	VkDescriptorBufferInfo mStyleStateBufferInfo;
-	struct StyleState
-	{
-		ofVec4f globalColor;
-	};
-
-	struct ContextState
-	{
-		size_t mSavedMatricesLastElement = 0;
-
-		// stack of all pushed or popped matrices.
-		// -1 indicates the matrix has not been saved yet
-		// positive integer indicates matrix index into savedmatrices
-		stack<int>              mMatrixIdStack;
-		std::stack<MatrixState> mMatrixStack;
-
-		int                     mCurrentMatrixId = -1;         // -1 means undefined, not yet used/saved
-		MatrixState             mCurrentMatrixState;
-	};
-
-	// one ContextState element per swapchain image
-	std::vector<ContextState> mFrames;
-
-
-	/*
-
-	Q: How do we get the correct number of dynamic offsets?
-	
-	A: This depends on the sum of all bindings over all sets. 
-
-	Q: Do bindings which are not uniform buffer bindings count, too?
-
-	*/
-
-	// dynamic offsets for descriptor bindings, flattened, by set
+	// dynamic offsets for descriptor bindings, flattened by set
 	// so that we can feed this directly to vkCmdBindDescriptorSets
 	std::vector<std::vector<uint32_t>> mDynamicUniformBuffferOffsets;	  	   // VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC
+
+	// -----------	Frame state CPU memory backing
+
+	struct UniformBufferData
+	{
+		int32_t  stackId = -1;
+		uint32_t memoryOffset = 0;	// gpu memory offset once data has been stored
+		std::vector<uint8_t> data;  // this is the data - size of this vector depends on struct_size received from spirV-cross, this is the size for the whole binding / for the whole ubo struct.
+	};
+
+	struct UniformBufferState
+	{
+		uint32_t bindingId   =  0;    // binding id within set
+		uint32_t struct_size =  0;    // size in bytes of UniformBufferData.data vec
+		int32_t  lastSavedStackId = -1;    // rolling count of elements saved to stack
+		UniformBufferData state;
+		
+		std::string name; // name for this UniformBuffer Block
+		std::list<UniformBufferData> stateStack;
+		
+		void push(){
+			stateStack.push_back( state );
+			state.stackId = -1;
+		};
+		
+		void pop(){
+			if ( stateStack.empty() ){
+				ofLog() << "cannot pop empty uniform buffer state";
+				return;
+			}
+			state = stateStack.back();
+			stateStack.pop_back();			
+		};
+
+	};
+
+	struct UniformMember   // sub-element of a binding witin a set
+	{
+		// the important thing here is that a binding can have multiple uniforms
+		// (or UBO members as they are called in SPIR-V)
+
+		// but one uniform can only belong to one binding.
+
+		UniformBufferState* buffer; // this points to the buffer that will be affected by this binding - there is one buffer for each binding  - 
+									// this is the index into the bufferOffsets vector for the shader layout this binding belongs to.
+
+		uint32_t offset;
+		uint32_t range;
+	};
+
+	struct DescriptorSetState
+	{
+		// all bindings associated with this descriptor set
+		std::list<UniformBufferState> bindings;
+		// GPU memory offset for all currently bound descriptors 
+		std::vector<uint32_t>  bindingOffsets;
+	};
+
+	struct Frame
+	{
+		// map from descriptor set id to descriptor set state
+		std::map < uint64_t, DescriptorSetState > mUniformBufferState;
+		// map from uniform name to set and binding for uniform
+		std::map<std::string, UniformMember> mUniformMembers;
+	};
+
+	Frame mCurrentFrameState;
+
+	// -----------
+
 
 	int mSwapIdx = 0;
 
@@ -127,6 +151,9 @@ class Context
 	std::map<uint64_t, VkDescriptorSet>              mDescriptorSets;
 
 	bool setupDescriptorSetsFromShaders();
+
+	// sets up backing memory to track state, based on shaders
+	void setupFrameStateFromShaders();
 
 	void setupDescriptorPool( const std::map<uint64_t, of::vk::Shader::SetLayout>& setLayouts_, VkDescriptorPool& descriptorPool_, std::map<uint64_t, VkDescriptorSet>& descriptorSets_ );
 	
@@ -159,39 +186,6 @@ public:
 		reset();
 	};
 
-	// get dynamic offsets for all descriptorsets which are currently bound
-	const std::vector<uint32_t>& getDynamicUniformBufferOffsets() const;
-
-	// return a vector of descriptorsets which are currently bound
-	// in order of the current pipeline's descriptorSetLayout.
-	std::vector<VkDescriptorSet> getBoundDescriptorSets(){
-		std::vector<VkDescriptorSet> ret;
-		const auto & keyVec = mCurrentShader->getSetLayoutKeys();
-		ret.reserve( keyVec.size() );
-		for ( auto & key : keyVec ){
-			// Caution: we just assume there is a descriptorset 0!
-			ret.push_back( mDescriptorSets[key] );
-		}
-		return ret;
-	};
-
-	// get descriptorSetLayout for a shader
-	std::vector<VkDescriptorSetLayout> getDescriptorSetLayoutForShader(const shared_ptr<of::vk::Shader>& shader_){
-		std::vector<VkDescriptorSetLayout> ret;
-		auto & layouts = shader_->getSetLayouts();
-		if ( !layouts.empty() ){
-			// Caution: we just assume there is a descriptorset 0!
-			for ( const auto&layoutInfo : layouts ){
-				ret.push_back( layoutInfo.vkLayout);
-			}
-		}
-		return ret;
-	};
-
-	// return buffer info for buffer mapped to ubo with name uboName_
-	std::vector<VkDescriptorBufferInfo> getDescriptorBufferInfo(std::string uboName_);
-	const VkBuffer&         getVkBuffer() const;
-
 	// allocates memory on the GPU for each swapchain image (call rarely)
 	void setup( ofVkRenderer* renderer );
 
@@ -201,28 +195,43 @@ public:
 	/// map uniform buffers so that they can be written to.
 	/// \return an address into gpu readable memory
 	/// also resets indices into internal matrix state structures
-	void begin(size_t frame_);
+	void begin( size_t frame_ );
 
 	// unmap uniform buffers 
 	void end();
 
-	// whenever a draw command occurs, the current matrix id has to be either
+	// write current descriptor buffer state to GPU buffer
+	// updates descriptorOffsets - saves these in frameShadow
+	void flushUniformBufferState();
 
-	inline const ofMatrix4x4 & getViewMatrix() const {
-		// TODO: add error checking: if mSwapIdx == -1
-		// we are not allowed to getViewMatrix, since we are not within an open Context.
-		return mFrames[mSwapIdx].mCurrentMatrixState.viewMatrix;
-	};
+	// return the one buffer which is used for all dynamic buffer memory within this context.
+	const VkBuffer& getVkBuffer() const;
 
-	inline const ofMatrix4x4 & getModelMatrix() const {
-		// TODO: add error checking: if mSwapIdx == -1
-		return mFrames[mSwapIdx].mCurrentMatrixState.modelMatrix;
-	};
+	// get dynamic offsets for all descriptorsets which are currently bound
+	const std::vector<uint32_t>& getDynamicUniformBufferOffsets() const;
 
-	inline const ofMatrix4x4 & projectionMatrix() const {
-		// TODO: add error checking: if mSwapIdx == -1
-		return mFrames[mSwapIdx].mCurrentMatrixState.projectionMatrix;
-	}
+	// return a vector of descriptorsets which are currently bound
+	// in order of the current pipeline's descriptorSetLayout.
+	std::vector<VkDescriptorSet> getBoundDescriptorSets();;
+
+	// get descriptorSetLayout for a shader
+	std::vector<VkDescriptorSetLayout> getDescriptorSetLayoutForShader( const shared_ptr<of::vk::Shader>& shader_ );;
+
+	// lazily store uniform data into local CPU memory
+	template<typename UniformT>
+	bool setUniform( const std::string& name_, const UniformT & pSource );
+
+	// fetch uniform
+	template<typename UniformT>
+	UniformT & getUniform( const std::string & name_ );
+
+	// fetch const uniform
+	template<typename UniformT>
+	const UniformT & getUniform( const std::string & name_ ) const;
+
+	inline const ofMatrix4x4 & getViewMatrix()       const { return getUniform<ofMatrix4x4>( "viewMatrix"       ); };
+	inline const ofMatrix4x4 & getModelMatrix()      const { return getUniform<ofMatrix4x4>( "modelMatrix"      ); };
+	inline const ofMatrix4x4 & getProjectionMatrix() const { return getUniform<ofMatrix4x4>( "projectionMatrix" ); };
 
 	void setViewMatrix( const ofMatrix4x4& mat_ );
 	void setProjectionMatrix( const ofMatrix4x4& mat_ );
@@ -230,22 +239,118 @@ public:
 	void translate(const ofVec3f& v_);
 	void rotate( const float & degrees_, const ofVec3f& axis_ );
 
-	// push currentMatrix state
-	void push();
-	// pop current Matrix state
-	void pop();
+	// push local ubo uniform group state
+	void pushBuffer( const std::string& ubo_ );
+	
+	// pop local ubo uniform group state
+	void popBuffer( const std::string& ubo_ );
 
-	// vertex memory operations
+	// push currentMatrix state
+	void pushMatrix(){
+		pushBuffer( "DefaultMatrices" );
+	};
+	// pop current Matrix state
+	void popMatrix(){
+		popBuffer( "DefaultMatrices" );
+	};
 
 	// store vertex and index data inside the current dynamic memory frame
 	// return memory mapping offets based on current memory buffer.
 	bool storeMesh( const ofMesh& mesh_, std::vector<VkDeviceSize>& vertexOffsets, std::vector<VkDeviceSize>& indexOffsets );
-
-	// write current matrix state to gpu backed memory if necessary
-	bool storeCurrentMatrixState();
-
-	bool setUniform4f(ofFloatColor * pSource);
+	
 };
+
+// ----------------------------------------------------------------------
+
+template<typename UniformT>
+inline bool Context::setUniform( const std::string & name_, const UniformT & uniform_ ){
+	auto uboIt = mCurrentFrameState.mUniformMembers.find( name_ );
+	if ( uboIt == mCurrentFrameState.mUniformMembers.end() ){
+		ofLogWarning() << "Cannot set uniform: '" << name_ << "' - Not found in shader.";
+		return false;
+	}
+	auto & ubo = uboIt->second;
+	if ( sizeof( typename UniformT ) != ubo.range ){
+		// assignment would overshoot - possibly wrong type for assignment : refuse assignment.
+		ofLogWarning() << "Cannot assign to uniform: '" << name_ << "' - data size is incorrect: " << sizeof( UniformT ) << " Byte, expected: " << ubo.range << "Byte";
+		return false;
+	}
+	UniformT& uniform = reinterpret_cast<UniformT&>( ( ubo.buffer->state.data[ubo.offset] ) );
+	uniform = uniform_;
+	ubo.buffer->state.stackId = -1; // mark dirty
+	return true;
+};
+
+// ----------------------------------------------------------------------
+
+template<typename UniformT>
+inline UniformT& Context::getUniform( const std::string & name_ ){
+	static UniformT errUniform;
+	auto uboIt = mCurrentFrameState.mUniformMembers.find( name_ );
+	if ( uboIt == mCurrentFrameState.mUniformMembers.end() ){
+		ofLogWarning() << "Cannot get uniform: '" << name_ << "' - Not found in shader.";
+		return errUniform;
+	}
+	auto & ubo = uboIt->second;
+	if ( sizeof( UniformT ) != ubo.range ){
+		// assignment would overshoot - return a default uniform.
+		ofLogWarning() << "Cannot get uniform: '" << name_ << "' - data size is incorrect: " << sizeof( UniformT ) << " Byte, expected: " << ubo.range << "Byte";
+		return errUniform;
+	}
+	UniformT& uniform = reinterpret_cast<UniformT&>( ( ubo.buffer->state.data[ubo.offset] ) );
+	ubo.buffer->state.stackId = -1; // mark dirty
+	return uniform;
+};
+
+// ----------------------------------------------------------------------
+
+template<typename UniformT>
+inline const UniformT& Context::getUniform( const std::string & name_ ) const {
+	static const UniformT errUniform;
+	auto uboIt = mCurrentFrameState.mUniformMembers.find( name_ );
+	if ( uboIt == mCurrentFrameState.mUniformMembers.end() ){
+		ofLogWarning() << "Cannot get uniform: '" << name_ << "' - Not found in shader.";
+		return errUniform;
+	}
+	auto & ubo = uboIt->second;
+	if ( sizeof( UniformT ) != ubo.range ){
+		// assignment would overshoot - return a default uniform.
+		ofLogWarning() << "Cannot get uniform: '" << name_ << "' - data size is incorrect: " << sizeof( UniformT ) << " Byte, expected: " << ubo.range << "Byte";
+		return errUniform;
+	}
+	const UniformT& uniform = reinterpret_cast<UniformT&>( ( ubo.buffer->state.data[ubo.offset] ) );
+	return uniform;
+};
+
+// ----------------------------------------------------------------------
+
+inline std::vector<VkDescriptorSet> of::vk::Context::getBoundDescriptorSets(){
+	// return a vector of descriptorsets which are currently bound
+	// in order of the current pipeline's descriptorSetLayout.
+	std::vector<VkDescriptorSet> ret;
+	const auto & keyVec = mCurrentShader->getSetLayoutKeys();
+	ret.reserve( keyVec.size() );
+	for ( auto & key : keyVec ){
+		// Caution: we just assume there is a descriptorset 0!
+		ret.push_back( mDescriptorSets[key] );
+	}
+	return ret;
+}
+
+// ----------------------------------------------------------------------
+
+inline std::vector<VkDescriptorSetLayout> of::vk::Context::getDescriptorSetLayoutForShader( const shared_ptr<of::vk::Shader>& shader_ ){
+	// get descriptorSetLayout for a shader
+	std::vector<VkDescriptorSetLayout> ret;
+	auto & layouts = shader_->getSetLayouts();
+	if ( !layouts.empty() ){
+		// Caution: we just assume there is a descriptorset 0!
+		for ( const auto&layoutInfo : layouts ){
+			ret.push_back( layoutInfo.vkLayout );
+		}
+	}
+	return ret;
+}
 
 } // namespace vk
 } // namespace of

@@ -81,7 +81,7 @@ void ofApp::update(){
 //--------------------------------------------------------------
 void ofApp::draw(){
 	mCam1.begin();
-
+	
 	// -----
 	// draw command issued here:
 
@@ -106,7 +106,7 @@ void ofApp::draw(){
 	static ofMesh box = ofMesh::box( 50, 50,50 );
 	
 
-	
+	ofSetColor( ofColor::white );
 	{
 		//auto scope = context.shaders["shader1"].getScoped(); // scoped shader unbinds when out of scope
 		
@@ -117,7 +117,6 @@ void ofApp::draw(){
 		ofPopMatrix();
 		
 	} // end shader scope
-	
 	
 	ofPushMatrix();
 	ofTranslate( -200, -200, -200 );
@@ -134,6 +133,7 @@ void ofApp::draw(){
 	ico.draw();
 	ofPopMatrix();
 
+	ofSetColor( ofColor::red );
 	mFontMesh.draw();
 
 	ofPushMatrix();
@@ -141,6 +141,7 @@ void ofApp::draw(){
 	mLMesh.draw();
 	ofPopMatrix();
 
+	ofSetColor( ofColor::teal );
 	ofPushMatrix();
 	ofTranslate( 200, 0 );
 	ofRotate( 360.f * ((ofGetElapsedTimeMillis() % 6000) / 6000.f) ); // this should rotate at a speed of one revolution every 6 seconds. 
@@ -151,6 +152,7 @@ void ofApp::draw(){
 	
 	ofTranslate( 100, -100, 50 );
 	m.draw();*/
+	
 	mCam1.end();
 }
 
