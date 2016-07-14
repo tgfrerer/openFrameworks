@@ -61,6 +61,19 @@ void ofVkRenderer::setup(){
 
 	setupPipelines();					  
 	
+	// todo: move this into something more fitting
+	{
+		uint32_t numVerts = 4;
+		rectMesh.getVertices().resize(numVerts);
+		vector<ofIndexType> indices = {0,1,3,1,2,3};
+		vector<ofVec3f> norm( numVerts, { 0, 0, 1.f } );
+		vector<ofFloatColor> col( numVerts, ofColor::white );
+		rectMesh.addNormals(norm);
+		rectMesh.addColors(col);
+		rectMesh.addIndices(indices);
+	}
+
+
 }
 
 // ----------------------------------------------------------------------
@@ -347,18 +360,6 @@ void ofVkRenderer::setupDepthStencil(){
 		0, nullptr,
 		1, &transferBarrier );
 
-		/*VkCommandBuffer                             commandBuffer,
-		VkPipelineStageFlags                        srcStageMask,
-		VkPipelineStageFlags                        dstStageMask,
-		VkDependencyFlags                           dependencyFlags,
-		uint32_t                                    memoryBarrierCount,
-		const VkMemoryBarrier*                      pMemoryBarriers,
-		uint32_t                                    bufferMemoryBarrierCount,
-		const VkBufferMemoryBarrier*                pBufferMemoryBarriers,
-		uint32_t                                    imageMemoryBarrierCount,
-		const VkImageMemoryBarrier*                 pImageMemoryBarriers*/
-
-
 	depthStencilView.image = mDepthStencil.image;
 
 	err = vkCreateImageView( mDevice, &depthStencilView, nullptr, &mDepthStencil.view );
@@ -545,6 +546,7 @@ void ofVkRenderer::startRender(){
 	mContext->begin( swapIdx );
 
 	mContext->setUniform( "modelMatrix", ofMatrix4x4() ); // initialise modelview with identity matrix.
+	mContext->setUniform( "globalColor", ofFloatColor(ofColor::white));
 
 	beginDrawCommandBuffer( mDrawCmdBuffer[swapIdx] );
 
@@ -833,3 +835,22 @@ void ofVkRenderer::draw( const ofMesh & mesh_, ofPolyRenderMode renderType, bool
 	}
 }  
 
+// ----------------------------------------------------------------------
+
+void ofVkRenderer::drawRectangle(float x, float y, float z, float w, float h) const{
+
+	if (currentStyle.rectMode == OF_RECTMODE_CORNER){
+		rectMesh.getVertices()[0].set(x,y,z);
+		rectMesh.getVertices()[1].set(x+w, y, z);
+		rectMesh.getVertices()[2].set(x+w, y+h, z);
+		rectMesh.getVertices()[3].set(x, y+h, z);
+	}else{
+		rectMesh.getVertices()[0].set(x-w/2.0f, y-h/2.0f, z);
+		rectMesh.getVertices()[1].set(x+w/2.0f, y-h/2.0f, z);
+		rectMesh.getVertices()[2].set(x+w/2.0f, y+h/2.0f, z);
+		rectMesh.getVertices()[3].set(x-w/2.0f, y+h/2.0f, z);
+	}
+
+	draw(rectMesh,OF_MESH_FILL,false,false,false);
+
+}
