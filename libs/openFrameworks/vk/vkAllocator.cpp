@@ -129,7 +129,7 @@ bool of::vk::Allocator::allocate( VkDeviceSize byteCount_, void*& pAddr, VkDevic
 		// write out memory address
 		pAddr = mBaseAddress[swapIdx] + mOffsetEnd[swapIdx];
 		// write out offset 
-		offset = mOffsetEnd[swapIdx];
+		offset = mOffsetEnd[swapIdx] + swapIdx * ( mSettings.size / mSettings.frames );
 		mOffsetEnd[swapIdx] += alignedByteCount;
 		// TODO: if you use non-coherent memory you need to invalidate the 
 		// cache for the memory that has been written to.
