@@ -3,7 +3,7 @@
 
 using namespace of;
 
-VkPipeline && vk::GraphicsPipelineState::createPipeline( const VkDevice & device, const VkPipelineCache & pipelineCache ){
+VkPipeline vk::GraphicsPipelineState::createPipeline( const VkDevice & device, const VkPipelineCache & pipelineCache ){
 		VkPipeline pipeline = nullptr;
 
 		// naive: create a pipeline based on current internal state
@@ -17,12 +17,12 @@ VkPipeline && vk::GraphicsPipelineState::createPipeline( const VkDevice & device
 		// derive stages from shader
 		// TODO: only re-assign if shader has changed.
 		auto & stageCreateInfo = mShader->getShaderStageCreateInfo();
-		
+
 		VkGraphicsPipelineCreateInfo createInfo{
             VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO, // VkStructureType                                  sType;
             nullptr,                                         // const void*                                      pNext;
             0,                                               // VkPipelineCreateFlags                            flags;
-            stageCreateInfo.size(),                          // uint32_t                                         stageCount;
+			uint32_t(stageCreateInfo.size()),                          // uint32_t                                         stageCount;
             stageCreateInfo.data(),                          // const VkPipelineShaderStageCreateInfo*           pStages;
             &mShader->getVertexInputState(),                 // const VkPipelineVertexInputStateCreateInfo*      pVertexInputState;
             &mInputAssemblyState,                            // const VkPipelineInputAssemblyStateCreateInfo*    pInputAssemblyState;
@@ -42,11 +42,10 @@ VkPipeline && vk::GraphicsPipelineState::createPipeline( const VkDevice & device
 
 		auto err = vkCreateGraphicsPipelines( device, pipelineCache, 1, &createInfo, nullptr, &pipeline );
 
-
 		if ( err != VK_SUCCESS ){
 			ofLogError() << "Vulkan error in " << __FILE__ << ", line " << __LINE__;
 		}
-
-		return 	std::move( pipeline );
+ofLog() << "here endpipeline";
+        return pipeline ;
 }
 

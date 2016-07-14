@@ -199,7 +199,7 @@ public:	// default state for pipeline
 	// shader allows us to derive pipeline layout
 	std::shared_ptr<of::vk::Shader>        mShader;
 
-	VkPipeline&& createPipeline( const VkDevice& device, const VkPipelineCache& pipelineCache );
+	VkPipeline createPipeline( const VkDevice& device, const VkPipelineCache& pipelineCache );
 
 };
 
