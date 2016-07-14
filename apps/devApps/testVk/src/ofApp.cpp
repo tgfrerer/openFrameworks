@@ -1,13 +1,13 @@
 #include "ofApp.h"
 #include "vk/ofVkRenderer.h"
 
-uint32_t display_mode = 1;
+uint32_t display_mode = 0;
 uint32_t max_display_mode = 3;
-bool modeToggleRequested = false;
+bool     isFrameRateLocked = true;
 
 //--------------------------------------------------------------
 void ofApp::setup(){
-	ofSetFrameRate(120);
+	ofSetFrameRate( 120 );
 	mCam1.disableMouseInput();
 	mCam1.setupPerspective( false, 60, 0.1, 5000 );
 	mCam1.setGlobalPosition( 0, 0, mCam1.getImagePlaneDistance() );
@@ -81,10 +81,6 @@ void ofApp::setup(){
 void ofApp::update(){
 
 	ofSetWindowTitle( ofToString( ofGetFrameRate() ));
-	if (modeToggleRequested){
-		display_mode = (++display_mode) % max_display_mode;
-		modeToggleRequested = false;
-	}
 }
 
 //--------------------------------------------------------------
@@ -148,7 +144,6 @@ void ofApp::draw(){
 		ofSetColor( ofColor::white );
 		int w = 1024;
 		int h = 768;
-		ofSetColor(ofColor::white);
 
 		ofPushMatrix();
 		int xOffset = ofGetFrameNum() % w;
@@ -166,7 +161,7 @@ void ofApp::draw(){
 	{
 		mCam1.begin();
 
-		ofSetColor( ofColor::white );
+		
 		ofSetColor(ofColor::white);
 
 		ofPushMatrix();
@@ -181,13 +176,26 @@ void ofApp::draw(){
 	default:
 	break;
 	}
+
 }
 
 //--------------------------------------------------------------
 void ofApp::keyPressed(int key){
 	if (key=='m'){
-		modeToggleRequested = true;
+		display_mode = ( ++display_mode ) % max_display_mode;
 	}
+	if ( key == 'l' ){
+		isFrameRateLocked ^= true;
+		if ( isFrameRateLocked ){
+			ofSetFrameRate( 120 );
+			ofLog() << "Frame production rate locked at 120 fps";
+		}
+		else{
+			ofSetFrameRate( 0 );
+			ofLog() << "Frame rate unlocked.";
+		}
+	}
+
 }
 
 //--------------------------------------------------------------
