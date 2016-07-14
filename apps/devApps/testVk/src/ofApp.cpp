@@ -1,8 +1,13 @@
 #include "ofApp.h"
 #include "vk/ofVkRenderer.h"
 
+uint32_t display_mode = 1;
+uint32_t max_display_mode = 3;
+bool modeToggleRequested = false;
+
 //--------------------------------------------------------------
 void ofApp::setup(){
+	ofSetFrameRate(120);
 	mCam1.disableMouseInput();
 	mCam1.setupPerspective( false, 60, 0.1, 5000 );
 	mCam1.setGlobalPosition( 0, 0, mCam1.getImagePlaneDistance() );
@@ -76,89 +81,113 @@ void ofApp::setup(){
 void ofApp::update(){
 
 	ofSetWindowTitle( ofToString( ofGetFrameRate() ));
+	if (modeToggleRequested){
+		display_mode = (++display_mode) % max_display_mode;
+		modeToggleRequested = false;
+	}
 }
 
 //--------------------------------------------------------------
 void ofApp::draw(){
-	mCam1.begin();
-	
-	// -----
-	// draw command issued here:
-
-	// some engines group mesh(es) + shader together at this point
-	// so that the draw happens in a "batch" or "list" 
-	// 
-	// this batch then gets re-ordered before submission to minimise 
-	// state changes when drawing.
-	// 
-	// it might also be possible to use a hashmap conatiner with a 
-	// custom key generator which automatically places a new draw 
-	// call in the correct order
-	//
-	// all this would mean deferring the construction of the command
-	// buffer, though. 
-	//
-	// we could group *materials* and geometry together to create a batch
-	// the batch draw command queries current render state from context 
-	// and submits this way.
-	
 	static ofMesh ico = ofMesh::icosphere(50, 3);
 	static ofMesh box = ofMesh::box( 50, 50,50 );
-	
 
-	ofSetColor( ofColor::white );
-	{
-		//auto scope = context.shaders["shader1"].getScoped(); // scoped shader unbinds when out of scope
-		
-		//context->setUniform1f( "globalColor", ofColor::yellow );
+
+	switch (display_mode) {
+	case 0:{
+		mCam1.begin();
+
+		ofSetColor( ofColor::white );
+		{
+			//auto scope = context.shaders["shader1"].getScoped(); // scoped shader unbinds when out of scope
+
+			ofPushMatrix();
+			ofTranslate( -200, +200, 100 );
+			ico.draw();
+			ofPopMatrix();
+
+		} // end shader scope
+
 		ofPushMatrix();
-		ofTranslate( -200, +200, 100 );
+		ofTranslate( -200, -200, -200 );
 		ico.draw();
 		ofPopMatrix();
-		
-	} // end shader scope
-	
-	ofPushMatrix();
-	ofTranslate( -200, -200, -200 );
-	ico.draw();
-	ofPopMatrix();
 
-	ofPushMatrix();
-	ofTranslate( 200, +200, -200 );
-	ico.draw();
-	ofPopMatrix();
+		ofPushMatrix();
+		ofTranslate( 200, +200, -200 );
+		ico.draw();
+		ofPopMatrix();
 
-	ofPushMatrix();
-	ofTranslate( 200, -200, 200 );
-	ico.draw();
-	ofPopMatrix();
+		ofPushMatrix();
+		ofTranslate( 200, -200, 200 );
+		ico.draw();
+		ofPopMatrix();
 
-	ofSetColor( ofColor::red );
-	mFontMesh.draw();
+		ofSetColor( ofColor::red );
+		mFontMesh.draw();
 
-	ofPushMatrix();
-	ofRotate( ofGetFrameNum() % 360 ); // this should rotate at a speed of one revolution every 6 seconds. 
-	mLMesh.draw();
-	ofPopMatrix();
+		ofPushMatrix();
+		ofRotate( ofGetFrameNum() % 360 ); // this should rotate at a speed of one revolution every 6 seconds.
+		mLMesh.draw();
+		ofPopMatrix();
 
-	ofSetColor( ofColor::teal );
-	ofPushMatrix();
-	ofTranslate( 200, 0 );
-	ofRotate( 360.f * ((ofGetElapsedTimeMillis() % 6000) / 6000.f) ); // this should rotate at a speed of one revolution every 6 seconds. 
-	mLMesh.draw();
-	ofPopMatrix();
+		ofSetColor( ofColor::teal );
+		ofPushMatrix();
+		ofTranslate( 200, 0 );
+		ofRotate( 360.f * ((ofGetElapsedTimeMillis() % 6000) / 6000.f) ); // this should rotate at a speed of one revolution every 6 seconds.
+		mLMesh.draw();
+		ofPopMatrix();
 
-	/*ofTranslate( 100, -100, 50 );
-	
-	ofTranslate( 100, -100, 50 );
-	m.draw();*/
-	
-	mCam1.end();
+		mCam1.end();
+	}
+	break;
+	case 1:
+	{
+		mCam1.begin();
+
+		ofSetColor( ofColor::white );
+		int w = 1024;
+		int h = 768;
+		ofSetColor(ofColor::white);
+
+		ofPushMatrix();
+		int xOffset = ofGetFrameNum() % w;
+		ofTranslate(xOffset - w * 1.5, -h/2 );
+		for (int i =0; i*100 < w * 2; ++i){
+			ofTranslate(100 , 0);
+			ofDrawRectangle({-5,0,5,float(h)});
+		}
+
+		ofPopMatrix();
+		mCam1.end();
+	}
+	break;
+	case 2:
+	{
+		mCam1.begin();
+
+		ofSetColor( ofColor::white );
+		ofSetColor(ofColor::white);
+
+		ofPushMatrix();
+		ofTranslate(ofGetWidth()*0.5f, ofGetHeight()*0.5f);
+		ofRotate((ofGetFrameNum() % 120) * (360/120.f));
+		ofDrawRectangle({-1200,-50,2400,100});
+		ofPopMatrix();
+		mCam1.end();
+
+	}
+	break;
+	default:
+	break;
+	}
 }
 
 //--------------------------------------------------------------
 void ofApp::keyPressed(int key){
-
+	if (key=='m'){
+		modeToggleRequested = true;
+	}
 }
 
 //--------------------------------------------------------------
