@@ -81,6 +81,7 @@ void of::vk::Shader::reflect()
 				descriptor_set = 0;
 			}
 
+
 			if ( ( 1ull << spv::DecorationBinding ) & decorationMask ){
 				bindingNumber = compiler.get_decoration( ubo.id, spv::DecorationBinding );
 				os << ", binding = " << bindingNumber;
@@ -209,9 +210,9 @@ void of::vk::Shader::reflect()
 				VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO, // VkStructureType                             sType;
 				nullptr,                                                   // const void*                                 pNext;
 				0,                                                         // VkPipelineVertexInputStateCreateFlags       flags;
-				mVertexInfo.bindingDescription.size(),                     // uint32_t                                    vertexBindingDescriptionCount;
+				uint32_t(mVertexInfo.bindingDescription.size()),           // uint32_t                                    vertexBindingDescriptionCount;
 				mVertexInfo.bindingDescription.data(),                     // const VkVertexInputBindingDescription*      pVertexBindingDescriptions;
-				mVertexInfo.attribute.size(),                              // uint32_t                                    vertexAttributeDescriptionCount;
+				uint32_t(mVertexInfo.attribute.size()),                    // uint32_t                                    vertexAttributeDescriptionCount;
 				mVertexInfo.attribute.data()                               // const VkVertexInputAttributeDescription*    pVertexAttributeDescriptions;
 			};
 
@@ -237,7 +238,6 @@ void of::vk::Shader::reflect()
 
 		// go over all sets, and sort uniforms by binding number asc.
 		for ( auto & s : bindingInfoMap ){
-			auto & id = s.first;
 			auto & uniformInfoVec = s.second;
 			std::sort( uniformInfoVec.begin(), uniformInfoVec.end(), []( const BindingInfo& lhs, const BindingInfo& rhs )->bool{
 				return lhs.binding.binding < rhs.binding.binding;
@@ -307,8 +307,6 @@ of::vk::Shader::Shader( const Settings & settings_ )
 	: mSettings( settings_ )
 {
 	std::vector<uint32_t> spirCode; // tmp container for code loaded from shader file
-	size_t                numStages = mSettings.sources.size(); // number of shader files to load
-
 
 	// load each individual stage
 

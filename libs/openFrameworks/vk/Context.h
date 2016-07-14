@@ -85,7 +85,7 @@ class Context
 		void push(){
 			stateStack.push_back( state );
 			state.stackId = -1;
-		};
+		}
 		
 		void pop(){
 			if ( stateStack.empty() ){
@@ -94,7 +94,7 @@ class Context
 			}
 			state = stateStack.back();
 			stateStack.pop_back();			
-		};
+		}
 
 	};
 
@@ -184,7 +184,7 @@ public:
 
 	~Context(){
 		reset();
-	};
+	}
 
 	// allocates memory on the GPU for each swapchain image (call rarely)
 	void setup( ofVkRenderer* renderer );
@@ -212,10 +212,10 @@ public:
 
 	// return a vector of descriptorsets which are currently bound
 	// in order of the current pipeline's descriptorSetLayout.
-	std::vector<VkDescriptorSet> getBoundDescriptorSets();;
+	std::vector<VkDescriptorSet> getBoundDescriptorSets();
 
 	// get descriptorSetLayout for a shader
-	std::vector<VkDescriptorSetLayout> getDescriptorSetLayoutForShader( const shared_ptr<of::vk::Shader>& shader_ );;
+	std::vector<VkDescriptorSetLayout> getDescriptorSetLayoutForShader( const shared_ptr<of::vk::Shader>& shader_ );
 
 	// lazily store uniform data into local CPU memory
 	template<typename UniformT>
@@ -229,9 +229,9 @@ public:
 	template<typename UniformT>
 	const UniformT & getUniform( const std::string & name_ ) const;
 
-	inline const ofMatrix4x4 & getViewMatrix()       const { return getUniform<ofMatrix4x4>( "viewMatrix"       ); };
-	inline const ofMatrix4x4 & getModelMatrix()      const { return getUniform<ofMatrix4x4>( "modelMatrix"      ); };
-	inline const ofMatrix4x4 & getProjectionMatrix() const { return getUniform<ofMatrix4x4>( "projectionMatrix" ); };
+	inline const ofMatrix4x4 & getViewMatrix()       const { return getUniform<ofMatrix4x4>( "viewMatrix"       ); }
+	inline const ofMatrix4x4 & getModelMatrix()      const { return getUniform<ofMatrix4x4>( "modelMatrix"      ); }
+	inline const ofMatrix4x4 & getProjectionMatrix() const { return getUniform<ofMatrix4x4>( "projectionMatrix" ); }
 
 	void setViewMatrix( const ofMatrix4x4& mat_ );
 	void setProjectionMatrix( const ofMatrix4x4& mat_ );
@@ -248,11 +248,11 @@ public:
 	// push currentMatrix state
 	void pushMatrix(){
 		pushBuffer( "DefaultMatrices" );
-	};
+	}
 	// pop current Matrix state
 	void popMatrix(){
 		popBuffer( "DefaultMatrices" );
-	};
+	}
 
 	// store vertex and index data inside the current dynamic memory frame
 	// return memory mapping offets based on current memory buffer.
@@ -270,7 +270,7 @@ inline bool Context::setUniform( const std::string & name_, const UniformT & uni
 		return false;
 	}
 	auto & ubo = uboIt->second;
-	if ( sizeof( typename UniformT ) != ubo.range ){
+	if ( sizeof( UniformT ) != ubo.range ){
 		// assignment would overshoot - possibly wrong type for assignment : refuse assignment.
 		ofLogWarning() << "Cannot assign to uniform: '" << name_ << "' - data size is incorrect: " << sizeof( UniformT ) << " Byte, expected: " << ubo.range << "Byte";
 		return false;

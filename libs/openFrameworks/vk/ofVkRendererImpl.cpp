@@ -59,143 +59,9 @@ void ofVkRenderer::setup(){
 	// allocate from.
 
 
-	
-
-	// create a descriptor pool from which descriptor sets can be allocated
-	//setupDescriptorPool();
-
-	// once we know the layout for the descriptorSets, we
-	// can allocate them from the pool based on the layout
-	// information
-	//setupDescriptorSets();
-
 	setupPipelines();					  
 	
 }
-
-// ----------------------------------------------------------------------
-
-//void ofVkRenderer::setupDescriptorSets(){
-//	
-//
-//	// 1. accumulate all bindings from all shaders.
-//	// 2. retain only unique bindings.
-//
-//	std::map<std::string, of::vk::Shader::Binding> bindings;
-//	for ( auto &s : mShaders ){
-//		auto & b= s->getBindings();
-//
-//		// todo: we need to make sure bindings with the same name are perfectly identical!!!
-//		// this also includes the binding's layout - otherwise we will have to either
-//		// warn or do some spirv-cross magic and remap layouts.
-//		bindings.insert( b.begin(), b.end());
-//	}
-//
-//	
-//	mBindings.uboName.resize( bindings.size() );
-//	mBindings.descriptorSet.resize( bindings.size() );
-//	mBindings.descriptorSetLayout.resize( bindings.size() );
-//
-//	vector<VkDescriptorSetLayoutBinding> tmpFlattenedBindings( bindings.size() );
-//	for ( auto & b : bindings ){
-//		tmpFlattenedBindings[b.second.set] = b.second.layout;
-//		// store name of binding
-//		mBindings.uboName[b.second.set] =  b.first ;
-//		
-//	}
-//	{	// create descriptorsetlayout
-//		VkDescriptorSetLayoutCreateInfo ci{
-//			VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,              // VkStructureType                        sType;
-//			nullptr,                                                          // const void*                            pNext;
-//			0,                                                                // VkDescriptorSetLayoutCreateFlags       flags;
-//			static_cast<uint32_t>( tmpFlattenedBindings.size() ),             // uint32_t                               bindingCount;
-//			tmpFlattenedBindings.data()                                       // const VkDescriptorSetLayoutBinding*    pBindings;
-//		};
-//		vkCreateDescriptorSetLayout( mDevice, &ci, nullptr, mBindings.descriptorSetLayout.data() );
-//	}
-//	
-//	auto pl = of::vk::createPipelineLayout( mDevice, mBindings.descriptorSetLayout );
-//
-//	mPipelineLayouts.emplace_back( pl );
-//
-//	// descriptor sets are there to describe how uniforms are fed to a pipeline
-//
-//	// descriptor set is allocated from pool mDescriptorPool
-//	// based on information from descriptorSetLayout which was derived from shader code reflection 
-//	// 
-//	// a descriptorSetLayout describes a descriptor set, it tells us the 
-//	// number and ordering of descriptors within the set.
-//	
-//	{	// create descriptorsets based on layouts
-//		
-//		VkDescriptorSetAllocateInfo allocInfo = {
-//			VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,                  // VkStructureType                 sType;
-//			nullptr,                                                         // const void*                     pNext;
-//			mDescriptorPool,                                                 // VkDescriptorPool                descriptorPool;      // where to allocate from
-//			uint32_t( mBindings.descriptorSetLayout.size()),                 // uint32_t                        descriptorSetCount;  // how many descriptorSets
-//			mBindings.descriptorSetLayout.data(),                            // const VkDescriptorSetLayout*    pSetLayouts;         // how is each descriptorSet laid out
-//		};
-//		
-//		vkAllocateDescriptorSets( mDevice, &allocInfo, mBindings.descriptorSet.data() );	// allocates mDescriptorSets
-//	}
-//	
-//		 
-//}
-
-//// ----------------------------------------------------------------------
-//
-//void ofVkRenderer::setupDescriptorPool(){
-//	// descriptors are allocated from a per-thread pool
-//	// the pool needs to reserve size based on the 
-//	// maximum number for each type of descriptor
-//
-//	// list of all descriptors types and their count
-//	std::vector<VkDescriptorPoolSize> typeCounts;
-//
-//	uint32_t maxSets = 0;
-//
-//	// iterate over descriptorsetlayouts to find out what we need
-//	// and to populate list above
-//	{	
-//		// count all necessary descriptor of all necessary types over
-//		// all currently known shaders.
-//		std::map<VkDescriptorType, uint32_t> descriptorTypes;
-//		
-//		for ( const auto & s : mShaders ){
-//			for ( const auto & b : s->getBindings() ){
-//				if ( descriptorTypes.find( b.second.layout.descriptorType ) == descriptorTypes.end() ){
-//					// first of this kind
-//					descriptorTypes[b.second.layout.descriptorType] = 1;
-//				}
-//				else{
-//					++descriptorTypes[b.second.layout.descriptorType];
-//				}
-//			}
-//		}
-//			
-//		// accumulate total number of descriptor sets
-//		// TODO: find out: is this the max number of descriptor sets or the max number of descriptors?
-//		for ( const auto &t : descriptorTypes ){
-//			typeCounts.push_back( {t.first, t.second} );
-//			maxSets += t.second;
-//		}
-//
-//	}
-//
-//	// Create the global descriptor pool
-//	// All descriptors used in this example are allocated from this pool
-//	VkDescriptorPoolCreateInfo descriptorPoolInfo = {
-//		VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,             // VkStructureType                sType;
-//		nullptr,                                                   // const void*                    pNext;
-//		0,                                                         // VkDescriptorPoolCreateFlags    flags;
-//		maxSets,                                                   // uint32_t                       maxSets;
-//		typeCounts.size(),                                         // uint32_t                       poolSizeCount;
-//		typeCounts.data(),                                         // const VkDescriptorPoolSize*    pPoolSizes;
-//	};
-//
-//	VkResult vkRes = vkCreateDescriptorPool( mDevice, &descriptorPoolInfo, nullptr, &mDescriptorPool );
-//	assert( !vkRes );
-//}
 
 // ----------------------------------------------------------------------
 
@@ -218,7 +84,7 @@ void ofVkRenderer::setupShaders(){
 // ----------------------------------------------------------------------
 
 void ofVkRenderer::setupPipelines(){
-
+	ofLog() << "start setup Pipelines";
 	// !TODO: move pipelines into context
 
 	// pipelines should, like shaders, be part of the context
@@ -235,23 +101,25 @@ void ofVkRenderer::setupPipelines(){
 	of::vk::GraphicsPipelineState defaultPSO;
 
 	// TODO: let us choose which shader we want to use with our pipeline.
-	defaultPSO.mShader           = mShaders[0];
+	defaultPSO.mShader           = mShaders.front();
 	defaultPSO.mRenderPass       = mRenderPass;
-	
+
 	// create pipeline layout based on vector of descriptorSetLayouts queried from mContext
 	// this is way crude, and pipeline should be inside of context, context
 	// should return the layout based on shader paramter (derive layout from shader bindings) 
-	defaultPSO.mLayout = of::vk::createPipelineLayout( mDevice, mContext->getDescriptorSetLayoutForShader(mShaders[0]));
-	
+	defaultPSO.mLayout = of::vk::createPipelineLayout( mDevice, mContext->getDescriptorSetLayoutForShader(defaultPSO.mShader));
+
 	// TODO: fix this - this should not be part of the renderer, 
 	// but of the context.
 	mPipelineLayouts.emplace_back( defaultPSO.mLayout );
 
 	mPipelines.solid = defaultPSO.createPipeline( mDevice, mPipelineCache );
-	
+
 	defaultPSO.mRasterizationState.polygonMode = VK_POLYGON_MODE_LINE;
+
 	mPipelines.wireframe = defaultPSO.createPipeline( mDevice, mPipelineCache );
-	
+
+	ofLog() << "end setup Pipelines";
 }
  
 // ----------------------------------------------------------------------
@@ -696,8 +564,8 @@ void ofVkRenderer::beginDrawCommandBuffer(VkCommandBuffer& cmdBuf_){
 	VkViewport viewport = {};
 	viewport.width = (float)mViewport.width;
 	viewport.height = (float)mViewport.height;
-	viewport.minDepth = ( float ) 0.0f;		   // this is the min depth value for the depth buffer
-	viewport.maxDepth = ( float ) 1.0f;		   // this is the max depth value for the depth buffer  
+	viewport.minDepth = 0.0f;		   // this is the min depth value for the depth buffer
+	viewport.maxDepth = 1.0f;		   // this is the max depth value for the depth buffer
 	vkCmdSetViewport( cmdBuf_, 0, 1, &viewport );
 
 	// Update dynamic scissor state
