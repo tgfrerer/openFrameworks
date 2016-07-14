@@ -45,7 +45,7 @@ VkPipeline vk::GraphicsPipelineState::createPipeline( const VkDevice & device, c
 		if ( err != VK_SUCCESS ){
 			ofLogError() << "Vulkan error in " << __FILE__ << ", line " << __LINE__;
 		}
-ofLog() << "here endpipeline";
+
         return pipeline ;
 }
 

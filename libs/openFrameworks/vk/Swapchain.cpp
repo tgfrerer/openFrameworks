@@ -202,7 +202,7 @@ VkResult Swapchain::queuePresent( VkQueue queue, uint32_t currentImageIndex, std
 	VkPresentInfoKHR presentInfo = {
 		VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,                            // VkStructureType          sType;
 		nullptr,                                                       // const void*              pNext;
-		waitSemaphores_.size(),                                        // uint32_t                 waitSemaphoreCount;
+	    uint32_t(waitSemaphores_.size()),                              // uint32_t                 waitSemaphoreCount;
 		waitSemaphores_.data(),                                        // const VkSemaphore*       pWaitSemaphores;
 		1,                                                             // uint32_t                 swapchainCount;
 		&mSwapchain,                                                   // const VkSwapchainKHR*    pSwapchains;
