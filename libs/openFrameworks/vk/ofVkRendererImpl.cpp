@@ -208,7 +208,9 @@ void ofVkRenderer::createCommandPool(){
 	};
 		 
 	// VkCommandPoolCreateFlags --> tells us how persistent the commands living in this pool are going to be
-	vkCreateCommandPool( mDevice, &poolInfo, nullptr, &mCommandPool );
+	auto err = vkCreateCommandPool( mDevice, &poolInfo, nullptr, &mCommandPool );
+	assert( !err );
+
 }
 
 // ----------------------------------------------------------------------
@@ -229,7 +231,8 @@ void ofVkRenderer::createSetupCommandBuffer(){
 
  	// allocate one command buffer (as stated above) and store the handle to 
 	// the newly allocated buffer into mSetupCommandBuffer
-	vkAllocateCommandBuffers( mDevice, &info, &mSetupCommandBuffer );
+	auto err = vkAllocateCommandBuffers( mDevice, &info, &mSetupCommandBuffer );
+	assert( !err );
 
 	// todo : Command buffer is also started here, better put somewhere else
 	// todo : Check if necessaray at all...
@@ -237,8 +240,8 @@ void ofVkRenderer::createSetupCommandBuffer(){
 	cmdBufInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 	// todo : check null handles, flags?
 
-	auto vkRes = vkBeginCommandBuffer( mSetupCommandBuffer, &cmdBufInfo );
-	assert( !vkRes );
+	err = vkBeginCommandBuffer( mSetupCommandBuffer, &cmdBufInfo );
+	assert( !err);
 };
 
 // ----------------------------------------------------------------------
@@ -257,9 +260,9 @@ void ofVkRenderer::createCommandBuffers(){
 	allocInfo.commandBufferCount = 1;
 	allocInfo.pNext = VK_NULL_HANDLE;
 
-	VkResult err = VK_SUCCESS;
+	
 	// Pre present
-	err = vkAllocateCommandBuffers( mDevice, &allocInfo, &mPrePresentCommandBuffer );
+	auto err = vkAllocateCommandBuffers( mDevice, &allocInfo, &mPrePresentCommandBuffer );
 	assert( !err);
 	// Post present
 	err = vkAllocateCommandBuffers( mDevice, &allocInfo, &mPostPresentCommandBuffer );
@@ -328,9 +331,9 @@ void ofVkRenderer::setupDepthStencil(){
 	depthStencilView.subresourceRange.layerCount = 1;
 
 	VkMemoryRequirements memReqs;
-	VkResult err;
+	
 
-	err = vkCreateImage( mDevice, &image, nullptr, &mDepthStencil.image );
+	auto err = vkCreateImage( mDevice, &image, nullptr, &mDepthStencil.image );
 	assert( !err );
 	vkGetImageMemoryRequirements( mDevice, mDepthStencil.image, &memReqs );
 
@@ -526,7 +529,9 @@ void ofVkRenderer::startRender(){
 	{
 		if ( mDrawCmdBuffer.size() == mSwapchain.getImageCount() ){
 			// if command buffer has been previously recorded, we want to re-use it.
-			vkResetCommandBuffer( mDrawCmdBuffer[swapIdx], 0 );
+			err = vkResetCommandBuffer( mDrawCmdBuffer[swapIdx], 0 );
+			assert( !err );
+
 		} else{
 			// allocate a draw command buffer for each swapchain image
 			mDrawCmdBuffer.resize( mSwapchain.getImageCount() );
@@ -539,7 +544,9 @@ void ofVkRenderer::startRender(){
 			    uint32_t(mDrawCmdBuffer.size())                                 // uint32_t                commandBufferCount;
 			};
 
-			vkAllocateCommandBuffers( mDevice, &allocInfo, mDrawCmdBuffer.data() );
+			err = vkAllocateCommandBuffers( mDevice, &allocInfo, mDrawCmdBuffer.data() );
+			assert( !err );
+
 		}
 	}
 
@@ -560,7 +567,9 @@ void ofVkRenderer::beginDrawCommandBuffer(VkCommandBuffer& cmdBuf_){
 	cmdBufInfo.pNext = NULL;
 
 	// Set target frame buffer
-	vkBeginCommandBuffer( cmdBuf_, &cmdBufInfo );
+	auto err = vkBeginCommandBuffer( cmdBuf_, &cmdBufInfo );
+	assert( !err );
+
 
 	// Update dynamic viewport state
 	VkViewport viewport = {};
@@ -617,7 +626,9 @@ void ofVkRenderer::beginRenderPass(VkCommandBuffer& cmdBuf_, VkFramebuffer& fram
 
 void ofVkRenderer::endDrawCommandBuffer(){
 	endRenderPass();
-	vkEndCommandBuffer( mDrawCmdBuffer[mSwapchain.getCurrentImageIndex()] );
+	auto err = vkEndCommandBuffer( mDrawCmdBuffer[mSwapchain.getCurrentImageIndex()] );
+	assert( !err );
+
 }
 
 // ----------------------------------------------------------------------
@@ -629,8 +640,6 @@ void ofVkRenderer::endRenderPass(){
 // ----------------------------------------------------------------------
 
 void ofVkRenderer::finishRender(){
-	VkResult err;
-	
 
 	// submit current model view and projection matrices
 	
@@ -644,6 +653,7 @@ void ofVkRenderer::finishRender(){
 	// If you want to submit multiple command buffers, pass an array
 	VkPipelineStageFlags pipelineStages[] = { VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT };
 	
+	size_t swapId = mSwapchain.getCurrentImageIndex();
 	VkSubmitInfo submitInfo = {
 		VK_STRUCTURE_TYPE_SUBMIT_INFO,                       // VkStructureType                sType;
 		nullptr,                                             // const void*                    pNext;
@@ -651,13 +661,13 @@ void ofVkRenderer::finishRender(){
 		&mSemaphorePresentComplete,                          // const VkSemaphore*             pWaitSemaphores;
 		pipelineStages,                                      // const VkPipelineStageFlags*    pWaitDstStageMask;
 		1,                                                   // uint32_t                       commandBufferCount;
-		&mDrawCmdBuffer[mSwapchain.getCurrentImageIndex()],  // const VkCommandBuffer*         pCommandBuffers;
+		&mDrawCmdBuffer[swapId],  // const VkCommandBuffer*         pCommandBuffers;
 		1,                                                   // uint32_t                       signalSemaphoreCount;
 		&mSemaphoreRenderComplete,                           // const VkSemaphore*             pSignalSemaphores;
 	};
 
 	// Submit to the graphics queue	- 
-	err = vkQueueSubmit( mQueue, 1, &submitInfo, VK_NULL_HANDLE );
+	auto err = vkQueueSubmit( mQueue, 1, &submitInfo, VK_NULL_HANDLE );
 	assert( !err );
 
 	{  // pre-present
@@ -680,7 +690,9 @@ void ofVkRenderer::finishRender(){
 			nullptr,                                         // const VkCommandBufferInheritanceInfo*    pInheritanceInfo;
 		};
 		
-		vkBeginCommandBuffer( mPrePresentCommandBuffer, &beginInfo );
+		err = vkBeginCommandBuffer( mPrePresentCommandBuffer, &beginInfo );
+		assert( !err );
+
 		{
 			auto transferBarrier = of::vk::createImageBarrier(	
 				mSwapchain.getImage( mSwapchain.getCurrentImageIndex() ).imageRef,
@@ -698,22 +710,28 @@ void ofVkRenderer::finishRender(){
 				0, nullptr,
 				1, &transferBarrier );
 		}
-		vkEndCommandBuffer( mPrePresentCommandBuffer );
+		err = vkEndCommandBuffer( mPrePresentCommandBuffer );
+		assert( !err );
+
 		// Submit to the queue
 		VkSubmitInfo submitInfo = {};
 		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 		submitInfo.commandBufferCount = 1;
 		submitInfo.pCommandBuffers = &mPrePresentCommandBuffer;
+		
 
 		err = vkQueueSubmit( mQueue, 1, &submitInfo, VK_NULL_HANDLE );
-	}
+		assert( !err );
 
+	}
+	
 	// Present the current buffer to the swap chain
 	// We pass the signal semaphore from the submit info
 	// to ensure that the image is not rendered until
 	// all commands have been submitted
-	mSwapchain.queuePresent( mQueue, mSwapchain.getCurrentImageIndex(), { mSemaphoreRenderComplete } );
-	
+	err = mSwapchain.queuePresent( mQueue, mSwapchain.getCurrentImageIndex(), { mSemaphoreRenderComplete } );
+	assert( !err );
+
 	// Add a post present image memory barrier
 	// This will transform the frame buffer color attachment back
 	// to it's initial layout after it has been presented to the
@@ -737,6 +755,7 @@ void ofVkRenderer::finishRender(){
 	cmdBufInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 
 	err = vkBeginCommandBuffer( mPostPresentCommandBuffer, &cmdBufInfo );
+	assert( !err );
 
 	// Put post present barrier into command buffer
 	vkCmdPipelineBarrier(
@@ -749,6 +768,7 @@ void ofVkRenderer::finishRender(){
 		1, &postPresentBarrier );
 
 	err = vkEndCommandBuffer( mPostPresentCommandBuffer );
+	assert( !err );
 
 	// Submit to the queue
 	submitInfo = {};
@@ -757,7 +777,11 @@ void ofVkRenderer::finishRender(){
 	submitInfo.pCommandBuffers = &mPostPresentCommandBuffer;
 
 	err = vkQueueSubmit( mQueue, 1, &submitInfo, VK_NULL_HANDLE );
+	assert( !err );
+
 	err = vkQueueWaitIdle( mQueue );
+	assert( !err );
+
 
 }
 

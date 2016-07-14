@@ -91,12 +91,14 @@ ofVkRenderer::~ofVkRenderer()
 	// only ever be used for teardown. 
 	//
 	// Which is what this method is doing.
-	vkDeviceWaitIdle(mDevice);
+	auto err= vkDeviceWaitIdle(mDevice);
+	assert( !err );
 
 	mContext.reset();
 
 	// reset command pool and all associated command buffers.
-	vkResetCommandPool( mDevice, mCommandPool, VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT );
+	err = vkResetCommandPool( mDevice, mCommandPool, VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT );
+	assert( !err );
 
 	vkDestroyRenderPass( mDevice, mRenderPass, nullptr );
 
@@ -152,7 +154,7 @@ void ofVkRenderer::destroySurface(){
 	VkApplicationInfo applicationInfo{};
 	{
 		applicationInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-		applicationInfo.apiVersion = VK_MAKE_VERSION(1, 0, 5);
+		applicationInfo.apiVersion = VK_MAKE_VERSION(1, 0, 8);
 		applicationInfo.applicationVersion = VK_MAKE_VERSION(0, 1, 0);
 		applicationInfo.pApplicationName = appName.c_str();
 	}
@@ -199,9 +201,12 @@ void ofVkRenderer::createDevice()
 		uint32_t numDevices = 0;
 		// get the count for physical devices 
 		// how many GPUs are available?
-		vkEnumeratePhysicalDevices(mInstance, &numDevices, VK_NULL_HANDLE);
+		auto err = vkEnumeratePhysicalDevices(mInstance, &numDevices, VK_NULL_HANDLE);
+		assert( !err );
+
 		std::vector<VkPhysicalDevice> deviceList(numDevices);
-		vkEnumeratePhysicalDevices(mInstance, &numDevices, deviceList.data());
+		err = vkEnumeratePhysicalDevices(mInstance, &numDevices, deviceList.data());
+		assert( !err );
 
 		// TODO: find the best appropriate GPU
 		// Select a physical device (GPU) from the above queried list of options.
@@ -254,9 +259,13 @@ void ofVkRenderer::createDevice()
 	// query debug layers available for instance
 	{
 		uint32_t layerCount;
-		vkEnumerateInstanceLayerProperties(&layerCount, VK_NULL_HANDLE);
+		auto err = vkEnumerateInstanceLayerProperties(&layerCount, VK_NULL_HANDLE);
+		assert( !err );
+
 		vector<VkLayerProperties> layerPropertyList(layerCount);
-		vkEnumerateInstanceLayerProperties(&layerCount, layerPropertyList.data());
+		err = vkEnumerateInstanceLayerProperties(&layerCount, layerPropertyList.data());
+		assert( !err );
+
 
 		ofLog() << "Instance Layers:";
 		for (auto &l : layerPropertyList) {
@@ -268,9 +277,12 @@ void ofVkRenderer::createDevice()
 	// query debug layers available for physical device
 	{
 		uint32_t layerCount;
-		vkEnumerateDeviceLayerProperties(mPhysicalDevice, &layerCount, VK_NULL_HANDLE);
+		auto err = vkEnumerateDeviceLayerProperties(mPhysicalDevice, &layerCount, VK_NULL_HANDLE);
+		assert( !err );
+
 		vector<VkLayerProperties> layerPropertyList(layerCount);
-		vkEnumerateDeviceLayerProperties(mPhysicalDevice, &layerCount, layerPropertyList.data());
+		err = vkEnumerateDeviceLayerProperties(mPhysicalDevice, &layerCount, layerPropertyList.data());
+		assert( !err );
 
 		ofLog() << "Device Layers:";
 		for (auto &l : layerPropertyList) {

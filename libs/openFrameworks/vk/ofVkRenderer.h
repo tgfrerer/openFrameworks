@@ -256,11 +256,11 @@ private:
 	std::vector<VkCommandBuffer> mDrawCmdBuffer; 
 
 	// command buffers used to present frame buffer to screen
-	VkCommandBuffer          mPrePresentCommandBuffer     = VK_NULL_HANDLE;
-	VkCommandBuffer          mPostPresentCommandBuffer    = VK_NULL_HANDLE;
+	VkCommandBuffer          mPrePresentCommandBuffer     = nullptr;
+	VkCommandBuffer          mPostPresentCommandBuffer    = nullptr;
 
 	// command buffer used to prepare things during setup
-	VkCommandBuffer mSetupCommandBuffer = VK_NULL_HANDLE;
+	VkCommandBuffer mSetupCommandBuffer = nullptr;
 	
 	// find these implemented in VKPrepare.cpp
 	void querySurfaceCapabilities();
@@ -280,9 +280,7 @@ private:
 	// load and compile shaders, then
 	// derive descriptor set table from shaders
 	void setupShaders();
-	void setupDescriptorSets();
 	void setupPipelines();
-	//void setupDescriptorPool();
 
 	void beginDrawCommandBuffer( VkCommandBuffer& cmdBuf_ );
 	void endDrawCommandBuffer();
@@ -301,54 +299,17 @@ private:
 		VkPipeline solid; // solid triangle render pipeline
 		VkPipeline wireframe; // wireframe render pipeline
 	} mPipelines;
-	
-
-	/*
-	
-	Descriptor sets are owned by the renderer
-	as these are used with multiple pipelines
-	and bindings.
-
-	They are initially derived from iterating over
-	all shaders
-	
-	*/
-	
-	//struct DescriptorSet
-	//{
-
-	//	struct Binding
-	//	{
-	//		// uniform (ubo/sampler) name for binding in shader
-	//		std::string name;
-	//		// mapping of binding number to descriptor type and count of descriptors
-	//		VkDescriptorSetLayoutBinding binding;
-	//	};
-
-	//	// storage for set defined by layout
-	//	VkDescriptorSet descriptors;
-
-	//	// type and ordering for elements in layout
-	//	// created using a vector of DescriptorSetLayoutBinding in bindings
-	//	VkDescriptorSetLayout layout;
-
-	//	// each layout is made from a collection of bindings
-	//	vector<Binding> bindings;
-	//};
-
-
-	
 
 	// pipeline layouts are derived from DescriptorSetLayouts
 	std::vector<shared_ptr<VkPipelineLayout>> mPipelineLayouts;
 
 	// our main (primary) gpu queue. all commandbuffers are submitted to this queue
 	// as are present commands.
-	VkQueue	mQueue = VK_NULL_HANDLE;
+	VkQueue	mQueue = nullptr;
 
 	// the actual window drawing surface to actually really show something on screen.
 	// this is set externally using GLFW.
-	VkSurfaceKHR mWindowSurface = VK_NULL_HANDLE;	
+	VkSurfaceKHR mWindowSurface = nullptr;	
 
 	VkSurfaceFormatKHR mWindowColorFormat = {};
 
