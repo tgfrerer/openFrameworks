@@ -106,7 +106,7 @@ Product{
              fileTags: "staticlibrary"
         }
         prepare: {           
-            var qbsCmd = new Command(product.make, ['Debug', "-j"]);
+            var qbsCmd = new Command(product.make, ['Debug', "-j10"]);
             qbsCmd.description = "building openFrameworks library";
             qbsCmd.workingDirectory = product.projectDir;
             qbsCmd.silent = false;
@@ -123,7 +123,7 @@ Product{
              fileTags: "staticlibrary"
         }
         prepare: {
-            var qbsCmd = new Command(product.make, ['Release', "-j"]);
+            var qbsCmd = new Command(product.make, ['Release', "-j10"]);
             qbsCmd.description = "building openFrameworks library";
             qbsCmd.workingDirectory = product.projectDir;
             qbsCmd.silent = false;
