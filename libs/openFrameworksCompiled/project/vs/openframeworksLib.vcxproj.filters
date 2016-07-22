@@ -380,9 +380,6 @@
     <ClCompile Include="..\..\..\openFrameworks\3d\ofEasyCam.cpp">
       <Filter>libs\openFrameworks\3d</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\openFrameworks\3d\ofMesh.cpp">
-      <Filter>libs\openFrameworks\3d</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\openFrameworks\3d\ofNode.cpp">
       <Filter>libs\openFrameworks\3d</Filter>
     </ClCompile>
@@ -426,9 +423,6 @@
       <Filter>libs\openFrameworks\graphics</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\openFrameworks\graphics\ofPixels.cpp">
-      <Filter>libs\openFrameworks\graphics</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\openFrameworks\graphics\ofPolyline.cpp">
       <Filter>libs\openFrameworks\graphics</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\openFrameworks\graphics\ofTessellator.cpp">
@@ -548,5 +542,11 @@
     <ClCompile Include="..\..\..\openFrameworks\vk\spooky\SpookyV2.cpp">
       <Filter>libs\openFrameworks\vk\spooky</Filter>
     </ClCompile>
+    <None Include="..\..\..\openFrameworks\3d\ofMesh.inl">
+      <Filter>libs\openFrameworks\3d</Filter>
+    </None>
+    <None Include="..\..\..\openFrameworks\graphics\ofPolyline.inl">
+      <Filter>libs\openFrameworks\graphics</Filter>
+    </None>
   </ItemGroup>
 </Project>
