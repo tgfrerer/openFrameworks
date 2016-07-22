@@ -147,22 +147,6 @@ public:
 
 	// ----------------------------------------------------------------------
 
-	/*const std::map <std::string, BindingInfo>& getUniforms() const{
-		return mUniforms;
-	}*/
-
-	// ----------------------------------------------------------------------
-
-	//// returns an ordered list of descriptor set names 
-	//// order is based on uniform set index, that is the order of elements
-	//// in this vector defines the layout of descriptorSets for this shader/pipeline
-	//// empty elements mean empty slots
-	//const std::vector<std::string> getDescriptorSetLayoutNames(){
-	//
-	//}
-
-	// ----------------------------------------------------------------------
-	
 	const std::vector<SetLayout>& getSetLayouts() const {
 		return mSetLayouts;
 	}

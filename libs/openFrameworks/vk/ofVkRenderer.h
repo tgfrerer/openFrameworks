@@ -46,7 +46,6 @@ public:
 	void setup();
 	virtual ~ofVkRenderer() override;
 
-
 	virtual const string & getType() override{
 		return TYPE;
 	};

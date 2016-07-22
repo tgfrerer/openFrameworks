@@ -41,19 +41,20 @@ namespace vk {
 
 class Allocator; // ffdecl.
 
-// A Context stores any transient data
-// and keeps state, mimicking legacy "immediate mode" renderer behaviour
-
-// The context holds a number of frames, dependent on the 
-// number of swapchain images. For each swapchain image,
-// there is a state memory frame within the context. 
-
-// The context has one allocator, which holds one buffer which is backed
-// by one large chunk device memory. Device memory is segmented into 
-// equal sized parts, one part for each swapchain image.
-
-// You tell the context which frame to operate on by passing the swapchain 
-// image index when calling Context::begin()
+/// \brief  Context stores any transient data
+/// \detail Context tracks state between begin() and end(), mimicking 
+///         legacy "immediate mode" renderer behaviour
+///
+/// The context holds a number of frames, dependent on the 
+/// number of swapchain images. For each swapchain image,
+/// there is a state memory frame within the context. 
+///
+/// The context has one allocator, which holds one buffer which is backed
+/// by one large chunk device memory. Device memory is segmented into 
+/// equal sized parts, one part for each memory frame.
+///
+/// You tell the context which frame to operate on by passing the swapchain 
+/// image index when calling Context::begin()
 
 class Context
 {

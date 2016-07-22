@@ -100,9 +100,6 @@ void of::vk::Shader::reflect()
 				ofLog() << "\\-" << "[" << tI << "] : " << mn;
 			}
 			
-			
-
-
 			{
 				// let's look up if the current block name already exists in the 
 				// table of bindings for this shader, and if necessary update

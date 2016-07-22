@@ -131,7 +131,6 @@ void ofApp::draw(){
 	case 2:
 	{
 		mCam1.begin();
-
 		
 		ofSetColor(ofColor::white);
 

@@ -97,7 +97,6 @@ void ofVkRenderer::setupShaders(){
 // ----------------------------------------------------------------------
 
 void ofVkRenderer::setupPipelines(){
-	ofLog() << "start setup Pipelines";
 	// !TODO: move pipelines into context
 
 	// pipelines should, like shaders, be part of the context
@@ -131,8 +130,6 @@ void ofVkRenderer::setupPipelines(){
 	defaultPSO.mRasterizationState.polygonMode = VK_POLYGON_MODE_LINE;
 
 	mPipelines.wireframe = defaultPSO.createPipeline( mDevice, mPipelineCache );
-
-	ofLog() << "end setup Pipelines";
 }
  
 // ----------------------------------------------------------------------
@@ -512,8 +509,6 @@ void ofVkRenderer::flushSetupCommandBuffer(){
 // ----------------------------------------------------------------------
 
 void ofVkRenderer::startRender(){
-
-	// vkDeviceWaitIdle( mDevice );
 
 	// start of new frame
 	VkResult err;
