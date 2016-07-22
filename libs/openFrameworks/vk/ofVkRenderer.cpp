@@ -164,9 +164,9 @@ void ofVkRenderer::destroySurface(){
 		instanceCreateInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
 		instanceCreateInfo.pApplicationInfo = &applicationInfo;
 
-		instanceCreateInfo.enabledLayerCount       = mInstanceLayers.size();
+		instanceCreateInfo.enabledLayerCount       = uint32_t(mInstanceLayers.size());
 		instanceCreateInfo.ppEnabledLayerNames     = mInstanceLayers.data();
-		instanceCreateInfo.enabledExtensionCount   = mInstanceExtensions.size();
+		instanceCreateInfo.enabledExtensionCount   = uint32_t(mInstanceExtensions.size());
 		instanceCreateInfo.ppEnabledExtensionNames = mInstanceExtensions.data();
 
 		// this enables debugging the instance creation.
@@ -307,9 +307,9 @@ void ofVkRenderer::createDevice()
 		deviceCreateInfo.queueCreateInfoCount = 1;
 		deviceCreateInfo.pQueueCreateInfos = &deviceQueueCreateInfo;
 
-		deviceCreateInfo.enabledLayerCount = mDeviceLayers.size();
-		deviceCreateInfo.ppEnabledLayerNames = mDeviceLayers.data();
-		deviceCreateInfo.enabledExtensionCount = mDeviceExtensions.size();
+		deviceCreateInfo.enabledLayerCount       = uint32_t(mDeviceLayers.size());
+		deviceCreateInfo.ppEnabledLayerNames     = mDeviceLayers.data();
+		deviceCreateInfo.enabledExtensionCount   = uint32_t(mDeviceExtensions.size());
 		deviceCreateInfo.ppEnabledExtensionNames = mDeviceExtensions.data();
 	}
 
@@ -666,4 +666,5 @@ void ofVkRenderer::bind( const ofCamera & camera, const ofRectangle & viewport )
 void ofVkRenderer::unbind( const ofCamera& camera ){
 	mContext->popMatrix();
 }
+
 

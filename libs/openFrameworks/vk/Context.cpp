@@ -18,7 +18,7 @@ void of::vk::Context::setup(ofVkRenderer* renderer_){
 	of::vk::Allocator::Settings settings{};
 	settings.device = mSettings.device;
 	settings.renderer = renderer_;
-	settings.frames = mSettings.numSwapchainImages;
+	settings.frames = uint32_t(mSettings.numSwapchainImages);
 	settings.size = ( 2UL << 24 ) * settings.frames;  // (16 MB * number of swapchain images)
 
 	mAlloc = std::make_shared<of::vk::Allocator>(settings);
@@ -58,11 +58,11 @@ void of::vk::Context::setupFrameStateFromShaders(){
 			UniformBufferState * lastUniformBufferStateAddr = &(setState.bindings.back());
 
 			for ( const auto & member : binding.memberRanges ){
-				const auto & range = member.second;
+				const auto & range       = member.second;
 				const auto & uniformName = member.first;
 				UniformMember m;
-				m.offset = range.offset;
-				m.range = range.range;
+				m.offset = uint32_t(range.offset);
+				m.range  = uint32_t(range.range);
 				m.buffer = lastUniformBufferStateAddr;
 				frame.mUniformMembers[uniformName] = std::move( m );
 			}
@@ -165,7 +165,7 @@ void of::vk::Context::setupDescriptorPool( const std::map<uint64_t, of::vk::Shad
 		poolSizes.push_back( { p.first, p.second } );
 	}
 
-	uint32_t setCount = setLayouts_.size();	 // number of unique descriptorSets
+	uint32_t setCount = uint32_t(setLayouts_.size());	 // number of unique descriptorSets
 
 	// free any descriptorSets allocated if descriptorPool was already initialised.
 	if ( descriptorPool_ != nullptr ){
@@ -274,13 +274,13 @@ void of::vk::Context::initialiseDescriptorSets( const std::map<uint64_t, of::vk:
 		
 	}
 
-	vkUpdateDescriptorSets( mSettings.device, writeDescriptorSets.size(), writeDescriptorSets.data(), 0, NULL );
+	vkUpdateDescriptorSets( mSettings.device, uint32_t(writeDescriptorSets.size()), writeDescriptorSets.data(), 0, NULL );
 }
 
 // ----------------------------------------------------------------------
 
 void of::vk::Context::begin(size_t frame_){
-	mSwapIdx = frame_;
+	mSwapIdx = int(frame_);
 	mAlloc->free(frame_);
 
 	// TODO: bind shader here
@@ -352,12 +352,11 @@ void of::vk::Context::popBuffer( const std::string & ubo_ ){
 bool of::vk::Context::storeMesh( const ofMesh & mesh_, std::vector<VkDeviceSize>& vertexOffsets, std::vector<VkDeviceSize>& indexOffsets ){
 	// CONSIDER: add option to interleave 
 	
-	uint32_t numVertices   = mesh_.getVertices().size();
-	uint32_t numColors     = mesh_.getColors().size();
-	uint32_t numNormals    = mesh_.getNormals().size();
-	uint32_t numTexCooords = mesh_.getTexCoords().size();
-
-	uint32_t numIndices    = mesh_.getIndices().size();
+	uint32_t numVertices   = uint32_t(mesh_.getVertices().size() );
+	uint32_t numColors     = uint32_t(mesh_.getColors().size()   );
+	uint32_t numNormals    = uint32_t(mesh_.getNormals().size()  );
+	uint32_t numTexCooords = uint32_t(mesh_.getTexCoords().size());
+	uint32_t numIndices    = uint32_t( mesh_.getIndices().size() );
 
 	// TODO: add error checking - make sure 
 	// numVertices == numColors == numNormals == numTexCooords
