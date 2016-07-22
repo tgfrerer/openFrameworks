@@ -66,7 +66,7 @@ void ofVkRenderer::setup(){
 		uint32_t numVerts = 4;
 		rectMesh.getVertices().resize(numVerts);
 		vector<ofIndexType> indices = {0,1,3,1,2,3};
-		vector<ofVec3f> norm( numVerts, { 0, 0, 1.f } );
+		vector<glm::vec3> norm( numVerts, { 0, 0, 1.f } );
 		vector<ofFloatColor> col( numVerts, ofColor::white );
 		rectMesh.addNormals(norm);
 		rectMesh.addColors(col);
@@ -864,15 +864,15 @@ void ofVkRenderer::draw( const ofMesh & mesh_, ofPolyRenderMode renderType, bool
 void ofVkRenderer::drawRectangle(float x, float y, float z, float w, float h) const{
 
 	if (currentStyle.rectMode == OF_RECTMODE_CORNER){
-		rectMesh.getVertices()[0].set(x,y,z);
-		rectMesh.getVertices()[1].set(x+w, y, z);
-		rectMesh.getVertices()[2].set(x+w, y+h, z);
-		rectMesh.getVertices()[3].set(x, y+h, z);
+		rectMesh.getVertices()[0] = { x    , y    , z };
+		rectMesh.getVertices()[1] = { x + w, y    , z };
+		rectMesh.getVertices()[2] = { x + w, y + h, z };
+		rectMesh.getVertices()[3] = { x    , y + h, z };
 	}else{
-		rectMesh.getVertices()[0].set(x-w/2.0f, y-h/2.0f, z);
-		rectMesh.getVertices()[1].set(x+w/2.0f, y-h/2.0f, z);
-		rectMesh.getVertices()[2].set(x+w/2.0f, y+h/2.0f, z);
-		rectMesh.getVertices()[3].set(x-w/2.0f, y+h/2.0f, z);
+		rectMesh.getVertices()[0] = { x - w / 2.0f, y - h / 2.0f, z };
+		rectMesh.getVertices()[1] = { x + w / 2.0f, y - h / 2.0f, z };
+		rectMesh.getVertices()[2] = { x + w / 2.0f, y + h / 2.0f, z };
+		rectMesh.getVertices()[3] = { x - w / 2.0f, y + h / 2.0f, z };
 	}
 
 	draw(rectMesh,OF_MESH_FILL,false,false,false);

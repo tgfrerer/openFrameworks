@@ -229,15 +229,15 @@ public:
 	template<typename UniformT>
 	const UniformT & getUniform( const std::string & name_ ) const;
 
-	inline const ofMatrix4x4 & getViewMatrix()       const { return getUniform<ofMatrix4x4>( "viewMatrix"       ); }
-	inline const ofMatrix4x4 & getModelMatrix()      const { return getUniform<ofMatrix4x4>( "modelMatrix"      ); }
-	inline const ofMatrix4x4 & getProjectionMatrix() const { return getUniform<ofMatrix4x4>( "projectionMatrix" ); }
+	inline const glm::mat4x4 & getViewMatrix()       const { return getUniform<glm::mat4x4>( "viewMatrix"       ); }
+	inline const glm::mat4x4 & getModelMatrix()      const { return getUniform<glm::mat4x4>( "modelMatrix"      ); }
+	inline const glm::mat4x4 & getProjectionMatrix() const { return getUniform<glm::mat4x4>( "projectionMatrix" ); }
 
-	void setViewMatrix( const ofMatrix4x4& mat_ );
-	void setProjectionMatrix( const ofMatrix4x4& mat_ );
+	void setViewMatrix( const glm::mat4x4& mat_ );
+	void setProjectionMatrix( const glm::mat4x4& mat_ );
 
-	void translate(const ofVec3f& v_);
-	void rotate( const float & degrees_, const ofVec3f& axis_ );
+	void translate(const glm::vec3& v_);
+	void rotateRad( const float & degrees_, const glm::vec3& axis_ );
 
 	// push local ubo uniform group state
 	void pushBuffer( const std::string& ubo_ );

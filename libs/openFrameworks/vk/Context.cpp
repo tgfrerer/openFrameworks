@@ -485,25 +485,26 @@ const std::vector<uint32_t>& of::vk::Context::getDynamicUniformBufferOffsets() c
 
 // ----------------------------------------------------------------------
 
-void of::vk::Context::setViewMatrix( const ofMatrix4x4 & mat_ ){
+void of::vk::Context::setViewMatrix( const glm::mat4x4 & mat_ ){
 	setUniform( "viewMatrix", mat_ );
 }
 
 // ----------------------------------------------------------------------
 
-void of::vk::Context::setProjectionMatrix( const ofMatrix4x4 & mat_ ){
+void of::vk::Context::setProjectionMatrix( const glm::mat4x4 & mat_ ){
 	setUniform( "projectionMatrix", mat_ );
 }
 
 // ----------------------------------------------------------------------
 
-void of::vk::Context::translate( const ofVec3f& v_ ){
-	getUniform<ofMatrix4x4>( "modelMatrix" ).glTranslate( v_ );
+void of::vk::Context::translate( const glm::vec3& v_ ){
+	getUniform<glm::mat4x4>( "modelMatrix" ) = glm::translate( getUniform<glm::mat4x4>( "modelMatrix" ), v_ );
+		
 }
 
 // ----------------------------------------------------------------------
 
-void of::vk::Context::rotate( const float& degrees_, const ofVec3f& axis_ ){
-	getUniform<ofMatrix4x4>( "modelMatrix" ).glRotate( degrees_, axis_.x, axis_.y, axis_.z );
+void of::vk::Context::rotateRad( const float& radians_, const glm::vec3& axis_ ){
+	getUniform<glm::mat4x4>( "modelMatrix" ) = glm::rotate( getUniform<glm::mat4x4>( "modelMatrix" ), radians_, axis_ );
 }
 

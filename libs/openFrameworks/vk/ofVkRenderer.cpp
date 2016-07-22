@@ -513,14 +513,14 @@ ofHandednessType ofVkRenderer::getCoordHandedness() const
 
 // ----------------------------------------------------------------------
 
-ofMatrix4x4 ofVkRenderer::getCurrentMatrix(ofMatrixMode matrixMode_) const
+glm::mat4x4 ofVkRenderer::getCurrentMatrix(ofMatrixMode matrixMode_) const
 {
 	return ofMatrix4x4();
 }
 
 // ----------------------------------------------------------------------
 
-ofMatrix4x4 ofVkRenderer::getCurrentOrientationMatrix() const
+glm::mat4x4 ofVkRenderer::getCurrentOrientationMatrix() const
 {
 	return ofMatrix4x4();
 }
@@ -539,48 +539,48 @@ void ofVkRenderer::popMatrix(){
 
 // ----------------------------------------------------------------------
 
-void ofVkRenderer::translate( const ofPoint & p ){
+void ofVkRenderer::translate( const glm::vec3 & p ){
 	mContext->translate( p );
 }
 
 // ----------------------------------------------------------------------
 
-void ofVkRenderer::rotate( float degrees, float axisX, float axisY, float axisZ ){
-	mContext->rotate( degrees, { axisX, axisY, axisZ } );
+void ofVkRenderer::rotateRad( float radians, float axisX, float axisY, float axisZ ){
+	mContext->rotateRad( radians, { axisX, axisY, axisZ } );
 }
 
 // ----------------------------------------------------------------------
 
-void ofVkRenderer::rotateY( float degrees ){
-	rotate( degrees, 0, 1, 0 );
+void ofVkRenderer::rotateYRad( float radians ){
+	rotateRad( radians,  0, 1, 0 );
 }
 
-void ofVkRenderer::rotateZ( float degrees ){
-	rotate( degrees, 0, 0, 1 );
+void ofVkRenderer::rotateZRad( float radians ){
+	rotateRad( radians, 0, 0, 1 );
 }
 
 // ----------------------------------------------------------------------
 
-void ofVkRenderer::rotateX(float degrees) {
-	rotate( degrees, 1, 0, 0 );
+void ofVkRenderer::rotateXRad(float radians ) {
+	rotateRad( radians, 1, 0, 0 );
 };
 
 // ----------------------------------------------------------------------
 
-void ofVkRenderer::rotate( float degrees ){
-	rotateZ( degrees );
+void ofVkRenderer::rotateRad( float radians ){
+	rotateZRad( radians );
 }
 
 // ----------------------------------------------------------------------
 
-ofMatrix4x4 ofVkRenderer::getCurrentViewMatrix() const
+glm::mat4x4 ofVkRenderer::getCurrentViewMatrix() const
 {
 	return mContext->getViewMatrix();
 }
 
 // ----------------------------------------------------------------------
 
-ofMatrix4x4 ofVkRenderer::getCurrentNormalMatrix() const
+glm::mat4x4 ofVkRenderer::getCurrentNormalMatrix() const
 {
 	return ofMatrix4x4();
 }
@@ -653,12 +653,12 @@ void ofVkRenderer::bind( const ofCamera & camera, const ofRectangle & viewport )
 	// Vulkan has inverted y 
 	// and half-width z.
 
-	static const ofMatrix4x4 clip( 1.0f, 0.0f, 0.0f, 0.0f,
+	static const glm::mat4x4 clip( 1.0f, 0.0f, 0.0f, 0.0f,
 		0.0f, -1.0f, 0.0f, 0.0f,
 		0.0f, 0.0f, 0.5f, 0.0f,
 		0.0f, 0.0f, 0.5f, 1.0f );
 	
-	mContext->setProjectionMatrix(camera.getProjectionMatrix(viewport) * clip);
+	mContext->setProjectionMatrix( clip * camera.getProjectionMatrix(viewport) );
 }
 
 // ----------------------------------------------------------------------

@@ -10,9 +10,10 @@
 #include <vulkan/vulkan.h>
 #include "vk/Swapchain.h"
 #include "vk/Context.h"
+#include "ofMesh.h"
 
 class ofShapeTessellation;
-class ofMesh;
+//class ofMesh;
 
 namespace of{
 namespace vk{
@@ -85,33 +86,33 @@ public:
 	virtual void pushMatrix() override;
 	virtual void popMatrix() override;
 
-	virtual ofMatrix4x4 getCurrentMatrix( ofMatrixMode matrixMode_ ) const override;
-	virtual ofMatrix4x4 getCurrentOrientationMatrix() const override;
+	virtual glm::mat4x4 getCurrentMatrix( ofMatrixMode matrixMode_ ) const override;
+	virtual glm::mat4x4 getCurrentOrientationMatrix() const override;
 
 	virtual void translate( float x, float y, float z = 0 ){
 		translate( { x,y,z } );
 	};
-	virtual void translate( const ofPoint & p );
+	virtual void translate( const glm::vec3& p );
 	virtual void scale( float xAmnt, float yAmnt, float zAmnt = 1 ){};
-	virtual void rotate( float degrees, float axisX, float axisY, float axisZ );
-	virtual void rotateX( float degrees );
-	virtual void rotateY( float degrees );
-	virtual void rotateZ( float degrees );
-	virtual void rotate( float degrees );
+	virtual void rotateRad( float degrees, float axisX, float axisY, float axisZ ) override;
+	virtual void rotateXRad( float degrees ) override;
+	virtual void rotateYRad( float degrees ) override;
+	virtual void rotateZRad( float degrees ) override;
+	virtual void rotateRad( float degrees ) override;
 
 	virtual void matrixMode( ofMatrixMode mode ){};
 
 
-	virtual void loadMatrix( const ofMatrix4x4 & m ){};
+	virtual void loadMatrix( const glm::mat4x4 & m ){};
 	virtual void loadMatrix( const float *m ){};
 	virtual void loadIdentityMatrix( void ){};
-	virtual void loadViewMatrix( const ofMatrix4x4 & m ){};
-	virtual void multViewMatrix( const ofMatrix4x4 & m ){};
-	virtual void multMatrix( const ofMatrix4x4 & m ){};
+	virtual void loadViewMatrix( const glm::mat4x4 & m ){};
+	virtual void multViewMatrix( const glm::mat4x4 & m ){};
+	virtual void multMatrix( const glm::mat4x4 & m ){};
 	virtual void multMatrix( const float *m ){};
 
-	virtual ofMatrix4x4 getCurrentViewMatrix() const override;
-	virtual ofMatrix4x4 getCurrentNormalMatrix() const override;
+	virtual glm::mat4x4 getCurrentViewMatrix() const override;
+	virtual glm::mat4x4 getCurrentNormalMatrix() const override;
 
 	virtual void bind( const ofCamera & camera, const ofRectangle & viewport );
 	virtual void unbind( const ofCamera & camera );

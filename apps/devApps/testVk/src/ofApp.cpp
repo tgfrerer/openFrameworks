@@ -19,7 +19,7 @@ void ofApp::setup(){
 	
 	{	// Horizontally elongated "L___" shape
 
-		vector<ofVec3f> vert {
+		vector<glm::vec3> vert {
 			{0.f,0.f,0.f},
 			{20.f,20.f,0.f},
 			{0.f,100.f,0.f},
@@ -35,7 +35,7 @@ void ofApp::setup(){
 			1, 4, 5,
 		};
 
-		vector<ofVec3f> norm( vert.size(), { 0, 0, 1.f } );
+		vector<glm::vec3> norm( vert.size(), { 0, 0, 1.f } );
 
 		vector<ofFloatColor> col( vert.size(), ofColor::white );
 
