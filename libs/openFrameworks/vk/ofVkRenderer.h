@@ -118,6 +118,7 @@ public:
 
 	virtual void setupGraphicDefaults(){};
 	virtual void setupScreen(){};
+	void resizeScreen( int w, int h );
 
 	virtual void setRectMode( ofRectMode mode ){};
 
@@ -318,7 +319,7 @@ private:
 	VkFormat mDepthFormat;
 
 	// main renderpass 
-	VkRenderPass mRenderPass;
+	VkRenderPass mRenderPass = nullptr;
 
 	// Synchronization semaphores - one for each swapchain image
 	VkSemaphore mSemaphorePresentComplete;
@@ -328,9 +329,9 @@ private:
 	// we only need one since there is only ever one frame in flight.
 	struct
 	{
-		VkImage image;
-		VkDeviceMemory mem;
-		VkImageView view;
+		VkImage image      = nullptr;
+		VkDeviceMemory mem = nullptr;
+		VkImageView view   = nullptr;
 	} mDepthStencil;
 
 	// vulkan swapchain

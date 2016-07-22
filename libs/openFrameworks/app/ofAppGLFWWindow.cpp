@@ -1334,6 +1334,9 @@ void ofAppGLFWWindow::resize_cb(GLFWwindow* windowP_,int w, int h) {
 	}
 	instance->currentW = w;
 	instance->currentH = h;
+#ifdef OF_TARGET_API_VULKAN
+	dynamic_pointer_cast<ofVkRenderer>(instance->renderer())->resizeScreen( w, h );
+#endif
 	instance->events().notifyWindowResized(w*instance->pixelScreenCoordScale, h*instance->pixelScreenCoordScale);
 	instance->nFramesSinceWindowResized = 0;
 }

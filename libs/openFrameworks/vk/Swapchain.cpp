@@ -4,6 +4,9 @@
 #include "GLFW/glfw3.h"
 #include "vk/vkUtils.h"
 
+// TODO: maybe using a settings object could make the setup method 
+// less long to call.
+
 void Swapchain::setup(
 	const VkInstance & instance_,
 	const VkDevice & device_,
@@ -12,7 +15,9 @@ void Swapchain::setup(
 	const VkSurfaceFormatKHR& surfaceFormat_,
 	VkCommandBuffer cmdBuffer,
 	uint32_t & width_,
-	uint32_t & height_ ){
+	uint32_t & height_,
+	uint32_t & numSwapChainFrames_,
+	VkPresentModeKHR& presentMode_ ){
 	VkResult err = VK_SUCCESS;
 
 	mInstance = instance_;
@@ -46,27 +51,29 @@ void Swapchain::setup(
 		height_ = surfCaps.currentExtent.height;
 	}
 
-	// Prefer mailbox mode if present, it's the lowest latency non-tearing present mode
-	// TODO: allow user to choose preferred presentmode 
-	// with setup constants.
+	// Prefer user-selected present mode, 
+	// use guaranteed fallback mode (FIFO) if preferred mode couldn't be found.
 	VkPresentModeKHR swapchainPresentMode = VK_PRESENT_MODE_FIFO_KHR;
-	for ( size_t i = 0; i < presentModeCount; i++ ){
-		if ( presentModes[i] == VK_PRESENT_MODE_MAILBOX_KHR ){
-			swapchainPresentMode = VK_PRESENT_MODE_MAILBOX_KHR;
+
+	for ( auto & p : presentModes ){
+		if ( p == presentMode_ ){
+			swapchainPresentMode = p;
 			break;
 		}
-		if ( ( swapchainPresentMode != VK_PRESENT_MODE_MAILBOX_KHR ) && ( presentModes[i] == VK_PRESENT_MODE_IMMEDIATE_KHR ) ){
-			swapchainPresentMode = VK_PRESENT_MODE_IMMEDIATE_KHR;
-		}
 	}
+	// write current present mode back to reference from parameter
+	// so caller can find out whether chosen present mode has been 
+	// applied successfully.
+	presentMode_ = swapchainPresentMode;
 
-	// Determine the number of images
-	// TODO: allow user to choose number of swapchain elements
-	// with setup constants
-	uint32_t desiredNumberOfSwapchainImages = surfCaps.minImageCount + 1;
+	uint32_t desiredNumberOfSwapchainImages = std::max<uint32_t>( surfCaps.minImageCount, numSwapChainFrames_ );
 	if ( ( surfCaps.maxImageCount > 0 ) && ( desiredNumberOfSwapchainImages > surfCaps.maxImageCount ) ){
 		desiredNumberOfSwapchainImages = surfCaps.maxImageCount;
 	}
+
+	// write current value back to parameter reference so caller
+	// has a chance to check if values were applied correctly.
+	numSwapChainFrames_ = desiredNumberOfSwapchainImages;
 
 	VkSurfaceTransformFlagsKHR preTransform;
 	// Note: this will be interesting for mobile devices
@@ -120,8 +127,16 @@ void Swapchain::setup(
 	swapchainImages.resize( mImageCount );
 	vkGetSwapchainImagesKHR( mDevice, mSwapchain, &mImageCount, swapchainImages.data() );
 	
-	// Get the swap chain buffers containing the image and imageview
+	if ( !mImages.empty() ){
+		// Swapchain re-created because of window resize, most possibly
+		// therefore we have to destroy old ImageView object(s).
+		for ( auto&b : mImages ){
+			vkDestroyImageView( mDevice, b.view, nullptr );
+		}
+	}
+
 	mImages.resize( mImageCount );
+
 	for ( uint32_t i = 0; i < mImageCount; i++ ){
 		VkImageViewCreateInfo colorAttachmentView = {};
 		colorAttachmentView.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;

@@ -43,7 +43,9 @@ public:
 		const VkSurfaceFormatKHR& surfaceFormat_,
 		VkCommandBuffer cmdBuffer,
 		uint32_t & width,
-		uint32_t & height 
+		uint32_t & height,
+		uint32_t & numSwapChainFrames,
+		VkPresentModeKHR & presentMode_
 	);
 
 	// resets all vk objects owned by this swapchain 

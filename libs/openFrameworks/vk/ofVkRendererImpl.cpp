@@ -15,23 +15,7 @@ void ofVkRenderer::setup(){
 	// vkprepare:
 	createCommandPool();
 	
-	createSetupCommandBuffer();
-	{
-		setupSwapChain();
-		createCommandBuffers();
-		setupDepthStencil();
-		// TODO: let's make sure that this is more explicit,
-		// and that you can set up your own render passes.
-		setupRenderPass();
-
-		// here we create a pipeline cache so that we can create a pipeline from it in preparePipelines
-		mPipelineCache = of::vk::createPipelineCache(mDevice,"testPipelineCache.bin");
-
-		mViewport = { 0.f, 0.f, float( mWindowWidth ), float( mWindowHeight ) };
-		setupFrameBuffer();
-	}
-	// submit, then free the setupCommandbuffer.
-	flushSetupCommandBuffer();
+	setupSwapChain();
 	
 	createSemaphores();
 
@@ -58,6 +42,8 @@ void ofVkRenderer::setup(){
 	// descriptor pool and memory pool - and other pools - to 
 	// allocate from.
 
+	// here we create a pipeline cache so that we can create a pipeline from it in preparePipelines
+	mPipelineCache = of::vk::createPipelineCache( mDevice, "testPipelineCache.bin" );
 
 	setupPipelines();					  
 	
@@ -73,7 +59,67 @@ void ofVkRenderer::setup(){
 		rectMesh.addIndices(indices);
 	}
 
+}
 
+// ----------------------------------------------------------------------
+
+void ofVkRenderer::setupSwapChain(){
+	// we need a setup command buffer to transition our image memory 
+	createSetupCommandBuffer();
+
+	uint32_t numSwapChainFrames = 3;
+	VkPresentModeKHR presentMode = VK_PRESENT_MODE_MAILBOX_KHR;
+
+	// Note that the mSwapchain.setup() method will *modify* numSwapChainFrames 
+	// and presentMode if it wasn't able to apply the chosen values
+	// and had to resort to using fallback settings.
+
+	mSwapchain.setup(
+		mInstance,
+		mDevice,
+		mPhysicalDevice,
+		mWindowSurface,
+		mWindowColorFormat,
+		mSetupCommandBuffer,
+		mWindowWidth,
+		mWindowHeight,
+		numSwapChainFrames,
+		presentMode
+	);
+
+	createCommandBuffers();
+	setupDepthStencil();
+	// TODO: let's make sure that this is more explicit,
+	// and that you can set up your own render passes.
+	setupRenderPass();
+
+	mViewport = { 0.f, 0.f, float( mWindowWidth ), float( mWindowHeight ) };
+	setupFrameBuffer();
+	// submit, then free the setupCommandbuffer.
+	flushSetupCommandBuffer();
+}
+
+// ----------------------------------------------------------------------
+
+void ofVkRenderer::resizeScreen( int w, int h ){
+	ofLog() << "Screen resize requested.";
+
+	// Note: this needs to halt any multi-threaded operations
+	// or wait for all of them to finish.
+	
+	auto err = vkDeviceWaitIdle( mDevice );
+	assert( !err );
+
+	// reset command pool and all associated command buffers.
+	err = vkResetCommandPool( mDevice, mCommandPool, VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT );
+	assert( !err );
+
+	mWindowWidth = w;
+	mWindowHeight = h;
+
+	setupSwapChain();
+
+	ofLog() << "Screen resize complete";
 }
 
 // ----------------------------------------------------------------------
@@ -243,12 +289,6 @@ void ofVkRenderer::createSetupCommandBuffer(){
 
 // ----------------------------------------------------------------------
 
-void ofVkRenderer::setupSwapChain(){
-	mSwapchain.setup( mInstance, mDevice, mPhysicalDevice, mWindowSurface, mWindowColorFormat, mSetupCommandBuffer, mWindowWidth, mWindowHeight );
-};
-
-// ----------------------------------------------------------------------
-
 void ofVkRenderer::createCommandBuffers(){
 	VkCommandBufferAllocateInfo allocInfo;
 	allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -329,7 +369,11 @@ void ofVkRenderer::setupDepthStencil(){
 
 	VkMemoryRequirements memReqs;
 	
-
+	if ( mDepthStencil.image){
+		// Destroy previously created image, if any
+		vkDestroyImage( mDevice, mDepthStencil.image, nullptr );
+		mDepthStencil.image = nullptr;
+	}
 	auto err = vkCreateImage( mDevice, &image, nullptr, &mDepthStencil.image );
 	assert( !err );
 	vkGetImageMemoryRequirements( mDevice, mDepthStencil.image, &memReqs );
@@ -337,6 +381,11 @@ void ofVkRenderer::setupDepthStencil(){
 	VkMemoryAllocateInfo memInfo;
 	getMemoryAllocationInfo( memReqs, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, memInfo );
 	
+	if ( mDepthStencil.mem ){
+		// Free any previously allocated memory
+		vkFreeMemory( mDevice, mDepthStencil.mem, nullptr );
+		mDepthStencil.mem = nullptr;
+	}
 	err = vkAllocateMemory( mDevice, &memInfo, nullptr, &mDepthStencil.mem );
 	assert( !err );
 
@@ -362,6 +411,11 @@ void ofVkRenderer::setupDepthStencil(){
 
 	depthStencilView.image = mDepthStencil.image;
 
+	if ( mDepthStencil.view ){
+		// Destroy any previous depthStencil ImageView
+		vkDestroyImageView( mDevice, mDepthStencil.view, nullptr );
+		mDepthStencil.view = nullptr;
+	}
 	err = vkCreateImageView( mDevice, &depthStencilView, nullptr, &mDepthStencil.view );
 	assert( !err );
 };
@@ -440,6 +494,12 @@ void ofVkRenderer::setupRenderPass(){
 		nullptr,                                               // const VkSubpassDependency*        pDependencies;
 	};
 
+	if ( mRenderPass != nullptr ){
+		// Destroy any previously existing RenderPass.
+		vkDestroyRenderPass( mDevice, mRenderPass, nullptr );
+		mRenderPass = nullptr;
+	}
+
 	VkResult err = vkCreateRenderPass(mDevice, &renderPassInfo, nullptr, &mRenderPass);
 	assert(!err);
 };
@@ -448,6 +508,14 @@ void ofVkRenderer::setupRenderPass(){
 // ----------------------------------------------------------------------
 
 void ofVkRenderer::setupFrameBuffer(){
+
+	// destroy previously exisiting FrameBuffer objects
+	for ( auto& f : mFrameBuffers ){
+		if ( f != nullptr ){
+			vkDestroyFramebuffer( mDevice, f, nullptr );
+			f = nullptr;
+		}
+	}
 
 	// Create frame buffers for every swap chain frame
 	mFrameBuffers.resize( mSwapchain.getImageCount() );
