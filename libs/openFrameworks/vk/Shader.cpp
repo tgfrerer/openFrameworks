@@ -6,30 +6,6 @@
 void of::vk::Shader::reflect()
 {
 
-	/*
-	
-	when we analyse shader uniform resouces, we first need to group bindings by set.
-
-	The smallest unit we bind in Vulkan are sets - and for each set we will have to specify offsets for each descriptor.
-	
-	set - binding 0 - descriptor 0
-	    - binding 1 - decriptors[] 1,2,3
-	    - <empty>
-	    - binding 3 - descriptor 4
-	
-	there does not seem to be a maximum number of descriptors that we can allocate - as long as we don't use them all at the same time
-
-	is there a maximum number of descriptorsets that we can allocate?
-	
-	here's some more information about the vulkan binding model:
-	https://developer.nvidia.com/vulkan-shader-resource-binding
-
-	Some information on descriptor sets and fast paths
-	http://gpuopen.com/wp-content/uploads/2016/03/VulkanFastPaths.pdf
-
-	*/
-
-
 	// for all shader stages
 	for ( auto &c : mCompilers ){
 
@@ -44,258 +20,266 @@ void of::vk::Shader::reflect()
 
 		auto shaderResources = compiler.get_shader_resources();
 
-		shaderResources.uniform_buffers.size();
+		// ! TODO: process texture samplers
+		// This: http://gpuopen.com/wp-content/uploads/2016/03/VulkanFastPaths.pdf
+		// suggests a fast path is to bind everyting into one descriptorSet
+		// as an array of textures, and then use pushConstants to fetch the index 
+		// into the array for the texture we wanted. 
+		for ( auto & samplers : shaderResources.sampled_images ){
+
+		}
 
 		// --- uniform buffers ---
-
-		// we need to build a unique list of uniforms
-		// and make sure that uniforms with the same name 
-		// refer to the same binding number and set index.
-		//
-		// also if a uniform is referred to by more than one
-		// shader stages this needs to be updated in the uniform's 
-		// accessibility stage flags.
-
-		for ( auto & ubo : shaderResources.uniform_buffers ){
-			ostringstream os;
-
-			uint32_t descriptor_set = 0;
-			uint32_t bindingNumber = 0;
-
-			// get a bitmask representing uniform decorations 
-			uint64_t decorationMask = compiler.get_decoration_mask( ubo.id );
-			
-			// get the storage type for this ubo
-			auto storageType = compiler.get_type( ubo.type_id );
-			// get the storageSize (in bytes) for this ubo
-			uint32_t storageSize = compiler.get_declared_struct_size( storageType );
-
-			if ( ( 1ull << spv::DecorationDescriptorSet ) & decorationMask ){
-				descriptor_set = compiler.get_decoration( ubo.id, spv::DecorationDescriptorSet );
-				os << ", set = " << descriptor_set;
-			} else{
-				ofLogWarning() << "Warning: Shader uniform " << ubo.name << "does not specify set id, and will " << endl
-					<< "therefore be mapped to set 0 - this might have unintended consequences.";
-				// If undefined, set descriptor set id to 0. This is conformant with:
-				// https://www.khronos.org/registry/vulkan/specs/misc/GL_KHR_vulkan_glsl.txt
-				descriptor_set = 0;
-			}
-
-
-			if ( ( 1ull << spv::DecorationBinding ) & decorationMask ){
-				bindingNumber = compiler.get_decoration( ubo.id, spv::DecorationBinding );
-				os << ", binding = " << bindingNumber;
-			} else{
-				ofLogWarning() << "shader uniform" << ubo.name << "does not specify binding number.";
-			}
-
-			ofLog() << "Uniform Block: '" << ubo.name << "'" << os.str();
-
-			auto type = compiler.get_type( ubo.type_id );
-				   
-			// type for ubo descriptors is struct
-			// such structs will have member types, that is, they have elements within.
-			for ( uint32_t tI = 0; tI != type.member_types.size(); ++tI ){
-				auto mn = compiler.get_member_name( ubo.type_id, tI );
-				ofLog() << "\\-" << "[" << tI << "] : " << mn;
-			}
-			
-			{
-				// let's look up if the current block name already exists in the 
-				// table of bindings for this shader, and if necessary update
-				// the shader stage flags to permit access to all stages that need it:
-
-				// shaderStage defines from which shader stages this layout is accessible
-				VkShaderStageFlags layoutAccessibleFromStages = shaderStage;
-
-				VkDescriptorSetLayoutBinding  newBinding{
-					bindingNumber,                                        // uint32_t              binding;
-					VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,            // VkDescriptorType      descriptorType;
-					// Note that descriptorCount will always be 1 with UNIFORM_BUFFER_DYNAMIC, as 
-					// arrays of UBOs are not allowed:
-					1,                                                    // uint32_t              descriptorCount;
-					layoutAccessibleFromStages,                           // VkShaderStageFlags    stageFlags;
-					nullptr,                                              // const VkSampler*      pImmutableSamplers;
-				};
-
-				if ( mUniforms.find( ubo.name ) != mUniforms.end() ){
-					// we have found a binding with the same name in another shader stage.
-					// therefore we: 
-					// 1.) need to update the binding accessiblity flag
-					// 2.) do some error checking to make sure the binding is the same.
-
-					auto& existingBinding = mUniforms[ubo.name];
-					if ( existingBinding.set != descriptor_set
-						|| existingBinding.binding.binding != bindingNumber ){
-						ofLogError() << "Incompatible bindings between shader stages: " << ubo.name;
-					} else{
-						// all good, make sure the binding is also accessible in the 
-						// current stage.
-						newBinding.stageFlags |= existingBinding.binding.stageFlags;
-					}
-				}
-
-				mUniforms[ubo.name].set = descriptor_set;
-				mUniforms[ubo.name].binding = newBinding;
-				mUniforms[ubo.name].size = storageSize;
-				mUniforms[ubo.name].name = ubo.name;
-
-				// add name, offsets and sizes for individual members inside this ubo binding.
-
-				// get offset and range for elements from buffer
-				auto bufferRanges = compiler.get_active_buffer_ranges( ubo.id );
-				
-				for ( const auto &r : bufferRanges ){
-					auto memberName = compiler.get_member_name( ubo.type_id, r.index );
-					mUniforms[ubo.name].memberRanges[memberName] = { r.offset, r.range };
-				}
-				
-
-			}
-			// TODO: check under which circumstances descriptorCount needs to be other
-			// than 1.
-
-
+		for ( auto & resource : shaderResources.uniform_buffers ){
+			processResource( compiler, resource, shaderStage );
 		} // end for : shaderResources.uniform_buffers
 
-			// --- vertex inputs ---
-			// VERTEX ATTRIBUTES
-
+		// --- vertex inputs ---
 		if ( shaderStage & VK_SHADER_STAGE_VERTEX_BIT ){
-			// this populate vertex info 
+			processVertexInputs( shaderResources, compiler );
+		} 
+	}  
 
-			ofLog() << "Vertex Attribute locations";
+	buildSetLayouts();
 
-			mVertexInfo.attribute.resize( shaderResources.stage_inputs.size() );
-			mVertexInfo.bindingDescription.resize( shaderResources.stage_inputs.size() );
+}
+// ----------------------------------------------------------------------
 
-			for ( uint32_t i = 0; i != shaderResources.stage_inputs.size(); ++i ){
+void of::vk::Shader::buildSetLayouts(){
+	
+	// group BindingInfo by "set"
+	std::map<uint32_t, vector<BindingInfo>> bindingInfoMap;
+	for ( auto & binding : mUniforms ){
+		bindingInfoMap[binding.second.set].push_back( binding.second );
+	};
 
-				auto & attributeInput = shaderResources.stage_inputs[i];
-				auto attributeType = compiler.get_type( attributeInput.type_id );
+	// go over all sets, and sort uniforms by binding number asc.
+	for ( auto & s : bindingInfoMap ){
+		auto & uniformInfoVec = s.second;
+		std::sort( uniformInfoVec.begin(), uniformInfoVec.end(), []( const BindingInfo& lhs, const BindingInfo& rhs )->bool{
+			return lhs.binding.binding < rhs.binding.binding;
+		} );
+	}
 
-				uint32_t location = i; // shader location qualifier mapped to binding number
+	// now bindingInfoMap contains grouped, and sorted uniform infos.
+	// the groups are sorted too, as that's what map<> does 
 
-				if ( ( 1ull << spv::DecorationLocation ) & compiler.get_decoration_mask( attributeInput.id ) ){
-					location = compiler.get_decoration( attributeInput.id, spv::DecorationLocation );
-				}
+	// clear any previous set layouts
+	clearSetLayouts();
 
-				ofLog() << "Vertex Attribute loc=[" << location << "] : " << attributeInput.name;
+	mSetLayouts.reserve( bindingInfoMap.size() );
+	mSetLayoutKeys.reserve( bindingInfoMap.size() );
 
-				// Binding Description: Describe how to read data from buffer based on binding number
-				mVertexInfo.bindingDescription[i].binding = location;  // which binding number we are describing
-				mVertexInfo.bindingDescription[i].stride = ( attributeType.width / 8 ) * attributeType.vecsize * attributeType.columns;
-				mVertexInfo.bindingDescription[i].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+	uint32_t i = 0;
+	for ( auto & s : bindingInfoMap ){
+		if ( s.first != i ){
+			// Q: is this really the case? it could be possible that shaders define sets they are not using. 
+			//    and these sets would not require memory to be bound.
+			ofLogError() << "DescriptorSet ids in shader cannot be sparse. Missing definition for descriptorSet: " << i;
+		}
 
-				// Attribute description: Map shader location to pipeline binding number
-				mVertexInfo.attribute[i].location = location;   // .location == which shader attribute location
-				mVertexInfo.attribute[i].binding = location;    // .binding  == pipeline binding number == where attribute takes data from
+		// add empty setLayout to our sequence of setLayouts
+		mSetLayouts.push_back( SetLayout() );
 
-				switch ( attributeType.vecsize ){
-				case 3:
-					mVertexInfo.attribute[i].format = VK_FORMAT_R32G32B32_SFLOAT;	     // 3-part float
-					break;
-				case 4:
-					mVertexInfo.attribute[i].format = VK_FORMAT_R32G32B32A32_SFLOAT;	 // 4-part float
-					break;
-				default:
-					break;
-				}
-			}
+		const auto & setInfoVec = s.second;
+		auto & currentLayout = mSetLayouts.back();
 
-			VkPipelineVertexInputStateCreateInfo vi{
-				VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO, // VkStructureType                             sType;
-				nullptr,                                                   // const void*                                 pNext;
-				0,                                                         // VkPipelineVertexInputStateCreateFlags       flags;
-				uint32_t(mVertexInfo.bindingDescription.size()),           // uint32_t                                    vertexBindingDescriptionCount;
-				mVertexInfo.bindingDescription.data(),                     // const VkVertexInputBindingDescription*      pVertexBindingDescriptions;
-				uint32_t(mVertexInfo.attribute.size()),                    // uint32_t                                    vertexAttributeDescriptionCount;
-				mVertexInfo.attribute.data()                               // const VkVertexInputAttributeDescription*    pVertexAttributeDescriptions;
-			};
+		std::vector<VkDescriptorSetLayoutBinding> flatBindings; // flat binding vector for initialisation
+		flatBindings.reserve( setInfoVec.size() );
 
-			mVertexInfo.vi = std::move( vi );
+		// build add all bindings to current set
+		for ( const auto & bindingInfo : setInfoVec ){
+			currentLayout.bindings.push_back( bindingInfo );
+			flatBindings.push_back( bindingInfo.binding );
+		}
 
-		} // end shaderStage & VK_SHADER_STAGE_VERTEX_BIT
-	}  // end for : mCompilers
+		// calculate hash key for current set
 
-	// now we have been going over vertex and other shader stages, and 
-	// we should have a pretty good idea of all the uniforms
-	// referenced in all shader stages.
+		currentLayout.calculateHash();
+		mSetLayoutKeys.push_back( currentLayout.key ); // store key
 
-	// Q: i wonder if there is a way to link the different shader stages, 
-	//    so that we can see if the different visibility options for shader stages are allowed...
-
-	{	// build set layouts
-
-		// group BindingInfo by "set"
-		std::map<uint32_t, vector<BindingInfo>> bindingInfoMap;
-		for ( auto & binding : mUniforms ){
-			bindingInfoMap[binding.second.set].push_back( binding.second );
+		// create & store descriptorSetLayout based on bindings for this set
+		VkDescriptorSetLayoutCreateInfo createInfo{
+			VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,    // VkStructureType                        sType;
+			nullptr,                                                // const void*                            pNext;
+			0,                                                      // VkDescriptorSetLayoutCreateFlags       flags;
+			uint32_t( flatBindings.size() ),                        // uint32_t                               bindingCount;
+			flatBindings.data()                                     // const VkDescriptorSetLayoutBinding*    pBindings;
 		};
 
-		// go over all sets, and sort uniforms by binding number asc.
-		for ( auto & s : bindingInfoMap ){
-			auto & uniformInfoVec = s.second;
-			std::sort( uniformInfoVec.begin(), uniformInfoVec.end(), []( const BindingInfo& lhs, const BindingInfo& rhs )->bool{
-				return lhs.binding.binding < rhs.binding.binding;
-			} );
+		vkCreateDescriptorSetLayout( mSettings.device, &createInfo, nullptr, &currentLayout.vkLayout );
+
+		ofLog() << "DescriptorSet #" << std::setw( 4 ) << i << " | hash: " << std::hex << currentLayout.key;
+
+		++i;
+	}
+
+}
+
+// ----------------------------------------------------------------------
+
+void of::vk::Shader::processResource( spirv_cross::Compiler & compiler, spirv_cross::Resource & ubo, const VkShaderStageFlagBits & shaderStage ){
+	
+	// we need to build a unique list of uniforms
+	// and make sure that uniforms with the same name 
+	// refer to the same binding number and set index.
+	//
+	// also if a uniform is referred to by more than one
+	// shader stages this needs to be updated in the uniform's 
+	// accessibility stage flags.
+
+	
+	ostringstream os;
+
+	uint32_t descriptor_set = 0;
+	uint32_t bindingNumber = 0;
+
+	// get a bitmask representing uniform decorations 
+	uint64_t decorationMask = compiler.get_decoration_mask( ubo.id );
+
+	// get the storage type for this ubo
+	auto storageType = compiler.get_type( ubo.type_id );
+	// get the storageSize (in bytes) for this ubo
+	uint32_t storageSize = compiler.get_declared_struct_size( storageType );
+
+	if ( ( 1ull << spv::DecorationDescriptorSet ) & decorationMask ){
+		descriptor_set = compiler.get_decoration( ubo.id, spv::DecorationDescriptorSet );
+		os << ", set = " << descriptor_set;
+	} else{
+		ofLogWarning() << "Warning: Shader uniform " << ubo.name << "does not specify set id, and will " << endl
+			<< "therefore be mapped to set 0 - this might have unintended consequences.";
+		// If undefined, set descriptor set id to 0. This is conformant with:
+		// https://www.khronos.org/registry/vulkan/specs/misc/GL_KHR_vulkan_glsl.txt
+		descriptor_set = 0;
+	}
+
+
+	if ( ( 1ull << spv::DecorationBinding ) & decorationMask ){
+		bindingNumber = compiler.get_decoration( ubo.id, spv::DecorationBinding );
+		os << ", binding = " << bindingNumber;
+	} else{
+		ofLogWarning() << "shader uniform" << ubo.name << "does not specify binding number.";
+	}
+
+	ofLog() << "Uniform Block: '" << ubo.name << "'" << os.str();
+
+	auto type = compiler.get_type( ubo.type_id );
+
+	// type for ubo descriptors is struct
+	// such structs will have member types, that is, they have elements within.
+	for ( uint32_t tI = 0; tI != type.member_types.size(); ++tI ){
+		auto mn = compiler.get_member_name( ubo.type_id, tI );
+		ofLog() << "\\-" << "[" << tI << "] : " << mn;
+	}
+
+	
+	// let's look up if the current block name already exists in the 
+	// table of bindings for this shader, and if necessary update
+	// the shader stage flags to permit access to all stages that need it:
+
+	// shaderStage defines from which shader stages this layout is accessible
+	VkShaderStageFlags layoutAccessibleFromStages = shaderStage;
+
+	VkDescriptorSetLayoutBinding  newBinding{
+		bindingNumber,                                        // uint32_t              binding;
+		VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,            // VkDescriptorType      descriptorType;
+															  // Note that descriptorCount will always be 1 with UNIFORM_BUFFER_DYNAMIC, as 
+															  // arrays of UBOs are not allowed:
+		1,                                                    // uint32_t              descriptorCount;
+		layoutAccessibleFromStages,                           // VkShaderStageFlags    stageFlags;
+		nullptr,                                              // const VkSampler*      pImmutableSamplers;
+	};
+
+	if ( mUniforms.find( ubo.name ) != mUniforms.end() ){
+		// we have found a binding with the same name in another shader stage.
+		// therefore we: 
+		// 1.) need to update the binding accessiblity flag
+		// 2.) do some error checking to make sure the binding is the same.
+
+		auto& existingBinding = mUniforms[ubo.name];
+		if ( existingBinding.set != descriptor_set
+			|| existingBinding.binding.binding != bindingNumber ){
+			ofLogError() << "Incompatible bindings between shader stages: " << ubo.name;
+		} else{
+			// all good, make sure the binding is also accessible in the 
+			// current stage.
+			newBinding.stageFlags |= existingBinding.binding.stageFlags;
+		}
+	}
+
+	mUniforms[ubo.name].set = descriptor_set;
+	mUniforms[ubo.name].binding = newBinding;
+	mUniforms[ubo.name].size = storageSize;
+	mUniforms[ubo.name].name = ubo.name;
+
+	// add name, offsets and sizes for individual members inside this ubo binding.
+
+	// get offset and range for elements from buffer
+	auto bufferRanges = compiler.get_active_buffer_ranges( ubo.id );
+
+	for ( const auto &r : bufferRanges ){
+		auto memberName = compiler.get_member_name( ubo.type_id, r.index );
+		mUniforms[ubo.name].memberRanges[memberName] = { r.offset, r.range };
+	}
+	// TODO: check under which circumstances descriptorCount needs to be other
+	// than 1.
+}
+
+// ----------------------------------------------------------------------
+
+void of::vk::Shader::processVertexInputs( spirv_cross::ShaderResources &shaderResources, spirv_cross::Compiler & compiler ){
+	// this populate vertex info 
+
+	ofLog() << "Vertex Attribute locations";
+
+	mVertexInfo.attribute.resize( shaderResources.stage_inputs.size() );
+	mVertexInfo.bindingDescription.resize( shaderResources.stage_inputs.size() );
+
+	for ( uint32_t i = 0; i != shaderResources.stage_inputs.size(); ++i ){
+
+		auto & attributeInput = shaderResources.stage_inputs[i];
+		auto attributeType = compiler.get_type( attributeInput.type_id );
+
+		uint32_t location = i; // shader location qualifier mapped to binding number
+
+		if ( ( 1ull << spv::DecorationLocation ) & compiler.get_decoration_mask( attributeInput.id ) ){
+			location = compiler.get_decoration( attributeInput.id, spv::DecorationLocation );
 		}
 
-		// now bindingInfoMap contains grouped, and sorted uniform infos.
-		// the groups are sorted too, as that's what map<> does 
+		ofLog() << "Vertex Attribute loc=[" << location << "] : " << attributeInput.name;
 
-		clearSetLayouts();
+		// Binding Description: Describe how to read data from buffer based on binding number
+		mVertexInfo.bindingDescription[i].binding = location;  // which binding number we are describing
+		mVertexInfo.bindingDescription[i].stride = ( attributeType.width / 8 ) * attributeType.vecsize * attributeType.columns;
+		mVertexInfo.bindingDescription[i].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
-		mSetLayouts.reserve( bindingInfoMap.size() );
-		mSetLayoutKeys.reserve( bindingInfoMap.size() );
+		// Attribute description: Map shader location to pipeline binding number
+		mVertexInfo.attribute[i].location = location;   // .location == which shader attribute location
+		mVertexInfo.attribute[i].binding = location;    // .binding  == pipeline binding number == where attribute takes data from
 
-		uint32_t i = 0;
-		for ( auto & s : bindingInfoMap ){
-			if ( s.first != i ){
-				// Q: is this really the case? it could be possible that shaders define sets they are not using. 
-				//    and these sets would not require memory to be bound.
-				ofLogError() << "DescriptorSet ids in shader cannot be sparse. Missing definition for descriptorSet: " << i;
-			}
-
-			// add empty setLayout to our sequence of setLayouts
-			mSetLayouts.push_back( SetLayout() );
-
-			const auto & setInfoVec    = s.second;
-			auto & currentLayout = mSetLayouts.back();
-
-			std::vector<VkDescriptorSetLayoutBinding> flatBindings; // flat binding vector for initialisation
-			flatBindings.reserve( setInfoVec.size() );
-
-			// build add all bindings to current set
-			for ( const auto & bindingInfo : setInfoVec ){
-				currentLayout.bindings.push_back( bindingInfo );
-				flatBindings.push_back( bindingInfo.binding );
-			}
-
-			// calculate hash key for current set
-
-			currentLayout.calculateHash();
-			mSetLayoutKeys.push_back( currentLayout.key ); // store key
-
-			// create & store descriptorSetLayout based on bindings for this set
-
-			VkDescriptorSetLayoutCreateInfo createInfo{
-				VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,    // VkStructureType                        sType;
-				nullptr,                                                // const void*                            pNext;
-				0,                                                      // VkDescriptorSetLayoutCreateFlags       flags;
-				uint32_t( flatBindings.size() ),                        // uint32_t                               bindingCount;
-				flatBindings.data()                                     // const VkDescriptorSetLayoutBinding*    pBindings;
-			};
-
-			vkCreateDescriptorSetLayout( mSettings.device, &createInfo, nullptr, &currentLayout.vkLayout );
-
-			ofLog() << "DescriptorSet #" << std::setw( 4 ) << i << " | hash: " << std::hex << currentLayout.key;
-
-			++i;
+		switch ( attributeType.vecsize ){
+		case 3:
+			mVertexInfo.attribute[i].format = VK_FORMAT_R32G32B32_SFLOAT;	     // 3-part float
+			break;
+		case 4:
+			mVertexInfo.attribute[i].format = VK_FORMAT_R32G32B32A32_SFLOAT;	 // 4-part float
+			break;
+		default:
+			break;
 		}
+	}
 
-	}  // end build set layouts
+	VkPipelineVertexInputStateCreateInfo vi{
+		VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO, // VkStructureType                             sType;
+		nullptr,                                                   // const void*                                 pNext;
+		0,                                                         // VkPipelineVertexInputStateCreateFlags       flags;
+		uint32_t( mVertexInfo.bindingDescription.size() ),           // uint32_t                                    vertexBindingDescriptionCount;
+		mVertexInfo.bindingDescription.data(),                     // const VkVertexInputBindingDescription*      pVertexBindingDescriptions;
+		uint32_t( mVertexInfo.attribute.size() ),                    // uint32_t                                    vertexAttributeDescriptionCount;
+		mVertexInfo.attribute.data()                               // const VkVertexInputAttributeDescription*    pVertexAttributeDescriptions;
+	};
 
+	mVertexInfo.vi = std::move( vi );
 }
 
 // ----------------------------------------------------------------------

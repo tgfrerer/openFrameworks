@@ -26,9 +26,61 @@ Thoughts :
 
 */
 
-
-
-
+//   The smallest unit we may bind in Vulkan are DescriptorSets.
+//   
+//   Each set has its own namespace for bindings. Bindings may be sparse.
+//   
+//   If no set is specified explicitly in the shader, set 0 is used.
+//   
+//   A DescriptorSet is described by a DescriptorSetLayout.
+//   
+//   A DescriptorSetLayout is a table of DescriptorSetLayoutBindings
+//   
+//   A DescriptorSetLayoutBinding describes the type of descriptor and its count-
+//   if the count is >1, this DSLB represents an
+//   array of descriptors of the same type.
+//   
+//   An ordered array of DescriptorSetLayout is used to describe a PipelineLayout,
+//   it shows which DescriptorSets in sequence describe the inputs for a pipeline.
+//   
+//   
+//   set 0 \
+//   |- binding 0 - descriptor 0
+//   |- binding 1 - decriptors[] 1,2,3
+//   |- <empty>
+//   |- binding 3 - descriptor 4
+//   
+//   set 1 \
+//   |- binding 0
+//   |- binding 1
+//   
+//   There does not seem to be a maximum number of descriptors that we can allocate,
+//   it is limited by GPU memory. On AMD/Radeon, a descriptor consumes at most 32 bytes,
+//   so you can have 32k descriptors per MB of GPU memory. On AMD, there is a privileged
+//   256 MB of memory that is directly accessible through the CPU - on NVIDIA, this
+//   chunk is possibly larger. This is where Descriptors are stored.
+//   
+//   Descriptors are allocated from DescriptorPools. If you use
+//   VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT, this means the pool uses a dynamic
+//   allocator, which brings the risk of fragmentation. If you set up the pool so that it
+//   only supports RESET, then this pool will have a linear allocator, memory will be pre-
+//   allocated in a big chunk, and allocating and resetting is effectively updating an
+//   offset, similar to what of::vk::Allocator does.
+//   
+//   Also, vkWriteDescriptorSet writes directly to GPU memory.
+//   
+//   There is a maximum number of DescriptorSets and Descriptors that can be bound
+//   at the same time.
+//   
+//   Here is some more information about the Vulkan binding model:
+//   https://developer.nvidia.com/vulkan-shader-resource-binding
+//   
+//   Some information on Descriptor Sets and fast paths
+//   http://gpuopen.com/wp-content/uploads/2016/03/VulkanFastPaths.pdf
+//   
+//   
+//   
+//   
 //	 Here is a diagram on how vertex attribute binding works, based on vkspec 1.0, pp.389
 //
 //
@@ -67,7 +119,7 @@ public:
 		uint32_t size;                                    // size in bytes (corresponds to struct size of the UBO)
 		                                                  // which has members with names ("projectionMatrix", "viewMatrix", ...) 
 		std::string name;                                 // Uniform Buffer Block name from shader
-		std::map< std::string, BufferRange> memberRanges; // offsets for members, indexed by name
+		std::map< std::string, BufferRange> memberRanges; // Memory offsets for members, indexed by name
 	};
 
 	// layout for a descriptorSet
@@ -81,8 +133,6 @@ public:
 	};
 
 private:
-	
-	
 
 	std::map<VkShaderStageFlagBits, VkShaderModule>         mModules;
 	std::vector<VkPipelineShaderStageCreateInfo>	        mStages;
@@ -107,6 +157,12 @@ private:
 	void reflect();
 
 	void clearSetLayouts();
+
+	void buildSetLayouts();
+
+	void processVertexInputs( spirv_cross::ShaderResources &shaderResources, spirv_cross::Compiler & compiler );
+
+	void processResource( spirv_cross::Compiler & compiler, spirv_cross::Resource & ubo, const VkShaderStageFlagBits & shaderStage );
 
 public:
 
