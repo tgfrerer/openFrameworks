@@ -4,10 +4,11 @@
 uint32_t display_mode = 0;
 uint32_t max_display_mode = 3;
 bool     isFrameRateLocked = true;
+uint32_t TARGET_FRAME_RATE = 90;
 
 //--------------------------------------------------------------
 void ofApp::setup(){
-	ofSetFrameRate( 120 );
+	ofSetFrameRate( TARGET_FRAME_RATE );
 	mCam1.disableMouseInput();
 	mCam1.setupPerspective( false, 60, 0.1, 5000 );
 	mCam1.setGlobalPosition( 0, 0, mCam1.getImagePlaneDistance() );
@@ -157,8 +158,8 @@ void ofApp::keyPressed(int key){
 	if ( key == 'l' ){
 		isFrameRateLocked ^= true;
 		if ( isFrameRateLocked ){
-			ofSetFrameRate( 120 );
-			ofLog() << "Frame production rate locked at 120 fps";
+			ofSetFrameRate( TARGET_FRAME_RATE );
+			ofLog() << "Frame production rate locked at "<< TARGET_FRAME_RATE << " fps";
 		}
 		else{
 			ofSetFrameRate( 0 );
