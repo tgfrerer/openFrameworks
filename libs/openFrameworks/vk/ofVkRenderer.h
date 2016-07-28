@@ -243,6 +243,15 @@ public:
 	// get memory allocation info for best matching memory type that matches any of the type bits and flags
 	bool  getMemoryAllocationInfo( const VkMemoryRequirements& memReqs, VkFlags memProps, VkMemoryAllocateInfo& memInfo ) const;
 
+	// testing
+
+	const VkCommandPool& getCommandPool() const {
+		return mCommandPool;
+	};
+
+	const VkQueue& getQueue() const {
+		return mQueue;
+	};
 
 private:
 
