@@ -22,10 +22,12 @@ void of::vk::Shader::reflect()
 
 		// ! TODO: process texture samplers
 		// This: http://gpuopen.com/wp-content/uploads/2016/03/VulkanFastPaths.pdf
-		// suggests a fast path is to bind everyting into one descriptorSet
+		// suggests one fast path is to bind all (!) textures into ONE DescriptorSet / binding 
 		// as an array of textures, and then use pushConstants to fetch the index 
-		// into the array for the texture we wanted. 
-		for ( auto & samplers : shaderResources.sampled_images ){
+		// into the array for the texture we want for this particular draw. 
+		// This would mean to create one descriptor per texture and to bind all these 
+		// texture descriptors to one binding - and to one descriptorset.
+		for ( auto & sampled_image : shaderResources.sampled_images ){
 
 		}
 
@@ -153,12 +155,11 @@ void of::vk::Shader::processResource( spirv_cross::Compiler & compiler, spirv_cr
 		descriptor_set = 0;
 	}
 
-
 	if ( ( 1ull << spv::DecorationBinding ) & decorationMask ){
 		bindingNumber = compiler.get_decoration( ubo.id, spv::DecorationBinding );
 		os << ", binding = " << bindingNumber;
 	} else{
-		ofLogWarning() << "shader uniform" << ubo.name << "does not specify binding number.";
+		ofLogWarning() << "Shader uniform" << ubo.name << "does not specify binding number.";
 	}
 
 	ofLog() << "Uniform Block: '" << ubo.name << "'" << os.str();
