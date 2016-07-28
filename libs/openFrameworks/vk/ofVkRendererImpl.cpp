@@ -12,9 +12,12 @@ void ofVkRenderer::setup(){
 	// the surface has been assigned by glfwwindow, through glfw,
 	// just before this setup() method was called.
 	querySurfaceCapabilities();
-	// vkprepare:
-	createCommandPool();
 	
+	// create main command pool. all renderer command buffers
+	// are allocated from this command pool - which means 
+	// resetting this pool resets all command buffers.
+	createCommandPool();
+
 	setupSwapChain();
 	
 	createSemaphores();
@@ -64,7 +67,13 @@ void ofVkRenderer::setup(){
 // ----------------------------------------------------------------------
 
 void ofVkRenderer::setupSwapChain(){
-	// we need a setup command buffer to transition our image memory 
+
+	// Allocate pre-present and post-present command buffers, 
+	// from main command pool, mCommandPool.
+	createCommandBuffers();
+
+	// we need a setup command buffer to transition our image memory
+	// this will allocate & initialise command buffer mSetupCommandBuffer
 	createSetupCommandBuffer();
 
 	uint32_t numSwapChainFrames = 3;
@@ -87,15 +96,16 @@ void ofVkRenderer::setupSwapChain(){
 		presentMode
 	);
 
-	createCommandBuffers();
 	setupDepthStencil();
-	// TODO: let's make sure that this is more explicit,
-	// and that you can set up your own render passes.
+
+	// create the main renderpass 
 	setupRenderPass();
 
 	mViewport = { 0.f, 0.f, float( mWindowWidth ), float( mWindowHeight ) };
+
 	setupFrameBuffer();
-	// submit, then free the setupCommandbuffer.
+
+	// submit, wait for tasks to finish, then free mSetupCommandBuffer.
 	flushSetupCommandBuffer();
 }
 
@@ -671,7 +681,7 @@ void ofVkRenderer::beginRenderPass(VkCommandBuffer& cmdBuf_, VkFramebuffer& fram
 		VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO, // VkStructureType        sType;
 		nullptr,                                  // const void*            pNext;
 		mRenderPass,                              // VkRenderPass           renderPass;
-		frameBuf_,      // VkFramebuffer          framebuffer;
+		frameBuf_,                                // VkFramebuffer          framebuffer;
 		renderArea,                               // VkRect2D               renderArea;
 		2,                                        // uint32_t               clearValueCount;
 		clearValues,                              // const VkClearValue*    pClearValues;
@@ -717,21 +727,26 @@ void ofVkRenderer::finishRender(){
 	VkPipelineStageFlags pipelineStages[] = { VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT };
 	
 	size_t swapId = mSwapchain.getCurrentImageIndex();
-	VkSubmitInfo submitInfo = {
-		VK_STRUCTURE_TYPE_SUBMIT_INFO,                       // VkStructureType                sType;
-		nullptr,                                             // const void*                    pNext;
-		1,                                                   // uint32_t                       waitSemaphoreCount;
-		&mSemaphorePresentComplete,                          // const VkSemaphore*             pWaitSemaphores;
-		pipelineStages,                                      // const VkPipelineStageFlags*    pWaitDstStageMask;
-		1,                                                   // uint32_t                       commandBufferCount;
-		&mDrawCmdBuffer[swapId],  // const VkCommandBuffer*         pCommandBuffers;
-		1,                                                   // uint32_t                       signalSemaphoreCount;
-		&mSemaphoreRenderComplete,                           // const VkSemaphore*             pSignalSemaphores;
-	};
+	
+	VkResult err = VK_SUCCESS;
 
-	// Submit to the graphics queue	- 
-	auto err = vkQueueSubmit( mQueue, 1, &submitInfo, VK_NULL_HANDLE );
-	assert( !err );
+	{
+		VkSubmitInfo submitInfo = {
+			VK_STRUCTURE_TYPE_SUBMIT_INFO,                       // VkStructureType                sType;
+			nullptr,                                             // const void*                    pNext;
+			1,                                                   // uint32_t                       waitSemaphoreCount;
+			&mSemaphorePresentComplete,                          // const VkSemaphore*             pWaitSemaphores;
+			pipelineStages,                                      // const VkPipelineStageFlags*    pWaitDstStageMask;
+			1,                                                   // uint32_t                       commandBufferCount;
+			&mDrawCmdBuffer[swapId],                             // const VkCommandBuffer*         pCommandBuffers;
+			1,                                                   // uint32_t                       signalSemaphoreCount;
+			&mSemaphoreRenderComplete,                           // const VkSemaphore*             pSignalSemaphores;
+		};
+
+		// Submit to the graphics queue	- 
+		err = vkQueueSubmit( mQueue, 1, &submitInfo, VK_NULL_HANDLE );
+		assert( !err );
+	}
 
 	{  // pre-present
 
@@ -834,7 +849,7 @@ void ofVkRenderer::finishRender(){
 	assert( !err );
 
 	// Submit to the queue
-	submitInfo = {};
+	VkSubmitInfo submitInfo = {};
 	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 	submitInfo.commandBufferCount = 1;
 	submitInfo.pCommandBuffers = &mPostPresentCommandBuffer;
@@ -879,7 +894,7 @@ void ofVkRenderer::draw( const ofMesh & mesh_, ofPolyRenderMode renderType, bool
 	vkCmdBindDescriptorSets(
 		cmd,
 	    VK_PIPELINE_BIND_POINT_GRAPHICS,                // use graphics, not compute pipeline
-	    *mPipelineLayouts[0],                           // which pipeline layout (contains the bindings programmed from an sequence of descriptor sets )
+	    *mPipelineLayouts[0],                           // VkPipelineLayout object used to program the bindings.
 	    0, 						                        // firstset: first set index (of the above) to bind to - mDescriptorSet[0] will be bound to pipeline layout [firstset]
 	    uint32_t(currentlyBoundDescriptorSets.size()),  // setCount: how many sets to bind
 	    currentlyBoundDescriptorSets.data(),            // the descriptor sets to match up with our mPipelineLayout (need to be compatible)
@@ -920,6 +935,7 @@ void ofVkRenderer::draw( const ofMesh & mesh_, ofPolyRenderMode renderType, bool
 		vkCmdBindIndexBuffer( cmd, bufferRefs[0], indexOffsets[0], VK_INDEX_TYPE_UINT32 );
 		vkCmdDrawIndexed( cmd, uint32_t(mesh_.getNumIndices()), 1, 0, 0, 1 );
 	}
+
 }  
 
 // ----------------------------------------------------------------------
