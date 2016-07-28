@@ -12,7 +12,7 @@ namespace vk{
 	//
 	/// \brief  creates an image barrier object
 	/// \note   you still have to add this barrier to the command buffer for it to become effective.
-static VkImageMemoryBarrier createImageBarrier( VkImage image, VkImageAspectFlags aspectMask, VkImageLayout oldImageLayout, VkImageLayout newImageLayout ){
+static VkImageMemoryBarrier createImageMemoryBarrier( VkImage image, VkImageAspectFlags aspectMask, VkImageLayout oldImageLayout, VkImageLayout newImageLayout ){
 
 	VkImageMemoryBarrier imageMemoryBarrier{
 		VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,                    // VkStructureType            sType;
@@ -69,7 +69,7 @@ static VkImageMemoryBarrier createImageBarrier( VkImage image, VkImageAspectFlag
 	// Target layouts (new)
 
 	// New layout is transfer destination (copy, blit)
-	// Make sure any copyies to the image have been finished
+	// Make sure any copies to the image have been finished
 	if ( newImageLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL ){
 		imageMemoryBarrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
 	}

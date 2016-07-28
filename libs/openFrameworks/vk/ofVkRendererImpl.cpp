@@ -392,7 +392,7 @@ void ofVkRenderer::setupDepthStencil(){
 	err = vkBindImageMemory( mDevice, mDepthStencil.image, mDepthStencil.mem, 0 );
 	assert( !err );
 
-	auto transferBarrier = of::vk::createImageBarrier(
+	auto transferBarrier = of::vk::createImageMemoryBarrier(
 		mDepthStencil.image,
 		VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT,
 		VK_IMAGE_LAYOUT_UNDEFINED,
@@ -757,7 +757,7 @@ void ofVkRenderer::finishRender(){
 		assert( !err );
 
 		{
-			auto transferBarrier = of::vk::createImageBarrier(	
+			auto transferBarrier = of::vk::createImageMemoryBarrier(	
 				mSwapchain.getImage( mSwapchain.getCurrentImageIndex() ).imageRef,
 				VK_IMAGE_ASPECT_COLOR_BIT,
 				VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
