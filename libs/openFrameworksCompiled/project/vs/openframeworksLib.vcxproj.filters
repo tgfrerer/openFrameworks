@@ -318,6 +318,9 @@
     <ClInclude Include="..\..\..\openFrameworks\vk\spooky\SpookyV2.h">
       <Filter>libs\openFrameworks\vk\spooky</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\..\openFrameworks\vk\vkTexture.h">
+      <Filter>libs\openFrameworks\vk</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\openFrameworks\app\ofAppGlutWindow.cpp">

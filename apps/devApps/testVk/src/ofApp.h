@@ -1,12 +1,15 @@
 #pragma once
 
 #include "ofMain.h"
+#include "vk/vkTexture.h"
 
 class ofApp : public ofBaseApp{
 
 	ofEasyCam mCam1;
 	ofMesh    mFontMesh;
 	ofMesh	  mLMesh;
+
+	of::vk::Texture mVkTex;
 
 	public:
 		void setup();

@@ -1,5 +1,7 @@
 #include "ofApp.h"
 #include "vk/ofVkRenderer.h"
+#include "vk/vkUtils.h"
+#include "vk/vkTexture.h"
 
 uint32_t display_mode = 0;
 uint32_t max_display_mode = 3;
@@ -47,6 +49,42 @@ void ofApp::setup(){
 
 	};
 
+
+	/*
+
+
+	lets think for a bit about how we would want rendering to work in a vulkan idiomatic way.
+
+	vulkan needs : 
+	
+	renderpass
+		pipeline  
+			vertex inputs
+			descriptor sets
+				uniform buffers
+				sampled images
+	
+	Vertex inputs and descriptor inputs need to be immutable, as they are not immediately consumed,
+	but will only be released for reuse once the frame has been rendered async.
+	
+	Also, most of your data is immutable. There needs to be a way to mark buffers as immutable.
+
+	really, when you draw, you say: 
+		here is some geometry, 
+		here are the standard transformations (model-, view-, projection-matrices)
+		here are additional transform parameters - 
+		here is a material - now draw geometry with these transformations with this material.
+
+	When you do skinning for example, is this part of the material? no, it's part of the transformations
+
+	*/
+
+
+	ofPixels tmpImagePix;
+	
+	ofLoadImage( tmpImagePix, "images/brighton.jpg" );
+	
+	mVkTex.load( tmpImagePix );
 }
 
 //--------------------------------------------------------------
