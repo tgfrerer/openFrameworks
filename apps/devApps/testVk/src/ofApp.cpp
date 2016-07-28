@@ -49,9 +49,7 @@ void ofApp::setup(){
 
 	};
 
-
 	/*
-
 
 	lets think for a bit about how we would want rendering to work in a vulkan idiomatic way.
 
@@ -94,93 +92,17 @@ void ofApp::update(){
 }
 
 //--------------------------------------------------------------
+
 void ofApp::draw(){
-	static ofMesh ico = ofMesh::icosphere(50, 3);
-	static ofMesh box = ofMesh::box( 50, 50,50 );
-
-
 	switch (display_mode) {
-	case 0:{
-		mCam1.begin();
-
-		ofSetColor( ofColor::white );
-		{
-			//auto scope = context.shaders["shader1"].getScoped(); // scoped shader unbinds when out of scope
-
-			ofPushMatrix();
-			ofTranslate( -200, +200, 100 );
-			ico.draw();
-			ofPopMatrix();
-
-		} // end shader scope
-
-		ofPushMatrix();
-		ofTranslate( -200, -200, -200 );
-		ico.draw();
-		ofPopMatrix();
-
-		ofPushMatrix();
-		ofTranslate( 200, +200, -200 );
-		ico.draw();
-		ofPopMatrix();
-
-		ofPushMatrix();
-		ofTranslate( 200, -200, 200 );
-		ico.draw();
-		ofPopMatrix();
-
-		ofSetColor( ofColor::red );
-		mFontMesh.draw();
-
-		ofPushMatrix();
-		ofRotate( ofGetFrameNum() % 360 ); // this should rotate at a speed of one revolution every 6 seconds.
-		mLMesh.draw();
-		ofPopMatrix();
-
-		ofSetColor( ofColor::teal );
-		ofPushMatrix();
-		ofTranslate( 200, 0 );
-		ofRotate( 360.f * ((ofGetElapsedTimeMillis() % 6000) / 6000.f) ); // this should rotate at a speed of one revolution every 6 seconds.
-		mLMesh.draw();
-		ofPopMatrix();
-
-		mCam1.end();
-	}
+	case 0:
+		drawModeMeshes();
 	break;
 	case 1:
-	{
-		mCam1.begin();
-
-		ofSetColor( ofColor::white );
-		int w = 1024;
-		int h = 768;
-
-		ofPushMatrix();
-		int xOffset = ofGetFrameNum() % w;
-		ofTranslate(xOffset - w * 1.5, -h/2 );
-		for (int i =0; i*100 < w * 2; ++i){
-			ofTranslate(100 , 0);
-			ofDrawRectangle({-5,0,5,float(h)});
-		}
-
-		ofPopMatrix();
-		mCam1.end();
-	}
+		drawModeLines();
 	break;
 	case 2:
-	{
-		mCam1.begin();
-		
-		ofSetColor(ofColor::white);
-
-		ofPushMatrix();
-		ofTranslate(ofGetWidth()*0.5f, ofGetHeight()*0.5f);
-		ofRotate((ofGetFrameNum() % 120) * (360/120.f));
-		ofDrawRectangle({-1200,-50,2400,100});
-		ofPopMatrix();
-		mCam1.end();
-
-	}
+		drawModeSpinning();
 	break;
 	default:
 	break;
@@ -189,6 +111,87 @@ void ofApp::draw(){
 }
 
 //--------------------------------------------------------------
+
+void ofApp::drawModeMeshes(){
+	static ofMesh ico = ofMesh::icosphere( 50, 3 );
+	mCam1.begin();
+
+	ofSetColor( ofColor::white );
+	ofPushMatrix();
+	ofTranslate( -200, +200, 100 );
+	ico.draw();
+	ofPopMatrix();
+
+	ofPushMatrix();
+	ofTranslate( -200, -200, -200 );
+	ico.draw();
+	ofPopMatrix();
+
+	ofPushMatrix();
+	ofTranslate( 200, +200, -200 );
+	ico.draw();
+	ofPopMatrix();
+
+	ofPushMatrix();
+	ofTranslate( 200, -200, 200 );
+	ico.draw();
+	ofPopMatrix();
+
+	ofSetColor( ofColor::red );
+	mFontMesh.draw();
+
+	ofPushMatrix();
+	ofRotate( ofGetFrameNum() % 360 ); // this should rotate at a speed of one revolution every 6 seconds if frame rate is locked to vsync.
+	mLMesh.draw();
+	ofPopMatrix();
+
+	ofSetColor( ofColor::teal );
+	ofPushMatrix();
+	ofTranslate( 200, 0 );
+	ofRotate( 360.f * ( ( ofGetElapsedTimeMillis() % 6000 ) / 6000.f ) ); // this should rotate at a speed of one revolution every 6 seconds.
+	mLMesh.draw();
+	ofPopMatrix();
+
+	mCam1.end();
+}
+//--------------------------------------------------------------
+
+void ofApp::drawModeLines(){
+	mCam1.begin();
+
+	ofSetColor( ofColor::white );
+	int w = 1024;
+	int h = 768;
+
+	ofPushMatrix();
+	int xOffset = ofGetFrameNum() % w;
+	ofTranslate( xOffset - w * 1.5, -h / 2 );
+	for ( int i = 0; i * 100 < w * 2; ++i ){
+		ofTranslate( 100, 0 );
+		ofDrawRectangle( { -5,0,5,float( h ) } );
+	}
+
+	ofPopMatrix();
+	mCam1.end();
+}
+
+//--------------------------------------------------------------
+
+void ofApp::drawModeSpinning(){
+	mCam1.begin();
+
+	ofSetColor( ofColor::white );
+
+	ofPushMatrix();
+	ofTranslate( 0, 0);
+	ofRotate( ( ofGetFrameNum() % 120 ) * ( 360 / 120.f ) );
+	ofDrawRectangle( { -1200,-50,2400,100 } );
+	ofPopMatrix();
+	mCam1.end();
+}
+
+//--------------------------------------------------------------
+
 void ofApp::keyPressed(int key){
 	if (key=='m'){
 		display_mode = ( ++display_mode ) % max_display_mode;

@@ -4,28 +4,6 @@
 #include "vulkan/vulkan.h"
 #include "vk/spirv-cross/include/spirv_cross.hpp"
 
-
-/*
-
-Thoughts : 
-
-	+ a shader should not own descriptorSets nor descriptorSetLayouts,
-	  as these may be shared over multiple pipelines
-	+ a shader can own uniform tables (complete with set and binding 
-	  numbers) - these should be publicly readable 
-
-
-	  todo: we need something like a table descriptorindices for 
-	  sets and bindings - and a way to look up the descritorIndex - 
-
-	  we can attach dynamic offsets to descriptorIndices when these are
-	  written to in context - these dynamic offsets are then used when 
-	  we bind descriptorsets in renderer::draw()
-
-	  the lookup should be superfast.
-
-*/
-
 //   The smallest unit we may bind in Vulkan are DescriptorSets.
 //   
 //   Each set has its own namespace for bindings. Bindings may be sparse.

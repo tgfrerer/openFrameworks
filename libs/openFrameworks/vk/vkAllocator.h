@@ -12,13 +12,6 @@ class Allocator
 public:
 	struct Settings
 	{
-		//enum class Type
-		//{
-		//	Dynamic,
-		//	Static,
-		//	Uniform,
-		//	Texture,
-		//} mAllocatorType;
 		VkDeviceSize                     size       = 0; // how much memory to reserve on hardware for this allocator
 		ofVkRenderer                    *renderer   = nullptr;
 		VkDevice                         device     = nullptr;
@@ -54,7 +47,7 @@ public:
 
 private:
 	const Settings             mSettings;
-	const VkDeviceSize         mAlignment = 0;    // alignment is calculated on setup
+	const VkDeviceSize         mAlignment = 256;  // alignment is calculated on setup - but 256 is a sensible default as it is the largest possible according to spec
 
 	std::vector<VkDeviceSize>  mOffsetEnd;        // next free location for allocations
 	std::vector<uint8_t*>      mBaseAddress;      // base address for mapped memory

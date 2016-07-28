@@ -3,18 +3,39 @@
 #include "vk/vkAllocator.h"
 #include "vk/Shader.h"
 
+
+/*
+
+We want context to track current Pipeline state. 
+Any draw state change that affects Pipeline state dirties affected PSO state.
+
+If PSO state is dirty - this means we have to change pipeline before next draw.
+
+On pipeline state change request, first look up if a pipeline with the requested 
+state already exists in cache -> the lookup could be through a hash. 
+
+	If Yes, bind the cached pipeline.
+	If No, compile, bind, and cache pipeline.
+
+The same thing needs to hold true for descriptorSets - if there is a change in 
+texture state requested, we need to check if we already have a descriptorset that
+covers this texture with the inputs requested. 
+
+If not, allocate and cache a new descriptorset - The trouble here is that we cannot
+store this effectively, i.e. we cannot know how many descriptors to reserve in the 
+descriptorpool.
+
+*/
+
+
 // ----------------------------------------------------------------------
 of::vk::Context::Context(const of::vk::Context::Settings& settings_)
 : mSettings(settings_) {
-
 }
 // ----------------------------------------------------------------------
 
 void of::vk::Context::setup(ofVkRenderer* renderer_){
 
-	// The most important shader uniforms are the matrices
-	// model, view, and projection matrix
-	
 	of::vk::Allocator::Settings settings{};
 	settings.device = mSettings.device;
 	settings.renderer = renderer_;
@@ -36,6 +57,9 @@ void of::vk::Context::setup(ofVkRenderer* renderer_){
 
 void of::vk::Context::setupFrameStateFromShaders(){
 
+	// Frame holds stacks of memory, used to track
+	// current state for each uniform member 
+	// currently bound. 
 	Frame frame;
 
 	// set space aside to back all descriptorsets 
@@ -247,7 +271,7 @@ void of::vk::Context::initialiseDescriptorSets( const std::map<uint64_t, of::vk:
 
 			// Q: Is it possible that elements of a descriptorSet are of different VkDescriptorType?
 			//
-			// A: Yes. This is why this method should write only one binding (= Descriptor) 
+			// A: Yes. This is why this method should write only one binding (== Descriptor) 
 			//    at a time - as all members of a binding must share the same VkDescriptorType.
 			
 			auto descriptorType = bindingInfo.binding.descriptorType;

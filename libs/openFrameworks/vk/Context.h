@@ -129,6 +129,8 @@ class Context
 		std::map<std::string, UniformMember> mUniformMembers;
 	};
 
+	// We hold stacks of CPU memory as a backing and readsource for lazy GPU uploads on draw
+	// for all currently bound descriptorsets
 	Frame mCurrentFrameState;
 
 	// -----------
