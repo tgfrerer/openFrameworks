@@ -22,7 +22,7 @@ VkPipeline vk::GraphicsPipelineState::createPipeline( const VkDevice & device, c
             VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO, // VkStructureType                                  sType;
             nullptr,                                         // const void*                                      pNext;
             0,                                               // VkPipelineCreateFlags                            flags;
-			uint32_t(stageCreateInfo.size()),                          // uint32_t                                         stageCount;
+			uint32_t(stageCreateInfo.size()),                // uint32_t                                         stageCount;
             stageCreateInfo.data(),                          // const VkPipelineShaderStageCreateInfo*           pStages;
             &mShader->getVertexInputState(),                 // const VkPipelineVertexInputStateCreateInfo*      pVertexInputState;
             &mInputAssemblyState,                            // const VkPipelineInputAssemblyStateCreateInfo*    pInputAssemblyState;

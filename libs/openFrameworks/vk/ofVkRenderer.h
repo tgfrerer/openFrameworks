@@ -37,7 +37,7 @@ class ofVkRenderer : public ofBaseRenderer
 	ofPath mPath;
 	const ofAppBaseWindow * window;
 
-	mutable ofMesh rectMesh;
+	mutable ofMesh mRectMesh;
 
 public:
 	static const string TYPE;
@@ -253,6 +253,10 @@ public:
 		return mQueue;
 	};
 
+	of::vk::Context& getContext(){
+		return *mContext;
+	};
+
 private:
 
 	ofRectangle mViewport;
@@ -287,9 +291,6 @@ private:
 	// creates synchronisation primitives 
 	void createSemaphores();
 
-	// load and compile shaders, then
-	// derive descriptor set table from shaders
-	void setupShaders();
 	void setupPipelines();
 
 	void beginDrawCommandBuffer( VkCommandBuffer& cmdBuf_ );

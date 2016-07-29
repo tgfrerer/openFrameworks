@@ -3,8 +3,8 @@
 #include "vk/vkUtils.h"
 #include "vk/vkTexture.h"
 
-uint32_t display_mode = 0;
-uint32_t max_display_mode = 3;
+uint32_t display_mode = 3;
+uint32_t numDisplayModes = 4;
 bool     isFrameRateLocked = true;
 uint32_t TARGET_FRAME_RATE = 90;
 
@@ -104,10 +104,62 @@ void ofApp::draw(){
 	case 2:
 		drawModeSpinning();
 	break;
+	case 3:
+		drawModeExplicit();
+		break;
 	default:
 	break;
 	}
 
+}
+
+//--------------------------------------------------------------
+
+void ofApp::drawModeExplicit(){
+	
+	auto & renderer = dynamic_pointer_cast<ofVkRenderer>( ofGetCurrentRenderer() );
+	auto & context = renderer->getContext();
+
+	static ofMesh ico = ofMesh::icosphere( 50, 3 );
+	mCam1.begin();
+
+	ofSetColor( ofColor::white );
+	ofPushMatrix();
+	ofTranslate( -200, +200, 100 );
+	ico.draw();
+	ofPopMatrix();
+
+	ofPushMatrix();
+	ofTranslate( -200, -200, -200 );
+	ico.draw();
+	ofPopMatrix();
+
+	ofPushMatrix();
+	ofTranslate( 200, +200, -200 );
+	ico.draw();
+	ofPopMatrix();
+
+	ofPushMatrix();
+	ofTranslate( 200, -200, 200 );
+	ico.draw();
+	ofPopMatrix();
+
+	ofSetColor( ofColor::red );
+	mFontMesh.draw();
+
+	ofPushMatrix();
+	ofRotate( ofGetFrameNum() % 360 ); // this should rotate at a speed of one revolution every 6 seconds if frame rate is locked to vsync.
+	mLMesh.draw();
+	ofPopMatrix();
+
+	ofSetColor( ofColor::teal );
+	ofPushMatrix();
+	ofTranslate( 200, 0 );
+	ofRotate( 360.f * ( ( ofGetElapsedTimeMillis() % 6000 ) / 6000.f ) ); // this should rotate at a speed of one revolution every 6 seconds.
+	mLMesh.draw();
+	ofPopMatrix();
+
+	mCam1.end();
 }
 
 //--------------------------------------------------------------
@@ -194,7 +246,7 @@ void ofApp::drawModeSpinning(){
 
 void ofApp::keyPressed(int key){
 	if (key=='m'){
-		display_mode = ( ++display_mode ) % max_display_mode;
+		display_mode = ( ++display_mode ) % numDisplayModes;
 	}
 	if ( key == 'l' ){
 		isFrameRateLocked ^= true;
