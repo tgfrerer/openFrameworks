@@ -16,6 +16,7 @@ class ofApp : public ofBaseApp{
 		void update();
 		void draw();
 
+		void drawModeExplicit();
 		void drawModeMeshes();
 		void drawModeLines();
 		void drawModeSpinning();

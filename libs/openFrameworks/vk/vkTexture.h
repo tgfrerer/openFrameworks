@@ -15,7 +15,7 @@ class Texture
 public:
 	struct TexData
 	{
-		// All data neccessary to describe a vulkan texture 
+		// All data neccessary to describe a Vulkan texture 
 		// Q: how are mip levels dealt with?
 
 		//VkSampler         sampler     = nullptr;
@@ -36,9 +36,6 @@ private:
 public:
 
 	Texture(){
-	
-	
-	
 	};
 
 	void load(const ofPixels& pix_){
@@ -221,7 +218,7 @@ public:
 		vkFreeCommandBuffers( device, cmdPool, 1, &cmd );
 
 		// create an image view which may or may not get sampled.
-
+		
 		VkImageViewCreateInfo view_info {
 			VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,     // VkStructureType            sType;
 			nullptr,                                      // const void*                pNext;
@@ -244,7 +241,7 @@ public:
 			}
 		};
 
-		vkCreateImageView( device, &view_info, nullptr, &mTexData.view );
+		//vkCreateImageView( device, &view_info, nullptr, &mTexData.view );
 		
 	};
 
@@ -263,13 +260,11 @@ public:
 		
 		// null all pointers
 		mTexData = TexData();
-		
-
 	};
 
 
 
 };
 
-}
-}
+} /* namespace vk */
+} /* namespace of */

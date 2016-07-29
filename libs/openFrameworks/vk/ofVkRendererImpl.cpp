@@ -23,7 +23,16 @@ void ofVkRenderer::setup(){
 	createSemaphores();
 
 	// shaders will let us know about descriptorSetLayouts.
-	setupShaders();
+	of::vk::Shader::Settings settings{
+		mDevice,
+		{
+			{ VK_SHADER_STAGE_VERTEX_BIT  , "vert.spv" },
+			{ VK_SHADER_STAGE_FRAGMENT_BIT, "frag.spv" },
+		}
+	};
+
+	auto shader = std::make_shared<of::vk::Shader>( settings );
+	mShaders.emplace_back( shader );
 
 	// Set up Context
 	// A Context holds dynamic frame state + manages GPU memory for "immediate" mode
@@ -50,16 +59,17 @@ void ofVkRenderer::setup(){
 
 	setupPipelines();					  
 	
-	// todo: move this into something more fitting
+	// Mesh data prototype for DrawRectangle Method.
+	// Todo: move this into something more fitting
 	{
 		uint32_t numVerts = 4;
-		rectMesh.getVertices().resize(numVerts);
+		mRectMesh.getVertices().resize(numVerts);
 		vector<ofIndexType> indices = {0,1,3,1,2,3};
 		vector<glm::vec3> norm( numVerts, { 0, 0, 1.f } );
 		vector<ofFloatColor> col( numVerts, ofColor::white );
-		rectMesh.addNormals(norm);
-		rectMesh.addColors(col);
-		rectMesh.addIndices(indices);
+		mRectMesh.addNormals(norm);
+		mRectMesh.addColors(col);
+		mRectMesh.addIndices(indices);
 	}
 
 }
@@ -132,23 +142,6 @@ void ofVkRenderer::resizeScreen( int w, int h ){
 	ofLog() << "Screen resize complete";
 }
 
-// ----------------------------------------------------------------------
-
-void ofVkRenderer::setupShaders(){
-	// -- load shaders
-
-	of::vk::Shader::Settings settings{
-		mDevice,
-		{
-			{ VK_SHADER_STAGE_VERTEX_BIT  , "vert.spv" },
-			{ VK_SHADER_STAGE_FRAGMENT_BIT, "frag.spv" },
-		}
-	};
-
-	auto shader = std::make_shared<of::vk::Shader>( settings );
-	mShaders.emplace_back( shader );
-
-}
 
 // ----------------------------------------------------------------------
 
@@ -599,6 +592,8 @@ void ofVkRenderer::startRender(){
 	err = mSwapchain.acquireNextImage( mSemaphorePresentComplete, &swapIdx );
 	assert( !err );
 
+	ofLog() << swapIdx;
+
 	{
 		if ( mDrawCmdBuffer.size() == mSwapchain.getImageCount() ){
 			// if command buffer has been previously recorded, we want to re-use it.
@@ -943,17 +938,17 @@ void ofVkRenderer::draw( const ofMesh & mesh_, ofPolyRenderMode renderType, bool
 void ofVkRenderer::drawRectangle(float x, float y, float z, float w, float h) const{
 
 	if (currentStyle.rectMode == OF_RECTMODE_CORNER){
-		rectMesh.getVertices()[0] = { x    , y    , z };
-		rectMesh.getVertices()[1] = { x + w, y    , z };
-		rectMesh.getVertices()[2] = { x + w, y + h, z };
-		rectMesh.getVertices()[3] = { x    , y + h, z };
+		mRectMesh.getVertices()[0] = { x    , y    , z };
+		mRectMesh.getVertices()[1] = { x + w, y    , z };
+		mRectMesh.getVertices()[2] = { x + w, y + h, z };
+		mRectMesh.getVertices()[3] = { x    , y + h, z };
 	}else{
-		rectMesh.getVertices()[0] = { x - w / 2.0f, y - h / 2.0f, z };
-		rectMesh.getVertices()[1] = { x + w / 2.0f, y - h / 2.0f, z };
-		rectMesh.getVertices()[2] = { x + w / 2.0f, y + h / 2.0f, z };
-		rectMesh.getVertices()[3] = { x - w / 2.0f, y + h / 2.0f, z };
+		mRectMesh.getVertices()[0] = { x - w / 2.0f, y - h / 2.0f, z };
+		mRectMesh.getVertices()[1] = { x + w / 2.0f, y - h / 2.0f, z };
+		mRectMesh.getVertices()[2] = { x + w / 2.0f, y + h / 2.0f, z };
+		mRectMesh.getVertices()[3] = { x - w / 2.0f, y + h / 2.0f, z };
 	}
 
-	draw(rectMesh,OF_MESH_FILL,false,false,false);
+	draw(mRectMesh,OF_MESH_FILL,false,false,false);
 
 }
