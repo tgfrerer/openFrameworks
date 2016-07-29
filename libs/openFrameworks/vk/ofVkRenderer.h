@@ -219,8 +219,6 @@ private:
 	std::vector<const char*> mDeviceLayers;         // debug layer list for device
 	std::vector<const char*> mDeviceExtensions;     // debug layer list for device
 
-	std::vector<shared_ptr<of::vk::Shader>>	 mShaders;
-
 	uint32_t         mVkGraphicsFamilyIndex = 0;
 
 
@@ -291,28 +289,11 @@ private:
 	// creates synchronisation primitives 
 	void createSemaphores();
 
-	void setupPipelines();
-
 	void beginDrawCommandBuffer( VkCommandBuffer& cmdBuf_ );
 	void endDrawCommandBuffer();
 
 	void beginRenderPass( VkCommandBuffer& cmdBuf_, VkFramebuffer& frameBuf_ );
 	void endRenderPass();
-
-	VkPipelineCache       mPipelineCache;
-
-	// TODO: make this a dymanic sctucture.
-	// this is only there to store pipelines once they have been set up.
-	// A pipeline is very close to a material - it's worth exploring 
-	// this a bit further.
-	struct
-	{
-		VkPipeline solid; // solid triangle render pipeline
-		VkPipeline wireframe; // wireframe render pipeline
-	} mPipelines;
-
-	// pipeline layouts are derived from DescriptorSetLayouts
-	std::vector<shared_ptr<VkPipelineLayout>> mPipelineLayouts;
 
 	// our main (primary) gpu queue. all commandbuffers are submitted to this queue
 	// as are present commands.

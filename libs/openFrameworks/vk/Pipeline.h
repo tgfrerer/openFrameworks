@@ -193,13 +193,16 @@ public:	// default state for pipeline
 
 	VkRenderPass      mRenderPass         = nullptr;
 	uint32_t          mSubpass            = 0;
-	VkPipeline        mBasePipelineHandle = nullptr;
-	int32_t           mBasePipelineIndex  = 0;
+	
+	int32_t           mBasePipelineIndex  = -1;
 
 	// shader allows us to derive pipeline layout
 	std::shared_ptr<of::vk::Shader>        mShader;
+	
+	// whether this pipeline state is dirty.
+	VkBool32          mDirty              = true;
 
-	VkPipeline createPipeline( const VkDevice& device, const VkPipelineCache& pipelineCache );
+	VkPipeline createPipeline( const VkDevice& device, const VkPipelineCache& pipelineCache, VkPipeline basePipelineHandle = nullptr );
 
 };
 

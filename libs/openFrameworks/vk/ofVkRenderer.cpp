@@ -94,6 +94,7 @@ ofVkRenderer::~ofVkRenderer()
 	auto err= vkDeviceWaitIdle(mDevice);
 	assert( !err );
 
+
 	mContext.reset();
 
 	// reset command pool and all associated command buffers.
@@ -107,17 +108,7 @@ ofVkRenderer::~ofVkRenderer()
 	}
 	mFrameBuffers.clear();
 
-	
-	// TODO: [!!] proper teardown of mBindings
 
-	//mDescriptorSetLayouts.clear();
-	mPipelineLayouts.clear();
-
-	mShaders.clear();
-	
-	vkDestroyPipelineCache( mDevice, mPipelineCache, nullptr );
-	vkDestroyPipeline( mDevice, mPipelines.solid, nullptr );
-	vkDestroyPipeline( mDevice, mPipelines.wireframe, nullptr );
 
 	vkDestroyImageView( mDevice, mDepthStencil.view, nullptr );
 	vkDestroyImage( mDevice, mDepthStencil.image, nullptr );

@@ -1,5 +1,4 @@
 #include "vk/ofVkRenderer.h"
-#include "vk/Pipeline.h"
 #include "vk/Shader.h"
 #include "vk/vkUtils.h"
 
@@ -22,42 +21,30 @@ void ofVkRenderer::setup(){
 	
 	createSemaphores();
 
-	// shaders will let us know about descriptorSetLayouts.
-	of::vk::Shader::Settings settings{
-		mDevice,
-		{
-			{ VK_SHADER_STAGE_VERTEX_BIT  , "vert.spv" },
-			{ VK_SHADER_STAGE_FRAGMENT_BIT, "frag.spv" },
-		}
-	};
-
-	auto shader = std::make_shared<of::vk::Shader>( settings );
-	mShaders.emplace_back( shader );
-
 	// Set up Context
 	// A Context holds dynamic frame state + manages GPU memory for "immediate" mode
 	
 	of::vk::Context::Settings contextSettings;
 	contextSettings.device = mDevice;
 	contextSettings.numSwapchainImages = mSwapchain.getImageCount();
-	contextSettings.shaders = { mShaders };
 	mContext = make_shared<of::vk::Context>(contextSettings);
 
+	of::vk::Shader::Settings settings{
+		mContext.get(),
+		{
+			{ VK_SHADER_STAGE_VERTEX_BIT  , "vert.spv" },
+			{ VK_SHADER_STAGE_FRAGMENT_BIT, "frag.spv" },
+		}
+	};
+
+	// shader creation makes shader reflect. 
+	auto shader = std::make_shared<of::vk::Shader>( settings );
+	mContext->addShader( shader );
+
+	// this will analyse our shaders and build descriptorset
+	// layouts. it will also build pipelines.
 	mContext->setup( this );
 	
-	// really, shaders and pipelines and descriptors should 
-	// be owned by a context - that way, a context can hold
-	// any information that needs to be dealt with on a per-
-	// thread basis. Effectively this could allow us to spin
-	// off as many threads as we want to have contexts.
-	// this would mean that each context has its own 
-	// descriptor pool and memory pool - and other pools - to 
-	// allocate from.
-
-	// here we create a pipeline cache so that we can create a pipeline from it in preparePipelines
-	mPipelineCache = of::vk::createPipelineCache( mDevice, "testPipelineCache.bin" );
-
-	setupPipelines();					  
 	
 	// Mesh data prototype for DrawRectangle Method.
 	// Todo: move this into something more fitting
@@ -143,43 +130,6 @@ void ofVkRenderer::resizeScreen( int w, int h ){
 }
 
 
-// ----------------------------------------------------------------------
-
-void ofVkRenderer::setupPipelines(){
-	// !TODO: move pipelines into context
-
-	// pipelines should, like shaders, be part of the context
-	// so that the context can be encapsulated fully within its
-	// own thread if it wanted so.
-
-	// GraphicsPipelineState comes with sensible defaults
-	// and is able to produce pipelines based on its current state.
-	// the idea will be to have a dynamic version of this object to
-	// keep track of current context state and create new pipelines
-	// on the fly if needed, or, alternatively, create all pipeline
-	// combinatinons upfront based on a .json file which lists each
-	// state combination for required pipelines.
-	of::vk::GraphicsPipelineState defaultPSO;
-
-	// TODO: let us choose which shader we want to use with our pipeline.
-	defaultPSO.mShader           = mShaders.front();
-	defaultPSO.mRenderPass       = mRenderPass;
-
-	// create pipeline layout based on vector of descriptorSetLayouts queried from mContext
-	// this is way crude, and pipeline should be inside of context, context
-	// should return the layout based on shader paramter (derive layout from shader bindings) 
-	defaultPSO.mLayout = of::vk::createPipelineLayout( mDevice, mContext->getDescriptorSetLayoutForShader(defaultPSO.mShader));
-
-	// TODO: fix this - this should not be part of the renderer, 
-	// but of the context.
-	mPipelineLayouts.emplace_back( defaultPSO.mLayout );
-
-	mPipelines.solid = defaultPSO.createPipeline( mDevice, mPipelineCache );
-
-	defaultPSO.mRasterizationState.polygonMode = VK_POLYGON_MODE_LINE;
-
-	mPipelines.wireframe = defaultPSO.createPipeline( mDevice, mPipelineCache );
-}
  
 // ----------------------------------------------------------------------
 
@@ -865,38 +815,12 @@ void ofVkRenderer::setColor( const ofColor & color ){
 // ----------------------------------------------------------------------
 
 void ofVkRenderer::draw( const ofMesh & mesh_, ofPolyRenderMode renderType, bool useColors, bool useTextures, bool useNormals ) const{
+	auto & cmd = mDrawCmdBuffer[mSwapchain.getCurrentImageIndex()];
 
 	// store uniforms if needed
 	mContext->flushUniformBufferState();
-
-	// as context knows which shader/pipeline is currently bound the context knows which
-	// descriptorsets are currently required.
-	// 
-	vector<VkDescriptorSet> currentlyBoundDescriptorSets = mContext->getBoundDescriptorSets();
-
-	// we build dynamic offsets by going over each of the currently bound descriptorSets in 
-	// currentlyBoundDescriptorsets, and for each dynamic binding within these sets, we add an offset to the list.
-	// we must guarantee that dynamicOffsets has the same number of elements as currentlBoundDescriptorSets has descriptors
-	// the number of descriptors is calculated by summing up all descriptorCounts per binding per descriptorSet
-
-	const auto & dynamicOffsets = mContext->getDynamicUniformBufferOffsets();
-
-	auto & cmd = mDrawCmdBuffer[mSwapchain.getCurrentImageIndex()];
-
-	// Bind uniforms (the first set contains the matrices)
-	vkCmdBindDescriptorSets(
-		cmd,
-	    VK_PIPELINE_BIND_POINT_GRAPHICS,                // use graphics, not compute pipeline
-	    *mPipelineLayouts[0],                           // VkPipelineLayout object used to program the bindings.
-	    0, 						                        // firstset: first set index (of the above) to bind to - mDescriptorSet[0] will be bound to pipeline layout [firstset]
-	    uint32_t(currentlyBoundDescriptorSets.size()),  // setCount: how many sets to bind
-	    currentlyBoundDescriptorSets.data(),            // the descriptor sets to match up with our mPipelineLayout (need to be compatible)
-	    uint32_t(dynamicOffsets.size()),                // dynamic offsets count how many dynamic offsets
-	    dynamicOffsets.data()                           // dynamic offsets for each
-	);
-
-	// Bind the rendering pipeline (including the shaders)
-	vkCmdBindPipeline( cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, mPipelines.solid );
+	mContext->bindPipeline(cmd);			// !TODO: make this dependent on shader - also, allocate pipelines if pipeline we need does not exist yet.
+	mContext->bindDescriptorSets(cmd);
 
 	std::vector<VkDeviceSize> vertexOffsets;
 	std::vector<VkDeviceSize> indexOffsets;
