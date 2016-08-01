@@ -137,7 +137,6 @@ class Context
 
 	// -----------
 
-
 	int mSwapIdx = 0;
 
 
@@ -150,8 +149,15 @@ class Context
 	
 	GraphicsPipelineState mCurrentGraphicsPipelineState;
 
+	// current descriptor set layout bindings 
+	std::vector<uint64_t       > mDSS_layoutKey;
+	// derived sets (nullptr if not yet initialised)
+	std::vector<VkDescriptorSet> mDSS_set;
+	// dirty flag for descriptor set state
+	std::vector<uint32_t       > mDSS_dirty;
 
-	//// currently bound shader
+
+	// currently bound shader
 	std::shared_ptr<of::vk::Shader> mCurrentShader; 
 
 	struct DescriptorSetLayoutInfo
@@ -160,23 +166,27 @@ class Context
 		VkDescriptorSetLayout     vkDescriptorSetLayout;
 	};
 
-	std::vector<VkDescriptorSet> getBoundDescriptorSets();
+	const std::vector<VkDescriptorSet>& updateDescriptorSetState();
 
-	VkPipeline mCurrentPipeline = nullptr;
+	void updateDescriptorSets( std::vector<VkDescriptorSetLayout> &layouts, int i );
+
+	VkPipeline mCurrentVkPipeline = nullptr;
 
 	// map of descriptorsetlayoutKey to descriptorsetlayout
 	// this map is the central registry of DescriptorSetLayouts for all Shaders
 	// used with(in) this Context.
 	std::map<uint64_t, std::shared_ptr<DescriptorSetLayoutInfo>> mDescriptorSetLayouts;
 
+	// One DescriptorPool per SwapChain frame.
+	std::vector<VkDescriptorPool> mDescriptorPool;
+
 	// sets up backing memory to track state, based on shaders
 	void setupFrameState();
-
-	// pool where all descriptors of this context are allocated from
-	VkDescriptorPool mDescriptorPool = nullptr;
-
 	void setupDescriptorPool( );
 	
+
+	std::map<uint64_t, VkPipeline> mVkPipelines;
+	// all shaders attached to this context
 	std::vector<std::shared_ptr<of::vk::Shader>> mShaders;
 
 public:
@@ -225,19 +235,11 @@ public:
 	void bindDescriptorSets( const VkCommandBuffer & cmd );
 	void bindPipeline( const VkCommandBuffer& cmd );
 
-
 	// return the one buffer which is used for all dynamic buffer memory within this context.
 	const VkBuffer& getVkBuffer() const;
 
 	// get dynamic offsets for all descriptorsets which are currently bound
 	const std::vector<uint32_t>& getDynamicUniformBufferOffsets() const;
-
-	// return a vector of descriptorsets which are currently bound
-	// in order of the current pipeline's descriptorSetLayout.
-	// std::vector<VkDescriptorSet> getBoundDescriptorSets();
-
-	// get descriptorSetLayout for a shader
-	std::vector<VkDescriptorSetLayout> getDescriptorSetLayoutForShader( const shared_ptr<of::vk::Shader>& shader_ );
 
 	// lazily store uniform data into local CPU memory
 	template<typename UniformT>
@@ -280,6 +282,9 @@ public:
 	// return memory mapping offets based on current memory buffer.
 	bool storeMesh( const ofMesh& mesh_, std::vector<VkDeviceSize>& vertexOffsets, std::vector<VkDeviceSize>& indexOffsets );
 	
+	void setPolyMode( VkPolygonMode polyMode_){
+		mCurrentGraphicsPipelineState.setPolyMode( polyMode_ );
+	}
 	
 	private:
 		friend class Shader;
@@ -349,36 +354,6 @@ inline const UniformT& Context::getUniform( const std::string & name_ ) const {
 	const UniformT& uniform = reinterpret_cast<UniformT&>( ( ubo.buffer->state.data[ubo.offset] ) );
 	return uniform;
 };
-
-//// ----------------------------------------------------------------------
-//
-//inline std::vector<VkDescriptorSet> of::vk::Context::getBoundDescriptorSets(){
-//	// return a vector of descriptorsets which are currently bound
-//	// in order of the current pipeline's descriptorSetLayout.
-//	std::vector<VkDescriptorSet> ret;
-//	const auto & keyVec = mCurrentShader->getSetLayoutKeys();
-//	ret.reserve( keyVec.size() );
-//	for ( auto & key : keyVec ){
-//		// Caution: we just assume there is a descriptorset 0!
-//		ret.push_back( mDescriptorSets[key] );
-//	}
-//	return ret;
-//}
-//
-//// ----------------------------------------------------------------------
-//
-inline std::vector<VkDescriptorSetLayout> of::vk::Context::getDescriptorSetLayoutForShader( const shared_ptr<of::vk::Shader>& shader_ ){
-	// get descriptorSetLayout for a shader
-	std::vector<VkDescriptorSetLayout> ret;
-	auto & layoutKeys = shader_->getSetLayoutKeys();
-	if ( !layoutKeys.empty() ){
-		// Caution: we just assume there is a descriptorset 0!
-		for ( const auto&layoutKey : layoutKeys ){
-			ret.push_back( mDescriptorSetLayouts[layoutKey]->vkDescriptorSetLayout );
-		}
-	}
-	return ret;
-}
 
 } // namespace vk
 } // namespace of

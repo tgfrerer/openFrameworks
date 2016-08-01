@@ -27,6 +27,8 @@ void ofVkRenderer::setup(){
 	of::vk::Context::Settings contextSettings;
 	contextSettings.device = mDevice;
 	contextSettings.numSwapchainImages = mSwapchain.getImageCount();
+	contextSettings.renderPass = mRenderPass;
+
 	mContext = make_shared<of::vk::Context>(contextSettings);
 
 	of::vk::Shader::Settings settings{
@@ -128,8 +130,6 @@ void ofVkRenderer::resizeScreen( int w, int h ){
 
 	ofLog() << "Screen resize complete";
 }
-
-
  
 // ----------------------------------------------------------------------
 

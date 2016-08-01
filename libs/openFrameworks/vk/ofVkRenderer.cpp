@@ -316,7 +316,6 @@ void ofVkRenderer::createDevice()
 	// fetch queue handle into mQueue
 	vkGetDeviceQueue(mDevice, mVkGraphicsFamilyIndex, 0, &mQueue);
 
-
 	// query possible depth formats, find the 
 	// first format that supports attachment as a depth stencil 
 	//
@@ -581,6 +580,13 @@ glm::mat4x4 ofVkRenderer::getCurrentNormalMatrix() const
 ofRectMode ofVkRenderer::getRectMode()
 {
 	return ofRectMode();
+}
+
+
+// ----------------------------------------------------------------------
+
+void ofVkRenderer::setFillMode( ofFillFlag fill ){
+	fill == OF_FILLED ? mContext->setPolyMode( VK_POLYGON_MODE_FILL ) : mContext->setPolyMode( VK_POLYGON_MODE_LINE );
 }
 
 // ----------------------------------------------------------------------

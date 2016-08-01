@@ -3,6 +3,7 @@
 #include "vk/vkAllocator.h"
 #include "vk/Shader.h"
 #include "vk/Pipeline.h"
+#include "spooky/SpookyV2.h"
 
 /*
 
@@ -58,7 +59,6 @@ void of::vk::Context::setup(ofVkRenderer* renderer_){
 
 	mDynamicUniformBuffferOffsets.resize( mSettings.numSwapchainImages );
 
-	mCurrentShader = mShaders.front();
 
 	// get pipeline layout for each shader based on its descriptorsetlayout
 	// and then store this back into the shader, as it is unique to the shader.
@@ -70,7 +70,7 @@ void of::vk::Context::setup(ofVkRenderer* renderer_){
 		// we don't care too much about push constants yet.
 		std::vector<VkDescriptorSetLayout> layouts;
 		const auto & keys = s->getSetLayoutKeys();
-		layouts.reserve( keys.size );
+		layouts.reserve( keys.size() );
 		for ( const auto &k : keys ){
 			layouts.push_back( mDescriptorSetLayouts[k]->vkDescriptorSetLayout );
 	   }
@@ -99,52 +99,9 @@ void of::vk::Context::setup(ofVkRenderer* renderer_){
 	// be owned by the renderer wich in turn owns the contexts.  
 	mPipelineCache = of::vk::createPipelineCache( mSettings.device, "ofAppPipelineCache.bin" );
 
-	mCurrentGraphicsPipelineState.mShader = mCurrentShader;
-	mCurrentGraphicsPipelineState.mRenderPass = mSettings.renderPass;
 	
 }
 // ----------------------------------------------------------------------
-
-//void of::vk::Context::setupPipelines(){
-//
-//	// pipelines should, like shaders, be part of the context
-//	// so that the context can be encapsulated fully within its
-//	// own thread if it wanted so.
-//
-//	// GraphicsPipelineState comes with sensible defaults
-//	// and is able to produce pipelines based on its current state.
-//	// the idea will be to have a dynamic version of this object to
-//	// keep track of current context state and create new pipelines
-//	// on the fly if needed, or, alternatively, create all pipeline
-//	// combinatinons upfront based on a .json file which lists each
-//	// state combination for required pipelines.
-//	of::vk::GraphicsPipelineState defaultPSO;
-//
-//	// TODO: let us choose which shader we want to use with our pipeline.
-//	defaultPSO.mShader           = mShaders.front();
-//	defaultPSO.mRenderPass       = mSettings.renderPass;
-//
-//	// create pipeline layout based on vector of descriptorSetLayouts queried from mContext
-//	// this is way crude, and pipeline should be inside of context, context
-//	// should return the layout based on shader paramter (derive layout from shader bindings) 
-//	defaultPSO.mLayout = of::vk::createPipelineLayout( 
-//		mSettings.device,
-//		getDescriptorSetLayoutForShader(defaultPSO.mShader)
-//	);
-//
-//	// !TODO: we want one pipeline layout per shader
-//	// and then derived pipelines depending on PSO state. 
-//
-//	mPipelineLayouts.emplace_back( defaultPSO.mLayout );
-//
-//	mPipelines.solid = defaultPSO.createPipeline( mSettings.device, mPipelineCache );
-//
-//	defaultPSO.mRasterizationState.polygonMode = VK_POLYGON_MODE_LINE;
-//
-//	mPipelines.wireframe = defaultPSO.createPipeline( mSettings.device, mPipelineCache );
-//}
-// ----------------------------------------------------------------------
-
 
 void of::vk::Context::setupFrameState(){
 
@@ -243,8 +200,7 @@ void of::vk::Context::storeDescriptorSetLayout( Shader::SetLayout && setLayout_ 
 // this might, if a descriptorPool was previously allocated, 
 // reset that descriptorPool and also delete any descriptorSets associated
 // with that descriptorPool.
-void of::vk::Context::setupDescriptorPool()
-{   
+void of::vk::Context::setupDescriptorPool(){
 	// To know how many descriptors of each type to allocate, 
 	// we group descriptors over all layouts by type and count each group.
 
@@ -252,7 +208,7 @@ void of::vk::Context::setupDescriptorPool()
 	std::map<VkDescriptorType, uint32_t> poolCounts; // size of pool necessary for each descriptor type
 	for ( const auto &u : mDescriptorSetLayouts ){
 
-		for ( const auto & bindingInfo : u.second->setLayout.bindings){
+		for ( const auto & bindingInfo : u.second->setLayout.bindings ){
 			const auto & it = poolCounts.find( bindingInfo.binding.descriptorType );
 			if ( it == poolCounts.end() ){
 				// descriptor of this type not yet found - insert new
@@ -277,151 +233,36 @@ void of::vk::Context::setupDescriptorPool()
 		poolSizes.push_back( { p.first, p.second } );
 	}
 
-	uint32_t setCount = uint32_t(mDescriptorSetLayouts.size());	 // number of unique descriptorSets
+	uint32_t setCount = uint32_t( mDescriptorSetLayouts.size() );	 // number of unique descriptorSets
 
-	// free any descriptorSets allocated if descriptorPool was already initialised.
-	if ( mDescriptorPool != nullptr ){
-		ofLogNotice() << "DescriptorPool re-initialised. Resetting.";
-		vkResetDescriptorPool( mSettings.device, mDescriptorPool, 0 );
-		mDescriptorPool = nullptr;
-		// TODO: if you had allocated descriptorsets from this pool, 
-		// they just have all been deleted through this reset.
+
+	if ( !mDescriptorPool.empty() ){
+		// reset any currently set descriptorpools if necessary.
+		for ( auto & p : mDescriptorPool ){
+			ofLogNotice() << "DescriptorPool re-initialised. Resetting.";
+			vkResetDescriptorPool( mSettings.device, p, 0 );
+		}
+	} else {
+		// Create a pool for this context - each swapchain image has its own version of the pool
+		// All descriptors used by shaders associated to this context 
+		// will come from this pool
+		VkDescriptorPoolCreateInfo descriptorPoolInfo = {
+			VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,  // VkStructureType                sType;
+			nullptr,                                        // const void*                    pNext;
+			0,                                              // VkDescriptorPoolCreateFlags    flags;
+			setCount,                                       // uint32_t                       maxSets;
+			uint32_t( poolSizes.size() ),                   // uint32_t                       poolSizeCount;
+			poolSizes.data(),                               // const VkDescriptorPoolSize*    pPoolSizes;
+		};
+
+		// create as many descriptorpools as there are swapchain images.
+		mDescriptorPool.resize( mSettings.numSwapchainImages );
+		for ( size_t i = 0; i != mSettings.numSwapchainImages; ++i ){
+			auto err = vkCreateDescriptorPool( mSettings.device, &descriptorPoolInfo, nullptr, &mDescriptorPool[i] );
+			assert( !err );
+		}
 	}
-
-	// Create a pool for this context
-	// All descriptors used by shaders associated to this context will come from this pool
-	VkDescriptorPoolCreateInfo descriptorPoolInfo = {
-		VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,                       // VkStructureType                sType;
-		nullptr,                                                             // const void*                    pNext;
-		0,                                                                   // VkDescriptorPoolCreateFlags    flags;
-		setCount,                                                            // uint32_t                       maxSets;
-	    uint32_t(poolSizes.size()),                                          // uint32_t                       poolSizeCount;
-		poolSizes.data(),                                                    // const VkDescriptorPoolSize*    pPoolSizes;
-	};
-
-	auto err = vkCreateDescriptorPool( mSettings.device, &descriptorPoolInfo, nullptr, &mDescriptorPool );
-	assert( !err );
 }
-
-//// ----------------------------------------------------------------------
-//
-//void of::vk::Context::allocateDescriptorSets(){
-//
-//	// TODO: this needs to happen dynamically - we only allocate descriptor sets when 
-//	// we don't already have one for the current layout and pipeline state
-//	// pipeline state includes texture bindings.
-//
-//	// descriptorset id depends on descriptorSetLayout and texture binding state.
-//
-//
-//
-//	for ( const auto &layouts : mDescriptorSetLayouts ){
-//		const auto & key = layouts.first;
-//		const auto & layout = layouts.second->vkDescriptorSetLayout;
-//
-//		// now allocate descriptorSet to back this layout up
-//		auto & newDescriptorSet = descriptorSets_[key] = VkDescriptorSet();
-//
-//		VkDescriptorSetAllocateInfo allocInfo{
-//			VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,	                  // VkStructureType                 sType;
-//			nullptr,	                                                      // const void*                     pNext;
-//			mDescriptorPool,                                                  // VkDescriptorPool                descriptorPool;
-//			1,                                                                // uint32_t                        descriptorSetCount;
-//			&layout                                                           // const VkDescriptorSetLayout*    pSetLayouts;
-//		};
-//		auto err = vkAllocateDescriptorSets( mSettings.device, &allocInfo, &newDescriptorSet );
-//		assert( !err );
-//	}
-//}
-//
-//
-//// ----------------------------------------------------------------------
-//
-//void of::vk::Context::initialiseDescriptorSets( ){
-//	
-//	// At this point the descriptors within the set are untyped 
-//	// so we have to write type information into it, 
-//	// as well as binding information so the set knows how to ingest data from memory
-//
-//	std::vector<VkWriteDescriptorSet> writeDescriptorSets;
-//	writeDescriptorSets.reserve( mDescriptorSets.size() );
-//	
-//	// We need to store buffer info temporarily as the VkWriteDescriptorSet needs 
-//	// to point to a resource outside of the scope of the for loop it is created
-//	// within.
-//	std::map < uint64_t, std::vector<VkDescriptorBufferInfo>> bufferInfoStore; 
-//
-//	// iterate over all setLayouts (since each element corresponds to a descriptor set)
-//	for (auto & layout : setLayouts_ )
-//	{
-//		const auto& key = layout.first;
-//		const auto& layoutInfo = layout.second.bindings;
-//		// TODO: deal with bindings which are not uniform buffers.
-//
-//		// Since within context all our uniform bindings 
-//		// are dynamic, we should be able to bind them all to the same buffer
-//		// and the same base address. When drawing, the dynamic offset should point to 
-//		// the correct memory location for each ubo element.
-//		
-//		// Note that here, you point the writeDescriptorSet to dstBinding and dstSet; 
-//		// if descriptorCount was greater than the number of bindings in the set, 
-//		// the next bindings will be overwritten.
-//
-//		uint32_t descriptor_array_count = 0;
-//
-//		// We need to get the number of descriptors by accumulating the descriptorCount
-//		// over each layoutBinding
-//
-//		// Reserve vector size because otherwise reallocation when pushing will invalidate pointers
-//		bufferInfoStore[key].reserve( layoutInfo.size() ); 
-//		
-//		// Go over each binding in descriptorSetLayout
-//		for ( const auto &bindingInfo : layoutInfo ){
-//			// how many array elements in this binding?
-//			descriptor_array_count = bindingInfo.binding.descriptorCount;
-//			
-//			// It appears that writeDescriptorSet does not immediately consume VkDescriptorBufferInfo*
-//			// so we must make sure that this is around for when we need it:
-//
-//			bufferInfoStore[key].push_back( {
-//				mAlloc->getBuffer(),                // VkBuffer        buffer;
-//				0,                                  // VkDeviceSize    offset;		// we start any new binding at offset 0, as data for each descriptor will always be separately allocated and uploaded.
-//				bindingInfo.size                    // VkDeviceSize    range;
-//			} );
-//			
-//			const auto & bufElement = bufferInfoStore[key].back();
-//
-//			// Q: Is it possible that elements of a descriptorSet are of different VkDescriptorType?
-//			//
-//			// A: Yes. This is why this method should write only one binding (== Descriptor) 
-//			//    at a time - as all members of a binding must share the same VkDescriptorType.
-//			
-//			auto descriptorType = bindingInfo.binding.descriptorType;
-//			auto dstBinding     = bindingInfo.binding.binding;
-//
-//			// Create one writeDescriptorSet per binding.
-//
-//			VkWriteDescriptorSet tmpDescriptorSet{
-//				VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,                    // VkStructureType                  sType;
-//				nullptr,                                                   // const void*                      pNext;
-//				mDescriptorSets[key],                                      // VkDescriptorSet                  dstSet;
-//				dstBinding,                                                // uint32_t                         dstBinding;
-//				0,                                                         // uint32_t                         dstArrayElement; // starting element in array
-//				descriptor_array_count,                                    // uint32_t                         descriptorCount;
-//				descriptorType,                                            // VkDescriptorType                 descriptorType;
-//				nullptr,                                                   // const VkDescriptorImageInfo*     pImageInfo;
-//				&bufElement,                                               // const VkDescriptorBufferInfo*    pBufferInfo;
-//				nullptr,                                                   // const VkBufferView*              pTexelBufferView;
-//			};
-//
-//			writeDescriptorSets.push_back( std::move( tmpDescriptorSet ) );
-//			
-//		}
-//		
-//	}
-//
-//	vkUpdateDescriptorSets( mSettings.device, uint32_t(writeDescriptorSets.size()), writeDescriptorSets.data(), 0, NULL );
-//}
 
 
 // ----------------------------------------------------------------------
@@ -440,6 +281,26 @@ void of::vk::Context::begin(size_t frame_){
 		buffer.state.data.resize( buffer.struct_size, 0 );
 	}
 
+	// Reset current DescriptorPool
+
+	vkResetDescriptorPool( mSettings.device, mDescriptorPool[frame_], 0 );
+	
+	// reset pipeline state
+	{
+		// !TODO: resettting the pipeline state needs to be more 
+		// easy. Also, setting any render state that may affect
+		// the pipeline should invalidate the pipeline. 
+		mCurrentGraphicsPipelineState.reset();
+		mCurrentShader = mShaders.front();
+
+		mCurrentGraphicsPipelineState.setShader(mCurrentShader);
+		mCurrentGraphicsPipelineState.setRenderPass(mSettings.renderPass);
+	}
+
+	mDSS_layoutKey.clear();
+	mDSS_dirty.clear();
+	mDSS_set.clear();
+
 }
 
 // ----------------------------------------------------------------------
@@ -452,18 +313,27 @@ void of::vk::Context::end(){
 
 void of::vk::Context::reset(){
 	mAlloc->reset();
-	// free any descriptorSets allocated if descriptorPool was already initialised.
-	if ( mDescriptorPool != nullptr ){
-		vkDestroyDescriptorPool( mSettings.device, mDescriptorPool, 0 );
-		mDescriptorPool = nullptr;
-		mDescriptorSetLayouts.clear();
-	}
 	
+	// Destroy all descriptors by destroying the pools they were
+	// allocated from.
+	for ( auto & p : mDescriptorPool ){
+		vkDestroyDescriptorPool( mSettings.device, p, 0 );
+		p = nullptr;
+	}
+	mDescriptorPool.clear();
+
+	// Destory descriptorsetLayouts
+	mDescriptorSetLayouts.clear();
+
+	for ( auto &p : mVkPipelines ){
+		if ( nullptr != p.second ){
+			vkDestroyPipeline( mSettings.device, p.second, nullptr );
+			p.second = nullptr;
+		}
+	}
+	mVkPipelines.clear();
 
 	vkDestroyPipelineCache( mSettings.device, mPipelineCache, nullptr );
-
-	//vkDestroyPipeline( mSettings.device, mPipelines.solid, nullptr );
-	//vkDestroyPipeline( mSettings.device, mPipelines.wireframe, nullptr );
 
 }
 
@@ -629,11 +499,10 @@ void of::vk::Context::flushUniformBufferState( ){
 // ----------------------------------------------------------------------
 
 void of::vk::Context::bindDescriptorSets( const VkCommandBuffer & cmd ){
-	// as context knows which shader/pipeline is currently bound the context knows which
-	// descriptorsets are currently required.
-	// 
-	// !TODO: getBoundDescriptorSets needs implementing 
-	vector<VkDescriptorSet> currentlyBoundDescriptorSets = getBoundDescriptorSets();
+	
+	// Update mDSS_set -- DSS == "is descriptor set state"
+	updateDescriptorSetState();
+	const auto & boundDescriptorSets = mDSS_set;
 
 	// we build dynamic offsets by going over each of the currently bound descriptorSets in 
 	// currentlyBoundDescriptorsets, and for each dynamic binding within these sets, we add an offset to the list.
@@ -648,8 +517,8 @@ void of::vk::Context::bindDescriptorSets( const VkCommandBuffer & cmd ){
 		VK_PIPELINE_BIND_POINT_GRAPHICS,                  // use graphics, not compute pipeline
 		*mCurrentShader->getPipelineLayout(),             // VkPipelineLayout object used to program the bindings.
 		0, 						                          // firstset: first set index (of the above) to bind to - mDescriptorSet[0] will be bound to pipeline layout [firstset]
-		uint32_t( currentlyBoundDescriptorSets.size() ),  // setCount: how many sets to bind
-		currentlyBoundDescriptorSets.data(),              // the descriptor sets to match up with our mPipelineLayout (need to be compatible)
+		uint32_t( boundDescriptorSets.size() ),  // setCount: how many sets to bind
+		boundDescriptorSets.data(),              // the descriptor sets to match up with our mPipelineLayout (need to be compatible)
 		uint32_t( dynamicOffsets.size() ),                // dynamic offsets count how many dynamic offsets
 		dynamicOffsets.data()                             // dynamic offsets for each
 	);
@@ -657,32 +526,125 @@ void of::vk::Context::bindDescriptorSets( const VkCommandBuffer & cmd ){
 
 // ----------------------------------------------------------------------
 
-std::vector<VkDescriptorSet> of::vk::Context::getBoundDescriptorSets(){
+const std::vector<VkDescriptorSet>& of::vk::Context::updateDescriptorSetState(){
 
-	// !TODO: this method needs to either return descriptorsets for the 
-	// currently bound pipeline layout from cache, 
-	// or, if the descriptorsets are dirty, allocate new descriptor sets,
-	// write to them, and return the new ones.
+	// Allocate & update any descriptorSets - from the first dirty
+	// descriptorSet to the end of the current descriptorSet sequence.
+		
+		for ( int i = 0; i != mDSS_dirty.size(); ++i ){
+			if ( mDSS_dirty[i] ){
 
+				std::vector<VkDescriptorSetLayout> layouts;
+				layouts.reserve( mDSS_dirty.size() - i );
+				
+				for ( size_t j = i; j != mDSS_dirty.size(); ++j ){
+					layouts.push_back( mDescriptorSetLayouts[mDSS_layoutKey[j]]->vkDescriptorSetLayout );
+				}
 
-	// THIS METHOD NEEDS TO DYNAMICALLY ALLOCATE DESCRIPTORS THROUGH 
-	// DESCRITPORSETS --
-	// IF DESCRIPTORS ARE ALREADY PRESENT, NO NEED TO ALLOCATE
-	// THEM, SO FIRST CHECK, AND STORE DESCRIPTORSETS BY HASH
+				VkDescriptorSetAllocateInfo allocInfo{
+					VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,	 // VkStructureType                 sType;
+					nullptr,	                                     // const void*                     pNext;
+					mDescriptorPool[mSwapIdx],                       // VkDescriptorPool                descriptorPool;
+					uint32_t(layouts.size()),                        // uint32_t                        descriptorSetCount;
+					layouts.data()                                   // const VkDescriptorSetLayout*    pSetLayouts;
+				};
 
-	/*
-	
-	When are descriptorsets dirty? If one image descriptor/binding has 
-	changed, for example. But also, when the current descriptorsets
-	dont match the current pipelinelayout. 
-	
-	You can store descriptorsets in a cache, indexed by hash.
+				vkAllocateDescriptorSets( mSettings.device, &allocInfo, &mDSS_set[i] );
+				updateDescriptorSets( layouts, i );
 
-	hash is calculated based on descriptorset binding state.
-	
-	*/
+				break;
+			}
+		}
 
-	return std::vector<VkDescriptorSet>();
+	return mDSS_set;
+}
+
+// ----------------------------------------------------------------------
+
+void of::vk::Context::updateDescriptorSets( std::vector<VkDescriptorSetLayout> &layouts, int firstSetIdx ){
+
+	// We assume mDSS_set[firstSetIdx .. mDSS_set.size()-1] are untyped, 
+	// and have not yet been used for drawing. We therefore write type
+	// information, and binding information into these descriptorSets.
+		
+	std::vector<VkWriteDescriptorSet> writeDescriptorSets;
+	writeDescriptorSets.reserve( layouts.size() );
+
+	// Temporary storage for VkDescriptorBufferInfo
+	// so this can be pointed to from within the loop.
+	std::map < uint64_t, std::vector<VkDescriptorBufferInfo>> descriptorBufferInfoStorage;
+
+	// iterate over all setLayouts (since each element corresponds to a DescriptorSet)
+	for ( size_t j = firstSetIdx; j != mDSS_dirty.size(); ++j ){
+		const auto& key = mDSS_layoutKey[j];
+		const auto& bindings = mDescriptorSetLayouts[mDSS_layoutKey[j]]->setLayout.bindings;
+		// TODO: deal with bindings which are not uniform buffers.
+
+		// Since within context all our uniform bindings 
+		// are dynamic, we should be able to bind them all to the same buffer
+		// and the same base address. When drawing, the dynamic offset should point to 
+		// the correct memory location for each ubo element.
+
+		// Note that here, you point the writeDescriptorSet to dstBinding and dstSet; 
+		// if descriptorCount was greater than the number of bindings in the set, 
+		// the next bindings will be overwritten.
+
+		uint32_t descriptor_array_count = 0;
+
+		// We need to get the number of descriptors by accumulating the descriptorCount
+		// over each layoutBinding
+
+		// Reserve vector size because otherwise reallocation when pushing will invalidate pointers
+		descriptorBufferInfoStorage[key].reserve( bindings.size() );
+
+		// Go over each binding in descriptorSetLayout
+		for ( const auto &bindingInfo : bindings ){
+			// how many array elements in this binding?
+			descriptor_array_count = bindingInfo.binding.descriptorCount;
+
+			// It appears that writeDescriptorSet does not immediately consume VkDescriptorBufferInfo*
+			// so we must make sure that this is around for when we need it:
+
+			descriptorBufferInfoStorage[key].push_back( {
+				mAlloc->getBuffer(),                // VkBuffer        buffer;
+				0,                                  // VkDeviceSize    offset;		// we start any new binding at offset 0, as data for each descriptor will always be separately allocated and uploaded.
+				bindingInfo.size                    // VkDeviceSize    range;
+			} );
+
+			const auto & bufElement = descriptorBufferInfoStorage[key].back();
+
+			// Q: Is it possible that elements of a descriptorSet are of different VkDescriptorType?
+			//
+			// A: Yes. This is why this method should write only one binding (== Descriptor) 
+			//    at a time - as all members of a binding must share the same VkDescriptorType.
+
+			auto descriptorType = bindingInfo.binding.descriptorType;
+			auto dstBinding = bindingInfo.binding.binding;
+
+			// Create one writeDescriptorSet per binding.
+
+			VkWriteDescriptorSet tmpDescriptorSet{
+				VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,                    // VkStructureType                  sType;
+				nullptr,                                                   // const void*                      pNext;
+				mDSS_set[j],                                               // VkDescriptorSet                  dstSet;
+				dstBinding,                                                // uint32_t                         dstBinding;
+				0,                                                         // uint32_t                         dstArrayElement; // starting element in array
+				descriptor_array_count,                                    // uint32_t                         descriptorCount;
+				descriptorType,                                            // VkDescriptorType                 descriptorType;
+				nullptr,                                                   // const VkDescriptorImageInfo*     pImageInfo;
+				&bufElement,                                               // const VkDescriptorBufferInfo*    pBufferInfo;
+				nullptr,                                                   // const VkBufferView*              pTexelBufferView;
+			};
+
+			writeDescriptorSets.push_back( std::move( tmpDescriptorSet ) );
+
+		}
+
+		mDSS_dirty[j] = false;
+	}
+
+	vkUpdateDescriptorSets( mSettings.device, uint32_t( writeDescriptorSets.size() ), writeDescriptorSets.data(), 0, NULL );
+
 }
 
 // ----------------------------------------------------------------------
@@ -697,12 +659,36 @@ void of::vk::Context::bindPipeline( const VkCommandBuffer & cmd ){
 	if ( !mCurrentGraphicsPipelineState.mDirty ){
 		return;
 	} else {
-		// TODO: look whether it would make sense to store the pipeline with the 
-		// shader so that derivatives can be made based on shader state foremost, meaning
-		// derivatives are derived from other pipelines with the same shader.
-		mCurrentPipeline = mCurrentGraphicsPipelineState.createPipeline(mSettings.device, mPipelineCache);
+		
+		const std::vector<uint64_t>& layouts = mCurrentGraphicsPipelineState.getShader()->getSetLayoutKeys();
+
+		uint64_t pipelineHash = mCurrentGraphicsPipelineState.calculateHash(); 
+
+		auto p = mVkPipelines.find( pipelineHash );
+		if ( p == mVkPipelines.end() ){
+			ofLog() << "Creating pipeline " << pipelineHash;
+			mVkPipelines[pipelineHash] = mCurrentGraphicsPipelineState.createPipeline( mSettings.device, mPipelineCache );
+		}
+		mCurrentVkPipeline = mVkPipelines[pipelineHash];
+
+		mDSS_layoutKey.resize( layouts.size(), 0);
+		mDSS_dirty.resize(     layouts.size(), true );
+		mDSS_set.resize(       layouts.size(), nullptr );
+
+		bool foundIncompatible = false; // invalidate all set bindings after and including first incompatible set
+		for ( size_t i = 0; i != layouts.size(); ++i ){
+			if ( mDSS_layoutKey[i] != layouts[i] 
+				|| foundIncompatible ){
+				mDSS_layoutKey[i] = layouts[i];
+				mDSS_set[i] = nullptr;
+				mDSS_dirty[i] = true;
+				foundIncompatible = true;
+			}
+		}
+
 		// Bind the rendering pipeline (including the shaders)
-		vkCmdBindPipeline( cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, mCurrentPipeline );
+		vkCmdBindPipeline( cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, mCurrentVkPipeline );
+		mCurrentGraphicsPipelineState.mDirty = false;
 	}
 
 }

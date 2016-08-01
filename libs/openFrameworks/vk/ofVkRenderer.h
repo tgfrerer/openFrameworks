@@ -124,7 +124,7 @@ public:
 
 	virtual ofRectMode getRectMode() override;
 
-	virtual void setFillMode( ofFillFlag fill ){};
+	virtual void setFillMode( ofFillFlag fill );
 
 	virtual ofFillFlag getFillMode() override;
 

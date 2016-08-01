@@ -116,7 +116,7 @@ private:
 
 	VkDevice mDevice = nullptr;
 	Context* mContext;
-	shared_ptr<VkPipelineLayout> mPipelineLayout; // context sets this.
+	std::shared_ptr<VkPipelineLayout> mPipelineLayout; // context sets this.
 
 	std::map<VkShaderStageFlagBits, VkShaderModule>         mModules;
 	std::vector<VkPipelineShaderStageCreateInfo>	        mStages;
