@@ -9,7 +9,7 @@ class ofApp : public ofBaseApp{
 	ofMesh    mFontMesh;
 	ofMesh	  mLMesh;
 
-	of::vk::Texture mVkTex;
+	//of::vk::Texture mVkTex;
 
 	public:
 		void setup();

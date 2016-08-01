@@ -78,11 +78,11 @@ void ofApp::setup(){
 	*/
 
 
-	ofPixels tmpImagePix;
+	//ofPixels tmpImagePix;
 	
-	ofLoadImage( tmpImagePix, "images/brighton.jpg" );
+	//ofLoadImage( tmpImagePix, "images/brighton.jpg" );
 	
-	mVkTex.load( tmpImagePix );
+	//mVkTex.load( tmpImagePix );
 }
 
 //--------------------------------------------------------------
@@ -123,6 +123,7 @@ void ofApp::drawModeExplicit(){
 	static ofMesh ico = ofMesh::icosphere( 50, 3 );
 	mCam1.begin();
 
+	ofNoFill();
 	ofSetColor( ofColor::white );
 	ofPushMatrix();
 	ofTranslate( -200, +200, 100 );
@@ -144,8 +145,10 @@ void ofApp::drawModeExplicit(){
 	ico.draw();
 	ofPopMatrix();
 
+	ofFill();
 	ofSetColor( ofColor::red );
 	mFontMesh.draw();
+	ofNoFill();
 
 	ofPushMatrix();
 	ofRotate( ofGetFrameNum() % 360 ); // this should rotate at a speed of one revolution every 6 seconds if frame rate is locked to vsync.
