@@ -174,7 +174,6 @@ void of::vk::Shader::processResource( spirv_cross::Compiler & compiler, spirv_cr
 	// shader stages this needs to be updated in the uniform's 
 	// accessibility stage flags.
 
-	
 	ostringstream os;
 
 	uint32_t descriptor_set = 0;
