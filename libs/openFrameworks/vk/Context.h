@@ -57,6 +57,7 @@ class Allocator; // ffdecl.
 
 class Context
 {
+	// allocator used for dynamic data
 	shared_ptr<of::vk::Allocator> mAlloc;
 
 	// dynamic offsets for descriptor bindings, flattened by set
@@ -138,11 +139,26 @@ class Context
 	// -----------
 
 	int mSwapIdx = 0;
+	
+	// one command buffer pool per context
+	VkCommandPool mCommandPool = nullptr;
 
+	// command buffers - size must be setup equal to swapchain size
+	// context owns these.
+
+	std::vector<VkCommandBuffer> mCommandBuffer;
+	
+	void beginRenderPass();
+	void endRenderPass();
+
+	void setupCommandPool();
+	void resetCurrentCommandBuffer();
+	void beginCommandBuffer();
+	void endCommandBuffer();
 
 	// --------- pipeline info
 
-	VkPipelineCache       mPipelineCache;
+	VkPipelineCache       mPipelineCache = nullptr;
 
 	// object which tracks current pipeline state
 	// and creates a pipeline.
@@ -183,7 +199,6 @@ class Context
 	// sets up backing memory to track state, based on shaders
 	void setupFrameState();
 	void setupDescriptorPool( );
-	
 
 	std::map<uint64_t, VkPipeline> mVkPipelines;
 	// all shaders attached to this context
@@ -193,9 +208,10 @@ public:
 
 	struct Settings
 	{
-		VkDevice      device = nullptr;
-		size_t        numSwapchainImages = 0 ;
-		VkRenderPass  renderPass = nullptr;
+		VkDevice                   device = nullptr;
+		size_t                     numSwapchainImages = 0 ;
+		VkRenderPass               renderPass = nullptr;
+		std::vector<VkFramebuffer> framebuffers;
 		// context is initialised with a vector of shaders
 		// all these shaders contribute to the shared pipeline layout 
 		// for this context. The shaders need to be compatible in their
@@ -227,6 +243,10 @@ public:
 
 	// unmap uniform buffers 
 	void end();
+
+	// submit command buffer to queue
+	void submit();
+
 
 	// write current descriptor buffer state to GPU buffer
 	// updates descriptorOffsets - saves these in frameShadow
@@ -279,6 +299,9 @@ public:
 		popBuffer( "DefaultMatrices" );
 		return *this;
 	}
+
+	// draw a mesh using current context draw state
+	Context& draw( const ofMesh& mesh_);
 
 	// store vertex and index data inside the current dynamic memory frame
 	// return memory mapping offets based on current memory buffer.

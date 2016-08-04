@@ -99,7 +99,7 @@ void of::vk::Context::setup(ofVkRenderer* renderer_){
 	// be owned by the renderer wich in turn owns the contexts.  
 	mPipelineCache = of::vk::createPipelineCache( mSettings.device, "ofAppPipelineCache.bin" );
 
-	
+	setupCommandPool();
 }
 // ----------------------------------------------------------------------
 
@@ -301,12 +301,147 @@ void of::vk::Context::begin(size_t frame_){
 	mDSS_dirty.clear();
 	mDSS_set.clear();
 
+	resetCurrentCommandBuffer();
+
+	beginCommandBuffer();
+	beginRenderPass();
+}
+
+// ----------------------------------------------------------------------
+
+void of::vk::Context::setupCommandPool(){
+	// CONSIDER: make it possible to set command pools to be more permanent - or transient.
+
+	// create a command pool
+	VkCommandPoolCreateInfo poolInfo
+	{
+		VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,      // VkStructureType             sType;
+		nullptr,                                         // const void*                 pNext;
+		VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT, // VkCommandPoolCreateFlags    flags;
+		0,                                               // uint32_t                    queueFamilyIndex;
+	};
+
+	// VkCommandPoolCreateFlags --> tells us how persistent the commands living in this pool are going to be
+	auto err = vkCreateCommandPool( mSettings.device, &poolInfo, nullptr, &mCommandPool );
+	assert( !err );
+}
+
+// ----------------------------------------------------------------------
+
+void of::vk::Context::resetCurrentCommandBuffer(){
+	
+	if ( mCommandBuffer.size() == mSettings.numSwapchainImages ){
+		// if command buffer has been previously recorded, we want to re-use it.
+		auto err = vkResetCommandBuffer( mCommandBuffer[mSwapIdx], 0 );
+		assert( !err );
+
+	} else{
+		// allocate a draw command buffer for each swapchain image
+		mCommandBuffer.resize( mSettings.numSwapchainImages );
+		// (re)allocate command buffer used for draw commands
+		VkCommandBufferAllocateInfo allocInfo = {
+			VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,                 // VkStructureType         sType;
+			nullptr,                                                        // const void*             pNext;
+			mCommandPool,                                                   // VkCommandPool           commandPool;
+			VK_COMMAND_BUFFER_LEVEL_PRIMARY,                                // VkCommandBufferLevel    level;
+			uint32_t( mCommandBuffer.size() )                                 // uint32_t                commandBufferCount;
+		};
+
+		auto err = vkAllocateCommandBuffers( mSettings.device, &allocInfo, mCommandBuffer.data() );
+		assert( !err );
+
+	}
+}
+
+// ----------------------------------------------------------------------
+
+void of::vk::Context::beginCommandBuffer(){
+	auto & cmd = mCommandBuffer[mSwapIdx];
+
+	VkCommandBufferBeginInfo cmdBufInfo = {};
+	cmdBufInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+	cmdBufInfo.pNext = NULL;
+
+	// Set target frame buffer
+	auto err = vkBeginCommandBuffer( cmd, &cmdBufInfo );
+	assert( !err );
+
+	auto & currentViewport = ofGetCurrentViewport();
+
+	// Update dynamic viewport state
+	VkViewport viewport = {};
+	viewport.x = currentViewport.x;
+	viewport.y = currentViewport.y;
+	viewport.width = (float)currentViewport.width;
+	viewport.height = (float)currentViewport.height;
+	viewport.minDepth = 0.0f;		   // this is the min depth value for the depth buffer
+	viewport.maxDepth = 1.0f;		   // this is the max depth value for the depth buffer
+	vkCmdSetViewport( cmd, 0, 1, &viewport );
+
+	// Update dynamic scissor state
+	VkRect2D scissor = {};
+	scissor.extent.width = viewport.width;
+	scissor.extent.height = viewport.height;
+	scissor.offset.x = viewport.x;
+	scissor.offset.y = viewport.y;
+	vkCmdSetScissor( cmd, 0, 1, &scissor );
+}
+
+// ----------------------------------------------------------------------
+
+void of::vk::Context::endCommandBuffer(){
+	auto err = vkEndCommandBuffer( mCommandBuffer[mSwapIdx] );
+	assert( !err );
+
 }
 
 // ----------------------------------------------------------------------
 
 void of::vk::Context::end(){
-	mSwapIdx = -1;
+	endRenderPass();
+	endCommandBuffer();
+}
+
+// ----------------------------------------------------------------------
+void of::vk::Context::submit(){
+	static auto renderer = dynamic_pointer_cast<ofVkRenderer>(ofGetCurrentRenderer());
+	renderer->submitCommandBuffer( mCommandBuffer[mSwapIdx] );
+}
+
+// ----------------------------------------------------------------------
+
+void of::vk::Context::beginRenderPass(){
+	VkClearValue clearValues[2];
+	clearValues[0].color = {0.f, 0.f, 0.f, 0.f};
+	clearValues[1].depthStencil = { 1.0f, 0 };
+
+	auto viewport = ofGetCurrentViewport();
+
+	VkRect2D renderArea{
+		{ viewport.x, viewport.y },          // VkOffset2D
+		{ viewport.width, viewport.height }, // VkExtent2D
+	};
+
+	VkRenderPassBeginInfo renderPassBeginInfo = {
+		VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO, // VkStructureType        sType;
+		nullptr,                                  // const void*            pNext;
+		mSettings.renderPass,                     // VkRenderPass           renderPass;
+		mSettings.framebuffers[mSwapIdx],         // VkFramebuffer          framebuffer;
+		renderArea,                               // VkRect2D               renderArea;
+		2,                                        // uint32_t               clearValueCount;
+		clearValues,                              // const VkClearValue*    pClearValues;
+	};
+
+	// VK_SUBPASS_CONTENTS_INLINE means we're putting all our render commands into
+	// the primary command buffer - otherwise we would have to call execute on secondary
+	// command buffers to draw.
+	vkCmdBeginRenderPass( mCommandBuffer[mSwapIdx], &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE );
+}
+
+// ----------------------------------------------------------------------
+
+void of::vk::Context::endRenderPass(){
+	vkCmdEndRenderPass( mCommandBuffer[mSwapIdx] );
 }
 
 // ----------------------------------------------------------------------
@@ -332,6 +467,8 @@ void of::vk::Context::reset(){
 		}
 	}
 	mVkPipelines.clear();
+
+	vkDestroyCommandPool( mSettings.device, mCommandPool, nullptr );
 
 	vkDestroyPipelineCache( mSettings.device, mPipelineCache, nullptr );
 
@@ -367,6 +504,49 @@ of::vk::Context& of::vk::Context::popBuffer( const std::string & ubo_ ){
 
 	if ( uboMemberWithParentWithName != mCurrentFrameState.mUniformMembers.end() ){
 		( uboMemberWithParentWithName->second.buffer->pop() );
+	}
+	return *this;
+}
+
+// ----------------------------------------------------------------------
+
+of::vk::Context& of::vk::Context::draw( const ofMesh & mesh_){
+	auto & cmd = mCommandBuffer[mSwapIdx];
+
+	// store uniforms if needed
+	flushUniformBufferState();
+	bindPipeline( cmd );
+	bindDescriptorSets( cmd );
+
+	std::vector<VkDeviceSize> vertexOffsets;
+	std::vector<VkDeviceSize> indexOffsets;
+
+	// Store vertex data using Context.
+	// - this uses Allocator to store mesh data in the current frame' s dynamic memory
+	// Context will return memory offsets into vertices, indices, based on current context memory buffer
+	// 
+	// TODO: check if it made sense to cache already stored meshes, 
+	//       so that meshes which have already been stored this frame 
+	//       may be re-used.
+	storeMesh( mesh_, vertexOffsets, indexOffsets );
+
+	// TODO: cull vertexOffsets which refer to empty vertex attribute data
+	//       make sure that a pipeline with the correct bindings is bound to match the 
+	//       presence or non-presence of mesh data.
+
+	// Bind vertex data buffers to current pipeline. 
+	// The vector indices into bufferRefs, vertexOffsets correspond to [binding numbers] of the currently bound pipeline.
+	// See Shader.h for an explanation of how this is mapped to shader attribute locations
+	vector<VkBuffer> bufferRefs( vertexOffsets.size(), getVkBuffer() );
+	vkCmdBindVertexBuffers( cmd, 0, uint32_t( bufferRefs.size() ), bufferRefs.data(), vertexOffsets.data() );
+
+	if ( indexOffsets.empty() ){
+		// non-indexed draw
+		vkCmdDraw( cmd, uint32_t( mesh_.getNumVertices() ), 1, 0, 1 );
+	} else{
+		// indexed draw
+		vkCmdBindIndexBuffer( cmd, bufferRefs[0], indexOffsets[0], VK_INDEX_TYPE_UINT32 );
+		vkCmdDrawIndexed( cmd, uint32_t( mesh_.getNumIndices() ), 1, 0, 0, 1 );
 	}
 	return *this;
 }

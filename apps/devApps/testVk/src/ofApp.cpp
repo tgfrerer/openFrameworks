@@ -83,6 +83,42 @@ void ofApp::setup(){
 	//ofLoadImage( tmpImagePix, "images/brighton.jpg" );
 	
 	//mVkTex.load( tmpImagePix );
+
+	{
+		auto & renderer = dynamic_pointer_cast<ofVkRenderer>( ofGetCurrentRenderer() );
+
+		of::vk::Context::Settings contextSettings;
+
+		contextSettings.device             = renderer->getVkDevice();
+		contextSettings.numSwapchainImages = renderer->getSwapChainSize();
+		contextSettings.renderPass         = renderer->getDefaultRenderPass();
+		contextSettings.framebuffers       = renderer->getDefaultFramebuffers();
+
+		mExplicitContext = make_shared<of::vk::Context>( contextSettings );
+
+		of::vk::Shader::Settings settings{
+			mExplicitContext.get(),
+			{
+				{ VK_SHADER_STAGE_VERTEX_BIT  , "vert.spv" },
+				{ VK_SHADER_STAGE_FRAGMENT_BIT, "frag.spv" },
+			}
+		};
+
+		// shader creation makes shader reflect. 
+		auto shader = std::make_shared<of::vk::Shader>( settings );
+		mExplicitContext->addShader( shader );
+
+		// this will analyse our shaders and build descriptorset
+		// layouts. it will also build pipelines.
+		mExplicitContext->setup( renderer.get() );
+
+
+		// use this to swap out the default context with the newly created one.
+		// renderer->getContext() = mExplicitContext;
+
+
+	}
+
 }
 
 //--------------------------------------------------------------
@@ -118,7 +154,7 @@ void ofApp::draw(){
 void ofApp::drawModeExplicit(){
 	
 	auto & renderer = dynamic_pointer_cast<ofVkRenderer>( ofGetCurrentRenderer() );
-	auto & context = renderer->getContext();
+	auto & context = *renderer->getContext();
 
 	static ofMesh ico = ofMesh::icosphere( 50, 3 );
 	
@@ -127,95 +163,49 @@ void ofApp::drawModeExplicit(){
 	context
 		.setUniform( "globalColor", ofFloatColor::lightBlue )
 		.pushMatrix()
-		.translate( { -200, +200, 100 } );
-	ico.draw();
-	context.popMatrix();
-
-	context.setPolyMode( VK_POLYGON_MODE_LINE )
-		.pushMatrix()
-		.setUniform( "globalColor", ofFloatColor::white )
-		.translate( { -200, -200, -200 } );
-	ico.draw();
-	context.popMatrix();
-
-	context.pushMatrix();
-	context.translate( { 200, +200, -200 } );
-	ico.draw();
-	context.popMatrix();
-
-	context.setPolyMode( VK_POLYGON_MODE_POINT );
-
-	context.pushMatrix();
-	context.translate( { 200, -200, 200 } );
-	ico.draw();
-	context.popMatrix();
-
-	context.setUniform( "globalColor", ofFloatColor::red );
-	context.setPolyMode( VK_POLYGON_MODE_FILL );
-	mFontMesh.draw();
-	
-
-	context.pushMatrix()
-		.rotateRad( (ofGetFrameNum() % 360)*DEG_TO_RAD, { 0.f,0.f,1.f } );
-	mLMesh.draw();
-	context.popMatrix();
+		.translate( { -200, +200, 100 } )
+		.draw(ico)
+		.popMatrix();
 
 	context
-		.setUniform( "globalColor", ofFloatColor::teal )
+		.setPolyMode( VK_POLYGON_MODE_LINE )
 		.pushMatrix()
+		.setUniform( "globalColor", ofFloatColor::white )
+		.translate( { -200, -200, -200 } )
+		.draw(ico)
+		.popMatrix();
+
+	context
+		.pushMatrix()
+		.translate( { 200, +200, -200 } )
+		.draw( ico )
+		.popMatrix();
+
+	context
+		.pushMatrix()
+		.setPolyMode( VK_POLYGON_MODE_POINT )
+		.translate( { 200, -200, 200 } )
+		.draw( ico )
+		.popMatrix();
+
+	context
+		.setUniform( "globalColor", ofFloatColor::red )
+		.setPolyMode( VK_POLYGON_MODE_FILL )
+		.draw( mFontMesh );
+	
+	context
+		.pushMatrix()
+		.rotateRad( ( ofGetFrameNum() % 360 )*DEG_TO_RAD, { 0.f,0.f,1.f } )
+		.draw( mLMesh )
+		.popMatrix();
+
+	context
+		.pushMatrix()
+		.setUniform( "globalColor", ofFloatColor::teal )
 		.translate( { 200.f,0.f,0.f } )
-		.rotateRad( 360.f * ( ( ofGetElapsedTimeMillis() % 6000 ) / 6000.f ) * DEG_TO_RAD, { 0.f,0.f,1.f } );
-	mLMesh.draw();
-	context.popMatrix();
-
-	//context
-	//	.setUniform( "globalColor", ofFloatColor::lightBlue )
-	//	.pushMatrix()
-	//	.translate( { -200, +200, 100 } )
-	//	.draw(ico)
-	//	.popMatrix();
-
-	//context
-	//	.setPolyMode( VK_POLYGON_MODE_LINE )
-	//	.pushMatrix()
-	//	.setUniform( "globalColor", ofFloatColor::white )
-	//	.translate( { -200, -200, -200 } )
-	//	.draw(ico)
-	//	.popMatrix();
-
-	//context
-	//	.pushMatrix()
-	//	.translate( { 200, +200, -200 } )
-	//	.draw( ico )
-	//	.popMatrix()
-
-	//context
-	//	.pushMatrix()
-	//	.setPolyMode( VK_POLYGON_MODE_POINT )
-	//	.translate( { 200, -200, 200 } )
-	//	.draw( ico )
-	//	.popMatrix();
-
-	//context
-	//	.setUniform( "globalColor", ofFloatColor::red )
-	//	.setPolyMode( VK_POLYGON_MODE_FILL )
-	//	.draw( mFontMesh );
-	//
-	//context
-	//	.pushMatrix()
-	//	.rotateRad( ( ofGetFrameNum() % 360 )*DEG_TO_RAD, { 0.f,0.f,1.f } )
-	//	.draw( mLMesh )
-	//	.popMatrix();
-
-	//context
-	//	.pushMatrix()
-	//	.setUniform( "globalColor", ofFloatColor::teal )
-	//	.translate( { 200.f,0.f,0.f } )
-	//	.rotateRad( 360.f * ( ( ofGetElapsedTimeMillis() % 6000 ) / 6000.f ) * DEG_TO_RAD, { 0.f,0.f,1.f } )
-	//	.draw( mLMesh )
-	//	.popMatrix();
-	//
-
+		.rotateRad( 360.f * ( ( ofGetElapsedTimeMillis() % 6000 ) / 6000.f ) * DEG_TO_RAD, { 0.f,0.f,1.f } )
+		.draw( mLMesh )
+		.popMatrix();
 
 	mCam1.end();
 }

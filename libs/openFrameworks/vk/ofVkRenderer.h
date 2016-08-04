@@ -51,7 +51,15 @@ public:
 	};
 
 	virtual void startRender() override;
+	        void submitCommandBuffer( VkCommandBuffer cmd );
 	virtual void finishRender() override;
+
+	const uint32_t getSwapChainSize();
+
+	// return frame buffers for swapchain
+	const std::vector<VkFramebuffer>& getDefaultFramebuffers();
+
+	const VkRenderPass& getDefaultRenderPass();
 
 	virtual void draw( const ofPolyline & poly ) const{};
 	virtual void draw( const ofPath & shape ) const{};
@@ -230,10 +238,6 @@ public:
 		return mDevice;
 	};
 
-	VkCommandBuffer& getDrawCommandBuffer(){
-		return mDrawCmdBuffer[mSwapchain.getCurrentImageIndex()];
-	};
-
 	const VkPhysicalDeviceProperties& getVkPhysicalDeviceProperties() const {
 		return mPhysicalDeviceProperties;
 	}
@@ -251,8 +255,8 @@ public:
 		return mQueue;
 	};
 
-	of::vk::Context& getContext(){
-		return *mContext;
+	shared_ptr<of::vk::Context>& getContext(){
+		return mDefaultContext;
 	};
 
 private:
@@ -265,7 +269,7 @@ private:
 	
 	// Command buffers used for rendering
 	// we will double-buffer these
-	std::vector<VkCommandBuffer> mDrawCmdBuffer; 
+	//std::vector<VkCommandBuffer> mDrawCmdBuffer; 
 
 	// command buffers used to present frame buffer to screen
 	VkCommandBuffer          mPrePresentCommandBuffer     = nullptr;
@@ -288,12 +292,6 @@ private:
 
 	// creates synchronisation primitives 
 	void createSemaphores();
-
-	void beginDrawCommandBuffer( VkCommandBuffer& cmdBuf_ );
-	void endDrawCommandBuffer();
-
-	void beginRenderPass( VkCommandBuffer& cmdBuf_, VkFramebuffer& frameBuf_ );
-	void endRenderPass();
 
 	// our main (primary) gpu queue. all commandbuffers are submitted to this queue
 	// as are present commands.
@@ -333,9 +331,10 @@ private:
 	// Active frame buffer index
 	// uint32_t mCurrentSwapIndex = 0;
 
-	// context manages up to n partitions of frame 
-	// state & memory 
-	std::shared_ptr<of::vk::Context> mContext;
+	// context used for implicit rendering
+	// reset this context if you don't want explicit rendering
+	// but want to use your own.
+	std::shared_ptr<of::vk::Context> mDefaultContext;
 
 	uint32_t mWindowWidth = 0;
 	uint32_t mWindowHeight = 0;

@@ -25,14 +25,15 @@ void ofVkRenderer::setup(){
 	// A Context holds dynamic frame state + manages GPU memory for "immediate" mode
 	
 	of::vk::Context::Settings contextSettings;
-	contextSettings.device = mDevice;
+	contextSettings.device             = mDevice;
 	contextSettings.numSwapchainImages = mSwapchain.getImageCount();
-	contextSettings.renderPass = mRenderPass;
+	contextSettings.renderPass         = mRenderPass;
+	contextSettings.framebuffers       = mFrameBuffers;
 
-	mContext = make_shared<of::vk::Context>(contextSettings);
+	mDefaultContext = make_shared<of::vk::Context>(contextSettings);
 
 	of::vk::Shader::Settings settings{
-		mContext.get(),
+		mDefaultContext.get(),
 		{
 			{ VK_SHADER_STAGE_VERTEX_BIT  , "vert.spv" },
 			{ VK_SHADER_STAGE_FRAGMENT_BIT, "frag.spv" },
@@ -41,11 +42,11 @@ void ofVkRenderer::setup(){
 
 	// shader creation makes shader reflect. 
 	auto shader = std::make_shared<of::vk::Shader>( settings );
-	mContext->addShader( shader );
+	mDefaultContext->addShader( shader );
 
 	// this will analyse our shaders and build descriptorset
 	// layouts. it will also build pipelines.
-	mContext->setup( this );
+	mDefaultContext->setup( this );
 	
 	
 	// Mesh data prototype for DrawRectangle Method.
@@ -75,7 +76,9 @@ void ofVkRenderer::setupSwapChain(){
 	// this will allocate & initialise command buffer mSetupCommandBuffer
 	createSetupCommandBuffer();
 
-	uint32_t numSwapChainFrames = 3;
+
+	// !TODO: move these parameters into vkRenderer::settings
+	uint32_t numSwapChainFrames = 2;
 	VkPresentModeKHR presentMode = VK_PRESENT_MODE_MAILBOX_KHR;
 
 	// Note that the mSwapchain.setup() method will *modify* numSwapChainFrames 
@@ -542,116 +545,54 @@ void ofVkRenderer::startRender(){
 	err = mSwapchain.acquireNextImage( mSemaphorePresentComplete, &swapIdx );
 	assert( !err );
 
-	{
-		if ( mDrawCmdBuffer.size() == mSwapchain.getImageCount() ){
-			// if command buffer has been previously recorded, we want to re-use it.
-			err = vkResetCommandBuffer( mDrawCmdBuffer[swapIdx], 0 );
-			assert( !err );
+	
+	if ( mDefaultContext ){
+		mDefaultContext->begin( swapIdx );
 
-		} else{
-			// allocate a draw command buffer for each swapchain image
-			mDrawCmdBuffer.resize( mSwapchain.getImageCount() );
-			// (re)allocate command buffer used for draw commands
-			VkCommandBufferAllocateInfo allocInfo = {
-				VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,                 // VkStructureType         sType;
-				nullptr,                                                        // const void*             pNext;
-				mCommandPool,                                                   // VkCommandPool           commandPool;
-				VK_COMMAND_BUFFER_LEVEL_PRIMARY,                                // VkCommandBufferLevel    level;
-			    uint32_t(mDrawCmdBuffer.size())                                 // uint32_t                commandBufferCount;
-			};
-
-			err = vkAllocateCommandBuffers( mDevice, &allocInfo, mDrawCmdBuffer.data() );
-			assert( !err );
-
-		}
+		mDefaultContext->setUniform( "modelMatrix", ofMatrix4x4() ); // initialise modelview with identity matrix.
+		mDefaultContext->setUniform( "globalColor", ofFloatColor( ofColor::white ) );
 	}
 
-	mContext->begin( swapIdx );
-
-	mContext->setUniform( "modelMatrix", ofMatrix4x4() ); // initialise modelview with identity matrix.
-	mContext->setUniform( "globalColor", ofFloatColor(ofColor::white));
-
-	beginDrawCommandBuffer( mDrawCmdBuffer[swapIdx] );
 
 }
 
 // ----------------------------------------------------------------------
 
-void ofVkRenderer::beginDrawCommandBuffer(VkCommandBuffer& cmdBuf_){
-	VkCommandBufferBeginInfo cmdBufInfo = {};
-	cmdBufInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-	cmdBufInfo.pNext = NULL;
+void ofVkRenderer::submitCommandBuffer(VkCommandBuffer cmd){
+	// Submit the draw command buffer
+	//
+	// The submit info structure contains a list of
+	// command buffers and semaphores to be submitted to a queue
+	// If you want to submit multiple command buffers, pass an array
+	VkPipelineStageFlags pipelineStages[] = { VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT };
 
-	// Set target frame buffer
-	auto err = vkBeginCommandBuffer( cmdBuf_, &cmdBufInfo );
-	assert( !err );
+	size_t swapId = mSwapchain.getCurrentImageIndex();
 
+	VkResult err = VK_SUCCESS;
 
-	// Update dynamic viewport state
-	VkViewport viewport = {};
-	viewport.width = (float)mViewport.width;
-	viewport.height = (float)mViewport.height;
-	viewport.minDepth = 0.0f;		   // this is the min depth value for the depth buffer
-	viewport.maxDepth = 1.0f;		   // this is the max depth value for the depth buffer
-	vkCmdSetViewport( cmdBuf_, 0, 1, &viewport );
+	{
+		VkSubmitInfo submitInfo = {
+			VK_STRUCTURE_TYPE_SUBMIT_INFO,           // VkStructureType                sType;
+			nullptr,                                 // const void*                    pNext;
+			1,                                       // uint32_t                       waitSemaphoreCount;
+			&mSemaphorePresentComplete,              // const VkSemaphore*             pWaitSemaphores;
+			pipelineStages,                          // const VkPipelineStageFlags*    pWaitDstStageMask;
+			1,                                       // uint32_t                       commandBufferCount;
+			&cmd,                                    // const VkCommandBuffer*         pCommandBuffers;
+			1,                                       // uint32_t                       signalSemaphoreCount;
+			&mSemaphoreRenderComplete,               // const VkSemaphore*             pSignalSemaphores;
+		};
 
-	// Update dynamic scissor state
-	VkRect2D scissor = {};
-	scissor.extent.width = mWindowWidth;
-	scissor.extent.height = mWindowHeight;
-	scissor.offset.x = 0;
-	scissor.offset.y = 0;
-	vkCmdSetScissor( cmdBuf_, 0, 1, &scissor );
-
-	beginRenderPass(cmdBuf_, mFrameBuffers[mSwapchain.getCurrentImageIndex()] );
+		// Submit to the graphics queue	- 
+		err = vkQueueSubmit( mQueue, 1, &submitInfo, VK_NULL_HANDLE );
+		assert( !err );
+	}
 }
 
-// ----------------------------------------------------------------------
-
-void ofVkRenderer::beginRenderPass(VkCommandBuffer& cmdBuf_, VkFramebuffer& frameBuf_){
-	VkClearValue clearValues[2];
-	clearValues[0].color = mDefaultClearColor;
-	clearValues[1].depthStencil = { 1.0f, 0 };
-
-	VkRect2D renderArea{
-		{ 0, 0 },								  // VkOffset2D
-		{ mWindowWidth, mWindowHeight },		  // VkExtent2D
-	};
-
-	//auto currentFrameBufferId = mSwapchain.getCurrentBuffer();
-
-	VkRenderPassBeginInfo renderPassBeginInfo = {
-		VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO, // VkStructureType        sType;
-		nullptr,                                  // const void*            pNext;
-		mRenderPass,                              // VkRenderPass           renderPass;
-		frameBuf_,                                // VkFramebuffer          framebuffer;
-		renderArea,                               // VkRect2D               renderArea;
-		2,                                        // uint32_t               clearValueCount;
-		clearValues,                              // const VkClearValue*    pClearValues;
-	};
-
-	// VK_SUBPASS_CONTENTS_INLINE means we're putting all our render commands into
-	// the primary command buffer - otherwise we would have to call execute on secondary
-	// command buffers to draw.
-	vkCmdBeginRenderPass( cmdBuf_, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE );
-};
-
 
 
 // ----------------------------------------------------------------------
 
-void ofVkRenderer::endDrawCommandBuffer(){
-	endRenderPass();
-	auto err = vkEndCommandBuffer( mDrawCmdBuffer[mSwapchain.getCurrentImageIndex()] );
-	assert( !err );
-
-}
-
-// ----------------------------------------------------------------------
-
-void ofVkRenderer::endRenderPass(){
-	vkCmdEndRenderPass( mDrawCmdBuffer[mSwapchain.getCurrentImageIndex()] );
-};
 
 // ----------------------------------------------------------------------
 
@@ -659,36 +600,10 @@ void ofVkRenderer::finishRender(){
 
 	// submit current model view and projection matrices
 	
-	endDrawCommandBuffer();
-	mContext->end();
-
-	// Submit the draw command buffer
-	//
-	// The submit info structure contains a list of
-	// command buffers and semaphores to be submitted to a queue
-	// If you want to submit multiple command buffers, pass an array
-	VkPipelineStageFlags pipelineStages[] = { VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT };
-	
-	size_t swapId = mSwapchain.getCurrentImageIndex();
-	
-	VkResult err = VK_SUCCESS;
-
-	{
-		VkSubmitInfo submitInfo = {
-			VK_STRUCTURE_TYPE_SUBMIT_INFO,                       // VkStructureType                sType;
-			nullptr,                                             // const void*                    pNext;
-			1,                                                   // uint32_t                       waitSemaphoreCount;
-			&mSemaphorePresentComplete,                          // const VkSemaphore*             pWaitSemaphores;
-			pipelineStages,                                      // const VkPipelineStageFlags*    pWaitDstStageMask;
-			1,                                                   // uint32_t                       commandBufferCount;
-			&mDrawCmdBuffer[swapId],                             // const VkCommandBuffer*         pCommandBuffers;
-			1,                                                   // uint32_t                       signalSemaphoreCount;
-			&mSemaphoreRenderComplete,                           // const VkSemaphore*             pSignalSemaphores;
-		};
-
-		// Submit to the graphics queue	- 
-		err = vkQueueSubmit( mQueue, 1, &submitInfo, VK_NULL_HANDLE );
-		assert( !err );
+	if ( mDefaultContext ){
+		// this will implicitly submit the command buffer
+		mDefaultContext->end();
+		mDefaultContext->submit();
 	}
 
 	{  // pre-present
@@ -711,7 +626,7 @@ void ofVkRenderer::finishRender(){
 			nullptr,                                         // const VkCommandBufferInheritanceInfo*    pInheritanceInfo;
 		};
 		
-		err = vkBeginCommandBuffer( mPrePresentCommandBuffer, &beginInfo );
+		auto err = vkBeginCommandBuffer( mPrePresentCommandBuffer, &beginInfo );
 		assert( !err );
 
 		{
@@ -750,7 +665,7 @@ void ofVkRenderer::finishRender(){
 	// We pass the signal semaphore from the submit info
 	// to ensure that the image is not rendered until
 	// all commands have been submitted
-	err = mSwapchain.queuePresent( mQueue, mSwapchain.getCurrentImageIndex(), { mSemaphoreRenderComplete } );
+	auto err = mSwapchain.queuePresent( mQueue, mSwapchain.getCurrentImageIndex(), { mSemaphoreRenderComplete } );
 	assert( !err );
 
 	// Add a post present image memory barrier
@@ -803,54 +718,37 @@ void ofVkRenderer::finishRender(){
 	err = vkQueueWaitIdle( mQueue );
 	assert( !err );
 
+}
 
+const uint32_t ofVkRenderer::getSwapChainSize(){
+	return mSwapchain.getImageCount();
+}
+
+const std::vector<VkFramebuffer>& ofVkRenderer::getDefaultFramebuffers(){
+	return mFrameBuffers;
+}
+
+const VkRenderPass & ofVkRenderer::getDefaultRenderPass(){
+	return mRenderPass;
 }
 
 // ----------------------------------------------------------------------
 
 void ofVkRenderer::setColor( const ofColor & color ){
-	mContext->setUniform( "globalColor", ofFloatColor(color) );
+	if ( mDefaultContext ){
+		mDefaultContext->setUniform( "globalColor", ofFloatColor( color ) );
+	}
+	
 }
 
 // ----------------------------------------------------------------------
 
-void ofVkRenderer::draw( const ofMesh & mesh_, ofPolyRenderMode renderType, bool useColors, bool useTextures, bool useNormals ) const{
-	auto & cmd = mDrawCmdBuffer[mSwapchain.getCurrentImageIndex()];
+void ofVkRenderer::draw( const ofMesh & mesh_, ofPolyRenderMode polyMode, bool useColors, bool useTextures, bool useNormals ) const{
+	
+	// TODO: implement polymode and usageBools
 
-	// store uniforms if needed
-	mContext->flushUniformBufferState();
-	mContext->bindPipeline(cmd);			// !TODO: make this dependent on shader - also, allocate pipelines if pipeline we need does not exist yet.
-	mContext->bindDescriptorSets(cmd);
-
-	std::vector<VkDeviceSize> vertexOffsets;
-	std::vector<VkDeviceSize> indexOffsets;
-
-	// Store vertex data using Context.
-	// - this uses Allocator to store mesh data in the current frame' s dynamic memory
-	// Context will return memory offsets into vertices, indices, based on current context memory buffer
-	// 
-	// TODO: check if it made sense to cache already stored meshes, 
-	//       so that meshes which have already been stored this frame 
-	//       may be re-used.
-	mContext->storeMesh( mesh_, vertexOffsets, indexOffsets);
-
-	// TODO: cull vertexOffsets which refer to empty vertex attribute data
-	//       make sure that a pipeline with the correct bindings is bound to match the 
-	//       presence or non-presence of mesh data.
-
-	// Bind vertex data buffers to current pipeline. 
-	// The vector indices into bufferRefs, vertexOffsets correspond to [binding numbers] of the currently bound pipeline.
-	// See Shader.h for an explanation of how this is mapped to shader attribute locations
-	vector<VkBuffer> bufferRefs( vertexOffsets.size(), mContext->getVkBuffer() );
-	vkCmdBindVertexBuffers( cmd, 0, uint32_t(bufferRefs.size()), bufferRefs.data(), vertexOffsets.data() );
-
-	if ( indexOffsets.empty() ){
-		// non-indexed draw
-		vkCmdDraw( cmd, uint32_t(mesh_.getNumVertices()), 1, 0, 1 );
-	} else{
-		// indexed draw
-		vkCmdBindIndexBuffer( cmd, bufferRefs[0], indexOffsets[0], VK_INDEX_TYPE_UINT32 );
-		vkCmdDrawIndexed( cmd, uint32_t(mesh_.getNumIndices()), 1, 0, 0, 1 );
+	if ( mDefaultContext ){
+		mDefaultContext->draw( mesh_ );
 	}
 
 }  
