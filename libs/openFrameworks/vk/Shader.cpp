@@ -1,7 +1,72 @@
 #include "vk/Shader.h"
+#include "vk/Context.h"
 #include "ofLog.h"
 #include "ofFileUtils.h"
 #include "spooky/SpookyV2.h"
+
+// ----------------------------------------------------------------------
+
+of::vk::Shader::Shader( const Settings & settings_ )
+	: mSettings( settings_ )
+	, mContext(settings_.context)
+	, mDevice( settings_.context->mSettings.device)
+{
+	std::vector<uint32_t> spirCode; // tmp container for code loaded from shader file
+
+									// load each individual stage
+
+	for ( auto & s : mSettings.sources ){
+
+		VkShaderModule module;
+
+		if ( !ofFile( s.second ).exists() ){
+			ofLogError() << "Shader file not found: " << s.second;
+			continue;
+		}
+
+		{
+			ofBuffer fileBuf = ofBufferFromFile( s.second, true );
+			spirCode.assign(
+				reinterpret_cast<uint32_t*>( fileBuf.getData() ),
+				reinterpret_cast<uint32_t*>( fileBuf.getData() ) + fileBuf.size() / sizeof( uint32_t )
+			);
+		}
+
+		VkShaderModuleCreateInfo info{
+			VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,	            // VkStructureType              sType;
+			nullptr,	                                                // const void*                  pNext;
+			0,	                                                        // VkShaderModuleCreateFlags    flags;
+			spirCode.size() * sizeof( uint32_t ),	                    // size_t                       codeSize;
+			spirCode.data()                                             // const uint32_t*              pCode;
+		};
+
+		auto err = vkCreateShaderModule( mDevice, &info, nullptr, &module );
+
+		if ( err == VK_SUCCESS ){
+
+			mModules[s.first] = module;
+
+			VkPipelineShaderStageCreateInfo shaderStage{
+				VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,    // VkStructureType                     sType;
+				nullptr,	                                            // const void*                         pNext;
+				0,	                                                    // VkPipelineShaderStageCreateFlags    flags;
+				s.first,	                                            // VkShaderStageFlagBits               stage;
+				module,	                                                // VkShaderModule                      module;
+				"main",	                                                // const char*                         pName;
+				nullptr	                                                // const VkSpecializationInfo*         pSpecializationInfo;
+			};
+
+			mStages.push_back( std::move( shaderStage ) );
+			// move the ir code buffer into the shader compiler
+			mCompilers[s.first] = make_shared<spirv_cross::Compiler>( std::move( spirCode ) );
+		} else{
+			ofLog() << "Error creating shader module: " << s.second;
+		}
+	}  // for : mSettings.sources
+	reflect();
+}
+
+// ----------------------------------------------------------------------
 
 void of::vk::Shader::reflect()
 {
@@ -63,55 +128,34 @@ void of::vk::Shader::buildSetLayouts(){
 		} );
 	}
 
-	// now bindingInfoMap contains grouped, and sorted uniform infos.
-	// the groups are sorted too, as that's what map<> does 
+	// now we can create setLayouts 
 
-	// clear any previous set layouts
-	clearSetLayouts();
-
-	mSetLayouts.reserve( bindingInfoMap.size() );
-	mSetLayoutKeys.reserve( bindingInfoMap.size() );
 
 	uint32_t i = 0;
-	for ( auto & s : bindingInfoMap ){
-		if ( s.first != i ){
+	for ( auto & descriptorSet : bindingInfoMap ){
+		
+		const auto & setNumber   = descriptorSet.first;
+
+		if ( setNumber != i ){
 			// Q: is this really the case? it could be possible that shaders define sets they are not using. 
 			//    and these sets would not require memory to be bound.
 			ofLogError() << "DescriptorSet ids in shader cannot be sparse. Missing definition for descriptorSet: " << i;
 		}
 
-		// add empty setLayout to our sequence of setLayouts
-		mSetLayouts.push_back( SetLayout() );
+		SetLayout layout;
+		layout.bindings = descriptorSet.second;
 
-		const auto & setInfoVec = s.second;
-		auto & currentLayout = mSetLayouts.back();
-
-		std::vector<VkDescriptorSetLayoutBinding> flatBindings; // flat binding vector for initialisation
-		flatBindings.reserve( setInfoVec.size() );
-
-		// build add all bindings to current set
-		for ( const auto & bindingInfo : setInfoVec ){
-			currentLayout.bindings.push_back( bindingInfo );
-			flatBindings.push_back( bindingInfo.binding );
-		}
+		layout.calculateHash();
 
 		// calculate hash key for current set
 
-		currentLayout.calculateHash();
-		mSetLayoutKeys.push_back( currentLayout.key ); // store key
-
-		// create & store descriptorSetLayout based on bindings for this set
-		VkDescriptorSetLayoutCreateInfo createInfo{
-			VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,    // VkStructureType                        sType;
-			nullptr,                                                // const void*                            pNext;
-			0,                                                      // VkDescriptorSetLayoutCreateFlags       flags;
-			uint32_t( flatBindings.size() ),                        // uint32_t                               bindingCount;
-			flatBindings.data()                                     // const VkDescriptorSetLayoutBinding*    pBindings;
-		};
-
-		vkCreateDescriptorSetLayout( mSettings.device, &createInfo, nullptr, &currentLayout.vkLayout );
-
-		ofLog() << "DescriptorSet #" << std::setw( 4 ) << i << " | hash: " << std::hex << currentLayout.key;
+		// Context checks whether a layout with the current signature already exists.
+		// If yes, it will derive a shared pointer to the layout with this signature.
+		// If no,  it will create a new DescriptorSetLayout, store it in Context, and return
+		// a shared pointer to it.
+		
+		mDescriptorSetLayoutKeys.push_back( layout.key );
+		mContext->storeDescriptorSetLayout( std::move(layout) );
 
 		++i;
 	}
@@ -130,7 +174,6 @@ void of::vk::Shader::processResource( spirv_cross::Compiler & compiler, spirv_cr
 	// shader stages this needs to be updated in the uniform's 
 	// accessibility stage flags.
 
-	
 	ostringstream os;
 
 	uint32_t descriptor_set = 0;
@@ -222,15 +265,11 @@ void of::vk::Shader::processResource( spirv_cross::Compiler & compiler, spirv_cr
 		auto memberName = compiler.get_member_name( ubo.type_id, r.index );
 		mUniforms[ubo.name].memberRanges[memberName] = { r.offset, r.range };
 	}
-	// TODO: check under which circumstances descriptorCount needs to be other
-	// than 1.
 }
 
 // ----------------------------------------------------------------------
 
 void of::vk::Shader::processVertexInputs( spirv_cross::ShaderResources &shaderResources, spirv_cross::Compiler & compiler ){
-	// this populate vertex info 
-
 	ofLog() << "Vertex Attribute locations";
 
 	mVertexInfo.attribute.resize( shaderResources.stage_inputs.size() );
@@ -274,75 +313,16 @@ void of::vk::Shader::processVertexInputs( spirv_cross::ShaderResources &shaderRe
 		VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO, // VkStructureType                             sType;
 		nullptr,                                                   // const void*                                 pNext;
 		0,                                                         // VkPipelineVertexInputStateCreateFlags       flags;
-		uint32_t( mVertexInfo.bindingDescription.size() ),           // uint32_t                                    vertexBindingDescriptionCount;
+		uint32_t( mVertexInfo.bindingDescription.size() ),         // uint32_t                                    vertexBindingDescriptionCount;
 		mVertexInfo.bindingDescription.data(),                     // const VkVertexInputBindingDescription*      pVertexBindingDescriptions;
-		uint32_t( mVertexInfo.attribute.size() ),                    // uint32_t                                    vertexAttributeDescriptionCount;
+		uint32_t( mVertexInfo.attribute.size() ),                  // uint32_t                                    vertexAttributeDescriptionCount;
 		mVertexInfo.attribute.data()                               // const VkVertexInputAttributeDescription*    pVertexAttributeDescriptions;
 	};
 
 	mVertexInfo.vi = std::move( vi );
 }
 
-// ----------------------------------------------------------------------
 
-of::vk::Shader::Shader( const Settings & settings_ )
-	: mSettings( settings_ )
-{
-	std::vector<uint32_t> spirCode; // tmp container for code loaded from shader file
-
-	// load each individual stage
-
-	for ( auto & s : mSettings.sources ){
-
-		VkShaderModule module;
-
-		if ( !ofFile( s.second ).exists() ){
-			ofLogError() << "Shader file not found: " << s.second;
-			continue;
-		}
-
-		{
-			ofBuffer fileBuf = ofBufferFromFile( s.second, true );
-			spirCode.assign(
-				reinterpret_cast<uint32_t*>( fileBuf.getData() ),
-				reinterpret_cast<uint32_t*>( fileBuf.getData() ) + fileBuf.size() / sizeof( uint32_t )
-			);
-		}
-
-		VkShaderModuleCreateInfo info{
-			VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,	            // VkStructureType              sType;
-			nullptr,	                                                // const void*                  pNext;
-			0,	                                                        // VkShaderModuleCreateFlags    flags;
-			spirCode.size() * sizeof( uint32_t ),	                    // size_t                       codeSize;
-			spirCode.data()                                             // const uint32_t*              pCode;
-		};
-
-		auto err = vkCreateShaderModule( mSettings.device, &info, nullptr, &module );
-
-		if ( err == VK_SUCCESS ){
-
-			mModules[s.first] = module;
-
-			VkPipelineShaderStageCreateInfo shaderStage{
-				VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,    // VkStructureType                     sType;
-				nullptr,	                                            // const void*                         pNext;
-				0,	                                                    // VkPipelineShaderStageCreateFlags    flags;
-				s.first,	                                            // VkShaderStageFlagBits               stage;
-				module,	                                                // VkShaderModule                      module;
-				"main",	                                                // const char*                         pName;
-				nullptr	                                                // const VkSpecializationInfo*         pSpecializationInfo;
-			};
-
-			mStages.push_back( std::move( shaderStage ) );
-			// move the ir code buffer into the shader compiler
-			mCompilers[s.first] = make_shared<spirv_cross::Compiler>( std::move( spirCode ) );
-		} else{
-			ofLog() << "Error creating shader module: " << s.second;
-		}
-	}  // for : mSettings.sources
-	reflect();
-	//mPipelineLayout = createPipelineLayout();
-}
 
 // ----------------------------------------------------------------------
 
@@ -362,6 +342,9 @@ void of::vk::Shader::SetLayout::calculateHash(){
 		uint32_t size;
 	};
 
+	auto alignment = alignof( BindingInfoPOD );
+	assert( alignment == 8 );
+
 	std::vector<BindingInfoPOD> podBindingInfo;
 	podBindingInfo.reserve( bindings.size() );
 
@@ -380,12 +363,3 @@ void of::vk::Shader::SetLayout::calculateHash(){
 	this->key = SpookyHash::Hash64(baseAddr , msgSize, 0 );
 }
 
-// ----------------------------------------------------------------------
-
-void of::vk::Shader::clearSetLayouts(){
-	// clear (and possibly destroy) old descriptorSetLayouts
-	for ( auto & l : mSetLayouts ){
-		vkDestroyDescriptorSetLayout( mSettings.device, l.vkLayout, nullptr );
-	}
-	mSetLayouts.clear();
-}

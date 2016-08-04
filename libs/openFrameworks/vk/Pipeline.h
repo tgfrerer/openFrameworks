@@ -76,130 +76,62 @@ class GraphicsPipelineState
 	// if it is, we bind that pipeline.
 
 
-public:	// default state for pipeline
+private:	// default state for pipeline
 
-	VkPipelineInputAssemblyStateCreateInfo mInputAssemblyState {
-		VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO, // VkStructureType                            sType;
-		nullptr,                                                     // const void*                                pNext;
-		0,                                                           // VkPipelineInputAssemblyStateCreateFlags    flags;
-		VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,                         // VkPrimitiveTopology                        topology;
-		VK_FALSE,                                                    // VkBool32                                   primitiveRestartEnable;
-	};
-
-	VkPipelineTessellationStateCreateInfo mTessellationState {
-		VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO,	 // VkStructureType                            sType;
-		nullptr,                                                     // const void*                                pNext;
-		0,                                                           // VkPipelineTessellationStateCreateFlags     flags;
-		0,                                                           // uint32_t                                   patchControlPoints;
-	};
+	VkPipelineInputAssemblyStateCreateInfo mInputAssemblyState;
+	VkPipelineTessellationStateCreateInfo  mTessellationState;
+	VkPipelineViewportStateCreateInfo      mViewportState;
+	VkPipelineRasterizationStateCreateInfo mRasterizationState;
+	VkPipelineMultisampleStateCreateInfo   mMultisampleState;
+	VkPipelineDepthStencilStateCreateInfo  mDepthStencilState;
+	VkPipelineColorBlendAttachmentState    mDefaultBlendAttachmentState;
+	VkPipelineColorBlendStateCreateInfo    mColorBlendState;
+	std::array<VkDynamicState, 2>          mDefaultDynamicStates;
+	VkPipelineDynamicStateCreateInfo       mDynamicState;
 	
-	VkPipelineViewportStateCreateInfo mViewportState {				 
-		VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,       // VkStructureType                            sType;
-		nullptr,                                                     // const void*                                pNext;
-		0,                                                           // VkPipelineViewportStateCreateFlags         flags;
-		1,                                                           // uint32_t                                   viewportCount;
-		nullptr,                                                     // const VkViewport*                          pViewports;
-		1,                                                           // uint32_t                                   scissorCount;
-		nullptr,                                                     // const VkRect2D*                            pScissors;
-	};
-	
-	VkPipelineRasterizationStateCreateInfo mRasterizationState {	 
-		VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,  // VkStructureType                            sType;
-		nullptr,                                                     // const void*                                pNext;
-		0,                                                           // VkPipelineRasterizationStateCreateFlags    flags;
-		VK_FALSE,                                                    // VkBool32                                   depthClampEnable;
-		VK_FALSE,                                                    // VkBool32                                   rasterizerDiscardEnable;
-		VK_POLYGON_MODE_FILL,                                        // VkPolygonMode                              polygonMode;
-		VK_CULL_MODE_BACK_BIT,                                       // VkCullModeFlags                            cullMode;
-		VK_FRONT_FACE_COUNTER_CLOCKWISE,                             // VkFrontFace                                frontFace;
-		VK_FALSE,                                                    // VkBool32                                   depthBiasEnable;
-		0.f,                                                         // float                                      depthBiasConstantFactor;
-		0.f,                                                         // float                                      depthBiasClamp;
-		0.f,                                                         // float                                      depthBiasSlopeFactor;
-		1.f,                                                         // float                                      lineWidth;
-	};
-	
-	VkPipelineMultisampleStateCreateInfo mMultisampleState {													   
-		VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,    // VkStructureType                            sType;
-		nullptr,                                                     // const void*                                pNext;
-		0,                                                           // VkPipelineMultisampleStateCreateFlags      flags;
-		VK_SAMPLE_COUNT_1_BIT,                                       // VkSampleCountFlagBits                      rasterizationSamples;
-		VK_FALSE,                                                    // VkBool32                                   sampleShadingEnable;
-		0.f,                                                         // float                                      minSampleShading;
-		VK_NULL_HANDLE,                                              // const VkSampleMask*                        pSampleMask;
-		VK_FALSE,                                                    // VkBool32                                   alphaToCoverageEnable;
-		VK_FALSE,                                                    // VkBool32                                   alphaToOneEnable;
-	};
-	
-	VkPipelineDepthStencilStateCreateInfo mDepthStencilState{
-		VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,  // VkStructureType                            sType;
-		nullptr,                                                     // const void*                                pNext;
-		0,                                                           // VkPipelineDepthStencilStateCreateFlags     flags;
-		VK_TRUE,                                                     // VkBool32                                   depthTestEnable;
-		VK_TRUE,                                                     // VkBool32                                   depthWriteEnable;
-		VK_COMPARE_OP_LESS_OR_EQUAL,                                 // VkCompareOp                                depthCompareOp;
-		VK_FALSE,                                                    // VkBool32                                   depthBoundsTestEnable;
-		VK_FALSE,                                                    // VkBool32                                   stencilTestEnable;
-		{															 // VkStencilOpState                           front;
-			VK_STENCIL_OP_KEEP,                                         // VkStencilOp    failOp;				   
-			VK_STENCIL_OP_KEEP,                                         // VkStencilOp    passOp;				   
-			VK_STENCIL_OP_KEEP,                                         // VkStencilOp    depthFailOp;			   
-			VK_COMPARE_OP_ALWAYS,                                       // VkCompareOp    compareOp;			   
-			0,                                                          // uint32_t       compareMask;			   
-			0,                                                          // uint32_t       writeMask;			   
-			0,                                                          // uint32_t       reference;			   
-		},                                                           											   
-		mDepthStencilState.front,                                    // VkStencilOpState                           back;
-		0.f,                                                         // float                                      minDepthBounds;
-		0.f,                                                         // float                                      maxDepthBounds;
-	};
-
-	VkPipelineColorBlendAttachmentState mDefaultBlendAttachmentState {
-		VK_FALSE,                                                    // VkBool32                 blendEnable;
-		VK_BLEND_FACTOR_ZERO,                                        // VkBlendFactor            srcColorBlendFactor;
-		VK_BLEND_FACTOR_ZERO,                                        // VkBlendFactor            dstColorBlendFactor;
-		VK_BLEND_OP_ADD,                                             // VkBlendOp                colorBlendOp;
-		VK_BLEND_FACTOR_ZERO,                                        // VkBlendFactor            srcAlphaBlendFactor;
-		VK_BLEND_FACTOR_ZERO,                                        // VkBlendFactor            dstAlphaBlendFactor;
-		VK_BLEND_OP_ADD,                                             // VkBlendOp                alphaBlendOp;
-		0xf,                                                         // VkColorComponentFlags    colorWriteMask;
-	};
-
-	VkPipelineColorBlendStateCreateInfo mColorBlendState {
-		VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,    // VkStructureType                               sType;
-		nullptr,                                                     // const void*                                   pNext;
-		0,                                                           // VkPipelineColorBlendStateCreateFlags          flags;
-		VK_FALSE,                                                    // VkBool32                                      logicOpEnable;
-		VK_LOGIC_OP_CLEAR,                                           // VkLogicOp                                     logicOp;
-		1,                                                           // uint32_t                                      attachmentCount;
-		&mDefaultBlendAttachmentState,                               // const VkPipelineColorBlendAttachmentState*    pAttachments;
-	    {0.f, 0.f, 0.f, 0.f}                                         // float                                         blendConstants[4];
-	};
-	
-	VkDynamicState mDefaultDynamicStates[2]{
-		VK_DYNAMIC_STATE_VIEWPORT,
-		VK_DYNAMIC_STATE_SCISSOR,
-	};
-
-	VkPipelineDynamicStateCreateInfo mDynamicState {
-		VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,        // VkStructureType                            sType;
-		nullptr,                                                     // const void*                                pNext;
-		0,                                                           // VkPipelineDynamicStateCreateFlags          flags;
-		2,                                                           // uint32_t                                   dynamicStateCount;
-		mDefaultDynamicStates                                        // const VkDynamicState*                      pDynamicStates;
-	};
-	
-	std::shared_ptr<VkPipelineLayout>  mLayout;
-
 	VkRenderPass      mRenderPass         = nullptr;
 	uint32_t          mSubpass            = 0;
-	VkPipeline        mBasePipelineHandle = nullptr;
-	int32_t           mBasePipelineIndex  = 0;
+	int32_t           mBasePipelineIndex  = -1;
 
 	// shader allows us to derive pipeline layout
 	std::shared_ptr<of::vk::Shader>        mShader;
 
-	VkPipeline createPipeline( const VkDevice& device, const VkPipelineCache& pipelineCache );
+public:
+
+	void setup();
+	void reset();
+
+	uint64_t calculateHash();
+
+	// whether this pipeline state is dirty.
+	VkBool32          mDirty              = true;
+
+	void setShader( std::shared_ptr<of::vk::Shader> & shader ){
+		if ( shader.get() != mShader.get() ){
+			mShader = shader;
+			mDirty = true;
+		}
+	}
+
+	const std::shared_ptr<of::vk::Shader> getShader() const{
+		return mShader;
+	}
+
+	void setRenderPass( VkRenderPass renderPass ){
+		if ( renderPass != mRenderPass ){
+			mRenderPass = renderPass;
+			mDirty = true;
+		}
+	}
+
+	void setPolyMode(VkPolygonMode & polyMode){
+		if ( mRasterizationState.polygonMode != polyMode ){
+			mRasterizationState.polygonMode = polyMode;
+			mDirty = true;
+		}
+	}
+
+	VkPipeline createPipeline( const VkDevice& device, const VkPipelineCache& pipelineCache, VkPipeline basePipelineHandle = nullptr );
 
 };
 
@@ -233,33 +165,6 @@ static VkPipelineCache&& createPipelineCache( const VkDevice& device, std::strin
 	}
 
 	return std::move( cache );
-};
-
-// return a pipeline layout based on a vector of descriptorsetLayouts.
-static std::shared_ptr<VkPipelineLayout> createPipelineLayout( const VkDevice& device_, const std::vector<VkDescriptorSetLayout>& dsl_ ){
-
-	auto pipelineLayout = shared_ptr<VkPipelineLayout>(
-		new VkPipelineLayout,
-	    [device_]( VkPipelineLayout * pl )
-	{
-	    vkDestroyPipelineLayout( device_, *pl, nullptr );
-		delete pl;
-	} );
-
-
-	VkPipelineLayoutCreateInfo pPipelineLayoutCreateInfo{
-		VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,       // VkStructureType                 sType;
-		nullptr,                                             // const void*                     pNext;
-		0,                                                   // VkPipelineLayoutCreateFlags     flags;
-		uint32_t(dsl_.size()),                               // uint32_t                        setLayoutCount;
-		dsl_.data(),                                         // const VkDescriptorSetLayout*    pSetLayouts;
-		0,                                                   // uint32_t                        pushConstantRangeCount;
-		nullptr,                                             // const VkPushConstantRange*      pPushConstantRanges;
-	};
-
-	vkCreatePipelineLayout( device_, &pPipelineLayoutCreateInfo, nullptr, pipelineLayout.get() );
-
-	return pipelineLayout;
 };
 
 } // namespace vk

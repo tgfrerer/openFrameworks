@@ -9,7 +9,9 @@ class ofApp : public ofBaseApp{
 	ofMesh    mFontMesh;
 	ofMesh	  mLMesh;
 
-	of::vk::Texture mVkTex;
+	std::shared_ptr<of::vk::Context> mExplicitContext;
+
+	//of::vk::Texture mVkTex;
 
 	public:
 		void setup();

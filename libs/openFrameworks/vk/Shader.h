@@ -4,6 +4,7 @@
 #include "vulkan/vulkan.h"
 #include "vk/spirv-cross/include/spirv_cross.hpp"
 
+
 //   The smallest unit we may bind in Vulkan are DescriptorSets.
 //   
 //   Each set has its own namespace for bindings. Bindings may be sparse.
@@ -80,6 +81,8 @@
 namespace of{
 namespace vk{
 
+class Context;
+
 class Shader
 {
 public: 
@@ -106,26 +109,31 @@ public:
 	{
 		std::vector<BindingInfo> bindings; // must be in ascending order, but may be sparse
 		uint64_t key;
-		VkDescriptorSetLayout vkLayout = nullptr;
 		void calculateHash();
 	};
 
 private:
+
+	VkDevice mDevice = nullptr;
+	Context* mContext;
+	std::shared_ptr<VkPipelineLayout> mPipelineLayout; // context sets this.
 
 	std::map<VkShaderStageFlagBits, VkShaderModule>         mModules;
 	std::vector<VkPipelineShaderStageCreateInfo>	        mStages;
 
 	std::map<VkShaderStageFlagBits, std::shared_ptr<spirv_cross::Compiler>> mCompilers;
 	
-	// map from uniform name to uniform set and binding info 
+	// map from shader uniform name to uniform binding 
 	// when we say "uniform" this may be any of VkDescriptorType, so: UBOs, samplers ...
+	// Binding info also contains set number for a binding.
 	std::map<std::string, BindingInfo> mUniforms;
 
-	// sequence of setLayouts forming the pipelineLayout for this shader
-	std::vector<SetLayout> mSetLayouts;
+	//// sequence of setLayouts forming the pipelineLayout for this shader
+	//std::vector<SetLayout> mSetLayouts;
 	
-	// sequence of hashes of setLayouts
-	std::vector<uint64_t>  mSetLayoutKeys;  
+	// Sequence of hashes of SetLayouts - which reference vkDescriptorSetLayouts in Context.
+	// This describes the sequence for the pipeline layout for this shader.
+	std::vector<uint64_t>  mDescriptorSetLayoutKeys;  
 
 	// ----------------------------------------------------------------------
 	// Derive bindings from shader reflection using SPIR-V Cross.
@@ -133,8 +141,6 @@ private:
 	// all this data helps us to create descriptors, and also to create layouts fit
 	// for our pipelines.
 	void reflect();
-
-	void clearSetLayouts();
 
 	void buildSetLayouts();
 
@@ -146,7 +152,7 @@ public:
 
 	const struct Settings
 	{
-		VkDevice device;
+		of::vk::Context* context;
 		std::map<VkShaderStageFlagBits, std::string> sources;
 	} mSettings;
 
@@ -170,23 +176,18 @@ public:
 		// reset shader object
 		for ( auto &s : mModules ){
 			if ( s.second != nullptr ){
-				vkDestroyShaderModule( mSettings.device, s.second, nullptr );
+				vkDestroyShaderModule( mDevice, s.second, nullptr );
 				s.second = nullptr;
 			}
 		}
 		mModules.clear();
 		mStages.clear();
-		clearSetLayouts();
 	}
 
 	// ----------------------------------------------------------------------
 
-	const std::vector<SetLayout>& getSetLayouts() const {
-		return mSetLayouts;
-	}
-
 	const std::vector<uint64_t>& getSetLayoutKeys() const{
-		return mSetLayoutKeys;
+		return mDescriptorSetLayoutKeys;
 	}
 
 	// ----------------------------------------------------------------------
@@ -203,6 +204,17 @@ public:
 		return mVertexInfo.vi;
 	}
 	
+	// ----------------------------------------------------------------------
+	// context may set pipeline layout for this shader.
+	void setPipelineLayout( const std::shared_ptr<VkPipelineLayout>& pipelineLayout ){
+		mPipelineLayout = pipelineLayout;
+	}
+
+	// ----------------------------------------------------------------------
+	const std::shared_ptr<VkPipelineLayout>& getPipelineLayout() const{
+		return mPipelineLayout;
+	}
+
 };
 
 } // namespace vk

@@ -187,12 +187,16 @@ ofMatrix4x4 clip(1.0f,  0.0f, 0.0f, 0.0f,
 # TODO
 
 - [x] Unify transient vertex and index buffers and Context
-- [ ] Define default pipeline layout based on default descriptor set layout
+- [x] Define default pipeline layout based on default descriptor set layout
 - [ ] Define default pipelines based on default shaders
 - [ ] Take into account usingNormals, usingTexCoords etc. when rendering meshes
-- [ ] Add vertex color support
-- [ ] Add support for drawing wireframes (part of default pipeline generation)
-- [ ] Add texture support
+- [x] Add vertex color support
+- [x] Add support for drawing wireframes (part of default pipeline generation)
+- [x] Dynamically derive pipelines from render states such as POLYGON_MODE, BLENDING_MODE etc.
+- [ ] Texture support
+- [ ] Shader: compile from glsl
+- [ ] Shader: add "#pragma parameter sugar"
+- [ ] Shader: auto-recompile from glsl on change
 
 ----------------------------------------------------------------------
 

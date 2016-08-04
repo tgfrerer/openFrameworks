@@ -255,11 +255,11 @@ public:
 		// let's cleanup - 
 
 		// first, remove the image view 
-
-		vkFreeMemory( device, mTexData.mem, nullptr );
-		
-		// null all pointers
-		mTexData = TexData();
+		if ( mTexData.mem ){
+			vkFreeMemory( device, mTexData.mem, nullptr );
+			// null all pointers
+			mTexData = TexData();
+		}
 	};
 
 
