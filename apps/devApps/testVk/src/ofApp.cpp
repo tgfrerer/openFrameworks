@@ -77,13 +77,14 @@ void ofApp::setup(){
 
 	*/
 
+	// WIP: texture loading & binding
+	// 
+	// ofPixels tmpImagePix;
+	// ofLoadImage( tmpImagePix, "images/brighton.jpg" );
+	// mVkTex.load( tmpImagePix );
 
-	//ofPixels tmpImagePix;
-	
-	//ofLoadImage( tmpImagePix, "images/brighton.jpg" );
-	
-	//mVkTex.load( tmpImagePix );
-
+	// use this to swap out the default context with a newly created one.
+	if (false )
 	{
 		auto & renderer = dynamic_pointer_cast<ofVkRenderer>( ofGetCurrentRenderer() );
 
@@ -111,12 +112,8 @@ void ofApp::setup(){
 		// this will analyse our shaders and build descriptorset
 		// layouts. it will also build pipelines.
 		mExplicitContext->setup( renderer.get() );
-
-
-		// use this to swap out the default context with the newly created one.
-		// renderer->getContext() = mExplicitContext;
-
-
+		
+		renderer->getContext() = mExplicitContext;
 	}
 
 }
