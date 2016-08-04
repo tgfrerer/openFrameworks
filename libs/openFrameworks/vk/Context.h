@@ -243,7 +243,7 @@ public:
 
 	// lazily store uniform data into local CPU memory
 	template<typename UniformT>
-	bool setUniform( const std::string& name_, const UniformT & pSource );
+	Context& setUniform( const std::string& name_, const UniformT & pSource );
 
 	// fetch uniform
 	template<typename UniformT>
@@ -257,33 +257,36 @@ public:
 	inline const glm::mat4x4 & getModelMatrix()      const { return getUniform<glm::mat4x4>( "modelMatrix"      ); }
 	inline const glm::mat4x4 & getProjectionMatrix() const { return getUniform<glm::mat4x4>( "projectionMatrix" ); }
 
-	void setViewMatrix( const glm::mat4x4& mat_ );
-	void setProjectionMatrix( const glm::mat4x4& mat_ );
+	Context& setViewMatrix( const glm::mat4x4& mat_ );
+	Context& setProjectionMatrix( const glm::mat4x4& mat_ );
 
-	void translate(const glm::vec3& v_);
-	void rotateRad( const float & degrees_, const glm::vec3& axis_ );
+	Context& translate(const glm::vec3& v_);
+	Context& rotateRad( const float & degrees_, const glm::vec3& axis_ );
 
 	// push local ubo uniform group state
-	void pushBuffer( const std::string& ubo_ );
+	Context& pushBuffer( const std::string& ubo_ );
 	
 	// pop local ubo uniform group state
-	void popBuffer( const std::string& ubo_ );
+	Context& popBuffer( const std::string& ubo_ );
 
 	// push currentMatrix state
-	void pushMatrix(){
+	Context& pushMatrix(){
 		pushBuffer( "DefaultMatrices" );
+		return *this;
 	}
 	// pop current Matrix state
-	void popMatrix(){
+	Context& popMatrix(){
 		popBuffer( "DefaultMatrices" );
+		return *this;
 	}
 
 	// store vertex and index data inside the current dynamic memory frame
 	// return memory mapping offets based on current memory buffer.
 	bool storeMesh( const ofMesh& mesh_, std::vector<VkDeviceSize>& vertexOffsets, std::vector<VkDeviceSize>& indexOffsets );
 	
-	void setPolyMode( VkPolygonMode polyMode_){
+	Context& setPolyMode( VkPolygonMode polyMode_){
 		mCurrentGraphicsPipelineState.setPolyMode( polyMode_ );
+		return *this;
 	}
 	
 	private:
@@ -296,22 +299,22 @@ public:
 // ----------------------------------------------------------------------
 
 template<typename UniformT>
-inline bool Context::setUniform( const std::string & name_, const UniformT & uniform_ ){
+inline Context& Context::setUniform( const std::string & name_, const UniformT & uniform_ ){
 	auto uboIt = mCurrentFrameState.mUniformMembers.find( name_ );
 	if ( uboIt == mCurrentFrameState.mUniformMembers.end() ){
 		ofLogWarning() << "Cannot set uniform: '" << name_ << "' - Not found in shader.";
-		return false;
+		return *this;
 	}
 	auto & ubo = uboIt->second;
 	if ( sizeof( UniformT ) != ubo.range ){
 		// assignment would overshoot - possibly wrong type for assignment : refuse assignment.
 		ofLogWarning() << "Cannot assign to uniform: '" << name_ << "' - data size is incorrect: " << sizeof( UniformT ) << " Byte, expected: " << ubo.range << "Byte";
-		return false;
+		return *this;
 	}
 	UniformT& uniform = reinterpret_cast<UniformT&>( ( ubo.buffer->state.data[ubo.offset] ) );
 	uniform = uniform_;
 	ubo.buffer->state.stackId = -1; // mark dirty
-	return true;
+	return *this;
 };
 
 // ----------------------------------------------------------------------

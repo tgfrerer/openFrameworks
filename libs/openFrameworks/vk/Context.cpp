@@ -345,7 +345,7 @@ const VkBuffer & of::vk::Context::getVkBuffer() const {
 
 // ----------------------------------------------------------------------
 
-void of::vk::Context::pushBuffer( const std::string & ubo_ ){
+of::vk::Context& of::vk::Context::pushBuffer( const std::string & ubo_ ){
 	auto uboMemberWithParentWithName = std::find_if( mCurrentFrameState.mUniformMembers.begin(), mCurrentFrameState.mUniformMembers.end(),
 		[&ubo_]( const std::pair<std::string, UniformMember> & lhs ) -> bool{
 		return ( lhs.second.buffer->name == ubo_ );
@@ -354,11 +354,12 @@ void of::vk::Context::pushBuffer( const std::string & ubo_ ){
 	if ( uboMemberWithParentWithName != mCurrentFrameState.mUniformMembers.end() ){
 		( uboMemberWithParentWithName->second.buffer->push() );
 	}
+	return *this;
 }
 
 // ----------------------------------------------------------------------
 
-void of::vk::Context::popBuffer( const std::string & ubo_ ){
+of::vk::Context& of::vk::Context::popBuffer( const std::string & ubo_ ){
 	auto uboMemberWithParentWithName = std::find_if( mCurrentFrameState.mUniformMembers.begin(), mCurrentFrameState.mUniformMembers.end(),
 		[&ubo_]( const std::pair<std::string, UniformMember> & lhs ) -> bool{
 		return ( lhs.second.buffer->name == ubo_ );
@@ -367,6 +368,7 @@ void of::vk::Context::popBuffer( const std::string & ubo_ ){
 	if ( uboMemberWithParentWithName != mCurrentFrameState.mUniformMembers.end() ){
 		( uboMemberWithParentWithName->second.buffer->pop() );
 	}
+	return *this;
 }
 
 // ----------------------------------------------------------------------
@@ -666,9 +668,9 @@ void of::vk::Context::bindPipeline( const VkCommandBuffer & cmd ){
 
 		auto p = mVkPipelines.find( pipelineHash );
 		if ( p == mVkPipelines.end() ){
-			ofLog() << "Creating pipeline " << pipelineHash;
+			ofLog() << "Creating pipeline " << std::hex << pipelineHash;
 			mVkPipelines[pipelineHash] = mCurrentGraphicsPipelineState.createPipeline( mSettings.device, mPipelineCache );
-		}
+		} 
 		mCurrentVkPipeline = mVkPipelines[pipelineHash];
 
 		mDSS_layoutKey.resize( layouts.size(), 0);
@@ -701,26 +703,29 @@ const std::vector<uint32_t>& of::vk::Context::getDynamicUniformBufferOffsets() c
 
 // ----------------------------------------------------------------------
 
-void of::vk::Context::setViewMatrix( const glm::mat4x4 & mat_ ){
+of::vk::Context& of::vk::Context::setViewMatrix( const glm::mat4x4 & mat_ ){
 	setUniform( "viewMatrix", mat_ );
+	return *this;
 }
 
 // ----------------------------------------------------------------------
 
-void of::vk::Context::setProjectionMatrix( const glm::mat4x4 & mat_ ){
+of::vk::Context& of::vk::Context::setProjectionMatrix( const glm::mat4x4 & mat_ ){
 	setUniform( "projectionMatrix", mat_ );
+	return *this;
 }
 
 // ----------------------------------------------------------------------
 
-void of::vk::Context::translate( const glm::vec3& v_ ){
+of::vk::Context& of::vk::Context::translate( const glm::vec3& v_ ){
 	getUniform<glm::mat4x4>( "modelMatrix" ) = glm::translate( getUniform<glm::mat4x4>( "modelMatrix" ), v_ );
-		
+	return *this;
 }
 
 // ----------------------------------------------------------------------
 
-void of::vk::Context::rotateRad( const float& radians_, const glm::vec3& axis_ ){
+of::vk::Context& of::vk::Context::rotateRad( const float& radians_, const glm::vec3& axis_ ){
 	getUniform<glm::mat4x4>( "modelMatrix" ) = glm::rotate( getUniform<glm::mat4x4>( "modelMatrix" ), radians_, axis_ );
+	return *this;
 }
 

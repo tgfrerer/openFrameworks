@@ -121,46 +121,101 @@ void ofApp::drawModeExplicit(){
 	auto & context = renderer->getContext();
 
 	static ofMesh ico = ofMesh::icosphere( 50, 3 );
+	
 	mCam1.begin();
-
-	ofNoFill();
-	ofSetColor( ofColor::white );
-	ofPushMatrix();
-	ofTranslate( -200, +200, 100 );
+	
+	context
+		.setUniform( "globalColor", ofFloatColor::lightBlue )
+		.pushMatrix()
+		.translate( { -200, +200, 100 } );
 	ico.draw();
-	ofPopMatrix();
+	context.popMatrix();
 
-	ofPushMatrix();
-	ofTranslate( -200, -200, -200 );
+	context.setPolyMode( VK_POLYGON_MODE_LINE )
+		.pushMatrix()
+		.setUniform( "globalColor", ofFloatColor::white )
+		.translate( { -200, -200, -200 } );
 	ico.draw();
-	ofPopMatrix();
+	context.popMatrix();
 
-	ofPushMatrix();
-	ofTranslate( 200, +200, -200 );
+	context.pushMatrix();
+	context.translate( { 200, +200, -200 } );
 	ico.draw();
-	ofPopMatrix();
+	context.popMatrix();
 
-	ofPushMatrix();
-	ofTranslate( 200, -200, 200 );
+	context.setPolyMode( VK_POLYGON_MODE_POINT );
+
+	context.pushMatrix();
+	context.translate( { 200, -200, 200 } );
 	ico.draw();
-	ofPopMatrix();
+	context.popMatrix();
 
-	ofFill();
-	ofSetColor( ofColor::red );
+	context.setUniform( "globalColor", ofFloatColor::red );
+	context.setPolyMode( VK_POLYGON_MODE_FILL );
 	mFontMesh.draw();
-	ofNoFill();
+	
 
-	ofPushMatrix();
-	ofRotate( ofGetFrameNum() % 360 ); // this should rotate at a speed of one revolution every 6 seconds if frame rate is locked to vsync.
+	context.pushMatrix()
+		.rotateRad( (ofGetFrameNum() % 360)*DEG_TO_RAD, { 0.f,0.f,1.f } );
 	mLMesh.draw();
-	ofPopMatrix();
+	context.popMatrix();
 
-	ofSetColor( ofColor::teal );
-	ofPushMatrix();
-	ofTranslate( 200, 0 );
-	ofRotate( 360.f * ( ( ofGetElapsedTimeMillis() % 6000 ) / 6000.f ) ); // this should rotate at a speed of one revolution every 6 seconds.
+	context
+		.setUniform( "globalColor", ofFloatColor::teal )
+		.pushMatrix()
+		.translate( { 200.f,0.f,0.f } )
+		.rotateRad( 360.f * ( ( ofGetElapsedTimeMillis() % 6000 ) / 6000.f ) * DEG_TO_RAD, { 0.f,0.f,1.f } );
 	mLMesh.draw();
-	ofPopMatrix();
+	context.popMatrix();
+
+	//context
+	//	.setUniform( "globalColor", ofFloatColor::lightBlue )
+	//	.pushMatrix()
+	//	.translate( { -200, +200, 100 } )
+	//	.draw(ico)
+	//	.popMatrix();
+
+	//context
+	//	.setPolyMode( VK_POLYGON_MODE_LINE )
+	//	.pushMatrix()
+	//	.setUniform( "globalColor", ofFloatColor::white )
+	//	.translate( { -200, -200, -200 } )
+	//	.draw(ico)
+	//	.popMatrix();
+
+	//context
+	//	.pushMatrix()
+	//	.translate( { 200, +200, -200 } )
+	//	.draw( ico )
+	//	.popMatrix()
+
+	//context
+	//	.pushMatrix()
+	//	.setPolyMode( VK_POLYGON_MODE_POINT )
+	//	.translate( { 200, -200, 200 } )
+	//	.draw( ico )
+	//	.popMatrix();
+
+	//context
+	//	.setUniform( "globalColor", ofFloatColor::red )
+	//	.setPolyMode( VK_POLYGON_MODE_FILL )
+	//	.draw( mFontMesh );
+	//
+	//context
+	//	.pushMatrix()
+	//	.rotateRad( ( ofGetFrameNum() % 360 )*DEG_TO_RAD, { 0.f,0.f,1.f } )
+	//	.draw( mLMesh )
+	//	.popMatrix();
+
+	//context
+	//	.pushMatrix()
+	//	.setUniform( "globalColor", ofFloatColor::teal )
+	//	.translate( { 200.f,0.f,0.f } )
+	//	.rotateRad( 360.f * ( ( ofGetElapsedTimeMillis() % 6000 ) / 6000.f ) * DEG_TO_RAD, { 0.f,0.f,1.f } )
+	//	.draw( mLMesh )
+	//	.popMatrix();
+	//
+
 
 	mCam1.end();
 }
