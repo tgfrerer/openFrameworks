@@ -1,6 +1,7 @@
 #include "vk/Pipeline.h"
 #include "vk/Shader.h"
 #include "spooky/SpookyV2.h"
+#include <array>
 
 using namespace of;
 
@@ -207,7 +208,7 @@ uint64_t of::vk::GraphicsPipelineState::calculateHash(){
 
 	std::vector<uint64_t> setLayoutKeys = mShader->getSetLayoutKeys();
 
-	array<uint64_t, 2> hashTable;
+	std::array<uint64_t, 2> hashTable;
 
 	hashTable[0] = SpookyHash::Hash64( setLayoutKeys.data(), sizeof( uint64_t ) * setLayoutKeys.size(), 0 );
 	hashTable[1] = SpookyHash::Hash64( &mRasterizationState, sizeof( mRasterizationState ), 0 );

@@ -2,6 +2,7 @@
 
 #include "vulkan/vulkan.h"
 #include <string>
+#include <array>
 
 #include "ofFileUtils.h"
 #include "ofLog.h"
