@@ -44,6 +44,7 @@ public:
 
 	ofVkRenderer( const ofAppBaseWindow * window );
 	void setup();
+	void setupDefaultContext();
 	virtual ~ofVkRenderer() override;
 
 	virtual const string & getType() override{
@@ -263,32 +264,26 @@ private:
 
 	ofRectangle mViewport;
 
-	// in the future, we will want users to create their own command pools etc. 
-	// so we will want users to be able to access the current device.
+
 	VkCommandPool            mCommandPool = nullptr;
 	
-	// Command buffers used for rendering
-	// we will double-buffer these
-	//std::vector<VkCommandBuffer> mDrawCmdBuffer; 
-
 	// command buffers used to present frame buffer to screen
 	VkCommandBuffer          mPrePresentCommandBuffer     = nullptr;
 	VkCommandBuffer          mPostPresentCommandBuffer    = nullptr;
 
-	// command buffer used to prepare things during setup
-	VkCommandBuffer mSetupCommandBuffer = nullptr;
-	
 	// find these implemented in VKPrepare.cpp
 	void querySurfaceCapabilities();
 	void createCommandPool();
-	void createSetupCommandBuffer();
+	VkCommandBuffer createSetupCommandBuffer();
+	void beginSetupCommandBuffer(VkCommandBuffer cmd);
+
 	void setupSwapChain();
 	void createCommandBuffers();
-	void setupDepthStencil();
-	void setupRenderPass();
+	void setupDepthStencil(VkCommandBuffer cmd);
+	void setupRenderPass(VkCommandBuffer cmd);
 	
 	void setupFrameBuffer();
-	void flushSetupCommandBuffer();
+	void flushSetupCommandBuffer(VkCommandBuffer cmd);
 
 	// creates synchronisation primitives 
 	void createSemaphores();

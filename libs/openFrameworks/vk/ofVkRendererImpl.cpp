@@ -24,30 +24,7 @@ void ofVkRenderer::setup(){
 	// Set up Context
 	// A Context holds dynamic frame state + manages GPU memory for "immediate" mode
 	
-	of::vk::Context::Settings contextSettings;
-	contextSettings.device             = mDevice;
-	contextSettings.numSwapchainImages = mSwapchain.getImageCount();
-	contextSettings.renderPass         = mRenderPass;
-	contextSettings.framebuffers       = mFrameBuffers;
-
-	mDefaultContext = make_shared<of::vk::Context>(contextSettings);
-
-	of::vk::Shader::Settings settings{
-		mDefaultContext.get(),
-		{
-			{ VK_SHADER_STAGE_VERTEX_BIT  , "vert.spv" },
-			{ VK_SHADER_STAGE_FRAGMENT_BIT, "frag.spv" },
-		}
-	};
-
-	// shader creation makes shader reflect. 
-	auto shader = std::make_shared<of::vk::Shader>( settings );
-	mDefaultContext->addShader( shader );
-
-	// this will analyse our shaders and build descriptorset
-	// layouts. it will also build pipelines.
-	mDefaultContext->setup( this );
-	
+	setupDefaultContext();
 	
 	// Mesh data prototype for DrawRectangle Method.
 	// Todo: move this into something more fitting
@@ -66,16 +43,45 @@ void ofVkRenderer::setup(){
 
 // ----------------------------------------------------------------------
 
+void ofVkRenderer::setupDefaultContext(){
+	of::vk::Context::Settings contextSettings;
+	contextSettings.device = mDevice;
+	contextSettings.numSwapchainImages = mSwapchain.getImageCount();
+	contextSettings.renderPass = mRenderPass;
+	contextSettings.framebuffers = mFrameBuffers;
+
+	mDefaultContext = make_shared<of::vk::Context>( contextSettings );
+
+	of::vk::Shader::Settings settings{
+		mDefaultContext.get(),
+		{
+			{ VK_SHADER_STAGE_VERTEX_BIT  , "vert.spv" },
+			{ VK_SHADER_STAGE_FRAGMENT_BIT, "frag.spv" },
+		}
+	};
+
+	// shader creation makes shader reflect. 
+	auto shader = std::make_shared<of::vk::Shader>( settings );
+	mDefaultContext->addShader( shader );
+
+	// this will analyse our shaders and build descriptorset
+	// layouts. it will also build pipelines.
+	mDefaultContext->setup( this );
+}
+
+// ----------------------------------------------------------------------
+
 void ofVkRenderer::setupSwapChain(){
 
+	vkResetCommandPool( mDevice, mCommandPool, VK_COMMAND_POOL_RESET_RELEASE_RESOURCES_BIT );
 	// Allocate pre-present and post-present command buffers, 
 	// from main command pool, mCommandPool.
 	createCommandBuffers();
 
 	// we need a setup command buffer to transition our image memory
 	// this will allocate & initialise command buffer mSetupCommandBuffer
-	createSetupCommandBuffer();
-
+	auto setupCommandBuffer = createSetupCommandBuffer();
+	beginSetupCommandBuffer( setupCommandBuffer );
 
 	// !TODO: move these parameters into vkRenderer::settings
 	uint32_t numSwapChainFrames = 2;
@@ -91,24 +97,24 @@ void ofVkRenderer::setupSwapChain(){
 		mPhysicalDevice,
 		mWindowSurface,
 		mWindowColorFormat,
-		mSetupCommandBuffer,
+		setupCommandBuffer,
 		mWindowWidth,
 		mWindowHeight,
 		numSwapChainFrames,
 		presentMode
 	);
 
-	setupDepthStencil();
+	setupDepthStencil(setupCommandBuffer);
 
 	// create the main renderpass 
-	setupRenderPass();
+	setupRenderPass(setupCommandBuffer);
 
 	mViewport = { 0.f, 0.f, float( mWindowWidth ), float( mWindowHeight ) };
 
 	setupFrameBuffer();
 
 	// submit, wait for tasks to finish, then free mSetupCommandBuffer.
-	flushSetupCommandBuffer();
+	flushSetupCommandBuffer( setupCommandBuffer );
 }
 
 // ----------------------------------------------------------------------
@@ -120,16 +126,16 @@ void ofVkRenderer::resizeScreen( int w, int h ){
 	// or wait for all of them to finish.
 	
 	auto err = vkDeviceWaitIdle( mDevice );
+	setupSwapChain();
+
 	assert( !err );
 
-	// reset command pool and all associated command buffers.
-	err = vkResetCommandPool( mDevice, mCommandPool, VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT );
-	assert( !err );
 
 	mWindowWidth = w;
 	mWindowHeight = h;
 
-	setupSwapChain();
+	// reset default context 
+	setupDefaultContext();
 
 	ofLog() << "Screen resize complete";
 }
@@ -214,11 +220,7 @@ void ofVkRenderer::createCommandPool(){
 
 // ----------------------------------------------------------------------
 
-void ofVkRenderer::createSetupCommandBuffer(){
-	if ( mSetupCommandBuffer != VK_NULL_HANDLE ){
-		vkFreeCommandBuffers( mDevice, mCommandPool, 1, &mSetupCommandBuffer );
-		mSetupCommandBuffer = VK_NULL_HANDLE;
-	}
+VkCommandBuffer ofVkRenderer::createSetupCommandBuffer(){
 
 	VkCommandBufferAllocateInfo info = {
 		VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO, // VkStructureType         sType;
@@ -228,20 +230,26 @@ void ofVkRenderer::createSetupCommandBuffer(){
 		1,                                              // uint32_t                commandBufferCount;
 	};
 
+	VkCommandBuffer cmd;
  	// allocate one command buffer (as stated above) and store the handle to 
 	// the newly allocated buffer into mSetupCommandBuffer
-	auto err = vkAllocateCommandBuffers( mDevice, &info, &mSetupCommandBuffer );
+	auto err = vkAllocateCommandBuffers( mDevice, &info, &cmd );
 	assert( !err );
+	return cmd;
+}
 
+// ----------------------------------------------------------------------
+
+void ofVkRenderer::beginSetupCommandBuffer( VkCommandBuffer cmd){
 	// todo : Command buffer is also started here, better put somewhere else
 	// todo : Check if necessaray at all...
 	VkCommandBufferBeginInfo cmdBufInfo = {};
 	cmdBufInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 	// todo : check null handles, flags?
 
-	err = vkBeginCommandBuffer( mSetupCommandBuffer, &cmdBufInfo );
-	assert( !err);
-};
+	auto err = vkBeginCommandBuffer( cmd, &cmdBufInfo );
+	assert( !err );
+}
 
 // ----------------------------------------------------------------------
 
@@ -296,7 +304,7 @@ bool  ofVkRenderer::getMemoryAllocationInfo( const VkMemoryRequirements& memReqs
 
 // ----------------------------------------------------------------------
 
-void ofVkRenderer::setupDepthStencil(){
+void ofVkRenderer::setupDepthStencil(VkCommandBuffer cmd){
 	VkImageCreateInfo image = {};
 	image.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
 	image.pNext = NULL;
@@ -357,7 +365,7 @@ void ofVkRenderer::setupDepthStencil(){
 
 	// Append pipeline barrier to current setup commandBuffer
 	vkCmdPipelineBarrier(
-		mSetupCommandBuffer,
+		cmd,
 		VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
 		VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
 		0,
@@ -378,7 +386,7 @@ void ofVkRenderer::setupDepthStencil(){
 
 // ----------------------------------------------------------------------
 
-void ofVkRenderer::setupRenderPass(){
+void ofVkRenderer::setupRenderPass(VkCommandBuffer cmd){
 	
 	VkAttachmentDescription attachments[2] = {
 		{   // Color attachment
@@ -506,19 +514,16 @@ void ofVkRenderer::setupFrameBuffer(){
 
 // ----------------------------------------------------------------------
 
-void ofVkRenderer::flushSetupCommandBuffer(){
+void ofVkRenderer::flushSetupCommandBuffer(VkCommandBuffer cmd){
 	VkResult err;
 
-	if ( mSetupCommandBuffer == VK_NULL_HANDLE )
-		return;
-
-	err = vkEndCommandBuffer( mSetupCommandBuffer );
+	err = vkEndCommandBuffer( cmd );
 	assert( !err );
 
 	VkSubmitInfo submitInfo = {};
 	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 	submitInfo.commandBufferCount = 1;
-	submitInfo.pCommandBuffers = &mSetupCommandBuffer;
+	submitInfo.pCommandBuffers = &cmd;
 
 	err = vkQueueSubmit( mQueue, 1, &submitInfo, VK_NULL_HANDLE );
 	assert( !err );
@@ -526,8 +531,8 @@ void ofVkRenderer::flushSetupCommandBuffer(){
 	err = vkQueueWaitIdle( mQueue );
 	assert( !err );
 
-	vkFreeCommandBuffers( mDevice, mCommandPool, 1, &mSetupCommandBuffer );
-	mSetupCommandBuffer = VK_NULL_HANDLE; // todo : check if still necessary
+	// CONSIDER: Q: Should we free the setup command buffer here?
+	// A: we can "leak" it - and then just reset the pool, that should work better.
 };
 
 // ----------------------------------------------------------------------
