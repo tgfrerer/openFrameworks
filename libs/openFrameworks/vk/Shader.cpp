@@ -3,6 +3,7 @@
 #include "ofLog.h"
 #include "ofFileUtils.h"
 #include "spooky/SpookyV2.h"
+#include "shaderc/shaderc.hpp"
 
 // ----------------------------------------------------------------------
 
@@ -11,60 +12,154 @@ of::vk::Shader::Shader( const Settings & settings_ )
 	, mContext(settings_.context)
 	, mDevice( settings_.context->mSettings.device)
 {
-	std::vector<uint32_t> spirCode; // tmp container for code loaded from shader file
+	setup();
+}
 
-									// load each individual stage
+// ----------------------------------------------------------------------
 
-	for ( auto & s : mSettings.sources ){
+void of::vk::Shader::setup(){
+	bool shaderDirty = false;
 
-		VkShaderModule module;
+	for ( auto & source : mSettings.sources ){
 
-		if ( !ofFile( s.second ).exists() ){
-			ofLogError() << "Shader file not found: " << s.second;
+		const auto & shaderType = source.first;
+		const auto & filename = source.second;
+
+		if ( !ofFile( filename ).exists() ){
+			ofLogError() << "Shader file not found: " << source.second;
 			continue;
 		}
 
-		{
-			ofBuffer fileBuf = ofBufferFromFile( s.second, true );
-			spirCode.assign(
-				reinterpret_cast<uint32_t*>( fileBuf.getData() ),
-				reinterpret_cast<uint32_t*>( fileBuf.getData() ) + fileBuf.size() / sizeof( uint32_t )
-			);
+		std::vector<uint32_t> spirCode;
+		getSpirV( shaderType, filename, spirCode );	/* load or compiles code into spirCode */
+
+		bool spirCodeDirty = isSpirCodeDirty( shaderType, spirCode );
+
+		if ( spirCodeDirty ){
+			createVkShaderModule( shaderType, filename, std::move( spirCode ) );
+			// ! TODO: this also means that all derived pipelines need to be re-created.
 		}
 
-		VkShaderModuleCreateInfo info{
-			VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,	            // VkStructureType              sType;
-			nullptr,	                                                // const void*                  pNext;
-			0,	                                                        // VkShaderModuleCreateFlags    flags;
-			spirCode.size() * sizeof( uint32_t ),	                    // size_t                       codeSize;
-			spirCode.data()                                             // const uint32_t*              pCode;
+		shaderDirty |= spirCodeDirty;
+	}
+
+	if ( shaderDirty ){
+		reflect();
+		buildSetLayouts();
+	}
+}
+
+// ----------------------------------------------------------------------
+
+bool of::vk::Shader::isSpirCodeDirty( const VkShaderStageFlagBits shaderStage, std::vector<uint32_t> &spirCode_ ){
+
+	uint64_t spirvHash = SpookyHash::Hash64(reinterpret_cast<char*>( spirCode_.data() ), spirCode_.size() * sizeof( uint32_t ),	0 );
+
+	if ( mSpvHash.find( shaderStage ) == mSpvHash.end() ){
+		// hash not found so must be dirty
+		mSpvHash[shaderStage] = spirvHash;
+		return true;
+	} else{
+		return ( mSpvHash[shaderStage] != spirvHash );
+	}
+	
+	return false;
+}
+
+// ----------------------------------------------------------------------
+
+void of::vk::Shader::getSpirV( const VkShaderStageFlagBits shaderStage, const std::string & fileName, std::vector<uint32_t> &spirCode ){
+	
+	auto f = ofFile( fileName );
+	auto fExt = f.getExtension();
+
+	if ( fExt == "spv" ){
+		ofBuffer fileBuf = ofBufferFromFile( fileName, true );
+		ofLogNotice() << "Loading SPIR-V shader module: " << fileName;
+		auto a = fileBuf.getData();
+		spirCode.assign(
+			reinterpret_cast<uint32_t*>( fileBuf.getData() ),
+			reinterpret_cast<uint32_t*>( fileBuf.getData() ) + fileBuf.size() / sizeof( uint32_t )
+		);
+	} else {
+		shaderc_shader_kind shaderType = shaderc_shader_kind::shaderc_glsl_infer_from_source;
+
+		switch ( shaderStage ){
+		case VK_SHADER_STAGE_VERTEX_BIT:
+			shaderType = shaderc_shader_kind::shaderc_glsl_default_vertex_shader;
+			break;
+		case VK_SHADER_STAGE_FRAGMENT_BIT:
+			shaderType = shaderc_shader_kind::shaderc_glsl_default_fragment_shader;
+			break;
+		default:
+			break;
+		}
+
+		bool success = true;
+		ofBuffer fileBuf = ofBufferFromFile( fileName, true );
+		shaderc::Compiler compiler;
+		shaderc::CompileOptions options;
+
+		// Like -DMY_DEFINE=1
+		// options.AddMacroDefinition( "MY_DEFINE", "1" );
+
+		ofLogNotice() << "Compiling GLSL shader module: " << fileName;
+
+		shaderc::SpvCompilationResult module = compiler.CompileGlslToSpv(
+			fileBuf.getData(), fileBuf.size(), shaderType, fileName.c_str(), options );
+
+		if ( module.GetCompilationStatus() != shaderc_compilation_status_success ){
+			ofLogError() << "ERR\tShader compile: " << module.GetErrorMessage();
+		
+		} else{
+			spirCode.clear();
+			spirCode.assign( module.cbegin(), module.cend() );
+			ofLogNotice() << "OK \tShader compile: " << fileName;
+		}
+		
+		assert( success );
+	}
+}
+
+// ----------------------------------------------------------------------
+
+void of::vk::Shader::createVkShaderModule( const VkShaderStageFlagBits shaderType, const std::string & fileName, std::vector<uint32_t> &&spirCode ){
+
+	VkShaderModuleCreateInfo info{
+		VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,	            // VkStructureType              sType;
+		nullptr,                                                    // const void*                  pNext;
+		0,	                                                        // VkShaderModuleCreateFlags    flags;
+		spirCode.size() * sizeof( uint32_t ),                       // size_t                       codeSize;
+		spirCode.data()                                             // const uint32_t*              pCode;
+	};
+
+	VkShaderModule module;
+	auto err = vkCreateShaderModule( mDevice, &info, nullptr, &module );
+
+	if ( err == VK_SUCCESS ){
+
+		mModules[shaderType] = module;
+
+		VkPipelineShaderStageCreateInfo shaderStage{
+			VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,    // VkStructureType                     sType;
+			nullptr,                                                // const void*                         pNext;
+			0,	                                                    // VkPipelineShaderStageCreateFlags    flags;
+			shaderType,                                             // VkShaderStageFlagBits               stage;
+			module,                                                 // VkShaderModule                      module;
+			"main",                                                 // const char*                         pName;
+			nullptr                                                 // const VkSpecializationInfo*         pSpecializationInfo;
 		};
 
-		auto err = vkCreateShaderModule( mDevice, &info, nullptr, &module );
+		mStages.push_back( std::move( shaderStage ) );
 
-		if ( err == VK_SUCCESS ){
+		// move the ir code buffer into the shader compiler
+		mSpvCrossCompilers[shaderType] = make_shared<spirv_cross::Compiler>( std::move( spirCode ) );
 
-			mModules[s.first] = module;
-
-			VkPipelineShaderStageCreateInfo shaderStage{
-				VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,    // VkStructureType                     sType;
-				nullptr,	                                            // const void*                         pNext;
-				0,	                                                    // VkPipelineShaderStageCreateFlags    flags;
-				s.first,	                                            // VkShaderStageFlagBits               stage;
-				module,	                                                // VkShaderModule                      module;
-				"main",	                                                // const char*                         pName;
-				nullptr	                                                // const VkSpecializationInfo*         pSpecializationInfo;
-			};
-
-			mStages.push_back( std::move( shaderStage ) );
-			// move the ir code buffer into the shader compiler
-			mCompilers[s.first] = make_shared<spirv_cross::Compiler>( std::move( spirCode ) );
-		} else{
-			ofLog() << "Error creating shader module: " << s.second;
-		}
-	}  // for : mSettings.sources
-	reflect();
+	} else{
+		ofLog() << "Error creating shader module: " << fileName;
+	}
 }
+
 
 // ----------------------------------------------------------------------
 
@@ -72,15 +167,15 @@ void of::vk::Shader::reflect()
 {
 
 	// for all shader stages
-	for ( auto &c : mCompilers ){
+	for ( auto &c : mSpvCrossCompilers ){
 
 		auto & compiler = *c.second;
 		auto & shaderStage = c.first;
 
 		if ( shaderStage & VK_SHADER_STAGE_VERTEX_BIT ){
-			ofLog() << std::endl << "Vertex Stage" << endl << string( 70, '-' );
+			ofLog() << std::endl << std::endl << "Vertex Stage" << endl << string( 70, '-' );
 		} else if ( shaderStage & VK_SHADER_STAGE_FRAGMENT_BIT ){
-			ofLog() << std::endl << "Fragment Stage" << endl << string( 70, '-' );
+			ofLog() << std::endl << std::endl << "Fragment Stage" << endl << string( 70, '-' );
 		}
 
 		auto shaderResources = compiler.get_shader_resources();
@@ -106,9 +201,6 @@ void of::vk::Shader::reflect()
 			processVertexInputs( shaderResources, compiler );
 		} 
 	}  
-
-	buildSetLayouts();
-
 }
 // ----------------------------------------------------------------------
 

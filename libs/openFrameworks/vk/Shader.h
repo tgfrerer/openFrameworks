@@ -4,7 +4,6 @@
 #include "vulkan/vulkan.h"
 #include "vk/spirv-cross/include/spirv_cross.hpp"
 
-
 //   The smallest unit we may bind in Vulkan are DescriptorSets.
 //   
 //   Each set has its own namespace for bindings. Bindings may be sparse.
@@ -121,8 +120,12 @@ private:
 	std::map<VkShaderStageFlagBits, VkShaderModule>         mModules;
 	std::vector<VkPipelineShaderStageCreateInfo>	        mStages;
 
-	std::map<VkShaderStageFlagBits, std::shared_ptr<spirv_cross::Compiler>> mCompilers;
+	std::map<VkShaderStageFlagBits, std::shared_ptr<spirv_cross::Compiler>> mSpvCrossCompilers;
 	
+	// hashes for pre-compiled spirv
+	// we use this to find out if shader code has changed.
+	std::map<VkShaderStageFlagBits, uint64_t> mSpvHash;
+
 	// map from shader uniform name to uniform binding 
 	// when we say "uniform" this may be any of VkDescriptorType, so: UBOs, samplers ...
 	// Binding info also contains set number for a binding.
@@ -148,6 +151,19 @@ private:
 
 	void processResource( spirv_cross::Compiler & compiler, spirv_cross::Resource & ubo, const VkShaderStageFlagBits & shaderStage );
 
+	// based on file name ending, read either spirv or glsl file and fill vector of spirV words
+	void getSpirV( const VkShaderStageFlagBits shaderType, const std::string & fileName, std::vector<uint32_t> &spirCode );
+	
+	// find out if module is dirty
+	bool isSpirCodeDirty( const VkShaderStageFlagBits shaderStage, std::vector<uint32_t> &spirCode_ );
+
+	// create vkShader module from binary spirv code
+	void createVkShaderModule( const VkShaderStageFlagBits shaderType, const std::string & fileName, std::vector<uint32_t> &&spirCode);
+
+	// setup shader from source files
+	// if source files haven't changed, do nothing.
+	void setup();
+
 public:
 
 	const struct Settings
@@ -172,7 +188,7 @@ public:
 
 	~Shader()
 	{
-		mCompilers.clear();
+		mSpvCrossCompilers.clear();
 		// reset shader object
 		for ( auto &s : mModules ){
 			if ( s.second != nullptr ){
