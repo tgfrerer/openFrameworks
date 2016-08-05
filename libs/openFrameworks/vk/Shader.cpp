@@ -36,16 +36,20 @@ void of::vk::Shader::setup(){
 		bool spirCodeDirty = isSpirCodeDirty( shaderType, spirCode );
 
 		if ( spirCodeDirty ){
-			createVkShaderModule( shaderType, filename, std::move( spirCode ) );
-			// ! TODO: this also means that all derived pipelines need to be re-created.
+			createVkShaderModule( shaderType, filename, spirCode );
+			// move the ir code buffer into the shader compiler
+			mSpvCrossCompilers[shaderType] = make_shared<spirv_cross::Compiler>( std::move( spirCode ) );
 		}
 
 		shaderDirty |= spirCodeDirty;
 	}
 
 	if ( shaderDirty ){
+		// ! TODO: this also means that all derived pipelines need to be re-created.
+		// we need to tell whoever owns the pipelines that it should let go of them.
+
 		reflect();
-		buildSetLayouts();
+		buildSetLayouts(); /* writes setlayouts from this shader into context */
 	}
 }
 
@@ -123,7 +127,7 @@ void of::vk::Shader::getSpirV( const VkShaderStageFlagBits shaderStage, const st
 
 // ----------------------------------------------------------------------
 
-void of::vk::Shader::createVkShaderModule( const VkShaderStageFlagBits shaderType, const std::string & fileName, std::vector<uint32_t> &&spirCode ){
+void of::vk::Shader::createVkShaderModule( const VkShaderStageFlagBits shaderType, const std::string & fileName, const std::vector<uint32_t> &spirCode ){
 
 	VkShaderModuleCreateInfo info{
 		VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,	            // VkStructureType              sType;
@@ -151,9 +155,6 @@ void of::vk::Shader::createVkShaderModule( const VkShaderStageFlagBits shaderTyp
 		};
 
 		mStages.push_back( std::move( shaderStage ) );
-
-		// move the ir code buffer into the shader compiler
-		mSpvCrossCompilers[shaderType] = make_shared<spirv_cross::Compiler>( std::move( spirCode ) );
 
 	} else{
 		ofLog() << "Error creating shader module: " << fileName;
@@ -221,7 +222,6 @@ void of::vk::Shader::buildSetLayouts(){
 	}
 
 	// now we can create setLayouts 
-
 
 	uint32_t i = 0;
 	for ( auto & descriptorSet : bindingInfoMap ){

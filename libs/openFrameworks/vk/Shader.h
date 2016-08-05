@@ -158,7 +158,7 @@ private:
 	bool isSpirCodeDirty( const VkShaderStageFlagBits shaderStage, std::vector<uint32_t> &spirCode_ );
 
 	// create vkShader module from binary spirv code
-	void createVkShaderModule( const VkShaderStageFlagBits shaderType, const std::string & fileName, std::vector<uint32_t> &&spirCode);
+	void createVkShaderModule( const VkShaderStageFlagBits shaderType, const std::string & fileName, const std::vector<uint32_t> &spirCode);
 
 	// setup shader from source files
 	// if source files haven't changed, do nothing.
