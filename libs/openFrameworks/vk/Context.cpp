@@ -87,7 +87,7 @@ void of::vk::Context::setup(ofVkRenderer* renderer_){
 			vkDestroyPipelineLayout( device, *lhs, nullptr );
 			lhs = nullptr;
 		} );
-		vkCreatePipelineLayout(mSettings.device,&pipelineInfo,nullptr,pipelineLayout.get());
+		vkCreatePipelineLayout( mSettings.device, &pipelineInfo, nullptr, pipelineLayout.get() );
 		s->setPipelineLayout( pipelineLayout );
 	}
 
@@ -101,6 +101,48 @@ void of::vk::Context::setup(ofVkRenderer* renderer_){
 
 	setupCommandPool();
 }
+
+// ----------------------------------------------------------------------
+
+void of::vk::Context::reset(){
+	
+	if ( nullptr != mCommandPool ){
+		vkDestroyCommandPool( mSettings.device, mCommandPool, nullptr );
+		mCommandPool = nullptr;
+	}
+
+	if ( nullptr != mPipelineCache ){
+		vkDestroyPipelineCache( mSettings.device, mPipelineCache, nullptr );
+		mPipelineCache = nullptr;
+	}
+
+	// Destroy all descriptors by destroying the pools they were
+	// allocated from.
+	for ( auto & p : mDescriptorPool ){
+		vkDestroyDescriptorPool( mSettings.device, p, 0 );
+		p = nullptr;
+	}
+	mDescriptorPool.clear();
+
+	// ! TODO: create pipeline layout manager - 
+	// so that you don't have to destroy shaders 
+	mShaders.clear();
+
+	mAlloc->reset();
+
+	// Destory descriptorsetLayouts
+	mDescriptorSetLayouts.clear();
+
+	for ( auto &p : mVkPipelines ){
+		if ( nullptr != p.second ){
+			vkDestroyPipeline( mSettings.device, p.second, nullptr );
+			p.second = nullptr;
+		}
+	}
+	mVkPipelines.clear();
+
+}
+
 // ----------------------------------------------------------------------
 
 void of::vk::Context::setupFrameState(){
@@ -187,8 +229,9 @@ void of::vk::Context::storeDescriptorSetLayout( Shader::SetLayout && setLayout_ 
 		vkCreateDescriptorSetLayout( mSettings.device, &createInfo, nullptr, &dsl->vkDescriptorSetLayout);
 	}
 
-	// CONSIDER: store dsl back into shader, so that we can track use count for 
-	// DescriptorSetLayout
+	// !TODO: store dsl back into shader, so that we can track use count for DescriptorSetLayout
+	// Ownership of descriptorsetlayout should be shared amongst shaders that use it and context that uses it
+	// also, there should be a way to tell if the object has been invalidated.
 	ofLog() << "DescriptorSetLayout " << std::hex << setLayout_.key << " | Use Count: " << dsl.use_count();
 	
 }
@@ -442,36 +485,6 @@ void of::vk::Context::beginRenderPass(){
 
 void of::vk::Context::endRenderPass(){
 	vkCmdEndRenderPass( mCommandBuffer[mSwapIdx] );
-}
-
-// ----------------------------------------------------------------------
-
-void of::vk::Context::reset(){
-	mAlloc->reset();
-	
-	// Destroy all descriptors by destroying the pools they were
-	// allocated from.
-	for ( auto & p : mDescriptorPool ){
-		vkDestroyDescriptorPool( mSettings.device, p, 0 );
-		p = nullptr;
-	}
-	mDescriptorPool.clear();
-
-	// Destory descriptorsetLayouts
-	mDescriptorSetLayouts.clear();
-
-	for ( auto &p : mVkPipelines ){
-		if ( nullptr != p.second ){
-			vkDestroyPipeline( mSettings.device, p.second, nullptr );
-			p.second = nullptr;
-		}
-	}
-	mVkPipelines.clear();
-
-	vkDestroyCommandPool( mSettings.device, mCommandPool, nullptr );
-
-	vkDestroyPipelineCache( mSettings.device, mPipelineCache, nullptr );
-
 }
 
 // ----------------------------------------------------------------------
