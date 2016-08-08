@@ -18,6 +18,7 @@ class ofShapeTessellation;
 namespace of{
 namespace vk{
 	class Shader;
+	class ShaderManager;
 }
 };
 
@@ -38,6 +39,8 @@ class ofVkRenderer : public ofBaseRenderer
 	const ofAppBaseWindow * window;
 
 	mutable ofMesh mRectMesh;
+
+	std::shared_ptr<of::vk::Shader> mDebugMainShader;
 
 public:
 	static const string TYPE;
@@ -330,6 +333,9 @@ private:
 	// reset this context if you don't want explicit rendering
 	// but want to use your own.
 	std::shared_ptr<of::vk::Context> mDefaultContext;
+
+	// shader manager - this should be a unique object.
+	std::shared_ptr<of::vk::ShaderManager> mShaderManager;
 
 	uint32_t mWindowWidth = 0;
 	uint32_t mWindowHeight = 0;

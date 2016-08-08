@@ -2,6 +2,7 @@
 
 #include <vulkan/vulkan.h>
 #include "vk/Shader.h"
+#include "vk/ShaderManager.h"
 #include "vk/Pipeline.h"
 #include "ofMatrix4x4.h"
 #include "ofMesh.h"
@@ -59,10 +60,6 @@ class Context
 {
 	// allocator used for dynamic data
 	shared_ptr<of::vk::Allocator> mAlloc;
-
-	// dynamic offsets for descriptor bindings, flattened by set
-	// so that we can feed this directly to vkCmdBindDescriptorSets
-	std::vector<std::vector<uint32_t>> mDynamicUniformBuffferOffsets;	  	   // VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC
 
 	// -----------	Frame state CPU memory backing
 
@@ -165,7 +162,7 @@ class Context
 	
 	GraphicsPipelineState mCurrentGraphicsPipelineState;
 
-	// current descriptor set layout bindings 
+	// current descriptor set layout bindings keys
 	std::vector<uint64_t       > mDSS_layoutKey;
 	// derived sets (nullptr if not yet initialised)
 	std::vector<VkDescriptorSet> mDSS_set;
@@ -176,22 +173,12 @@ class Context
 	// currently bound shader
 	std::shared_ptr<of::vk::Shader> mCurrentShader; 
 
-	struct DescriptorSetLayoutInfo
-	{
-		of::vk::Shader::SetLayout setLayout;
-		VkDescriptorSetLayout     vkDescriptorSetLayout;
-	};
-
 	const std::vector<VkDescriptorSet>& updateDescriptorSetState();
 
 	void updateDescriptorSets( std::vector<VkDescriptorSetLayout> &layouts, int i );
 
 	VkPipeline mCurrentVkPipeline = nullptr;
 
-	// map of descriptorsetlayoutKey to descriptorsetlayout
-	// this map is the central registry of DescriptorSetLayouts for all Shaders
-	// used with(in) this Context.
-	std::map<uint64_t, std::shared_ptr<DescriptorSetLayoutInfo>> mDescriptorSetLayouts;
 
 	// One DescriptorPool per SwapChain frame.
 	std::vector<VkDescriptorPool> mDescriptorPool;
@@ -212,12 +199,15 @@ public:
 		size_t                     numSwapchainImages = 0 ;
 		VkRenderPass               renderPass = nullptr;
 		std::vector<VkFramebuffer> framebuffers;
+		shared_ptr<ShaderManager>  shaderManager;
 		// context is initialised with a vector of shaders
 		// all these shaders contribute to the shared pipeline layout 
 		// for this context. The shaders need to be compatible in their
 		// sets/bindings so that there can be a shared pipeline layout 
 		// for the whole context.
 	} const mSettings;
+
+	const shared_ptr<ShaderManager>& mShaderManager = mSettings.shaderManager;
 
 	// must be constructed with this method, default constructor
 	// copy, and move constructor
@@ -257,9 +247,6 @@ public:
 
 	// return the one buffer which is used for all dynamic buffer memory within this context.
 	const VkBuffer& getVkBuffer() const;
-
-	// get dynamic offsets for all descriptorsets which are currently bound
-	const std::vector<uint32_t>& getDynamicUniformBufferOffsets() const;
 
 	// lazily store uniform data into local CPU memory
 	template<typename UniformT>
@@ -311,11 +298,6 @@ public:
 		mCurrentGraphicsPipelineState.setPolyMode( polyMode_ );
 		return *this;
 	}
-	
-	private:
-		friend class Shader;
-		// only shader should need to access this.
-		void storeDescriptorSetLayout( of::vk::Shader::SetLayout && setLayout_ );
 
 };
 

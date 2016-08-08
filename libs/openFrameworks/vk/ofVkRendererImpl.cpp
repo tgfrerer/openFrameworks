@@ -1,5 +1,6 @@
 #include "vk/ofVkRenderer.h"
 #include "vk/Shader.h"
+#include "vk/ShaderManager.h"
 #include "vk/vkUtils.h"
 
 #include <algorithm>
@@ -20,6 +21,11 @@ void ofVkRenderer::setup(){
 	setupSwapChain();
 	
 	createSemaphores();
+
+	// set up shader manager
+	of::vk::ShaderManager::Settings shaderManagerSettings;
+	shaderManagerSettings.device = mDevice;
+	mShaderManager = make_shared<of::vk::ShaderManager>( shaderManagerSettings );
 
 	// Set up Context
 	// A Context holds dynamic frame state + manages GPU memory for "immediate" mode
@@ -44,29 +50,35 @@ void ofVkRenderer::setup(){
 // ----------------------------------------------------------------------
 
 void ofVkRenderer::setupDefaultContext(){
+	
+
 	of::vk::Context::Settings contextSettings;
 	contextSettings.device = mDevice;
 	contextSettings.numSwapchainImages = mSwapchain.getImageCount();
 	contextSettings.renderPass = mRenderPass;
 	contextSettings.framebuffers = mFrameBuffers;
-
+	contextSettings.shaderManager = mShaderManager;
 	mDefaultContext = make_shared<of::vk::Context>( contextSettings );
+
+	// shader should not reflect before 
+	// they are used inside a context.
 
 	of::vk::Shader::Settings settings{
 		mDefaultContext.get(),
 		{
-			{ VK_SHADER_STAGE_VERTEX_BIT  , "vert.spv" },
-			{ VK_SHADER_STAGE_FRAGMENT_BIT, "frag.spv" },
+			{ VK_SHADER_STAGE_VERTEX_BIT  , "triangle.vert" },
+			{ VK_SHADER_STAGE_FRAGMENT_BIT, "triangle.frag" },
 		}
 	};
 
 	// shader creation makes shader reflect. 
-	auto shader = std::make_shared<of::vk::Shader>( settings );
-	mDefaultContext->addShader( shader );
+	mDebugMainShader = std::make_shared<of::vk::Shader>( settings );
+	mDefaultContext->addShader( mDebugMainShader );
 
 	// this will analyse our shaders and build descriptorset
 	// layouts. it will also build pipelines.
 	mDefaultContext->setup( this );
+
 }
 
 // ----------------------------------------------------------------------
@@ -550,6 +562,7 @@ void ofVkRenderer::startRender(){
 	err = mSwapchain.acquireNextImage( mSemaphorePresentComplete, &swapIdx );
 	assert( !err );
 
+	if (ofGetFrameNum() % 60 == 0) mDebugMainShader->compile();
 	
 	if ( mDefaultContext ){
 		mDefaultContext->begin( swapIdx );

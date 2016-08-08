@@ -96,6 +96,9 @@ ofVkRenderer::~ofVkRenderer()
 
 
 	mDefaultContext.reset();
+	mDebugMainShader.reset();
+
+	mShaderManager.reset();
 
 	// reset command pool and all associated command buffers.
 	err = vkResetCommandPool( mDevice, mCommandPool, VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT );

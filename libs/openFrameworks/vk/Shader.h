@@ -85,7 +85,7 @@ class Context;
 class Shader
 {
 public: 
-	struct BufferRange
+	struct UboMemberRange
 	{
 		size_t offset;
 		size_t range;
@@ -93,13 +93,13 @@ public:
 
 	struct BindingInfo
 	{
-		uint32_t set;                                     // Descriptor set this binding belongs to
-		VkDescriptorSetLayoutBinding binding;             // Describes mapping of binding number to descriptors, 
-		                                                  // number and type of descriptors under a binding.
-		uint32_t size;                                    // size in bytes (corresponds to struct size of the UBO)
-		                                                  // which has members with names ("projectionMatrix", "viewMatrix", ...) 
-		std::string name;                                 // Uniform Buffer Block name from shader
-		std::map< std::string, BufferRange> memberRanges; // Memory offsets for members, indexed by name
+		uint32_t set;                                        // Descriptor set this binding belongs to
+		VkDescriptorSetLayoutBinding binding;                // Describes mapping of binding number to descriptors, 
+		                                                     // number and type of descriptors under a binding.
+		uint32_t size;                                       // size in bytes (corresponds to struct size of the UBO)
+		                                                     // which has members with names ("projectionMatrix", "viewMatrix", ...) 
+		std::string name;                                    // Uniform Buffer Block name from shader
+		std::map< std::string, UboMemberRange> memberRanges; // Memory offsets for members within UBO, indexed by name
 	};
 
 	// layout for a descriptorSet
@@ -111,14 +111,27 @@ public:
 		void calculateHash();
 	};
 
+	struct VertexInfo
+	{
+		std::vector<VkVertexInputBindingDescription>   bindingDescription;	  // describes data input parameters for pipeline slots
+		std::vector<VkVertexInputAttributeDescription> attribute;	          // mapping of attribute locations to pipeline slots
+		VkPipelineVertexInputStateCreateInfo vi;
+	} mVertexInfo;
+
 private:
 
 	VkDevice mDevice = nullptr;
 	Context* mContext;
-	std::shared_ptr<VkPipelineLayout> mPipelineLayout; // context sets this.
+	mutable std::shared_ptr<VkPipelineLayout> mPipelineLayout; 
+	uint64_t mShaderHash = 0;
+	bool     mShaderHashDirty = true;
 
-	std::map<VkShaderStageFlagBits, VkShaderModule>         mModules;
-	std::vector<VkPipelineShaderStageCreateInfo>	        mStages;
+	struct ShaderStage{
+		VkShaderModule module;
+		VkPipelineShaderStageCreateInfo createInfo;
+	};
+
+	std::map<VkShaderStageFlagBits, std::shared_ptr<ShaderStage>> mShaderStages;
 
 	std::map<VkShaderStageFlagBits, std::shared_ptr<spirv_cross::Compiler>> mSpvCrossCompilers;
 	
@@ -126,14 +139,6 @@ private:
 	// we use this to find out if shader code has changed.
 	std::map<VkShaderStageFlagBits, uint64_t> mSpvHash;
 
-	// map from shader uniform name to uniform binding 
-	// when we say "uniform" this may be any of VkDescriptorType, so: UBOs, samplers ...
-	// Binding info also contains set number for a binding.
-	std::map<std::string, BindingInfo> mUniforms;
-
-	//// sequence of setLayouts forming the pipelineLayout for this shader
-	//std::vector<SetLayout> mSetLayouts;
-	
 	// Sequence of hashes of SetLayouts - which reference vkDescriptorSetLayouts in Context.
 	// This describes the sequence for the pipeline layout for this shader.
 	std::vector<uint64_t>  mDescriptorSetLayoutKeys;  
@@ -143,26 +148,22 @@ private:
 	// we want to extract as much information out of the shader metadata as possible
 	// all this data helps us to create descriptors, and also to create layouts fit
 	// for our pipelines.
-	void reflect();
+	static void reflect( const std::map<VkShaderStageFlagBits, std::shared_ptr<spirv_cross::Compiler>>& compilers, std::map<std::string, BindingInfo>& uniformInfo, VertexInfo& vertexInfo );
+	static void reflectUniformBuffers( const spirv_cross::Compiler & compiler, const spirv_cross::Resource & ubo, const VkShaderStageFlagBits & shaderStage, std::map<std::string, BindingInfo>& uniformInfo );
+	static void reflectVertexInputs(const spirv_cross::ShaderResources &shaderResources, const spirv_cross::Compiler & compiler, VertexInfo& vertexInfo );
 
-	void buildSetLayouts();
-
-	void processVertexInputs( spirv_cross::ShaderResources &shaderResources, spirv_cross::Compiler & compiler );
-
-	void processResource( spirv_cross::Compiler & compiler, spirv_cross::Resource & ubo, const VkShaderStageFlagBits & shaderStage );
+	void buildSetLayouts(const std::map<std::string, BindingInfo> & bindingInfo);
+	void createPipelineLayout();
 
 	// based on file name ending, read either spirv or glsl file and fill vector of spirV words
-	void getSpirV( const VkShaderStageFlagBits shaderType, const std::string & fileName, std::vector<uint32_t> &spirCode );
+	bool getSpirV( const VkShaderStageFlagBits shaderType, const std::string & fileName, std::vector<uint32_t> &spirCode );
 	
 	// find out if module is dirty
-	bool isSpirCodeDirty( const VkShaderStageFlagBits shaderStage, std::vector<uint32_t> &spirCode_ );
+	bool isSpirCodeDirty( const VkShaderStageFlagBits shaderStage, uint64_t spirvHash );
 
 	// create vkShader module from binary spirv code
-	void createVkShaderModule( const VkShaderStageFlagBits shaderType, const std::string & fileName, const std::vector<uint32_t> &spirCode);
+	void createVkShaderModule( const VkShaderStageFlagBits shaderType, const std::vector<uint32_t> &spirCode);
 
-	// setup shader from source files
-	// if source files haven't changed, do nothing.
-	void setup();
 
 public:
 
@@ -172,12 +173,6 @@ public:
 		std::map<VkShaderStageFlagBits, std::string> sources;
 	} mSettings;
 
-	struct VertexInfo
-	{
-		std::vector<VkVertexInputBindingDescription>   bindingDescription;	  // describes data input parameters for pipeline slots
-		std::vector<VkVertexInputAttributeDescription> attribute;	          // mapping of attribute locations to pipeline slots
-		VkPipelineVertexInputStateCreateInfo vi;
-	} mVertexInfo;
 
 	// ----------------------------------------------------------------------
 
@@ -189,16 +184,11 @@ public:
 	~Shader()
 	{
 		mSpvCrossCompilers.clear();
-		// reset shader object
-		for ( auto &s : mModules ){
-			if ( s.second != nullptr ){
-				vkDestroyShaderModule( mDevice, s.second, nullptr );
-				s.second = nullptr;
-			}
-		}
-		mModules.clear();
-		mStages.clear();
+		mShaderStages.clear();
 	}
+
+	// re-compile shader - this invalidates hashes only when shader has changed.
+	void compile();
 
 	// ----------------------------------------------------------------------
 
@@ -209,8 +199,16 @@ public:
 	// ----------------------------------------------------------------------
 
 	// return vector create info for all shader modules which compiled successfully
-	const std::vector<VkPipelineShaderStageCreateInfo>& getShaderStageCreateInfo(){
-		return mStages;
+	const std::vector<VkPipelineShaderStageCreateInfo> getShaderStageCreateInfo(){
+		
+		std::vector<VkPipelineShaderStageCreateInfo> stageInfo;
+		stageInfo.reserve( mShaderStages.size() );
+		
+		for ( const auto& s : mShaderStages ){
+			stageInfo.push_back( s.second->createInfo );
+		}
+
+		return stageInfo;
 	}
 
 	// ----------------------------------------------------------------------
@@ -221,16 +219,15 @@ public:
 	}
 	
 	// ----------------------------------------------------------------------
-	// context may set pipeline layout for this shader.
-	void setPipelineLayout( const std::shared_ptr<VkPipelineLayout>& pipelineLayout ){
-		mPipelineLayout = pipelineLayout;
-	}
-
-	// ----------------------------------------------------------------------
-	const std::shared_ptr<VkPipelineLayout>& getPipelineLayout() const{
+	const std::shared_ptr<VkPipelineLayout>& getPipelineLayout() {
+		if ( mPipelineLayout.get() == nullptr )
+			createPipelineLayout();
 		return mPipelineLayout;
 	}
 
+	// ----------------------------------------------------------------------
+	// returns hash of spirv code over all shader shader stages
+	const uint64_t getShaderCodeHash();
 };
 
 } // namespace vk
