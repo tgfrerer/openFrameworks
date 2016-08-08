@@ -153,7 +153,7 @@ VkPipeline vk::GraphicsPipelineState::createPipeline( const VkDevice & device, c
 		
 		// derive stages from shader
 		// TODO: only re-assign if shader has changed.
-		auto & stageCreateInfo = mShader->getShaderStageCreateInfo();
+		auto stageCreateInfo = mShader->getShaderStageCreateInfo();
 
 		VkPipelineCreateFlags createFlags = 0;
 
@@ -208,10 +208,11 @@ uint64_t of::vk::GraphicsPipelineState::calculateHash(){
 
 	std::vector<uint64_t> setLayoutKeys = mShader->getSetLayoutKeys();
 
-	std::array<uint64_t, 2> hashTable;
+	std::array<uint64_t, 3> hashTable;
 
 	hashTable[0] = SpookyHash::Hash64( setLayoutKeys.data(), sizeof( uint64_t ) * setLayoutKeys.size(), 0 );
 	hashTable[1] = SpookyHash::Hash64( &mRasterizationState, sizeof( mRasterizationState ), 0 );
+	hashTable[2] = mShader->getShaderCodeHash();
 
 	uint64_t hashOfHashes = SpookyHash::Hash64( hashTable.data(), hashTable.size() * sizeof( uint64_t ), 0 );
 
