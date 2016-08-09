@@ -616,8 +616,6 @@ void ofVkRenderer::submitCommandBuffer(VkCommandBuffer cmd){
 
 void ofVkRenderer::finishRender(){
 
-	// submit current model view and projection matrices
-	
 	if ( mDefaultContext ){
 		// this will implicitly submit the command buffer
 		mDefaultContext->end();

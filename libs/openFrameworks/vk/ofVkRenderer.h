@@ -257,9 +257,13 @@ public:
 		return mQueue;
 	};
 
-	shared_ptr<of::vk::Context>& getContext(){
+	const shared_ptr<of::vk::Context>& getDefaultContext(){
 		return mDefaultContext;
 	};
+
+	void setDefaultContext( std::shared_ptr<of::vk::Context>& defaultContext){
+		mDefaultContext = defaultContext;
+	}
 
 	shared_ptr<of::vk::ShaderManager>& getShaderManager(){
 		return mShaderManager;

@@ -114,7 +114,7 @@ void ofApp::setup(){
 		// layouts. it will also build pipelines.
 		mExplicitContext->setup( renderer.get() );
 		
-		renderer->getContext() = mExplicitContext;
+		renderer->setDefaultContext( mExplicitContext );
 	}
 
 }
@@ -152,7 +152,7 @@ void ofApp::draw(){
 void ofApp::drawModeExplicit(){
 	
 	auto & renderer = dynamic_pointer_cast<ofVkRenderer>( ofGetCurrentRenderer() );
-	auto & context = *renderer->getContext();
+	auto & context = *renderer->getDefaultContext();
 
 	static ofMesh ico = ofMesh::icosphere( 50, 3 );
 	
