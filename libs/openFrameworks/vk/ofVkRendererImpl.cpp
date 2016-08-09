@@ -33,7 +33,7 @@ void ofVkRenderer::setup(){
 	setupDefaultContext();
 	
 	// Mesh data prototype for DrawRectangle Method.
-	// Todo: move this into something more fitting
+	// TODO: move this into something more fitting
 	{
 		uint32_t numVerts = 4;
 		mRectMesh.getVertices().resize(numVerts);
@@ -95,8 +95,10 @@ void ofVkRenderer::setupSwapChain(){
 	auto setupCommandBuffer = createSetupCommandBuffer();
 	beginSetupCommandBuffer( setupCommandBuffer );
 
-	// !TODO: move these parameters into vkRenderer::settings
-	uint32_t numSwapChainFrames = 2;
+	
+	uint32_t numSwapChainFrames = mSettings.numSwapchainImages;
+
+	// ! TODO: use mSettings.swapchainType
 	VkPresentModeKHR presentMode = VK_PRESENT_MODE_MAILBOX_KHR;
 
 	// Note that the mSwapchain.setup() method will *modify* numSwapChainFrames 
