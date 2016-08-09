@@ -20,16 +20,17 @@ void ofVkRenderer::setup(){
 
 	setupSwapChain();
 	
-	createSemaphores();
+	// sets up resources to keep track of production frames
+	setupFrameResources();
 
 	// set up shader manager
 	of::vk::ShaderManager::Settings shaderManagerSettings;
 	shaderManagerSettings.device = mDevice;
 	mShaderManager = make_shared<of::vk::ShaderManager>( shaderManagerSettings );
 
+
 	// Set up Context
 	// A Context holds dynamic frame state + manages GPU memory for "immediate" mode
-	
 	setupDefaultContext();
 	
 	// Mesh data prototype for DrawRectangle Method.
@@ -54,7 +55,7 @@ void ofVkRenderer::setupDefaultContext(){
 
 	of::vk::Context::Settings contextSettings;
 	contextSettings.device = mDevice;
-	contextSettings.numSwapchainImages = mSwapchain.getImageCount();
+	contextSettings.numSwapchainImages = mSettings.numVirtualFrames;
 	contextSettings.renderPass = mRenderPass;
 	contextSettings.framebuffers = mFrameBuffers;
 	contextSettings.shaderManager = mShaderManager;
@@ -80,21 +81,53 @@ void ofVkRenderer::setupDefaultContext(){
 	mDefaultContext->setup( this );
 
 }
+// ----------------------------------------------------------------------
+
+void ofVkRenderer::setupFrameResources(){
+	
+	mFrameResources.resize( mSettings.numVirtualFrames );
+	
+	for ( auto frame : mFrameResources ){
+		// allocate a command buffer
+
+		VkCommandBufferAllocateInfo commandBufferCreateInfo {
+			VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO, // VkStructureType         sType;
+			nullptr,                                        // const void*             pNext;
+			mDrawCommandPool,                               // VkCommandPool           commandPool;
+			VK_COMMAND_BUFFER_LEVEL_PRIMARY,                // VkCommandBufferLevel    level;
+			1,                                              // uint32_t                commandBufferCount;
+		};
+
+		VkSemaphoreCreateInfo semaphoreCreateInfo{
+			VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,        // VkStructureType           sType;
+			nullptr,                                        // const void*               pNext;
+			0,                                              // VkSemaphoreCreateFlags    flags;
+		};
+
+		VkFenceCreateInfo fenceCreateInfo{
+			VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,            // VkStructureType       sType;
+			nullptr,                                        // const void*           pNext;
+			VK_FENCE_CREATE_SIGNALED_BIT,                   // VkFenceCreateFlags    flags;	   //< defines initial state of the fence as signalled.
+		};
+
+		//primary command buffer for this frame
+		auto err = vkAllocateCommandBuffers( mDevice, &commandBufferCreateInfo, &frame.cmd );
+		assert( !err );
+
+		err = vkCreateSemaphore( mDevice, &semaphoreCreateInfo, nullptr, &frame.semaphoreImageAcquired );
+		err = vkCreateSemaphore( mDevice, &semaphoreCreateInfo, nullptr, &frame.semaphoreRenderComplete);
+		err = vkCreateFence( mDevice, &fenceCreateInfo, nullptr, &frame.fence );
+	}
+
+}
 
 // ----------------------------------------------------------------------
 
 void ofVkRenderer::setupSwapChain(){
 
-	vkResetCommandPool( mDevice, mCommandPool, VK_COMMAND_POOL_RESET_RELEASE_RESOURCES_BIT );
+	vkResetCommandPool( mDevice, mDrawCommandPool, VK_COMMAND_POOL_RESET_RELEASE_RESOURCES_BIT );
 	// Allocate pre-present and post-present command buffers, 
 	// from main command pool, mCommandPool.
-	createCommandBuffers();
-
-	// we need a setup command buffer to transition our image memory
-	// this will allocate & initialise command buffer mSetupCommandBuffer
-	auto setupCommandBuffer = createSetupCommandBuffer();
-	beginSetupCommandBuffer( setupCommandBuffer );
-
 	
 	uint32_t numSwapChainFrames = mSettings.numSwapchainImages;
 
@@ -111,24 +144,21 @@ void ofVkRenderer::setupSwapChain(){
 		mPhysicalDevice,
 		mWindowSurface,
 		mWindowColorFormat,
-		setupCommandBuffer,
 		mWindowWidth,
 		mWindowHeight,
 		numSwapChainFrames,
 		presentMode
 	);
 
-	setupDepthStencil(setupCommandBuffer);
+	setupDepthStencil();
 
 	// create the main renderpass 
-	setupRenderPass(setupCommandBuffer);
+	setupRenderPass();
 
 	mViewport = { 0.f, 0.f, float( mWindowWidth ), float( mWindowHeight ) };
 
 	setupFrameBuffer();
 
-	// submit, wait for tasks to finish, then free mSetupCommandBuffer.
-	flushSetupCommandBuffer( setupCommandBuffer );
 }
 
 // ----------------------------------------------------------------------
@@ -154,24 +184,6 @@ void ofVkRenderer::resizeScreen( int w, int h ){
 	ofLog() << "Screen resize complete";
 }
  
-// ----------------------------------------------------------------------
-
-void ofVkRenderer::createSemaphores(){
-	
-	VkSemaphoreCreateInfo semaphoreCreateInfo = {
-		VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO, // VkStructureType           sType;
-		nullptr,                                 // const void*               pNext;
-		0,                                       // VkSemaphoreCreateFlags    flags;
-	};
-
-	// This semaphore ensures that the image is complete before starting to submit again
-	vkCreateSemaphore( mDevice, &semaphoreCreateInfo, nullptr, &mSemaphorePresentComplete );
-
-	// This semaphore ensures that all commands submitted 
-	// have been finished before submitting the image to the queue
-	vkCreateSemaphore( mDevice, &semaphoreCreateInfo, nullptr, &mSemaphoreRenderComplete );
-}
-
 // ----------------------------------------------------------------------
 
 void ofVkRenderer::querySurfaceCapabilities(){
@@ -220,71 +232,16 @@ void ofVkRenderer::createCommandPool(){
 	// create a command pool
 	VkCommandPoolCreateInfo poolInfo
 	{
-		VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,      // VkStructureType             sType;
-		nullptr,                                         // const void*                 pNext;
-		VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT, // VkCommandPoolCreateFlags    flags;
-		0,                                               // uint32_t                    queueFamilyIndex;
+		VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,      // VkStructureType                sType;
+		nullptr,                                         // const void*                    pNext;
+		VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT  // VkCommandPoolCreateFlags       flags
+		| VK_COMMAND_POOL_CREATE_TRANSIENT_BIT,
+		0,                                               // uint32_t                       queueFamilyIndex;
 	};
 		 
-	// VkCommandPoolCreateFlags --> tells us how persistent the commands living in this pool are going to be
-	auto err = vkCreateCommandPool( mDevice, &poolInfo, nullptr, &mCommandPool );
-	assert( !err );
-
-}
-
-// ----------------------------------------------------------------------
-
-VkCommandBuffer ofVkRenderer::createSetupCommandBuffer(){
-
-	VkCommandBufferAllocateInfo info = {
-		VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO, // VkStructureType         sType;
-		nullptr,                                        // const void*             pNext;
-		mCommandPool,                                   // VkCommandPool           commandPool;
-		VK_COMMAND_BUFFER_LEVEL_PRIMARY,                // VkCommandBufferLevel    level;
-		1,                                              // uint32_t                commandBufferCount;
-	};
-
-	VkCommandBuffer cmd;
- 	// allocate one command buffer (as stated above) and store the handle to 
-	// the newly allocated buffer into mSetupCommandBuffer
-	auto err = vkAllocateCommandBuffers( mDevice, &info, &cmd );
-	assert( !err );
-	return cmd;
-}
-
-// ----------------------------------------------------------------------
-
-void ofVkRenderer::beginSetupCommandBuffer( VkCommandBuffer cmd){
-	
-	VkCommandBufferBeginInfo cmdBufInfo {
-		VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO, // VkStructureType                          sType;
-		nullptr,                                     // const void*                              pNext;
-		VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT, // VkCommandBufferUsageFlags                flags;
-		nullptr,                                     // const VkCommandBufferInheritanceInfo*    pInheritanceInfo;
-	};
-	auto err = vkBeginCommandBuffer( cmd, &cmdBufInfo );
+	auto err = vkCreateCommandPool( mDevice, &poolInfo, nullptr, &mDrawCommandPool );
 	assert( !err );
 }
-
-// ----------------------------------------------------------------------
-
-void ofVkRenderer::createCommandBuffers(){
-
-	VkCommandBufferAllocateInfo allocInfo {
-		VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO, // VkStructureType         sType;
-		nullptr,                                        // const void*             pNext;
-		mCommandPool,                                   // VkCommandPool           commandPool;
-		VK_COMMAND_BUFFER_LEVEL_PRIMARY,                // VkCommandBufferLevel    level;
-		1,                                              // uint32_t                commandBufferCount;
-	};
-
-	// Pre present
-	auto err = vkAllocateCommandBuffers( mDevice, &allocInfo, &mPrePresentCommandBuffer );
-	assert( !err);
-	// Post present
-	err = vkAllocateCommandBuffers( mDevice, &allocInfo, &mPostPresentCommandBuffer );
-	assert( !err );
-};
 
 // ----------------------------------------------------------------------
 
@@ -318,9 +275,10 @@ bool  ofVkRenderer::getMemoryAllocationInfo( const VkMemoryRequirements& memReqs
 	return true;
 }
 
+
 // ----------------------------------------------------------------------
 
-void ofVkRenderer::setupDepthStencil(VkCommandBuffer cmd){
+void ofVkRenderer::setupDepthStencil(){
 	VkImageCreateInfo image = {};
 	image.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
 	image.pNext = NULL;
@@ -372,23 +330,6 @@ void ofVkRenderer::setupDepthStencil(VkCommandBuffer cmd){
 	err = vkBindImageMemory( mDevice, mDepthStencil.image, mDepthStencil.mem, 0 );
 	assert( !err );
 
-	auto transferBarrier = of::vk::createImageMemoryBarrier(
-		mDepthStencil.image,
-		VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT,
-		VK_IMAGE_LAYOUT_UNDEFINED,
-		VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL 
-	);
-
-	// Append pipeline barrier to current setup commandBuffer
-	vkCmdPipelineBarrier(
-		cmd,
-		VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-		VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-		0,
-		0, nullptr,
-		0, nullptr,
-		1, &transferBarrier );
-
 	depthStencilView.image = mDepthStencil.image;
 
 	if ( mDepthStencil.view ){
@@ -402,7 +343,7 @@ void ofVkRenderer::setupDepthStencil(VkCommandBuffer cmd){
 
 // ----------------------------------------------------------------------
 
-void ofVkRenderer::setupRenderPass(VkCommandBuffer cmd){
+void ofVkRenderer::setupRenderPass(){
 	
 	VkAttachmentDescription attachments[2] = {
 		{   // Color attachment
@@ -434,7 +375,7 @@ void ofVkRenderer::setupRenderPass(VkCommandBuffer cmd){
 			VK_ATTACHMENT_STORE_OP_STORE,                      // VkAttachmentStoreOp             storeOp;
 			VK_ATTACHMENT_LOAD_OP_DONT_CARE,                   // VkAttachmentLoadOp              stencilLoadOp;
 			VK_ATTACHMENT_STORE_OP_DONT_CARE,                  // VkAttachmentStoreOp             stencilStoreOp;
-			VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,  // VkImageLayout                   initialLayout;
+			VK_IMAGE_LAYOUT_UNDEFINED,                         // VkImageLayout                   initialLayout;
 			VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,  // VkImageLayout                   finalLayout; 
 		},
 	};
@@ -556,15 +497,12 @@ void ofVkRenderer::flushSetupCommandBuffer(VkCommandBuffer cmd){
 void ofVkRenderer::startRender(){
 
 	// start of new frame
-	VkResult err;
+	// VkResult err;
 
-	// + block cpu until swapchain can get next image, 
-	// + get index for swapchain image we may render into,
-	// + signal presentComplete once the image has been acquired
-	uint32_t swapIdx;
+	uint32_t swapIdx = 0;
 
-	err = mSwapchain.acquireNextImage( mSemaphorePresentComplete, &swapIdx );
-	assert( !err );
+	// err = mSwapchain.acquireNextImage( mSemaphorePresentComplete, &swapIdx );
+	// assert( !err );
 
 	if ( mDefaultContext ){
 		mDefaultContext->begin( swapIdx );
@@ -576,43 +514,6 @@ void ofVkRenderer::startRender(){
 
 }
 
-// ----------------------------------------------------------------------
-
-void ofVkRenderer::submitCommandBuffer(VkCommandBuffer cmd){
-	// Submit the draw command buffer
-	//
-	// The submit info structure contains a list of
-	// command buffers and semaphores to be submitted to a queue
-	// If you want to submit multiple command buffers, pass an array
-	VkPipelineStageFlags pipelineStages[] = { VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT };
-
-	size_t swapId = mSwapchain.getCurrentImageIndex();
-
-	VkResult err = VK_SUCCESS;
-
-	{
-		VkSubmitInfo submitInfo = {
-			VK_STRUCTURE_TYPE_SUBMIT_INFO,           // VkStructureType                sType;
-			nullptr,                                 // const void*                    pNext;
-			1,                                       // uint32_t                       waitSemaphoreCount;
-			&mSemaphorePresentComplete,              // const VkSemaphore*             pWaitSemaphores;
-			pipelineStages,                          // const VkPipelineStageFlags*    pWaitDstStageMask;
-			1,                                       // uint32_t                       commandBufferCount;
-			&cmd,                                    // const VkCommandBuffer*         pCommandBuffers;
-			1,                                       // uint32_t                       signalSemaphoreCount;
-			&mSemaphoreRenderComplete,               // const VkSemaphore*             pSignalSemaphores;
-		};
-
-		// Submit to the graphics queue	- 
-		err = vkQueueSubmit( mQueue, 1, &submitInfo, VK_NULL_HANDLE );
-		assert( !err );
-	}
-}
-
-
-
-// ----------------------------------------------------------------------
-
 
 // ----------------------------------------------------------------------
 
@@ -621,120 +522,9 @@ void ofVkRenderer::finishRender(){
 	if ( mDefaultContext ){
 		// this will implicitly submit the command buffer
 		mDefaultContext->end();
-		mDefaultContext->submit();
 	}
 
-	{  // pre-present
-
-		/*
-		
-		We have to transfer the image layout of our current color attachment 
-		from VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL to VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
-		so that it can be handed over to the swapchain, ready for presenting. 
-		
-		The attachment arrives in VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL because that's 
-		how our main renderpass, mRenderPass, defines it in its finalLayout parameter.
-		
-		*/
-
-		VkCommandBufferBeginInfo beginInfo = {
-			VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,     // VkStructureType                          sType;
-			nullptr,                                         // const void*                              pNext;
-			0,                                               // VkCommandBufferUsageFlags                flags;
-			nullptr,                                         // const VkCommandBufferInheritanceInfo*    pInheritanceInfo;
-		};
-		
-		auto err = vkBeginCommandBuffer( mPrePresentCommandBuffer, &beginInfo );
-		assert( !err );
-
-		{
-			auto transferBarrier = of::vk::createImageMemoryBarrier(	
-				mSwapchain.getImage( mSwapchain.getCurrentImageIndex() ).imageRef,
-				VK_IMAGE_ASPECT_COLOR_BIT,
-				VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-				VK_IMAGE_LAYOUT_PRESENT_SRC_KHR );
-
-			// Append pipeline barrier to commandBuffer
-			vkCmdPipelineBarrier(
-				mPrePresentCommandBuffer,
-				VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-				VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-				0,
-				0, nullptr,
-				0, nullptr,
-				1, &transferBarrier );
-		}
-		err = vkEndCommandBuffer( mPrePresentCommandBuffer );
-		assert( !err );
-
-		// Submit to the queue
-		VkSubmitInfo submitInfo = {};
-		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-		submitInfo.commandBufferCount = 1;
-		submitInfo.pCommandBuffers = &mPrePresentCommandBuffer;
-		
-
-		err = vkQueueSubmit( mQueue, 1, &submitInfo, VK_NULL_HANDLE );
-		assert( !err );
-
-	}
 	
-	// Present the current buffer to the swap chain
-	// We pass the signal semaphore from the submit info
-	// to ensure that the image is not rendered until
-	// all commands have been submitted
-	auto err = mSwapchain.queuePresent( mQueue, mSwapchain.getCurrentImageIndex(), { mSemaphoreRenderComplete } );
-	assert( !err );
-
-	// Add a post present image memory barrier
-	// This will transform the frame buffer color attachment back
-	// to it's initial layout after it has been presented to the
-	// windowing system
-	// See buildCommandBuffers for the pre present barrier that 
-	// does the opposite transformation 
-	VkImageMemoryBarrier postPresentBarrier = {};
-	postPresentBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-	postPresentBarrier.pNext = NULL;
-	postPresentBarrier.srcAccessMask = 0;
-	postPresentBarrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-	postPresentBarrier.oldLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-	postPresentBarrier.newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-	postPresentBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-	postPresentBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-	postPresentBarrier.subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 };
-	postPresentBarrier.image = mSwapchain.getImage( mSwapchain.getCurrentImageIndex() ).imageRef;
-
-	// Use dedicated command buffer from example base class for submitting the post present barrier
-	VkCommandBufferBeginInfo cmdBufInfo = {};
-	cmdBufInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-
-	err = vkBeginCommandBuffer( mPostPresentCommandBuffer, &cmdBufInfo );
-	assert( !err );
-
-	// Put post present barrier into command buffer
-	vkCmdPipelineBarrier(
-		mPostPresentCommandBuffer,
-		VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
-		VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-		0,
-		0, nullptr,
-		0, nullptr,
-		1, &postPresentBarrier );
-
-	err = vkEndCommandBuffer( mPostPresentCommandBuffer );
-	assert( !err );
-
-	// Submit to the queue
-	VkSubmitInfo submitInfo = {};
-	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-	submitInfo.commandBufferCount = 1;
-	submitInfo.pCommandBuffers = &mPostPresentCommandBuffer;
-
-	err = vkQueueSubmit( mQueue, 1, &submitInfo, VK_NULL_HANDLE );
-	assert( !err );
-
-	err = vkQueueWaitIdle( mQueue );
-	assert( !err );
 
 }
 
@@ -766,7 +556,7 @@ void ofVkRenderer::draw( const ofMesh & mesh_, ofPolyRenderMode polyMode, bool u
 	// TODO: implement polymode and usageBools
 
 	if ( mDefaultContext ){
-		mDefaultContext->draw( mesh_ );
+		mDefaultContext->draw( mFrameResources[mFrameIndex].cmd, mesh_ );
 	}
 
 }  

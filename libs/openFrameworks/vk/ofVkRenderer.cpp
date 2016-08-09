@@ -71,6 +71,7 @@ ofVkRenderer::ofVkRenderer(const ofAppBaseWindow * _window, Settings settings )
 
 // ----------------------------------------------------------------------
 
+
 const VkInstance& ofVkRenderer::getInstance() {
 	return mInstance;
 }
@@ -99,8 +100,14 @@ ofVkRenderer::~ofVkRenderer()
 	mDefaultContext.reset();
 	mShaderManager.reset();
 
+	for ( auto & frame : mFrameResources ){
+		vkDestroySemaphore( mDevice, frame.semaphoreImageAcquired , nullptr );
+		vkDestroySemaphore( mDevice, frame.semaphoreRenderComplete, nullptr );
+		vkDestroyFence( mDevice, frame.fence, nullptr );
+	}
+
 	// reset command pool and all associated command buffers.
-	err = vkResetCommandPool( mDevice, mCommandPool, VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT );
+	err = vkResetCommandPool( mDevice, mDrawCommandPool, VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT );
 	assert( !err );
 
 	vkDestroyRenderPass( mDevice, mRenderPass, nullptr );
@@ -116,9 +123,7 @@ ofVkRenderer::~ofVkRenderer()
 	vkDestroyImage( mDevice, mDepthStencil.image, nullptr );
 	vkFreeMemory( mDevice, mDepthStencil.mem, nullptr );
 
-	vkDestroyCommandPool( mDevice, mCommandPool, VK_NULL_HANDLE );
-	vkDestroySemaphore( mDevice, mSemaphorePresentComplete, nullptr );
-	vkDestroySemaphore( mDevice, mSemaphoreRenderComplete, nullptr );
+	vkDestroyCommandPool( mDevice, mDrawCommandPool, VK_NULL_HANDLE );
 
 	mSwapchain.reset();
 

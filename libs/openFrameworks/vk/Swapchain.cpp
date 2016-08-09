@@ -13,7 +13,6 @@ void Swapchain::setup(
 	const VkPhysicalDevice & physicalDevice_,
 	const VkSurfaceKHR & surface_,
 	const VkSurfaceFormatKHR& surfaceFormat_,
-	VkCommandBuffer cmdBuffer,
 	uint32_t & width_,
 	uint32_t & height_,
 	uint32_t & numSwapChainFrames_,

@@ -159,22 +159,6 @@ private:
 
 	int mFrameIndex = 0;
 	
-	// one command buffer pool per context
-	VkCommandPool mCommandPool = nullptr;
-
-	// command buffers - size must be setup equal to swapchain size
-	// context owns these.
-
-	std::vector<VkCommandBuffer> mCommandBuffer;
-	
-	void beginRenderPass();
-	void endRenderPass();
-
-	void setupCommandPool();
-	void resetCurrentCommandBuffer();
-	void beginCommandBuffer();
-	void endCommandBuffer();
-
 	// --------- pipeline info
 
 	// !TODO: pipeline cache should be shared over all contexts.
@@ -241,10 +225,6 @@ public:
 	// unmap uniform buffers 
 	void end();
 
-	// submit command buffer to queue
-	void submit();
-
-
 	// write current descriptor buffer state to GPU buffer
 	// updates descriptorOffsets - saves these in frameShadow
 	void flushUniformBufferState();
@@ -299,7 +279,7 @@ public:
 	}
 
 	// draw a mesh using current context draw state
-	Context& draw( const ofMesh& mesh_);
+	Context& draw(const VkCommandBuffer& cmd, const ofMesh& mesh_);
 
 	// store vertex and index data inside the current dynamic memory frame
 	// return memory mapping offets based on current memory buffer.

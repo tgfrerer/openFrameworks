@@ -41,7 +41,6 @@ public:
 		const VkPhysicalDevice& physicalDevice_, 
 		const VkSurfaceKHR& surface_,
 		const VkSurfaceFormatKHR& surfaceFormat_,
-		VkCommandBuffer cmdBuffer,
 		uint32_t & width,
 		uint32_t & height,
 		uint32_t & numSwapChainFrames,

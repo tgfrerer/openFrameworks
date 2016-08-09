@@ -69,17 +69,12 @@ void of::vk::Context::setup(ofVkRenderer* renderer_){
 	// be owned by the renderer wich in turn owns the contexts.  
 	mPipelineCache = of::vk::createPipelineCache( mSettings.device, "ofAppPipelineCache.bin" );
 
-	setupCommandPool();
 }
 
 // ----------------------------------------------------------------------
 
 void of::vk::Context::reset(){
 	
-	if ( nullptr != mCommandPool ){
-		vkDestroyCommandPool( mSettings.device, mCommandPool, nullptr );
-		mCommandPool = nullptr;
-	}
 
 	if ( nullptr != mPipelineCache ){
 		vkDestroyPipelineCache( mSettings.device, mPipelineCache, nullptr );
@@ -232,7 +227,6 @@ void of::vk::Context::setupDescriptorPool(){
 	}
 }
 
-
 // ----------------------------------------------------------------------
 
 void of::vk::Context::begin(size_t frame_){
@@ -269,147 +263,11 @@ void of::vk::Context::begin(size_t frame_){
 	mDSS_dirty.clear();
 	mDSS_set.clear();
 
-	resetCurrentCommandBuffer();
-
-	beginCommandBuffer();
-	beginRenderPass();
-}
-
-// ----------------------------------------------------------------------
-
-void of::vk::Context::setupCommandPool(){
-	// CONSIDER: make it possible to set command pools to be more permanent - or transient.
-
-	// create a command pool
-	VkCommandPoolCreateInfo poolInfo
-	{
-		VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,      // VkStructureType             sType;
-		nullptr,                                         // const void*                 pNext;
-		VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT, // VkCommandPoolCreateFlags    flags;
-		0,                                               // uint32_t                    queueFamilyIndex;
-	};
-
-	// VkCommandPoolCreateFlags --> tells us how persistent the commands living in this pool are going to be
-	auto err = vkCreateCommandPool( mSettings.device, &poolInfo, nullptr, &mCommandPool );
-	assert( !err );
-}
-
-// ----------------------------------------------------------------------
-
-void of::vk::Context::resetCurrentCommandBuffer(){
-	
-	if ( mCommandBuffer.size() == mSettings.numSwapchainImages ){
-		// if command buffer has been previously recorded, we want to re-use it.
-		auto err = vkResetCommandBuffer( mCommandBuffer[mFrameIndex], 0 );
-		assert( !err );
-
-	} else{
-		// allocate a draw command buffer for each swapchain image
-		mCommandBuffer.resize( mSettings.numSwapchainImages );
-		// (re)allocate command buffer used for draw commands
-		VkCommandBufferAllocateInfo allocInfo = {
-			VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,                 // VkStructureType         sType;
-			nullptr,                                                        // const void*             pNext;
-			mCommandPool,                                                   // VkCommandPool           commandPool;
-			VK_COMMAND_BUFFER_LEVEL_PRIMARY,                                // VkCommandBufferLevel    level;
-			uint32_t( mCommandBuffer.size() )                                 // uint32_t                commandBufferCount;
-		};
-
-		auto err = vkAllocateCommandBuffers( mSettings.device, &allocInfo, mCommandBuffer.data() );
-		assert( !err );
-
-	}
-}
-
-// ----------------------------------------------------------------------
-
-void of::vk::Context::beginCommandBuffer(){
-	auto & cmd = mCommandBuffer[mFrameIndex];
-
-	VkCommandBufferBeginInfo cmdBufInfo = {};
-	cmdBufInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-	cmdBufInfo.pNext = NULL;
-
-	// Set target frame buffer
-	auto err = vkBeginCommandBuffer( cmd, &cmdBufInfo );
-	assert( !err );
-
-	auto & currentViewport = ofGetCurrentViewport();
-
-	// Update dynamic viewport state
-	VkViewport viewport = {};
-	viewport.x = currentViewport.x;
-	viewport.y = currentViewport.y;
-	viewport.width = (float)currentViewport.width;
-	viewport.height = (float)currentViewport.height;
-	viewport.minDepth = 0.0f;		   // this is the min depth value for the depth buffer
-	viewport.maxDepth = 1.0f;		   // this is the max depth value for the depth buffer
-	vkCmdSetViewport( cmd, 0, 1, &viewport );
-
-	// Update dynamic scissor state
-	VkRect2D scissor = {};
-	scissor.extent.width = viewport.width;
-	scissor.extent.height = viewport.height;
-	scissor.offset.x = viewport.x;
-	scissor.offset.y = viewport.y;
-	vkCmdSetScissor( cmd, 0, 1, &scissor );
-}
-
-// ----------------------------------------------------------------------
-
-void of::vk::Context::endCommandBuffer(){
-	auto err = vkEndCommandBuffer( mCommandBuffer[mFrameIndex] );
-	assert( !err );
-
 }
 
 // ----------------------------------------------------------------------
 
 void of::vk::Context::end(){
-	endRenderPass();
-	endCommandBuffer();
-}
-
-// ----------------------------------------------------------------------
-void of::vk::Context::submit(){
-	static auto renderer = dynamic_pointer_cast<ofVkRenderer>(ofGetCurrentRenderer());
-	renderer->submitCommandBuffer( mCommandBuffer[mFrameIndex] );
-}
-
-// ----------------------------------------------------------------------
-
-void of::vk::Context::beginRenderPass(){
-	VkClearValue clearValues[2];
-	clearValues[0].color = {0.f, 0.f, 0.f, 0.f};
-	clearValues[1].depthStencil = { 1.0f, 0 };
-
-	auto viewport = ofGetCurrentViewport();
-
-	VkRect2D renderArea{
-		{ int32_t(viewport.x), int32_t(viewport.y) },          // VkOffset2D
-		{ uint32_t(viewport.width), uint32_t(viewport.height) }, // VkExtent2D
-	};
-
-	VkRenderPassBeginInfo renderPassBeginInfo = {
-		VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO, // VkStructureType        sType;
-		nullptr,                                  // const void*            pNext;
-		mSettings.renderPass,                     // VkRenderPass           renderPass;
-		mSettings.framebuffers[mFrameIndex],      // VkFramebuffer          framebuffer;
-		renderArea,                               // VkRect2D               renderArea;
-		2,                                        // uint32_t               clearValueCount;
-		clearValues,                              // const VkClearValue*    pClearValues;
-	};
-
-	// VK_SUBPASS_CONTENTS_INLINE means we're putting all our render commands into
-	// the primary command buffer - otherwise we would have to call execute on secondary
-	// command buffers to draw.
-	vkCmdBeginRenderPass( mCommandBuffer[mFrameIndex], &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE );
-}
-
-// ----------------------------------------------------------------------
-
-void of::vk::Context::endRenderPass(){
-	vkCmdEndRenderPass( mCommandBuffer[mFrameIndex] );
 }
 
 // ----------------------------------------------------------------------
@@ -448,8 +306,7 @@ of::vk::Context& of::vk::Context::popBuffer( const std::string & ubo_ ){
 
 // ----------------------------------------------------------------------
 
-of::vk::Context& of::vk::Context::draw( const ofMesh & mesh_){
-	auto & cmd = mCommandBuffer[mFrameIndex];
+of::vk::Context& of::vk::Context::draw(const VkCommandBuffer& cmd, const ofMesh & mesh_){
 
 	// store uniforms if needed
 	flushUniformBufferState();
@@ -560,8 +417,6 @@ bool of::vk::Context::storeMesh( const ofMesh & mesh_, std::vector<VkDeviceSize>
 
 void of::vk::Context::flushUniformBufferState( ){
 
-	
-
 	// iterate over all currently bound descriptorsets
 
 	for ( const auto& key : mCurrentShader->getSetLayoutKeys() ){
@@ -607,8 +462,6 @@ void of::vk::Context::flushUniformBufferState( ){
 
 			++offsetIt;
 		}
-
-		
 	}	// end for ( const auto& key : mCurrentShader->getSetLayoutKeys() )
 }
 

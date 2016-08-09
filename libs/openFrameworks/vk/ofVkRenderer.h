@@ -61,7 +61,6 @@ public:
 	};
 
 	virtual void startRender() override;
-	        void submitCommandBuffer( VkCommandBuffer cmd );
 	virtual void finishRender() override;
 
 	const uint32_t getSwapChainSize();
@@ -258,16 +257,26 @@ public:
 	// testing
 
 	const VkCommandPool& getCommandPool() const {
-		return mCommandPool;
-	};
+		return mDrawCommandPool;
+	}
+
+	
+	const VkCommandBuffer* getCurrentDrawCommandBuffer() const{
+		if ( mFrameResources.size() < mFrameIndex ){
+			return &mFrameResources[mFrameIndex].cmd;
+		} else{
+			ofLogError() << "No current draw command buffer";
+			return nullptr;
+		}
+	}
 
 	const VkQueue& getQueue() const {
 		return mQueue;
-	};
+	}
 
 	const shared_ptr<of::vk::Context>& getDefaultContext(){
 		return mDefaultContext;
-	};
+	}
 
 	void setDefaultContext( std::shared_ptr<of::vk::Context>& defaultContext){
 		mDefaultContext = defaultContext;
@@ -281,28 +290,34 @@ private:
 
 	ofRectangle mViewport;
 
-	VkCommandPool            mCommandPool = nullptr;
+	VkCommandPool            mDrawCommandPool = nullptr;
 	
-	// command buffers used to present frame buffer to screen
-	VkCommandBuffer          mPrePresentCommandBuffer     = nullptr;
-	VkCommandBuffer          mPostPresentCommandBuffer    = nullptr;
+	struct FrameResources
+	{
+		VkCommandBuffer cmd;
+		// Synchronization semaphores - one for each swapchain image
+		VkSemaphore semaphoreImageAcquired;
+		VkSemaphore semaphoreRenderComplete;
+		VkFence     fence;
+	};
 
-	// find these implemented in VKPrepare.cpp
+	std::vector<FrameResources> mFrameResources; // one frame resource per virtual frame
+	uint32_t                    mFrameIndex = 0; // index of frame currently in production
+
+	
+
+	void                     setupFrameResources();
+
 	void                     querySurfaceCapabilities();
 	void                     createCommandPool();
-	VkCommandBuffer          createSetupCommandBuffer();
-	void                     beginSetupCommandBuffer(VkCommandBuffer cmd);
 
 	void                     setupSwapChain();
-	void                     createCommandBuffers();
-	void                     setupDepthStencil(VkCommandBuffer cmd);
-	void                     setupRenderPass(VkCommandBuffer cmd);
+	void                     setupDepthStencil();
+	void                     setupRenderPass();
 	
 	void                     setupFrameBuffer();
 	void                     flushSetupCommandBuffer(VkCommandBuffer cmd);
 
-	// creates synchronisation primitives 
-	void                     createSemaphores();
 
 	// our main (primary) gpu queue. all commandbuffers are submitted to this queue
 	// as are present commands.
@@ -321,9 +336,6 @@ private:
 	// main renderpass 
 	VkRenderPass mRenderPass = nullptr;
 
-	// Synchronization semaphores - one for each swapchain image
-	VkSemaphore mSemaphorePresentComplete;
-	VkSemaphore mSemaphoreRenderComplete;
 
 	// our depth stencil: 
 	// we only need one since there is only ever one frame in flight.
@@ -353,12 +365,13 @@ private:
 	uint32_t mWindowWidth = 0;
 	uint32_t mWindowHeight = 0;
 
-	struct BufferObject
-	{
-		VkBuffer buf;
-		VkDeviceMemory mem;
-		size_t num_elements;
-	};
+	//struct BufferObject
+	//{
+	//	VkBuffer buf;
+	//	VkDeviceMemory mem;
+	//	size_t num_elements;
+	//};
+
 
 public:
 

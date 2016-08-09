@@ -84,7 +84,7 @@ void ofApp::setup(){
 	// mVkTex.load( tmpImagePix );
 
 	// use this to swap out the default context with a newly created one.
-	if (false )
+	if ( false )
 	{
 		auto & renderer = dynamic_pointer_cast<ofVkRenderer>( ofGetCurrentRenderer() );
 
@@ -152,7 +152,8 @@ void ofApp::draw(){
 void ofApp::drawModeExplicit(){
 	
 	auto & renderer = dynamic_pointer_cast<ofVkRenderer>( ofGetCurrentRenderer() );
-	auto & context = *renderer->getDefaultContext();
+	auto & context  = *renderer->getDefaultContext();
+	auto & cmd      = *renderer->getCurrentDrawCommandBuffer();
 
 	static ofMesh ico = ofMesh::icosphere( 50, 3 );
 	
@@ -164,7 +165,7 @@ void ofApp::drawModeExplicit(){
 		.setUniform( "globalColor", ofFloatColor::lightBlue )
 		.pushMatrix()
 		.translate( { -200, +200, 100 } )
-		.draw(ico)
+		.draw(cmd, ico)
 		.popMatrix();
 	//context.unbind( shader1 );
 	//context.unbind( mCam1 );
@@ -174,31 +175,31 @@ void ofApp::drawModeExplicit(){
 		.pushMatrix()
 		.setUniform( "globalColor", ofFloatColor::white )
 		.translate( { -200, -200, -200 } )
-		.draw(ico)
+		.draw(cmd, ico)
 		.popMatrix();
 
 	context
 		.pushMatrix()
 		.translate( { 200, +200, -200 } )
-		.draw( ico )
+		.draw(cmd, ico )
 		.popMatrix();
 
 	context
 		.pushMatrix()
 		.setPolyMode( VK_POLYGON_MODE_POINT )
 		.translate( { 200, -200, 200 } )
-		.draw( ico )
+		.draw(cmd, ico )
 		.popMatrix();
 
 	context
 		.setUniform( "globalColor", ofFloatColor::red )
 		.setPolyMode( VK_POLYGON_MODE_FILL )
-		.draw( mFontMesh );
+		.draw(cmd, mFontMesh );
 	
 	context
 		.pushMatrix()
 		.rotateRad( ( ofGetFrameNum() % 360 )*DEG_TO_RAD, { 0.f,0.f,1.f } )
-		.draw( mLMesh )
+		.draw(cmd, mLMesh )
 		.popMatrix();
 
 	context
@@ -206,7 +207,7 @@ void ofApp::drawModeExplicit(){
 		.setUniform( "globalColor", ofFloatColor::teal )
 		.translate( { 200.f,0.f,0.f } )
 		.rotateRad( 360.f * ( ( ofGetElapsedTimeMillis() % 6000 ) / 6000.f ) * DEG_TO_RAD, { 0.f,0.f,1.f } )
-		.draw( mLMesh )
+		.draw(cmd, mLMesh )
 		.popMatrix();
 
 	mCam1.end();
