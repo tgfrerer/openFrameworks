@@ -122,6 +122,6 @@ public:
 	uint32_t vkVersion             = 1 << 22;
 	uint32_t numSwapchainImages    = 2;                        // number of images the swapchain should try to create
 	uint32_t numVirtualFrames      = 3;                        // number of virtual frames to produce to feed swapchain
-	VkPresentModeKHR swapchainType = VK_PRESENT_MODE_FIFO_KHR; // api only guarantees FIFO to be present.
+	//VkPresentModeKHR swapchainType = VK_PRESENT_MODE_FIFO_KHR; // api only guarantees FIFO to be present.
 
 };
