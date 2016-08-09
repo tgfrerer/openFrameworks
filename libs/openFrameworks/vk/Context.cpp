@@ -57,6 +57,10 @@ void of::vk::Context::setup(ofVkRenderer* renderer_){
 	mAlloc = std::make_shared<of::vk::Allocator>(settings);
 	mAlloc->setup();
 
+	// DescriptorPool and frameState are set up based on 
+	// the current library of DescriptorSetLayouts inside
+	// the ShaderManager.
+
 	setupDescriptorPool();
 	setupFrameState();
 
@@ -232,7 +236,7 @@ void of::vk::Context::setupDescriptorPool(){
 // ----------------------------------------------------------------------
 
 void of::vk::Context::begin(size_t frame_){
-	mSwapIdx = int(frame_);
+	mFrameIndex = int(frame_);
 	mAlloc->free(frame_);
 
 	// make sure all shader uniforms are marked dirty when context is started fresh.
@@ -296,7 +300,7 @@ void of::vk::Context::resetCurrentCommandBuffer(){
 	
 	if ( mCommandBuffer.size() == mSettings.numSwapchainImages ){
 		// if command buffer has been previously recorded, we want to re-use it.
-		auto err = vkResetCommandBuffer( mCommandBuffer[mSwapIdx], 0 );
+		auto err = vkResetCommandBuffer( mCommandBuffer[mFrameIndex], 0 );
 		assert( !err );
 
 	} else{
@@ -320,7 +324,7 @@ void of::vk::Context::resetCurrentCommandBuffer(){
 // ----------------------------------------------------------------------
 
 void of::vk::Context::beginCommandBuffer(){
-	auto & cmd = mCommandBuffer[mSwapIdx];
+	auto & cmd = mCommandBuffer[mFrameIndex];
 
 	VkCommandBufferBeginInfo cmdBufInfo = {};
 	cmdBufInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -354,7 +358,7 @@ void of::vk::Context::beginCommandBuffer(){
 // ----------------------------------------------------------------------
 
 void of::vk::Context::endCommandBuffer(){
-	auto err = vkEndCommandBuffer( mCommandBuffer[mSwapIdx] );
+	auto err = vkEndCommandBuffer( mCommandBuffer[mFrameIndex] );
 	assert( !err );
 
 }
@@ -369,7 +373,7 @@ void of::vk::Context::end(){
 // ----------------------------------------------------------------------
 void of::vk::Context::submit(){
 	static auto renderer = dynamic_pointer_cast<ofVkRenderer>(ofGetCurrentRenderer());
-	renderer->submitCommandBuffer( mCommandBuffer[mSwapIdx] );
+	renderer->submitCommandBuffer( mCommandBuffer[mFrameIndex] );
 }
 
 // ----------------------------------------------------------------------
@@ -390,7 +394,7 @@ void of::vk::Context::beginRenderPass(){
 		VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO, // VkStructureType        sType;
 		nullptr,                                  // const void*            pNext;
 		mSettings.renderPass,                     // VkRenderPass           renderPass;
-		mSettings.framebuffers[mSwapIdx],         // VkFramebuffer          framebuffer;
+		mSettings.framebuffers[mFrameIndex],      // VkFramebuffer          framebuffer;
 		renderArea,                               // VkRect2D               renderArea;
 		2,                                        // uint32_t               clearValueCount;
 		clearValues,                              // const VkClearValue*    pClearValues;
@@ -399,13 +403,13 @@ void of::vk::Context::beginRenderPass(){
 	// VK_SUBPASS_CONTENTS_INLINE means we're putting all our render commands into
 	// the primary command buffer - otherwise we would have to call execute on secondary
 	// command buffers to draw.
-	vkCmdBeginRenderPass( mCommandBuffer[mSwapIdx], &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE );
+	vkCmdBeginRenderPass( mCommandBuffer[mFrameIndex], &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE );
 }
 
 // ----------------------------------------------------------------------
 
 void of::vk::Context::endRenderPass(){
-	vkCmdEndRenderPass( mCommandBuffer[mSwapIdx] );
+	vkCmdEndRenderPass( mCommandBuffer[mFrameIndex] );
 }
 
 // ----------------------------------------------------------------------
@@ -445,7 +449,7 @@ of::vk::Context& of::vk::Context::popBuffer( const std::string & ubo_ ){
 // ----------------------------------------------------------------------
 
 of::vk::Context& of::vk::Context::draw( const ofMesh & mesh_){
-	auto & cmd = mCommandBuffer[mSwapIdx];
+	auto & cmd = mCommandBuffer[mFrameIndex];
 
 	// store uniforms if needed
 	flushUniformBufferState();
@@ -520,31 +524,31 @@ bool of::vk::Context::storeMesh( const ofMesh & mesh_, std::vector<VkDeviceSize>
 
 	// binding number 0
 	numBytes = numVertices * sizeof( ofVec3f );
-	if ( mAlloc->allocate( numBytes, pData, vertexOffsets[0], mSwapIdx ) ){
+	if ( mAlloc->allocate( numBytes, pData, vertexOffsets[0], mFrameIndex ) ){
 		memcpy( pData, mesh_.getVerticesPointer(), numBytes );
 	};
 
 	// binding number 1
 	numBytes = numColors * sizeof( ofFloatColor );
-	if ( mAlloc->allocate( numBytes, pData, vertexOffsets[1], mSwapIdx ) ){
+	if ( mAlloc->allocate( numBytes, pData, vertexOffsets[1], mFrameIndex ) ){
 		memcpy( pData, mesh_.getColorsPointer(), numBytes );
 	};
 
 	// binding number 2
 	numBytes = numNormals * sizeof( ofVec3f );
-	if ( mAlloc->allocate( numBytes, pData, vertexOffsets[2], mSwapIdx ) ){
+	if ( mAlloc->allocate( numBytes, pData, vertexOffsets[2], mFrameIndex ) ){
 		memcpy( pData, mesh_.getNormalsPointer(), numBytes );
 	};
 
 	numBytes = numTexCooords * sizeof( ofVec2f );
-	if ( mAlloc->allocate( numBytes, pData, vertexOffsets[3], mSwapIdx ) ){
+	if ( mAlloc->allocate( numBytes, pData, vertexOffsets[3], mFrameIndex ) ){
 		memcpy( pData, mesh_.getTexCoordsPointer(), numBytes );
 	};
 
 
 	VkDeviceSize indexOffset = 0;
 	numBytes = numIndices * sizeof( ofIndexType );
-	if ( mAlloc->allocate( numBytes, pData, indexOffset, mSwapIdx ) ){
+	if ( mAlloc->allocate( numBytes, pData, indexOffset, mFrameIndex ) ){
 		indexOffsets.push_back( indexOffset );
 		memcpy( pData, mesh_.getIndexPointer(), numBytes );
 	};
@@ -581,7 +585,7 @@ void of::vk::Context::flushUniformBufferState( ){
 				
 				VkDeviceSize numBytes = uniformBuffer.struct_size;
 				VkDeviceSize newOffset = 0;	// device GPU memory offset for this buffer 
-				auto success = mAlloc->allocate( numBytes, pDst, newOffset, mSwapIdx );
+				auto success = mAlloc->allocate( numBytes, pDst, newOffset, mFrameIndex );
 				*offsetIt = (uint32_t)newOffset; // store offset into offsets list.
 				if ( !success ){
 					ofLogError() << "out of buffer space.";
@@ -666,7 +670,7 @@ const std::vector<VkDescriptorSet>& of::vk::Context::updateDescriptorSetState(){
 				VkDescriptorSetAllocateInfo allocInfo{
 					VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,	 // VkStructureType                 sType;
 					nullptr,	                                     // const void*                     pNext;
-					mDescriptorPool[mSwapIdx],                       // VkDescriptorPool                descriptorPool;
+					mDescriptorPool[mFrameIndex],                       // VkDescriptorPool                descriptorPool;
 					uint32_t(layouts.size()),                        // uint32_t                        descriptorSetCount;
 					layouts.data()                                   // const VkDescriptorSetLayout*    pSetLayouts;
 				};

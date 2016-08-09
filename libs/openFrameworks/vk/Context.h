@@ -157,7 +157,7 @@ private:
 
 	// -----------
 
-	int mSwapIdx = 0;
+	int mFrameIndex = 0;
 	
 	// one command buffer pool per context
 	VkCommandPool mCommandPool = nullptr;
