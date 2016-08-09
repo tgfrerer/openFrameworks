@@ -25,6 +25,13 @@ layout (location = 2) in vec3 inNormal;
 layout (location = 0) out vec4 outColor;
 layout (location = 1) out vec3 outNormal;
 
+// we override the built-in fixed function outputs
+// to have more control over the SPIR-V code created.
+out gl_PerVertex
+{
+    vec4 gl_Position;
+};
+
 void main() 
 {
 	outNormal   = (inverse(transpose( viewMatrix * modelMatrix)) * vec4(inNormal, 0.0)).xyz;
