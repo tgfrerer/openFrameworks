@@ -1,17 +1,15 @@
 #include "vk/Shader.h"
-#include "vk/Context.h"
+#include "vk/ShaderManager.h"
 #include "ofLog.h"
+#include "ofAppRunner.h"
 #include "ofFileUtils.h"
 #include "spooky/SpookyV2.h"
 #include "shaderc/shaderc.hpp"
-#include "vk/ShaderManager.h"
 
 // ----------------------------------------------------------------------
 
 of::vk::Shader::Shader( const Settings & settings_ )
 	: mSettings( settings_ )
-	, mContext(settings_.context)
-	, mDevice( settings_.context->mSettings.device)
 {
 	compile();
 }
@@ -170,11 +168,13 @@ void of::vk::Shader::createVkShaderModule( const VkShaderStageFlagBits shaderTyp
 		spirCode.data()                                             // const uint32_t*              pCode;
 	};
 
+	auto & deviceHandle = mShaderManager->mSettings.device;
+
 	VkShaderModule module;
-	auto err = vkCreateShaderModule( mDevice, &info, nullptr, &module );
+	auto err = vkCreateShaderModule( deviceHandle, &info, nullptr, &module );
 	assert( !err );
 
-	auto tmpShaderStage = std::shared_ptr<ShaderStage>( new ShaderStage, [device = mDevice](ShaderStage* lhs){
+	auto tmpShaderStage = std::shared_ptr<ShaderStage>( new ShaderStage, [device = deviceHandle](ShaderStage* lhs){
 		vkDestroyShaderModule( device, lhs->module, nullptr );
 		delete lhs;
 	} );
@@ -444,7 +444,7 @@ void of::vk::Shader::buildSetLayouts(const std::map<std::string, BindingInfo> & 
 
 		// Store the SetLayout in shader manager - if Shader Manager already 
 		// has a SetLayout of this key, this is a no-op.
-		mContext->getShaderManager()->storeDescriptorSetLayout( std::move(layout) );
+		mShaderManager->storeDescriptorSetLayout( std::move(layout) );
 
 		++i;
 	}
@@ -458,7 +458,7 @@ void of::vk::Shader::createPipelineLayout() {
 	vkLayouts.reserve( mDescriptorSetLayoutKeys.size() );
 
 	for ( const auto &k : mDescriptorSetLayoutKeys ){
-		vkLayouts.push_back( mContext->getShaderManager()->getDescriptorSetLayout( k ) );
+		vkLayouts.push_back( mShaderManager->getDescriptorSetLayout( k ) );
 	}
 	
 	VkPipelineLayoutCreateInfo pipelineInfo{
@@ -471,13 +471,15 @@ void of::vk::Shader::createPipelineLayout() {
 		nullptr                                           // const VkPushConstantRange*      pPushConstantRanges;
 	};
 	
+	auto & deviceHandle = mShaderManager->mSettings.device;
+
 	mPipelineLayout = std::shared_ptr<VkPipelineLayout>( new VkPipelineLayout, 
-		[device = mDevice]( VkPipelineLayout* lhs ){
+		[device = deviceHandle]( VkPipelineLayout* lhs ){
 		vkDestroyPipelineLayout( device, *lhs, nullptr );
 		delete lhs;
 	} );
 
-	vkCreatePipelineLayout( mDevice, &pipelineInfo, nullptr, mPipelineLayout.get() );
+	vkCreatePipelineLayout( deviceHandle, &pipelineInfo, nullptr, mPipelineLayout.get() );
 }
 
 // ----------------------------------------------------------------------

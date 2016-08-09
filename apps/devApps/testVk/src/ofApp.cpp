@@ -99,7 +99,7 @@ void ofApp::setup(){
 		mExplicitContext = make_shared<of::vk::Context>( contextSettings );
 
 		of::vk::Shader::Settings settings{
-			mExplicitContext.get(),
+			renderer->getShaderManager(),
 			{
 				{ VK_SHADER_STAGE_VERTEX_BIT  , "triangle.vert" },
 				{ VK_SHADER_STAGE_FRAGMENT_BIT, "triangle.frag" },
@@ -107,8 +107,8 @@ void ofApp::setup(){
 		};
 
 		// shader creation makes shader reflect. 
-		auto shader = std::make_shared<of::vk::Shader>( settings );
-		mExplicitContext->addShader( shader );
+		mShader = std::make_shared<of::vk::Shader>( settings );
+		mExplicitContext->addShader( mShader );
 
 		// this will analyse our shaders and build descriptorset
 		// layouts. it will also build pipelines.

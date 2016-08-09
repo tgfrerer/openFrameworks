@@ -64,7 +64,7 @@ void ofVkRenderer::setupDefaultContext(){
 	// they are used inside a context.
 
 	of::vk::Shader::Settings settings{
-		mDefaultContext.get(),
+		mShaderManager,
 		{
 			{ VK_SHADER_STAGE_VERTEX_BIT  , "vert.spv" },
 			{ VK_SHADER_STAGE_FRAGMENT_BIT, "frag.spv" },

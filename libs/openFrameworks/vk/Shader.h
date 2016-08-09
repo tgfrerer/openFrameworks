@@ -80,10 +80,22 @@
 namespace of{
 namespace vk{
 
-class Context;
+class ShaderManager;
 
 class Shader
 {
+public:
+
+	const struct Settings
+	{
+		std::shared_ptr<of::vk::ShaderManager> shaderManager;
+		std::map<VkShaderStageFlagBits, std::string> sources;
+	} mSettings;
+
+private:
+	// alias
+	const std::shared_ptr<ShaderManager>& mShaderManager = mSettings.shaderManager;
+
 public: 
 	struct UboMemberRange
 	{
@@ -118,10 +130,10 @@ public:
 		VkPipelineVertexInputStateCreateInfo vi;
 	} mVertexInfo;
 
+
+
 private:
 
-	VkDevice mDevice = nullptr;
-	Context* mContext;
 	mutable std::shared_ptr<VkPipelineLayout> mPipelineLayout; 
 	uint64_t mShaderHash = 0;
 	bool     mShaderHashDirty = true;
@@ -166,12 +178,6 @@ private:
 
 
 public:
-
-	const struct Settings
-	{
-		of::vk::Context* context;
-		std::map<VkShaderStageFlagBits, std::string> sources;
-	} mSettings;
 
 
 	// ----------------------------------------------------------------------
