@@ -66,8 +66,8 @@ void ofVkRenderer::setupDefaultContext(){
 	of::vk::Shader::Settings settings{
 		mDefaultContext.get(),
 		{
-			{ VK_SHADER_STAGE_VERTEX_BIT  , "triangle.vert" },
-			{ VK_SHADER_STAGE_FRAGMENT_BIT, "triangle.frag" },
+			{ VK_SHADER_STAGE_VERTEX_BIT  , "vert.spv" },
+			{ VK_SHADER_STAGE_FRAGMENT_BIT, "frag.spv" },
 		}
 	};
 
@@ -253,12 +253,13 @@ VkCommandBuffer ofVkRenderer::createSetupCommandBuffer(){
 // ----------------------------------------------------------------------
 
 void ofVkRenderer::beginSetupCommandBuffer( VkCommandBuffer cmd){
-	// todo : Command buffer is also started here, better put somewhere else
-	// todo : Check if necessaray at all...
-	VkCommandBufferBeginInfo cmdBufInfo = {};
-	cmdBufInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-	// todo : check null handles, flags?
-
+	
+	VkCommandBufferBeginInfo cmdBufInfo {
+		VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO, // VkStructureType                          sType;
+		nullptr,                                     // const void*                              pNext;
+		VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT, // VkCommandBufferUsageFlags                flags;
+		nullptr,                                     // const VkCommandBufferInheritanceInfo*    pInheritanceInfo;
+	};
 	auto err = vkBeginCommandBuffer( cmd, &cmdBufInfo );
 	assert( !err );
 }
@@ -266,14 +267,15 @@ void ofVkRenderer::beginSetupCommandBuffer( VkCommandBuffer cmd){
 // ----------------------------------------------------------------------
 
 void ofVkRenderer::createCommandBuffers(){
-	VkCommandBufferAllocateInfo allocInfo;
-	allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-	allocInfo.commandPool = mCommandPool;
-	allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-	allocInfo.commandBufferCount = 1;
-	allocInfo.pNext = VK_NULL_HANDLE;
 
-	
+	VkCommandBufferAllocateInfo allocInfo {
+		VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO, // VkStructureType         sType;
+		nullptr,                                        // const void*             pNext;
+		mCommandPool,                                   // VkCommandPool           commandPool;
+		VK_COMMAND_BUFFER_LEVEL_PRIMARY,                // VkCommandBufferLevel    level;
+		1,                                              // uint32_t                commandBufferCount;
+	};
+
 	// Pre present
 	auto err = vkAllocateCommandBuffers( mDevice, &allocInfo, &mPrePresentCommandBuffer );
 	assert( !err);

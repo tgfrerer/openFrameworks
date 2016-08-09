@@ -77,14 +77,12 @@ private:
 			dsl = std::shared_ptr<DescriptorSetLayoutInfo>( new DescriptorSetLayoutInfo{ std::move( setLayout_ ), nullptr },
 				[device = mSettings.device]( DescriptorSetLayoutInfo* lhs ){
 				vkDestroyDescriptorSetLayout( device, lhs->vkDescriptorSetLayout, nullptr );
+				delete lhs;
 			} );
 
 			vkCreateDescriptorSetLayout( mSettings.device, &createInfo, nullptr, &dsl->vkDescriptorSetLayout );
 		}
 
-		// !TODO: store dsl back into shader, so that we can track use count for DescriptorSetLayout
-		// Ownership of descriptorsetlayout should be shared amongst shaders that use it and context that uses it
-		// also, there should be a way to tell if the object has been invalidated.
 		ofLog() << "DescriptorSetLayout " << std::hex << setLayout_.key << " | Use Count: " << dsl.use_count();
 	}
 
