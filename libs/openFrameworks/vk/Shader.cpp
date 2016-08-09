@@ -444,7 +444,7 @@ void of::vk::Shader::buildSetLayouts(const std::map<std::string, BindingInfo> & 
 
 		// Store the SetLayout in shader manager - if Shader Manager already 
 		// has a SetLayout of this key, this is a no-op.
-		mContext->mShaderManager->storeDescriptorSetLayout( std::move(layout) );
+		mContext->getShaderManager()->storeDescriptorSetLayout( std::move(layout) );
 
 		++i;
 	}
@@ -458,7 +458,7 @@ void of::vk::Shader::createPipelineLayout() {
 	vkLayouts.reserve( mDescriptorSetLayoutKeys.size() );
 
 	for ( const auto &k : mDescriptorSetLayoutKeys ){
-		vkLayouts.push_back( mContext->mShaderManager->getDescriptorSetLayout( k ) );
+		vkLayouts.push_back( mContext->getShaderManager()->getDescriptorSetLayout( k ) );
 	}
 	
 	VkPipelineLayoutCreateInfo pipelineInfo{

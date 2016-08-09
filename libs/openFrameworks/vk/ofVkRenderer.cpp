@@ -96,8 +96,6 @@ ofVkRenderer::~ofVkRenderer()
 
 
 	mDefaultContext.reset();
-	mDebugMainShader.reset();
-
 	mShaderManager.reset();
 
 	// reset command pool and all associated command buffers.

@@ -58,6 +58,28 @@ class Allocator; // ffdecl.
 
 class Context
 {
+
+public:
+
+	struct Settings
+	{
+		VkDevice                   device = nullptr;
+		size_t                     numSwapchainImages = 0;
+		VkRenderPass               renderPass = nullptr;
+		std::vector<VkFramebuffer> framebuffers;
+		shared_ptr<ShaderManager>  shaderManager;
+		// context is initialised with a vector of shaders
+		// all these shaders contribute to the shared pipeline layout 
+		// for this context. The shaders need to be compatible in their
+		// sets/bindings so that there can be a shared pipeline layout 
+		// for the whole context.
+	} const mSettings;
+
+private:
+	
+	// alias into mSettings
+	const shared_ptr<ShaderManager>& mShaderManager = mSettings.shaderManager;
+
 	// allocator used for dynamic data
 	shared_ptr<of::vk::Allocator> mAlloc;
 
@@ -155,11 +177,11 @@ class Context
 
 	// --------- pipeline info
 
+	// !TODO: pipeline cache should be shared over all contexts.
 	VkPipelineCache       mPipelineCache = nullptr;
 
 	// object which tracks current pipeline state
 	// and creates a pipeline.
-	
 	GraphicsPipelineState mCurrentGraphicsPipelineState;
 
 	// current descriptor set layout bindings keys
@@ -193,21 +215,6 @@ class Context
 
 public:
 
-	struct Settings
-	{
-		VkDevice                   device = nullptr;
-		size_t                     numSwapchainImages = 0 ;
-		VkRenderPass               renderPass = nullptr;
-		std::vector<VkFramebuffer> framebuffers;
-		shared_ptr<ShaderManager>  shaderManager;
-		// context is initialised with a vector of shaders
-		// all these shaders contribute to the shared pipeline layout 
-		// for this context. The shaders need to be compatible in their
-		// sets/bindings so that there can be a shared pipeline layout 
-		// for the whole context.
-	} const mSettings;
-
-	const shared_ptr<ShaderManager>& mShaderManager = mSettings.shaderManager;
 
 	// must be constructed with this method, default constructor
 	// copy, and move constructor
@@ -247,6 +254,10 @@ public:
 
 	// return the one buffer which is used for all dynamic buffer memory within this context.
 	const VkBuffer& getVkBuffer() const;
+
+	const std::shared_ptr<ShaderManager> & getShaderManager(){
+		return mShaderManager;
+	}
 
 	// lazily store uniform data into local CPU memory
 	template<typename UniformT>

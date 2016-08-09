@@ -72,8 +72,8 @@ void ofVkRenderer::setupDefaultContext(){
 	};
 
 	// shader creation makes shader reflect. 
-	mDebugMainShader = std::make_shared<of::vk::Shader>( settings );
-	mDefaultContext->addShader( mDebugMainShader );
+	auto shader = std::make_shared<of::vk::Shader>( settings );
+	mDefaultContext->addShader( shader );
 
 	// this will analyse our shaders and build descriptorset
 	// layouts. it will also build pipelines.
@@ -562,8 +562,6 @@ void ofVkRenderer::startRender(){
 	err = mSwapchain.acquireNextImage( mSemaphorePresentComplete, &swapIdx );
 	assert( !err );
 
-	if (ofGetFrameNum() % 60 == 0) mDebugMainShader->compile();
-	
 	if ( mDefaultContext ){
 		mDefaultContext->begin( swapIdx );
 

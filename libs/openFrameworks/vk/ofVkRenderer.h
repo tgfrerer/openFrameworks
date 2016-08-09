@@ -40,8 +40,6 @@ class ofVkRenderer : public ofBaseRenderer
 
 	mutable ofMesh mRectMesh;
 
-	std::shared_ptr<of::vk::Shader> mDebugMainShader;
-
 public:
 	static const string TYPE;
 
@@ -263,10 +261,13 @@ public:
 		return mDefaultContext;
 	};
 
+	shared_ptr<of::vk::ShaderManager>& getShaderManager(){
+		return mShaderManager;
+	}
+
 private:
 
 	ofRectangle mViewport;
-
 
 	VkCommandPool            mCommandPool = nullptr;
 	
@@ -275,21 +276,21 @@ private:
 	VkCommandBuffer          mPostPresentCommandBuffer    = nullptr;
 
 	// find these implemented in VKPrepare.cpp
-	void querySurfaceCapabilities();
-	void createCommandPool();
-	VkCommandBuffer createSetupCommandBuffer();
-	void beginSetupCommandBuffer(VkCommandBuffer cmd);
+	void                     querySurfaceCapabilities();
+	void                     createCommandPool();
+	VkCommandBuffer          createSetupCommandBuffer();
+	void                     beginSetupCommandBuffer(VkCommandBuffer cmd);
 
-	void setupSwapChain();
-	void createCommandBuffers();
-	void setupDepthStencil(VkCommandBuffer cmd);
-	void setupRenderPass(VkCommandBuffer cmd);
+	void                     setupSwapChain();
+	void                     createCommandBuffers();
+	void                     setupDepthStencil(VkCommandBuffer cmd);
+	void                     setupRenderPass(VkCommandBuffer cmd);
 	
-	void setupFrameBuffer();
-	void flushSetupCommandBuffer(VkCommandBuffer cmd);
+	void                     setupFrameBuffer();
+	void                     flushSetupCommandBuffer(VkCommandBuffer cmd);
 
 	// creates synchronisation primitives 
-	void createSemaphores();
+	void                     createSemaphores();
 
 	// our main (primary) gpu queue. all commandbuffers are submitted to this queue
 	// as are present commands.
@@ -339,8 +340,6 @@ private:
 
 	uint32_t mWindowWidth = 0;
 	uint32_t mWindowHeight = 0;
-
-	VkClearColorValue mDefaultClearColor = { { 0.025f, 0.025f, 0.025f, 1.0f } };
 
 	struct BufferObject
 	{

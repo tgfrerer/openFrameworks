@@ -94,14 +94,15 @@ void ofApp::setup(){
 		contextSettings.numSwapchainImages = renderer->getSwapChainSize();
 		contextSettings.renderPass         = renderer->getDefaultRenderPass();
 		contextSettings.framebuffers       = renderer->getDefaultFramebuffers();
+		contextSettings.shaderManager      = renderer->getShaderManager();
 
 		mExplicitContext = make_shared<of::vk::Context>( contextSettings );
 
 		of::vk::Shader::Settings settings{
 			mExplicitContext.get(),
 			{
-				{ VK_SHADER_STAGE_VERTEX_BIT  , "vert.spv" },
-				{ VK_SHADER_STAGE_FRAGMENT_BIT, "frag.spv" },
+				{ VK_SHADER_STAGE_VERTEX_BIT  , "triangle.vert" },
+				{ VK_SHADER_STAGE_FRAGMENT_BIT, "triangle.frag" },
 			}
 		};
 
@@ -157,12 +158,16 @@ void ofApp::drawModeExplicit(){
 	
 	mCam1.begin();
 	
+	//context.bind( mCam1 );
+	//context.bind(shader1);
 	context
 		.setUniform( "globalColor", ofFloatColor::lightBlue )
 		.pushMatrix()
 		.translate( { -200, +200, 100 } )
 		.draw(ico)
 		.popMatrix();
+	//context.unbind( shader1 );
+	//context.unbind( mCam1 );
 
 	context
 		.setPolyMode( VK_POLYGON_MODE_LINE )
