@@ -27,8 +27,9 @@ PFN_vkDestroyDebugReportCallbackEXT fVkDestroyDebugReportCallbackEXT = nullptr;
 
 // ----------------------------------------------------------------------
 
-ofVkRenderer::ofVkRenderer(const ofAppBaseWindow * _window)
+ofVkRenderer::ofVkRenderer(const ofAppBaseWindow * _window, Settings settings )
 	: m3dGraphics(this)
+	, mSettings(settings)
 {
 	bBackgroundAuto = true;
 	wrongUseLoggedOnce = false;
@@ -140,13 +141,13 @@ void ofVkRenderer::destroySurface(){
 {
 	ofLog() << "createInstance";
 
-	// TODO: add openFrameworkss version
+	
 	std::string appName = "openFrameworks" + ofGetVersionInfo();
 
 	VkApplicationInfo applicationInfo{};
 	{
 		applicationInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-		applicationInfo.apiVersion = VK_MAKE_VERSION(1, 0, 8);
+		applicationInfo.apiVersion = VK_MAKE_VERSION(1, 0, 8);	// !TODO use version info from windowSettings
 		applicationInfo.applicationVersion = VK_MAKE_VERSION(0, 1, 0);
 		applicationInfo.pApplicationName = appName.c_str();
 	}

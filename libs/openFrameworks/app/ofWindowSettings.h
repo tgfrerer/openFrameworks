@@ -94,16 +94,10 @@ class ofVkWindowSettings : public ofWindowSettings
 {
 public:
 	ofVkWindowSettings()
-	: vkVersion(1 << 22)
-	{
-	};
+	{};
 
 	ofVkWindowSettings( const ofWindowSettings & settings )
 		: ofWindowSettings( settings ){
-		const ofVkWindowSettings * vkSettings = dynamic_cast<const ofVkWindowSettings*>( &settings );
-		if ( vkSettings ){
-			vkVersion = vkSettings->vkVersion;
-		}
 	};
 
 	void setVkVersion( int major, int minor, int patch ){
@@ -125,5 +119,9 @@ public:
 	virtual ~ofVkWindowSettings(){
 	}
 
-	uint32_t vkVersion;
+	uint32_t vkVersion             = 1 << 22;
+	uint32_t numSwapchainImages    = 2;                        // number of images the swapchain should try to create
+	uint32_t numVirtualFrames      = 3;                        // number of virtual frames to produce to feed swapchain
+	VkPresentModeKHR swapchainType = VK_PRESENT_MODE_FIFO_KHR; // api only guarantees FIFO to be present.
+
 };

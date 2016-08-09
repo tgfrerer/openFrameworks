@@ -134,7 +134,12 @@ void ofAppGLFWWindow::setup(const ofGLFWWindowSettings & _settings){
 			exit( 1 );
 		}
 
-		currentRenderer = shared_ptr<ofBaseRenderer>( new ofVkRenderer( this ) );
+		ofVkRenderer::Settings rendererSettings;
+		rendererSettings.numSwapchainImages = _settings.numSwapchainImages;
+		rendererSettings.numVirtualFrames   = _settings.numVirtualFrames;
+		rendererSettings.swapchainType      = _settings.swapchainType;
+
+		currentRenderer = shared_ptr<ofBaseRenderer>( new ofVkRenderer( this, rendererSettings ) );
 		auto vkRenderer = dynamic_pointer_cast<ofVkRenderer>( currentRenderer );
 		// we have a renderer.
 
