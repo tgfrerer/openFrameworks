@@ -208,9 +208,13 @@ void of::vk::Shader::reflect(
 		auto & shaderStage = c.first;
 
 		if ( shaderStage & VK_SHADER_STAGE_VERTEX_BIT ){
-			ofLog() << std::endl << std::endl << "Vertex Stage" << endl << string( 70, '-' );
+			ofLog();
+			ofLog() << "Vertex Stage";
+			ofLog() << string( 70, '-' );
 		} else if ( shaderStage & VK_SHADER_STAGE_FRAGMENT_BIT ){
-			ofLog() << std::endl << std::endl << "Fragment Stage" << endl << string( 70, '-' );
+			ofLog();
+			ofLog() << "Fragment Stage";
+			ofLog() << string( 70, '-' );
 		}
 
 		auto shaderResources = compiler.get_shader_resources();
@@ -235,6 +239,8 @@ void of::vk::Shader::reflect(
 		if ( shaderStage & VK_SHADER_STAGE_VERTEX_BIT ){
 			reflectVertexInputs( shaderResources, compiler, vertexInfo );
 		} 
+		
+		ofLog(); 
 	}  
 	
 }
@@ -294,7 +300,7 @@ void of::vk::Shader::reflectUniformBuffers(
 	// such structs will have member types, that is, they have elements within.
 	for ( uint32_t tI = 0; tI != type.member_types.size(); ++tI ){
 		auto mn = compiler.get_member_name( ubo.type_id, tI );
-		ofLog() << "\\-" << "[" << tI << "] : " << mn;
+		ofLog() << " " << ( tI+1 == type.member_types.size() ? char(192) : char(195) ) << std::setw(2) << tI << " : " << mn;
 	}
 
 	// let's look up if the current block name already exists in the 
@@ -366,7 +372,8 @@ void of::vk::Shader::reflectVertexInputs(const spirv_cross::ShaderResources &sha
 			location = compiler.get_decoration( attributeInput.id, spv::DecorationLocation );
 		}
 
-		ofLog() << "Vertex Attribute loc=[" << location << "] : " << attributeInput.name;
+		ofLog() << " " << ( i + 1 == shaderResources.stage_inputs.size() ? char( 192 ) : char( 195 ) ) << std::setw( 2 ) << location << " : " << attributeInput.name;
+
 
 		// Binding Description: Describe how to read data from buffer based on binding number
 		vertexInfo.bindingDescription[i].binding = location;  // which binding number we are describing

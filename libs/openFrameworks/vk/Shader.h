@@ -93,7 +93,7 @@ public:
 	} mSettings;
 
 private:
-	// alias
+	// alias into mSettings
 	const std::shared_ptr<ShaderManager>& mShaderManager = mSettings.shaderManager;
 
 public: 
