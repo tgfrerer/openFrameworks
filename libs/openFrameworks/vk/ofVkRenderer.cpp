@@ -210,7 +210,7 @@ void ofVkRenderer::createDevice()
 		// query the gpu for more info about itself
 		vkGetPhysicalDeviceProperties(mPhysicalDevice, &mPhysicalDeviceProperties);
 
-		ofLog() << "GPU Type: " << mPhysicalDeviceProperties.deviceName << std::endl;
+		ofLog() << "GPU Type: " << mPhysicalDeviceProperties.deviceName;
 		
 		{
 			ofVkWindowSettings tmpSettings;
@@ -259,9 +259,9 @@ void ofVkRenderer::createDevice()
 		assert( !err );
 
 
-		console << "Instance Layers:" << std::endl;
+		console << "Available Instance Layers:" << std::endl << std::endl;
 		for (auto &l : layerPropertyList) {
-			console << "\t" << std::setw( 40 ) << l.layerName << ": " << l.description << std::endl;
+			console << std::right << std::setw( 40 ) << l.layerName << " : " << l.description << std::endl;
 		}
 		ofLog() << console.str();
 	}
@@ -277,9 +277,9 @@ void ofVkRenderer::createDevice()
 		err = vkEnumerateDeviceLayerProperties(mPhysicalDevice, &layerCount, layerPropertyList.data());
 		assert( !err );
 
-		console << "Device Layers:" << std::endl;
+		console << "Available Device Layers:" << std::endl << std::endl;
 		for (auto &l : layerPropertyList) {
-			console << "\t" << std::setw( 40 ) << l.layerName << ": " << l.description << std::endl;
+			console << std::right << std::setw( 40 ) << l.layerName << " : " << l.description << std::endl;
 		}
 		ofLog() << console.str();
 	}
