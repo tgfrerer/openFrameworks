@@ -45,10 +45,11 @@ public:
 
 	const struct Settings
 	{
-		uint32_t vkVersion = 1 << 22;								   // target version
+		uint32_t vkVersion = 1 << 22;                                  // target version
 		uint32_t numVirtualFrames = 0;                                 // number of virtual frames to allocate and to produce - set this through vkWindowSettings
 		uint32_t numSwapchainImages = 0;                               // number of swapchain images to aim for (api gives no guarantee for this.)
 		VkPresentModeKHR swapchainType = VK_PRESENT_MODE_FIFO_KHR;	   // selected swapchain type (api only guarantees FIFO)
+		bool useDebugLayers = false;                                    // whether to use vulkan debug layers
 	} mSettings;
 
 	ofVkRenderer( const ofAppBaseWindow * window, Settings settings ); 
@@ -213,39 +214,36 @@ private:
 
 	void destroySurface();
 
-	VkDebugReportCallbackEXT debugReportCallback = VK_NULL_HANDLE;
-	VkDebugReportCallbackCreateInfoEXT debugCallbackCreateInfo = {};
+	VkDebugReportCallbackEXT           mDebugReportCallback = nullptr;
+	VkDebugReportCallbackCreateInfoEXT mDebugCallbackCreateInfo = {};
 
-	void setupDebugLayers();
+	void requestDebugLayers();
 	void createDebugLayers();
 	void destroyDebugLayers();
 
-	VkInstance       mInstance = VK_NULL_HANDLE;		   // context
-	VkDevice         mDevice = VK_NULL_HANDLE;		   // virtual device
+	VkInstance                         mInstance                           = nullptr;  // vulkan loader instance
+	VkDevice                           mDevice                             = nullptr;  // virtual device
+	VkPhysicalDevice                   mPhysicalDevice                     = nullptr;  // actual GPU
+	VkPhysicalDeviceProperties         mPhysicalDeviceProperties = {};
+	VkPhysicalDeviceMemoryProperties   mPhysicalDeviceMemoryProperties;
 
+	std::vector<const char*>           mInstanceLayers;                                // debug layer list for instance
+	std::vector<const char*>           mInstanceExtensions;                            // debug layer list for device
+	std::vector<const char*>           mDeviceLayers;                                  // debug layer list for device
+	std::vector<const char*>           mDeviceExtensions;                              // debug layer list for device
 
-	VkPhysicalDevice mPhysicalDevice = VK_NULL_HANDLE;		   // actual GPU
-	VkPhysicalDeviceProperties mPhysicalDeviceProperties = {};
-	VkPhysicalDeviceMemoryProperties mPhysicalDeviceMemoryProperties;
-
-
-	std::vector<const char*> mInstanceLayers;       // debug layer list for instance
-	std::vector<const char*> mInstanceExtensions;   // debug layer list for device
-	std::vector<const char*> mDeviceLayers;         // debug layer list for device
-	std::vector<const char*> mDeviceExtensions;     // debug layer list for device
-
-	uint32_t         mVkGraphicsFamilyIndex = 0;
+	uint32_t                           mVkGraphicsFamilyIndex = 0;
 
 
 public:
 
 	// return handle to renderer's vkDevice
 	// CONSIDER: error checking for when device has not been aqcuired yet.
-	const ::VkDevice& getVkDevice() const{
+	const VkDevice& getVkDevice() const{
 		return mDevice;
 	};
 
-	const ::VkPhysicalDeviceProperties& getVkPhysicalDeviceProperties() const {
+	const VkPhysicalDeviceProperties& getVkPhysicalDeviceProperties() const {
 		return mPhysicalDeviceProperties;
 	}
 

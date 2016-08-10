@@ -41,8 +41,9 @@ ofVkRenderer::ofVkRenderer(const ofAppBaseWindow * _window, Settings settings )
 	mPath.setMode(ofPath::POLYLINES);
 	mPath.setUseShapeColor(false);
 
-	// vulkan specifics
-	setupDebugLayers();
+	if ( mSettings.useDebugLayers ){
+		requestDebugLayers();
+	}
 
 #ifdef TARGET_LINUX
 	mInstanceExtensions.push_back( "VK_KHR_xcb_surface" );
@@ -58,8 +59,9 @@ ofVkRenderer::ofVkRenderer(const ofAppBaseWindow * _window, Settings settings )
 	// important to call createDebugLayers() after createInstance, 
 	// since otherwise the debug layer create function pointers will not be 
 	// correctly resolved, since the main library would not yet have been loaded.
-	createDebugLayers();
-	
+	if ( mSettings.useDebugLayers ){
+		createDebugLayers();
+	}
 	// createDevice also initialises the device queue, mQueue
 	createDevice();
 
@@ -163,7 +165,7 @@ void ofVkRenderer::destroySurface(){
 
 		// this enables debugging the instance creation.
 		// it is slightly weird.
-		instanceCreateInfo.pNext                   = &debugCallbackCreateInfo;
+		instanceCreateInfo.pNext                   = &mDebugCallbackCreateInfo;
 	}
 
 	auto err = vkCreateInstance(&instanceCreateInfo, nullptr, &mInstance);
@@ -208,18 +210,14 @@ void ofVkRenderer::createDevice()
 		// query the gpu for more info about itself
 		vkGetPhysicalDeviceProperties(mPhysicalDevice, &mPhysicalDeviceProperties);
 
-		std::ostringstream output;
-		auto const & d = mPhysicalDeviceProperties;
-		output << "GPU Type: " << d.deviceName << std::endl;
+		ofLog() << "GPU Type: " << mPhysicalDeviceProperties.deviceName << std::endl;
 		
 		{
 			ofVkWindowSettings tmpSettings;
-			tmpSettings.vkVersion = d.apiVersion;
-			output << "Api Version: " << tmpSettings.getVkVersionMajor() << "."
+			tmpSettings.vkVersion = mPhysicalDeviceProperties.apiVersion;
+			ofLog() << "GPU Driver API Version: " << tmpSettings.getVkVersionMajor() << "."
 				<< tmpSettings.getVersionMinor() << "." << tmpSettings.getVersionPatch();
 		}
-		
-		ofLog() << output.str();
 
 		// let's find out the devices' memory properties
 		vkGetPhysicalDeviceMemoryProperties( mPhysicalDevice, &mPhysicalDeviceMemoryProperties );
@@ -248,8 +246,10 @@ void ofVkRenderer::createDevice()
 		}
 	}
 
+
 	// query debug layers available for instance
 	{
+		std::ostringstream console;
 		uint32_t layerCount;
 		auto err = vkEnumerateInstanceLayerProperties(&layerCount, VK_NULL_HANDLE);
 		assert( !err );
@@ -259,15 +259,16 @@ void ofVkRenderer::createDevice()
 		assert( !err );
 
 
-		ofLog() << "Instance Layers:";
+		console << "Instance Layers:" << std::endl;
 		for (auto &l : layerPropertyList) {
-			ofLog() << "  " << l.layerName << ": \t\t\t\t |" << l.description;
+			console << "\t" << std::setw( 40 ) << l.layerName << ": " << l.description << std::endl;
 		}
-
+		ofLog() << console.str();
 	}
 
 	// query debug layers available for physical device
 	{
+		std::ostringstream console;
 		uint32_t layerCount;
 		auto err = vkEnumerateDeviceLayerProperties(mPhysicalDevice, &layerCount, VK_NULL_HANDLE);
 		assert( !err );
@@ -276,12 +277,14 @@ void ofVkRenderer::createDevice()
 		err = vkEnumerateDeviceLayerProperties(mPhysicalDevice, &layerCount, layerPropertyList.data());
 		assert( !err );
 
-		ofLog() << "Device Layers:";
+		console << "Device Layers:" << std::endl;
 		for (auto &l : layerPropertyList) {
-			ofLog() << "  " << l.layerName << ": \t\t\t\t |" << l.description;
+			console << "\t" << std::setw( 40 ) << l.layerName << ": " << l.description << std::endl;
 		}
+		ofLog() << console.str();
 	}
 
+	
 	
 	// create a device
 	VkDeviceQueueCreateInfo deviceQueueCreateInfo{};
@@ -370,27 +373,25 @@ VulkanDebugCallback(
 		SetConsoleTextAttribute( hConsole, 12 + 0 * 16 );
 	}
 #endif // WIN32
-	std::ostringstream os;
-
-	static size_t errorNo = 0;
+	
+	std::string logLevel = "";
 
 	if (flags & VK_DEBUG_REPORT_INFORMATION_BIT_EXT) {
-		os << "\t\tINFO : " << msg << std::endl;
-	} 
-	if (flags & VK_DEBUG_REPORT_WARNING_BIT_EXT) {
-		os << "\t\tWARN : " << msg << std::endl;
-	}
-	if (flags & VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT) {
-		os << "\t\tPERF : " << msg << std::endl;
-	}
-	if (flags & VK_DEBUG_REPORT_ERROR_BIT_EXT) {
-		os << "\tERROR: " << setw(4) << errorNo++ << "\t" << msg << std::endl;
-	}
-	if (flags & VK_DEBUG_REPORT_DEBUG_BIT_EXT) {
-		os << "\t\tDEBUG: " << msg << std::endl;
+		logLevel = "INFO";
+	} else if (flags & VK_DEBUG_REPORT_WARNING_BIT_EXT) {
+		logLevel = "WARN";
+	} else if (flags & VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT) {
+		logLevel = "PERF";
+	} else if (flags & VK_DEBUG_REPORT_ERROR_BIT_EXT) {
+		logLevel = "ERROR";
+	} else if (flags & VK_DEBUG_REPORT_DEBUG_BIT_EXT) {
+		logLevel = "DEBUG";
 	}
 
-	ofLogNotice("vkRender") << "\t LAYER{" << layer_prefix << "}: " << (os.str().substr(0,os.str().length()-1));
+	std::ostringstream os; 
+	os << std::right << std::setw( 8 ) << logLevel << "{" << std::setw( 10 ) << layer_prefix << "}: " << msg << std::endl;
+
+	ofLogNotice() << (os.str().substr(0,os.str().length()-1));
 #ifdef WIN32
 	SetConsoleTextAttribute( hConsole, 7 + 0 * 16 );
 #endif
@@ -400,23 +401,7 @@ VulkanDebugCallback(
 
 // ----------------------------------------------------------------------
 
-void ofVkRenderer::setupDebugLayers() {
-
-	debugCallbackCreateInfo.sType = VK_STRUCTURE_TYPE_DEBUG_REPORT_CREATE_INFO_EXT;
-	debugCallbackCreateInfo.pfnCallback = &VulkanDebugCallback;
-	debugCallbackCreateInfo.flags = 
-		//VK_DEBUG_REPORT_INFORMATION_BIT_EXT |
-		VK_DEBUG_REPORT_WARNING_BIT_EXT
-		| VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT
-		| VK_DEBUG_REPORT_ERROR_BIT_EXT
-	    | VK_DEBUG_REPORT_DEBUG_BIT_EXT
-		| 0;		  // this should enable all flags.
-
-
-	// remember: all layers that you plan to use in yout app, i.e. in the device,
-	// need to be also activated in the instance.
-
-	// layer check happens last element to first element in the layers array.
+void ofVkRenderer::requestDebugLayers() {
 
 	mInstanceLayers.push_back( "VK_LAYER_LUNARG_standard_validation" );
 	mInstanceLayers.push_back("VK_LAYER_LUNARG_object_tracker");
@@ -428,6 +413,16 @@ void ofVkRenderer::setupDebugLayers() {
 
 void ofVkRenderer::createDebugLayers()
 {
+	mDebugCallbackCreateInfo.sType = VK_STRUCTURE_TYPE_DEBUG_REPORT_CREATE_INFO_EXT;
+	mDebugCallbackCreateInfo.pfnCallback = &VulkanDebugCallback;
+	mDebugCallbackCreateInfo.flags =
+		//VK_DEBUG_REPORT_INFORMATION_BIT_EXT |
+		VK_DEBUG_REPORT_WARNING_BIT_EXT
+		| VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT
+		| VK_DEBUG_REPORT_ERROR_BIT_EXT
+		| VK_DEBUG_REPORT_DEBUG_BIT_EXT
+		| 0;		  // this should enable all flags.
+
 	// first get (find) function pointers from sdk for callback [create / destroy] function addresses
 	fVkCreateDebugReportCallbackEXT  = (PFN_vkCreateDebugReportCallbackEXT)vkGetInstanceProcAddr(mInstance, "vkCreateDebugReportCallbackEXT");
 	fVkDestroyDebugReportCallbackEXT = (PFN_vkDestroyDebugReportCallbackEXT)vkGetInstanceProcAddr(mInstance, "vkDestroyDebugReportCallbackEXT");
@@ -446,7 +441,7 @@ void ofVkRenderer::createDebugLayers()
 		// note that we execute the function pointers we searched for earlier, 
 		// since "vkCreateDebugReportCallbackEXT" is not directly exposed by vulkan-1.lib
 		// fVkCreateDebugReportCallbackEXT is the function we want to call.
-		fVkCreateDebugReportCallbackEXT(mInstance, &debugCallbackCreateInfo , VK_NULL_HANDLE, &debugReportCallback);
+		fVkCreateDebugReportCallbackEXT(mInstance, &mDebugCallbackCreateInfo , VK_NULL_HANDLE, &mDebugReportCallback);
 	}
 }
 
@@ -454,11 +449,11 @@ void ofVkRenderer::createDebugLayers()
 
 void ofVkRenderer::destroyDebugLayers()
 {
-	// this function pointer was queried from the sdk in 
-	// createDebugLayers()
-	fVkDestroyDebugReportCallbackEXT(mInstance, debugReportCallback, VK_NULL_HANDLE);
-	// let's set our own callback address to 0 just to be on the safe side.
-	debugReportCallback = VK_NULL_HANDLE;
+	if ( mDebugReportCallback != VK_NULL_HANDLE ){
+		fVkDestroyDebugReportCallbackEXT( mInstance, mDebugReportCallback, VK_NULL_HANDLE );
+		// let's set our own callback address to 0 just to be on the safe side.
+		mDebugReportCallback = VK_NULL_HANDLE;
+	}
 }
 // ----------------------------------------------------------------------
 

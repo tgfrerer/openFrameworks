@@ -9,6 +9,8 @@ int main( ){
 	settings.numSwapchainImages = 2;
 	settings.numVirtualFrames = 3;
 	settings.swapchainType = VK_PRESENT_MODE_MAILBOX_KHR;
+	settings.useDebugLayers = true;
+
 	ofCreateWindow( settings );
 
 	ofRunApp(new ofApp());
