@@ -46,15 +46,16 @@ class Allocator; // ffdecl.
 ///         legacy "immediate mode" renderer behaviour
 ///
 /// The context holds a number of frames, dependent on the 
-/// number of swapchain images. For each swapchain image,
-/// there is a state memory frame within the context. 
+/// number of virtual frames it holds in-flight at any time. 
+/// For each virtual frame there is memory backing the current uniform
+/// and dynamic vertex state. 
 ///
 /// The context has one allocator, which holds one buffer which is backed
 /// by one large chunk device memory. Device memory is segmented into 
 /// equal sized parts, one part for each memory frame.
 ///
-/// You tell the context which frame to operate on by passing the swapchain 
-/// image index when calling Context::begin()
+/// You tell the context which frame to operate on by passing the virtual 
+/// frame index when calling Context::begin()
 
 class Context
 {
@@ -64,10 +65,9 @@ public:
 	struct Settings
 	{
 		VkDevice                   device = nullptr;
-		size_t                     numSwapchainImages = 0;
-		VkRenderPass               renderPass = nullptr;
-		std::vector<VkFramebuffer> framebuffers;
+		size_t                     numVirtualFrames = 0;
 		shared_ptr<ShaderManager>  shaderManager;
+		VkRenderPass               renderPass;
 		// context is initialised with a vector of shaders
 		// all these shaders contribute to the shared pipeline layout 
 		// for this context. The shaders need to be compatible in their

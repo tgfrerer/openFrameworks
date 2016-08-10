@@ -51,7 +51,7 @@ void of::vk::Context::setup(ofVkRenderer* renderer_){
 	of::vk::Allocator::Settings settings{};
 	settings.device = mSettings.device;
 	settings.renderer = renderer_;
-	settings.frames = uint32_t(mSettings.numSwapchainImages);
+	settings.frames = uint32_t(mSettings.numVirtualFrames);
 	settings.size = ( 2UL << 24 ) * settings.frames;  // (16 MB * number of swapchain images)
 
 	mAlloc = std::make_shared<of::vk::Allocator>(settings);
@@ -219,8 +219,8 @@ void of::vk::Context::setupDescriptorPool(){
 		};
 
 		// create as many descriptorpools as there are swapchain images.
-		mDescriptorPool.resize( mSettings.numSwapchainImages );
-		for ( size_t i = 0; i != mSettings.numSwapchainImages; ++i ){
+		mDescriptorPool.resize( mSettings.numVirtualFrames );
+		for ( size_t i = 0; i != mSettings.numVirtualFrames; ++i ){
 			auto err = vkCreateDescriptorPool( mSettings.device, &descriptorPoolInfo, nullptr, &mDescriptorPool[i] );
 			assert( !err );
 		}
@@ -256,7 +256,7 @@ void of::vk::Context::begin(size_t frame_){
 		mCurrentShader = mShaders.front();
 
 		mCurrentGraphicsPipelineState.setShader(mCurrentShader);
-		mCurrentGraphicsPipelineState.setRenderPass(mSettings.renderPass);
+		mCurrentGraphicsPipelineState.setRenderPass(mSettings.renderPass);	  /* !TODO: we should porbably expose this - and bind a default renderpass here */
 	}
 
 	mDSS_layoutKey.clear();
