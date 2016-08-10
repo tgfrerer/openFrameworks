@@ -132,6 +132,7 @@ bool of::vk::Shader::getSpirV( const VkShaderStageFlagBits shaderStage, const st
 		}
 
 		bool success = true;
+
 		ofBuffer fileBuf = ofBufferFromFile( fileName, true );
 		shaderc::Compiler compiler;
 		shaderc::CompileOptions options;
@@ -143,7 +144,42 @@ bool of::vk::Shader::getSpirV( const VkShaderStageFlagBits shaderStage, const st
 			fileBuf.getData(), fileBuf.size(), shaderType, fileName.c_str(), options );
 
 		if ( module.GetCompilationStatus() != shaderc_compilation_status_success ){
-			ofLogError() << "ERR\tShader compile: " << module.GetErrorMessage();
+			std::string errorMessage = module.GetErrorMessage();
+			ofLogError() << "Shader compile failed for: " << fileName << std::endl 
+				<< std::endl << errorMessage;
+
+			// Provide shader source code context if possible 
+			// Error will have the form:
+			// "triangle.frag:28: error: '' :  syntax error"
+
+			ostringstream scanString; /* create a scan string with length of first element known: "%*23s : %d :" */
+			scanString << "%*" << fileName.size() << "s : %d :"; 
+			
+			uint32_t lineNumber = 0; /* <- Will contain error line number after successful parse */
+			auto scanResult = sscanf( errorMessage.c_str(), scanString.str().c_str(), &lineNumber );
+
+			if ( scanResult != std::char_traits<wchar_t>::eof() ){
+				ostringstream sourceContext;
+				auto & lineIt = fileBuf.getLines().begin();
+				size_t currentLine = 1; /* Line numbers start counting at 1 */
+
+				while (lineIt != fileBuf.getLines().end()){
+					
+					if ( currentLine >= lineNumber - 3 ){
+						const auto shaderSourceCodeLine = lineIt.asString();
+						sourceContext << std::right << std::setw(4) << currentLine << " | " << shaderSourceCodeLine << std::endl;
+					}
+
+					if ( currentLine >= lineNumber + 2 )
+						break;
+
+					++lineIt;
+					++currentLine;
+				}
+				ofLog() << "Shader source:" << std::endl << std::endl << sourceContext.str();
+			}
+
+
 			return false;
 		} else{
 			spirCode.clear();
