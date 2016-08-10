@@ -101,28 +101,25 @@ ofVkRenderer::~ofVkRenderer()
 	mShaderManager.reset();
 
 	for ( auto & frame : mFrameResources ){
+		vkDestroyFramebuffer( mDevice, frame.framebuffer, nullptr );
 		vkDestroySemaphore( mDevice, frame.semaphoreImageAcquired , nullptr );
 		vkDestroySemaphore( mDevice, frame.semaphoreRenderComplete, nullptr );
 		vkDestroyFence( mDevice, frame.fence, nullptr );
 	}
+	mFrameResources.clear();
+
+	vkDestroyRenderPass( mDevice, mRenderPass, nullptr );
+
+	for ( auto & depthStencilResource : mDepthStencil ){
+		vkDestroyImageView( mDevice, depthStencilResource.view, nullptr );
+		vkDestroyImage( mDevice, depthStencilResource.image, nullptr );
+		vkFreeMemory( mDevice, depthStencilResource.mem, nullptr );
+	}
+	mDepthStencil.clear();
 
 	// reset command pool and all associated command buffers.
 	err = vkResetCommandPool( mDevice, mDrawCommandPool, VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT );
 	assert( !err );
-
-	vkDestroyRenderPass( mDevice, mRenderPass, nullptr );
-
-	for ( auto &f : mFrameBuffers ){
-		vkDestroyFramebuffer( mDevice, f, nullptr );
-	}
-	mFrameBuffers.clear();
-
-
-
-	vkDestroyImageView( mDevice, mDepthStencil.view, nullptr );
-	vkDestroyImage( mDevice, mDepthStencil.image, nullptr );
-	vkFreeMemory( mDevice, mDepthStencil.mem, nullptr );
-
 	vkDestroyCommandPool( mDevice, mDrawCommandPool, VK_NULL_HANDLE );
 
 	mSwapchain.reset();
@@ -206,7 +203,7 @@ void ofVkRenderer::createDevice()
 		err = vkEnumeratePhysicalDevices(mInstance, &numDevices, deviceList.data());
 		assert( !err );
 
-		// TODO: find the best appropriate GPU
+		// CONSIDER: find the best appropriate GPU
 		// Select a physical device (GPU) from the above queried list of options.
 		// For now, we assume the first one to be the best one.
 		mPhysicalDevice = deviceList.front();

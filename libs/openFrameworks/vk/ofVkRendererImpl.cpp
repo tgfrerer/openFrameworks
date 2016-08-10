@@ -23,11 +23,13 @@ void ofVkRenderer::setup(){
 	// sets up resources to keep track of production frames
 	setupFrameResources();
 
+	// create the main renderpass 
+	setupRenderPass();
+
 	// set up shader manager
 	of::vk::ShaderManager::Settings shaderManagerSettings;
 	shaderManagerSettings.device = mDevice;
 	mShaderManager = make_shared<of::vk::ShaderManager>( shaderManagerSettings );
-
 
 	// Set up Context
 	// A Context holds dynamic frame state + manages GPU memory for "immediate" mode
@@ -54,11 +56,10 @@ void ofVkRenderer::setupDefaultContext(){
 	
 
 	of::vk::Context::Settings contextSettings;
-	contextSettings.device = mDevice;
-	contextSettings.numSwapchainImages = mSettings.numVirtualFrames;
-	contextSettings.renderPass = mRenderPass;
-	contextSettings.framebuffers = mFrameBuffers;
-	contextSettings.shaderManager = mShaderManager;
+	contextSettings.device             = mDevice;
+	contextSettings.numVirtualFrames   = getVirtualFrameCount();
+	contextSettings.shaderManager      = mShaderManager;
+	contextSettings.renderPass         = mRenderPass;
 	mDefaultContext = make_shared<of::vk::Context>( contextSettings );
 
 	// shader should not reflect before 
@@ -87,7 +88,7 @@ void ofVkRenderer::setupFrameResources(){
 	
 	mFrameResources.resize( mSettings.numVirtualFrames );
 	
-	for ( auto frame : mFrameResources ){
+	for ( auto & frame : mFrameResources ){
 		// allocate a command buffer
 
 		VkCommandBufferAllocateInfo commandBufferCreateInfo {
@@ -152,12 +153,8 @@ void ofVkRenderer::setupSwapChain(){
 
 	setupDepthStencil();
 
-	// create the main renderpass 
-	setupRenderPass();
 
 	mViewport = { 0.f, 0.f, float( mWindowWidth ), float( mWindowHeight ) };
-
-	setupFrameBuffer();
 
 }
 
@@ -279,66 +276,84 @@ bool  ofVkRenderer::getMemoryAllocationInfo( const VkMemoryRequirements& memReqs
 // ----------------------------------------------------------------------
 
 void ofVkRenderer::setupDepthStencil(){
-	VkImageCreateInfo image = {};
-	image.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-	image.pNext = NULL;
-	image.imageType = VK_IMAGE_TYPE_2D;
-	image.format = mDepthFormat;
-	image.extent = { mWindowWidth, mWindowHeight, 1 };
-	image.mipLevels = 1;
-	image.arrayLayers = 1;
-	image.samples = VK_SAMPLE_COUNT_1_BIT;
-	image.tiling = VK_IMAGE_TILING_OPTIMAL;
-	image.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
-	image.flags = 0;
-
-	VkImageViewCreateInfo depthStencilView = {};
-	depthStencilView.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-	depthStencilView.pNext = NULL;
-	depthStencilView.viewType = VK_IMAGE_VIEW_TYPE_2D;
-	depthStencilView.format = mDepthFormat;
-	depthStencilView.flags = 0;
-	depthStencilView.subresourceRange = {};
-	depthStencilView.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
-	depthStencilView.subresourceRange.baseMipLevel = 0;
-	depthStencilView.subresourceRange.levelCount = 1;
-	depthStencilView.subresourceRange.baseArrayLayer = 0;
-	depthStencilView.subresourceRange.layerCount = 1;
-
-	VkMemoryRequirements memReqs;
 	
-	if ( mDepthStencil.image){
-		// Destroy previously created image, if any
-		vkDestroyImage( mDevice, mDepthStencil.image, nullptr );
-		mDepthStencil.image = nullptr;
-	}
-	auto err = vkCreateImage( mDevice, &image, nullptr, &mDepthStencil.image );
-	assert( !err );
-	vkGetImageMemoryRequirements( mDevice, mDepthStencil.image, &memReqs );
+	VkImageCreateInfo imageCreateInfo {
+		VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,          // VkStructureType          sType;
+		nullptr,                                      // const void*              pNext;
+		0,                                            // VkImageCreateFlags       flags;
+		VK_IMAGE_TYPE_2D,                             // VkImageType              imageType;
+		mDepthFormat,                                 // VkFormat                 format;
+		{ mWindowWidth, mWindowHeight, 1 },           // VkExtent3D               extent;
+		1,                                            // uint32_t                 mipLevels;
+		1,                                            // uint32_t                 arrayLayers;
+		VK_SAMPLE_COUNT_1_BIT,                        // VkSampleCountFlagBits    samples;
+		VK_IMAGE_TILING_OPTIMAL,                      // VkImageTiling            tiling;
+		VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT 
+		| VK_IMAGE_USAGE_TRANSFER_SRC_BIT,            // VkImageUsageFlags        usage;
+		VK_SHARING_MODE_EXCLUSIVE,                    // VkSharingMode            sharingMode;
+		0,                                            // uint32_t                 queueFamilyIndexCount;
+		nullptr,                                      // const uint32_t*          pQueueFamilyIndices;
+		VK_IMAGE_LAYOUT_UNDEFINED,                    // VkImageLayout            initialLayout;
+	};
 
-	VkMemoryAllocateInfo memInfo;
-	getMemoryAllocationInfo( memReqs, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, memInfo );
+	VkImageViewCreateInfo imageViewCreateInfo {
+		VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO, // VkStructureType            sType;
+		nullptr,                                  // const void*                pNext;
+		0,                                        // VkImageViewCreateFlags     flags;
+		nullptr,                                  // VkImage                    image;
+		VK_IMAGE_VIEW_TYPE_2D,                    // VkImageViewType            viewType;
+		mDepthFormat,                             // VkFormat                   format;
+		{},                                       // VkComponentMapping         components;
+		{
+			VK_IMAGE_ASPECT_DEPTH_BIT 
+			| VK_IMAGE_ASPECT_STENCIL_BIT, // VkImageAspectFlags    aspectMask;
+			0,                             // uint32_t              baseMipLevel;
+			1,                             // uint32_t              levelCount;
+			0,                             // uint32_t              baseArrayLayer;
+			1,                             // uint32_t              layerCount;
+		}                                         // VkImageSubresourceRange    subresourceRange;
+	};
+
+	mDepthStencil.resize(mSwapchain.getImageCount());
+
+	for ( auto& depthStencil : mDepthStencil ){
+		VkMemoryRequirements memReqs;
+		if ( depthStencil.image ){
+			// Destroy previously created image, if any
+			vkDestroyImage( mDevice, depthStencil.image, nullptr );
+			depthStencil.image = nullptr;
+		}
+		auto err = vkCreateImage( mDevice, &imageCreateInfo, nullptr, &depthStencil.image );
+		assert( !err );
+		vkGetImageMemoryRequirements( mDevice, depthStencil.image, &memReqs );
+
+		VkMemoryAllocateInfo memInfo;
+		getMemoryAllocationInfo( memReqs, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, memInfo );
+
+		if ( depthStencil.mem ){
+			// Free any previously allocated memory
+			vkFreeMemory( mDevice, depthStencil.mem, nullptr );
+			depthStencil.mem = nullptr;
+		}
+		err = vkAllocateMemory( mDevice, &memInfo, nullptr, &depthStencil.mem );
+		assert( !err );
+
+		err = vkBindImageMemory( mDevice, depthStencil.image, depthStencil.mem, 0 );
+		assert( !err );
+
+		imageViewCreateInfo.image = depthStencil.image;
+
+		if ( depthStencil.view ){
+			// Destroy any previous depthStencil ImageView
+			vkDestroyImageView( mDevice, depthStencil.view, nullptr );
+			depthStencil.view = nullptr;
+		}
+		err = vkCreateImageView( mDevice, &imageViewCreateInfo, nullptr, &depthStencil.view );
+		assert( !err );
+	}
+
 	
-	if ( mDepthStencil.mem ){
-		// Free any previously allocated memory
-		vkFreeMemory( mDevice, mDepthStencil.mem, nullptr );
-		mDepthStencil.mem = nullptr;
-	}
-	err = vkAllocateMemory( mDevice, &memInfo, nullptr, &mDepthStencil.mem );
-	assert( !err );
 
-	err = vkBindImageMemory( mDevice, mDepthStencil.image, mDepthStencil.mem, 0 );
-	assert( !err );
-
-	depthStencilView.image = mDepthStencil.image;
-
-	if ( mDepthStencil.view ){
-		// Destroy any previous depthStencil ImageView
-		vkDestroyImageView( mDevice, mDepthStencil.view, nullptr );
-		mDepthStencil.view = nullptr;
-	}
-	err = vkCreateImageView( mDevice, &depthStencilView, nullptr, &mDepthStencil.view );
-	assert( !err );
 };
 
 // ----------------------------------------------------------------------
@@ -365,7 +380,7 @@ void ofVkRenderer::setupRenderPass(){
 			VK_ATTACHMENT_LOAD_OP_DONT_CARE,                   // VkAttachmentLoadOp              stencilLoadOp;
 			VK_ATTACHMENT_STORE_OP_DONT_CARE,                  // VkAttachmentStoreOp             stencilStoreOp;
 			VK_IMAGE_LAYOUT_UNDEFINED,                         // VkImageLayout                   initialLayout;
-			VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,          // VkImageLayout                   finalLayout; 
+			VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,          // VkImageLayout                   finalLayout; 
 		},
 		{   // Depth attachment
 			0,                                                 // VkAttachmentDescriptionFlags    flags;
@@ -390,7 +405,7 @@ void ofVkRenderer::setupRenderPass(){
 		VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,      // VkImageLayout    layout;
 	};
 
-	VkSubpassDescription subpass = {
+	VkSubpassDescription subpassDescription = {
 		0,                                                     // VkSubpassDescriptionFlags       flags;
 		VK_PIPELINE_BIND_POINT_GRAPHICS,                       // VkPipelineBindPoint             pipelineBindPoint;
 		0,                                                     // uint32_t                        inputAttachmentCount;
@@ -403,6 +418,27 @@ void ofVkRenderer::setupRenderPass(){
 		nullptr,                                               // const uint32_t*                 pPreserveAttachments;
 	};
 
+	std::vector<VkSubpassDependency> dependencies = {
+		{
+			VK_SUBPASS_EXTERNAL,                            // uint32_t                       srcSubpass
+			0,                                              // uint32_t                       dstSubpass
+			VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,           // VkPipelineStageFlags           srcStageMask
+			VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,  // VkPipelineStageFlags           dstStageMask
+			VK_ACCESS_MEMORY_READ_BIT,                      // VkAccessFlags                  srcAccessMask
+			VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,           // VkAccessFlags                  dstAccessMask
+			VK_DEPENDENCY_BY_REGION_BIT                     // VkDependencyFlags              dependencyFlags
+		},
+		{
+			0,                                              // uint32_t                       srcSubpass
+			VK_SUBPASS_EXTERNAL,                            // uint32_t                       dstSubpass
+			VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,  // VkPipelineStageFlags           srcStageMask
+			VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,           // VkPipelineStageFlags           dstStageMask
+			VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,           // VkAccessFlags                  srcAccessMask
+			VK_ACCESS_MEMORY_READ_BIT,                      // VkAccessFlags                  dstAccessMask
+			VK_DEPENDENCY_BY_REGION_BIT                     // VkDependencyFlags              dependencyFlags
+		}
+	};
+
 	VkRenderPassCreateInfo renderPassInfo = {
 		VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,             // VkStructureType                   sType;
 		nullptr,                                               // const void*                       pNext;
@@ -410,9 +446,9 @@ void ofVkRenderer::setupRenderPass(){
 		2,                                                     // uint32_t                          attachmentCount;
 		attachments,                                           // const VkAttachmentDescription*    pAttachments;
 		1,                                                     // uint32_t                          subpassCount;
-		&subpass,                                              // const VkSubpassDescription*       pSubpasses;
-		0,                                                     // uint32_t                          dependencyCount;
-		nullptr,                                               // const VkSubpassDependency*        pDependencies;
+		&subpassDescription,                                   // const VkSubpassDescription*       pSubpasses;
+		static_cast<uint32_t>(dependencies.size()),            // uint32_t                          dependencyCount;
+		dependencies.data(),                                   // const VkSubpassDependency*        pDependencies;
 	};
 
 	if ( mRenderPass != nullptr ){
@@ -428,45 +464,39 @@ void ofVkRenderer::setupRenderPass(){
 
 // ----------------------------------------------------------------------
 
-void ofVkRenderer::setupFrameBuffer(){
+void ofVkRenderer::setupFrameBuffer( uint32_t swapchainImageIndex ){
 
-	// destroy previously exisiting FrameBuffer objects
-	for ( auto& f : mFrameBuffers ){
-		if ( f != nullptr ){
-			vkDestroyFramebuffer( mDevice, f, nullptr );
-			f = nullptr;
-		}
+	if ( nullptr != mFrameResources[mFrameIndex].framebuffer ){
+	    // destroy pre-existing frame buffer
+		vkDestroyFramebuffer( mDevice, mFrameResources[mFrameIndex].framebuffer, nullptr );
+		mFrameResources[mFrameIndex].framebuffer = nullptr;
+
 	}
 
-	// Create frame buffers for every swap chain frame
-	mFrameBuffers.resize( mSwapchain.getImageCount() );
-	for ( uint32_t i = 0; i < mFrameBuffers.size(); i++ ){
-		// This is where we connect the framebuffer with the presentable image buffer
-		// which is handled by the swapchain.
-		// TODO: the swapchain should own this frame buffer, 
-		// and allow us to reference it.
-		// maybe this needs to move into the swapchain.
+	// This is where we connect the framebuffer with the presentable image buffer
+	// which is handled by the swapchain.
+	// TODO: maybe this needs to move into the swapchain.
 		
-		VkImageView attachments[2];
-		// attachment0 shall be the image view for the image buffer to the corresponding swapchain image view
-		attachments[0] = mSwapchain.getImage(i).view;
-		// attachment1 shall be the image view for the depthStencil buffer
-		attachments[1] = mDepthStencil.view;
+	VkImageView attachments[2];
+	// attachment0 shall be the image view for the image buffer to the corresponding swapchain image view
+	attachments[0] = mSwapchain.getImage( swapchainImageIndex ).view;
+	// attachment1 shall be the image view for the depthStencil buffer
+	attachments[1] = mDepthStencil[swapchainImageIndex].view;
 
-		VkFramebufferCreateInfo frameBufferCreateInfo = {};
-		frameBufferCreateInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-		frameBufferCreateInfo.pNext = NULL;
-		frameBufferCreateInfo.renderPass = mRenderPass;
-		frameBufferCreateInfo.attachmentCount = 2;
-		frameBufferCreateInfo.pAttachments = attachments;
-		frameBufferCreateInfo.width = mWindowWidth;
-		frameBufferCreateInfo.height = mWindowHeight;
-		frameBufferCreateInfo.layers = 1;
+	VkFramebufferCreateInfo frameBufferCreateInfo = {};
+	frameBufferCreateInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+	frameBufferCreateInfo.pNext = NULL;
+	frameBufferCreateInfo.renderPass = mRenderPass;
+	frameBufferCreateInfo.attachmentCount = 2;
+	frameBufferCreateInfo.pAttachments = attachments;
+	frameBufferCreateInfo.width = mWindowWidth;
+	frameBufferCreateInfo.height = mWindowHeight;
+	frameBufferCreateInfo.layers = 1;
 
-		// create a framebuffer for each swap chain frame
-		VkResult err = vkCreateFramebuffer( mDevice, &frameBufferCreateInfo, nullptr, &mFrameBuffers[i] );
-		assert( !err );
-	}
+	// create a framebuffer for each swap chain frame
+	VkResult err = vkCreateFramebuffer( mDevice, &frameBufferCreateInfo, nullptr, &mFrameResources[mFrameIndex].framebuffer );
+	assert( !err );
+	
 };
 
 // ----------------------------------------------------------------------
@@ -497,20 +527,88 @@ void ofVkRenderer::flushSetupCommandBuffer(VkCommandBuffer cmd){
 void ofVkRenderer::startRender(){
 
 	// start of new frame
-	// VkResult err;
 
-	uint32_t swapIdx = 0;
+	uint32_t swapIdx = 0; /*receives index of current swap chain image*/
 
-	// err = mSwapchain.acquireNextImage( mSemaphorePresentComplete, &swapIdx );
-	// assert( !err );
+	const auto &currentFrame = mFrameResources[mFrameIndex];
+
+	// wait for current frame to finish rendering
+	if ( vkWaitForFences( mDevice, 1, &currentFrame.fence, VK_FALSE, 1000000000 ) != VK_SUCCESS ){
+		std::cout << "Waiting for fence takes too long!" << std::endl;
+	}
+
+	vkResetFences( mDevice, 1, &currentFrame.fence );
+
+	// receive index for next available swapchain image
+	auto err = mSwapchain.acquireNextImage( currentFrame.semaphoreImageAcquired, &swapIdx );
+	assert( !err );
+
+	setupFrameBuffer( swapIdx ); /* connect current frame buffer with swapchain image, and depth stencil image */
+
 
 	if ( mDefaultContext ){
-		mDefaultContext->begin( swapIdx );
-
+		mDefaultContext->begin( mFrameIndex );
 		mDefaultContext->setUniform( "modelMatrix", ofMatrix4x4() ); // initialise modelview with identity matrix.
 		mDefaultContext->setUniform( "globalColor", ofFloatColor( ofColor::white ) );
 	}
 
+
+	{
+		VkCommandBufferBeginInfo cmdBeginInfo{
+			VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO, // VkStructureType                          sType;
+			nullptr, // const void*                              pNext;
+			VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT, // VkCommandBufferUsageFlags                flags;
+			nullptr // const VkCommandBufferInheritanceInfo*    pInheritanceInfo;
+		};
+
+		vkBeginCommandBuffer( currentFrame.cmd, &cmdBeginInfo );
+	}
+	{	// begin renderpass
+
+		VkRect2D renderArea {
+			{0,0},
+			{mWindowWidth, mWindowHeight}
+		};
+
+		VkClearValue clearValues[2];
+		clearValues[0].color = { 0.f, 0.f, 0.f, 0.f };
+		clearValues[1].depthStencil = { 1.0f, 0 };
+
+		VkRenderPassBeginInfo renderPassBeginInfo{
+			VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO, // VkStructureType        sType;
+			nullptr,                                  // const void*            pNext;
+			mRenderPass,                              // VkRenderPass           renderPass;
+			currentFrame.framebuffer,                 // VkFramebuffer          framebuffer;
+			renderArea,                               // VkRect2D               renderArea;
+			2,                                        // uint32_t               clearValueCount;
+			clearValues,                              // const VkClearValue*    pClearValues;
+		};
+
+		vkCmdBeginRenderPass( currentFrame.cmd, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE );
+
+	}
+
+	{	// set dynamic viewport and scissor values for renderpass
+		auto & currentViewport = ofGetCurrentViewport();
+
+		// Update dynamic viewport state
+		VkViewport viewport = {};
+		viewport.x = currentViewport.x;
+		viewport.y = currentViewport.y;
+		viewport.width = (float)currentViewport.width;
+		viewport.height = (float)currentViewport.height;
+		viewport.minDepth = 0.0f;		   // this is the min depth value for the depth buffer
+		viewport.maxDepth = 1.0f;		   // this is the max depth value for the depth buffer
+		vkCmdSetViewport( currentFrame.cmd, 0, 1, &viewport );
+
+		// Update dynamic scissor state
+		VkRect2D scissor = {};
+		scissor.extent.width = viewport.width;
+		scissor.extent.height = viewport.height;
+		scissor.offset.x = viewport.x;
+		scissor.offset.y = viewport.y;
+		vkCmdSetScissor( currentFrame.cmd, 0, 1, &scissor );
+	}
 
 }
 
@@ -518,23 +616,52 @@ void ofVkRenderer::startRender(){
 // ----------------------------------------------------------------------
 
 void ofVkRenderer::finishRender(){
+	const auto &currentFrame = mFrameResources[mFrameIndex];
+
+	vkCmdEndRenderPass( currentFrame.cmd );
+
+	vkEndCommandBuffer( currentFrame.cmd );
 
 	if ( mDefaultContext ){
 		// this will implicitly submit the command buffer
 		mDefaultContext->end();
 	}
 
-	
+	{	// submit command buffer 
 
+		VkPipelineStageFlags wait_dst_stage_mask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+		VkSubmitInfo submitInfo = {
+			VK_STRUCTURE_TYPE_SUBMIT_INFO,                          // VkStructureType              sType
+			nullptr,                                                // const void                  *pNext
+			1,                                                      // uint32_t                     waitSemaphoreCount
+			&currentFrame.semaphoreImageAcquired,                   // const VkSemaphore           *pWaitSemaphores
+			&wait_dst_stage_mask,                                   // const VkPipelineStageFlags  *pWaitDstStageMask;
+			1,                                                      // uint32_t                     commandBufferCount
+			&currentFrame.cmd,                                      // const VkCommandBuffer       *pCommandBuffers
+			1,                                                      // uint32_t                     signalSemaphoreCount
+			&currentFrame.semaphoreRenderComplete                   // const VkSemaphore           *pSignalSemaphores
+		};
+		auto err = vkQueueSubmit( mQueue, 1, &submitInfo, currentFrame.fence );
+		assert( !err );
+	}
+
+	{	// present swapchain frame
+		auto err = mSwapchain.queuePresent( mQueue, mSwapchain.getCurrentImageIndex(), { currentFrame.semaphoreRenderComplete } );
+		assert( !err );
+	}
+
+	// !TODO: complete draw environment 
+	// submit command buffer
+	// present image using swapchain
+
+	// swap current frame index
+	mFrameIndex = ( mFrameIndex + 1 ) % mSettings.numVirtualFrames;
 }
 
 const uint32_t ofVkRenderer::getSwapChainSize(){
 	return mSwapchain.getImageCount();
 }
 
-const std::vector<VkFramebuffer>& ofVkRenderer::getDefaultFramebuffers(){
-	return mFrameBuffers;
-}
 
 const VkRenderPass & ofVkRenderer::getDefaultRenderPass(){
 	return mRenderPass;

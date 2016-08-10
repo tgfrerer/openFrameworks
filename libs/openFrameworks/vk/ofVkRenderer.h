@@ -1,4 +1,5 @@
 #pragma once
+#include <vulkan/vulkan.h>
 #include "ofBaseTypes.h"
 #include "ofPolyline.h"
 #include "ofMatrix4x4.h"
@@ -7,7 +8,6 @@
 #include "ofBitmapFont.h"
 #include "ofPath.h"
 #include "ofMaterial.h"
-#include <vulkan/vulkan.h>
 #include "vk/Swapchain.h"
 #include "vk/Context.h"
 #include "ofMesh.h"
@@ -64,9 +64,6 @@ public:
 	virtual void finishRender() override;
 
 	const uint32_t getSwapChainSize();
-
-	// return frame buffers for swapchain
-	const std::vector<VkFramebuffer>& getDefaultFramebuffers();
 
 	const VkRenderPass& getDefaultRenderPass();
 
@@ -242,12 +239,12 @@ private:
 public:
 
 	// return handle to renderer's vkDevice
-	// TODO: error checking for when device has not been aqcuired yet.
-	const VkDevice& getVkDevice() const{
+	// CONSIDER: error checking for when device has not been aqcuired yet.
+	const ::VkDevice& getVkDevice() const{
 		return mDevice;
 	};
 
-	const VkPhysicalDeviceProperties& getVkPhysicalDeviceProperties() const {
+	const ::VkPhysicalDeviceProperties& getVkPhysicalDeviceProperties() const {
 		return mPhysicalDeviceProperties;
 	}
 
@@ -260,13 +257,13 @@ public:
 		return mDrawCommandPool;
 	}
 
-	
-	const VkCommandBuffer* getCurrentDrawCommandBuffer() const{
-		if ( mFrameResources.size() < mFrameIndex ){
-			return &mFrameResources[mFrameIndex].cmd;
+	const VkCommandBuffer& getCurrentDrawCommandBuffer() const {
+		if ( mFrameIndex < mFrameResources.size() ){
+			return mFrameResources[mFrameIndex].cmd;
 		} else{
+			static VkCommandBuffer errorCmdBuffer = nullptr;
 			ofLogError() << "No current draw command buffer";
-			return nullptr;
+			return errorCmdBuffer;
 		}
 	}
 
@@ -286,6 +283,10 @@ public:
 		return mShaderManager;
 	}
 
+	const size_t getVirtualFrameCount(){
+		return mFrameResources.size();
+	}
+
 private:
 
 	ofRectangle mViewport;
@@ -294,17 +295,18 @@ private:
 	
 	struct FrameResources
 	{
-		VkCommandBuffer cmd;
-		// Synchronization semaphores - one for each swapchain image
-		VkSemaphore semaphoreImageAcquired;
-		VkSemaphore semaphoreRenderComplete;
-		VkFence     fence;
+		VkCommandBuffer                       cmd                     = nullptr;
+		VkSemaphore                           semaphoreImageAcquired  = nullptr;
+		VkSemaphore                           semaphoreRenderComplete = nullptr;
+		VkFence                               fence                   = nullptr;
+		VkFramebuffer                         framebuffer             = nullptr;
 	};
 
 	std::vector<FrameResources> mFrameResources; // one frame resource per virtual frame
 	uint32_t                    mFrameIndex = 0; // index of frame currently in production
 
-	
+	VkRenderPass                mRenderPass = nullptr; /*main renderpass*/ 
+
 
 	void                     setupFrameResources();
 
@@ -315,7 +317,7 @@ private:
 	void                     setupDepthStencil();
 	void                     setupRenderPass();
 	
-	void                     setupFrameBuffer();
+	void                     setupFrameBuffer(uint32_t swapchainImageIndex);
 	void                     flushSetupCommandBuffer(VkCommandBuffer cmd);
 
 
@@ -333,26 +335,21 @@ private:
 	// Depth format is selected during Vulkan initialization, in createDevice()
 	VkFormat mDepthFormat;
 
-	// main renderpass 
-	VkRenderPass mRenderPass = nullptr;
-
-
 	// our depth stencil: 
 	// we only need one since there is only ever one frame in flight.
-	struct
+	// !TODO: maybe move this into swapchain
+	struct DepthStencilResource
 	{
 		VkImage image      = nullptr;
 		VkDeviceMemory mem = nullptr;
 		VkImageView view   = nullptr;
-	} mDepthStencil;
+	};
+
+	// one depth stencil image per swapchain frame
+	std::vector<DepthStencilResource> mDepthStencil;
 
 	// vulkan swapchain
 	Swapchain mSwapchain;
-
-	// frame buffers for each image in the swapchain
-	std::vector<VkFramebuffer> mFrameBuffers;
-	// Active frame buffer index
-	// uint32_t mCurrentSwapIndex = 0;
 
 	// context used for implicit rendering
 	// reset this context if you don't want explicit rendering
@@ -364,14 +361,6 @@ private:
 
 	uint32_t mWindowWidth = 0;
 	uint32_t mWindowHeight = 0;
-
-	//struct BufferObject
-	//{
-	//	VkBuffer buf;
-	//	VkDeviceMemory mem;
-	//	size_t num_elements;
-	//};
-
 
 public:
 
