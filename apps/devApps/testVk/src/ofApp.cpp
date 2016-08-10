@@ -1,7 +1,4 @@
 #include "ofApp.h"
-#include "vk/ofVkRenderer.h"
-#include "vk/vkUtils.h"
-#include "vk/vkTexture.h"
 
 uint32_t display_mode = 3;
 uint32_t numDisplayModes = 4;
@@ -91,9 +88,8 @@ void ofApp::setup(){
 		of::vk::Context::Settings contextSettings;
 
 		contextSettings.device             = renderer->getVkDevice();
-		contextSettings.numSwapchainImages = renderer->getSwapChainSize();
+		contextSettings.numVirtualFrames   = renderer->getVirtualFrameCount();
 		contextSettings.renderPass         = renderer->getDefaultRenderPass();
-		contextSettings.framebuffers       = renderer->getDefaultFramebuffers();
 		contextSettings.shaderManager      = renderer->getShaderManager();
 
 		mExplicitContext = make_shared<of::vk::Context>( contextSettings );
@@ -153,7 +149,7 @@ void ofApp::drawModeExplicit(){
 	
 	auto & renderer = dynamic_pointer_cast<ofVkRenderer>( ofGetCurrentRenderer() );
 	auto & context  = *renderer->getDefaultContext();
-	auto & cmd      = *renderer->getCurrentDrawCommandBuffer();
+	auto & cmd      = renderer->getCurrentDrawCommandBuffer();
 
 	static ofMesh ico = ofMesh::icosphere( 50, 3 );
 	
@@ -299,7 +295,7 @@ void ofApp::keyPressed(int key){
 	if (key=='m'){
 		display_mode = ( ++display_mode ) % numDisplayModes;
 	}
-	if ( key == 'l' ){
+	else if ( key == 'l' ){
 		isFrameRateLocked ^= true;
 		if ( isFrameRateLocked ){
 			ofSetFrameRate( TARGET_FRAME_RATE );
@@ -309,6 +305,10 @@ void ofApp::keyPressed(int key){
 			ofSetFrameRate( 0 );
 			ofLog() << "Frame rate unlocked.";
 		}
+	}
+	else if ( key == ' ' ){
+		if ( mShader )
+			mShader->compile();
 	}
 
 }
