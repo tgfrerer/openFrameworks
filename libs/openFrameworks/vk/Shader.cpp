@@ -6,6 +6,33 @@
 #include "spooky/SpookyV2.h"
 #include "shaderc/shaderc.hpp"
 
+
+// ----------------------------------------------------------------------
+
+namespace of{ 
+namespace utils{
+
+// static utility method : no-op on non-WIN32 system. 
+void setConsoleColor( uint32_t colour = 12 ){
+#ifdef WIN32
+	static HANDLE hConsole = GetStdHandle( STD_OUTPUT_HANDLE );
+	SetConsoleTextAttribute( hConsole, colour + 0 * 16 );
+#endif 
+}
+
+// reset console color
+// static utility method : no-op on non-WIN32 system. 
+void resetConsoleColor(){
+#ifdef WIN32
+	static HANDLE hConsole = GetStdHandle( STD_OUTPUT_HANDLE );
+	SetConsoleTextAttribute( hConsole, 7 + 0 * 16 );
+#endif 
+}
+
+} /*namespace vk*/ 
+} /*namespace of*/
+
+
 // ----------------------------------------------------------------------
 
 of::vk::Shader::Shader( const Settings & settings_ )
@@ -65,9 +92,7 @@ void of::vk::Shader::compile(){
 
 		if ( spirCodeDirty ){
 			ofLog() << "Building shader module: " << filename;
-			// todo: delete old shader modules.
 			createVkShaderModule( shaderType, spirCode );
-			
 			// store hash in map so it does not appear dirty
 			mSpvHash[shaderType] = spirvHash;
 			// move the ir code buffer into the shader compiler
@@ -100,6 +125,7 @@ bool of::vk::Shader::isSpirCodeDirty( const VkShaderStageFlagBits shaderStage, u
 	
 	return false;
 }
+
 
 // ----------------------------------------------------------------------
 
@@ -145,12 +171,13 @@ bool of::vk::Shader::getSpirV( const VkShaderStageFlagBits shaderStage, const st
 
 		if ( module.GetCompilationStatus() != shaderc_compilation_status_success ){
 			std::string errorMessage = module.GetErrorMessage();
-			ofLogError() << "Shader compile failed for: " << fileName << std::endl 
-				<< std::endl << errorMessage;
+			ofLogError() << "Shader compile failed for: " << fileName;
 
-			// Provide shader source code context if possible 
-			// Error will have the form:
-			// "triangle.frag:28: error: '' :  syntax error"
+			of::utils::setConsoleColor( 12 /* red */ );
+			ofLogError() << std::endl << errorMessage;
+			of::utils::resetConsoleColor();
+			 
+			// Error string will have the form:  "triangle.frag:28: error: '' :  syntax error"
 
 			ostringstream scanString; /* create a scan string with length of first element known: "%*23s : %d :" */
 			scanString << "%*" << fileName.size() << "s : %d :"; 
@@ -159,26 +186,30 @@ bool of::vk::Shader::getSpirV( const VkShaderStageFlagBits shaderStage, const st
 			auto scanResult = sscanf( errorMessage.c_str(), scanString.str().c_str(), &lineNumber );
 
 			if ( scanResult != std::char_traits<wchar_t>::eof() ){
-				ostringstream sourceContext;
 				auto & lineIt = fileBuf.getLines().begin();
 				size_t currentLine = 1; /* Line numbers start counting at 1 */
 
 				while (lineIt != fileBuf.getLines().end()){
-					
+
 					if ( currentLine >= lineNumber - 3 ){
+						ostringstream sourceContext;
 						const auto shaderSourceCodeLine = lineIt.asString();
-						sourceContext << std::right << std::setw(4) << currentLine << " | " << shaderSourceCodeLine << std::endl;
+						sourceContext << std::right << std::setw(4) << currentLine << " | " << shaderSourceCodeLine;
+						
+						if ( currentLine == lineNumber ) of::utils::setConsoleColor( 11 );
+						ofLogError() << sourceContext.str();
+						if ( currentLine == lineNumber ) of::utils::resetConsoleColor();
 					}
 
-					if ( currentLine >= lineNumber + 2 )
+					if ( currentLine >= lineNumber + 2 ){
+						ofLogError(); // add empty for better readability
 						break;
+					}
 
 					++lineIt;
 					++currentLine;
 				}
-				ofLog() << "Shader source:" << std::endl << std::endl << sourceContext.str();
 			}
-
 
 			return false;
 		} else{
@@ -436,10 +467,10 @@ void of::vk::Shader::reflectVertexInputs(const spirv_cross::ShaderResources &sha
 		VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO, // VkStructureType                             sType;
 		nullptr,                                                   // const void*                                 pNext;
 		0,                                                         // VkPipelineVertexInputStateCreateFlags       flags;
-		uint32_t( vertexInfo.bindingDescription.size() ),         // uint32_t                                    vertexBindingDescriptionCount;
-		vertexInfo.bindingDescription.data(),                     // const VkVertexInputBindingDescription*      pVertexBindingDescriptions;
-		uint32_t( vertexInfo.attribute.size() ),                  // uint32_t                                    vertexAttributeDescriptionCount;
-		vertexInfo.attribute.data()                               // const VkVertexInputAttributeDescription*    pVertexAttributeDescriptions;
+		uint32_t( vertexInfo.bindingDescription.size() ),          // uint32_t                                    vertexBindingDescriptionCount;
+		vertexInfo.bindingDescription.data(),                      // const VkVertexInputBindingDescription*      pVertexBindingDescriptions;
+		uint32_t( vertexInfo.attribute.size() ),                   // uint32_t                                    vertexAttributeDescriptionCount;
+		vertexInfo.attribute.data()                                // const VkVertexInputAttributeDescription*    pVertexAttributeDescriptions;
 	};
 
 	vertexInfo.vi = std::move( vi );
