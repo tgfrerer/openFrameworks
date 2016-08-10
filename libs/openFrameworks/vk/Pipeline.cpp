@@ -74,7 +74,7 @@ void vk::GraphicsPipelineState::reset()
 		VK_COMPARE_OP_LESS_OR_EQUAL,                                 // VkCompareOp                                depthCompareOp;
 		VK_FALSE,                                                    // VkBool32                                   depthBoundsTestEnable;
 		VK_FALSE,                                                    // VkBool32                                   stencilTestEnable;
-		{															 // VkStencilOpState                           front;
+		{                                                            // VkStencilOpState                           front;
 			VK_STENCIL_OP_KEEP,                                         // VkStencilOp    failOp;				   
 			VK_STENCIL_OP_KEEP,                                         // VkStencilOp    passOp;				   
 			VK_STENCIL_OP_KEEP,                                         // VkStencilOp    depthFailOp;			   
@@ -83,7 +83,7 @@ void vk::GraphicsPipelineState::reset()
 			0,                                                          // uint32_t       writeMask;			   
 			0,                                                          // uint32_t       reference;			   
 		},
-		{															 // VkStencilOpState                           front;
+		{                                                            // VkStencilOpState                           back;
 			VK_STENCIL_OP_KEEP,                                         // VkStencilOp    failOp;				   
 			VK_STENCIL_OP_KEEP,                                         // VkStencilOp    passOp;				   
 			VK_STENCIL_OP_KEEP,                                         // VkStencilOp    depthFailOp;			   
@@ -91,7 +91,7 @@ void vk::GraphicsPipelineState::reset()
 			0,                                                          // uint32_t       compareMask;			   
 			0,                                                          // uint32_t       writeMask;			   
 			0,                                                          // uint32_t       reference;			   
-		},                                    // VkStencilOpState                           back;
+		},
 		0.f,                                                         // float                                      minDepthBounds;
 		0.f,                                                         // float                                      maxDepthBounds;
 	};
@@ -115,7 +115,7 @@ void vk::GraphicsPipelineState::reset()
 		VK_LOGIC_OP_CLEAR,                                           // VkLogicOp                                     logicOp;
 		1,                                                           // uint32_t                                      attachmentCount;
 		&mDefaultBlendAttachmentState,                               // const VkPipelineColorBlendAttachmentState*    pAttachments;
-		{ 0.f, 0.f, 0.f, 0.f }                                         // float                                         blendConstants[4];
+		{ 0.f, 0.f, 0.f, 0.f }                                       // float                                         blendConstants[4];
 	};
 
 	mDefaultDynamicStates = {
@@ -198,7 +198,7 @@ VkPipeline vk::GraphicsPipelineState::createPipeline( const VkDevice & device, c
 		}
 		
 		mDirty = false;
-
+		
         return pipeline ;
 }
 
