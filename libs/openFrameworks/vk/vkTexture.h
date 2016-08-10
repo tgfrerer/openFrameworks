@@ -1,7 +1,6 @@
 #pragma once
 #include "vulkan/vulkan.h"
 #include "vk/vkAllocator.h"
-#include "vk/vkUtils.h"
 #include "ofPixels.h"
 
 namespace of{
@@ -153,24 +152,24 @@ public:
 
 		vkBeginCommandBuffer( cmd, &beginInfo );
 
-		// create an image memory barrier
-		auto imageBarrier = of::vk::createImageMemoryBarrier( 
-			mTexData.image, 
-			VK_IMAGE_ASPECT_COLOR_BIT,
-			createInfo.initialLayout,                  // from: preinitialised
-			VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL   // to  :	shader read optimal
-		);
+		//// create an image memory barrier
+		//auto imageBarrier = of::vk::createImageMemoryBarrier( 
+		//	mTexData.image, 
+		//	VK_IMAGE_ASPECT_COLOR_BIT,
+		//	createInfo.initialLayout,                  // from: preinitialised
+		//	VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL   // to  :	shader read optimal
+		//);
 
 		// Record image memory barrier into pipeline barrier - this will 
 		// execute before the next command buffer in the current queue,
 		// and will transfer the image layout so that it can be sampled.
-		vkCmdPipelineBarrier( cmd,
-			VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-			VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-			0,
-			0, nullptr,
-			0, nullptr,
-			1, &imageBarrier );
+		//vkCmdPipelineBarrier( cmd,
+		//	VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+		//	VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+		//	0,
+		//	0, nullptr,
+		//	0, nullptr,
+		//	1, &imageBarrier );
 
 		// we're done recording this mini command buffer
 		auto err = vkEndCommandBuffer( cmd );

@@ -1,7 +1,6 @@
 #include "vk/ofVkRenderer.h"
 #include "vk/Shader.h"
 #include "vk/ShaderManager.h"
-#include "vk/vkUtils.h"
 
 #include <algorithm>
 

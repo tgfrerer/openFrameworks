@@ -309,9 +309,6 @@
     <ClInclude Include="..\..\..\openFrameworks\vk\Shader.h">
       <Filter>libs\openFrameworks\vk</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\openFrameworks\vk\vkUtils.h">
-      <Filter>libs\openFrameworks\vk</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\..\openFrameworks\vk\vkAllocator.h">
       <Filter>libs\openFrameworks\vk</Filter>
     </ClInclude>

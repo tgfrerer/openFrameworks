@@ -2,7 +2,6 @@
 #include <vector>
 #include "ofLog.h"
 #include "GLFW/glfw3.h"
-#include "vk/vkUtils.h"
 
 // CONSIDER: maybe using a settings object could make the setup method 
 // less long to call.
