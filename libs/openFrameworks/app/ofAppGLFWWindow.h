@@ -30,7 +30,7 @@ public:
 	ofGLFWWindowSettings(const ofGLESWindowSettings & settings)
 		: ofGLESWindowSettings(settings){}
 #elif defined(OF_TARGET_API_VULKAN)
-	ofGLFWWindowSettings( const ofGLWindowSettings & settings )
+	ofGLFWWindowSettings( const ofVkWindowSettings & settings )
 		: ofVkWindowSettings( settings ){}
 #else
 	ofGLFWWindowSettings(const ofGLWindowSettings & settings)

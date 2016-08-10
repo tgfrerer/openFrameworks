@@ -4,7 +4,7 @@
 #include "GLFW/glfw3.h"
 #include "vk/vkUtils.h"
 
-// TODO: maybe using a settings object could make the setup method 
+// CONSIDER: maybe using a settings object could make the setup method 
 // less long to call.
 
 void Swapchain::setup(

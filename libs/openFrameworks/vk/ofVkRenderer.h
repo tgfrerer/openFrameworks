@@ -45,9 +45,10 @@ public:
 
 	const struct Settings
 	{
-		uint32_t numVirtualFrames = 0;                               // number of virtual frames to allocate and to produce - set this through vkWindowSettings
+		uint32_t vkVersion = 1 << 22;								   // target version
+		uint32_t numVirtualFrames = 0;                                 // number of virtual frames to allocate and to produce - set this through vkWindowSettings
 		uint32_t numSwapchainImages = 0;                               // number of swapchain images to aim for (api gives no guarantee for this.)
-																	   //VkPresentModeKHR swapchainType = VK_PRESENT_MODE_FIFO_KHR;	   // selected swapchain type (api only guarantees FIFO)
+		VkPresentModeKHR swapchainType = VK_PRESENT_MODE_FIFO_KHR;	   // selected swapchain type (api only guarantees FIFO)
 	} mSettings;
 
 	ofVkRenderer( const ofAppBaseWindow * window, Settings settings ); 

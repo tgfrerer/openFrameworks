@@ -35,7 +35,6 @@ ofVkRenderer::ofVkRenderer(const ofAppBaseWindow * _window, Settings settings )
 	wrongUseLoggedOnce = false;
 
 	currentMaterial = nullptr;
-	
 
 	window = _window;
 
@@ -45,7 +44,6 @@ ofVkRenderer::ofVkRenderer(const ofAppBaseWindow * _window, Settings settings )
 	// vulkan specifics
 	setupDebugLayers();
 
-#ifdef OF_TARGET_API_VULKAN
 #ifdef TARGET_LINUX
 	mInstanceExtensions.push_back( "VK_KHR_xcb_surface" );
 #endif
@@ -54,7 +52,6 @@ ofVkRenderer::ofVkRenderer(const ofAppBaseWindow * _window, Settings settings )
 #endif
 	mInstanceExtensions.push_back( "VK_KHR_surface" );
 	mDeviceExtensions.push_back( "VK_KHR_swapchain" );
-#endif
 
 	createInstance();
 
@@ -149,7 +146,7 @@ void ofVkRenderer::destroySurface(){
 	VkApplicationInfo applicationInfo{};
 	{
 		applicationInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-		applicationInfo.apiVersion = VK_MAKE_VERSION(1, 0, 8);	// !TODO use version info from windowSettings
+		applicationInfo.apiVersion = mSettings.vkVersion;
 		applicationInfo.applicationVersion = VK_MAKE_VERSION(0, 1, 0);
 		applicationInfo.pApplicationName = appName.c_str();
 	}

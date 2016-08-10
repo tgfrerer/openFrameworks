@@ -36,7 +36,7 @@ void ofVkRenderer::setup(){
 	setupDefaultContext();
 	
 	// Mesh data prototype for DrawRectangle Method.
-	// TODO: move this into something more fitting
+	// CONSIDER: move this into something more fitting
 	{
 		uint32_t numVerts = 4;
 		mRectMesh.getVertices().resize(numVerts);
@@ -132,8 +132,7 @@ void ofVkRenderer::setupSwapChain(){
 	
 	uint32_t numSwapChainFrames = mSettings.numSwapchainImages;
 
-	// ! TODO: use mSettings.swapchainType
-	VkPresentModeKHR presentMode = VK_PRESENT_MODE_MAILBOX_KHR;
+	VkPresentModeKHR presentMode = mSettings.swapchainType;
 
 	// Note that the mSwapchain.setup() method will *modify* numSwapChainFrames 
 	// and presentMode if it wasn't able to apply the chosen values
@@ -649,10 +648,6 @@ void ofVkRenderer::finishRender(){
 		auto err = mSwapchain.queuePresent( mQueue, mSwapchain.getCurrentImageIndex(), { currentFrame.semaphoreRenderComplete } );
 		assert( !err );
 	}
-
-	// !TODO: complete draw environment 
-	// submit command buffer
-	// present image using swapchain
 
 	// swap current frame index
 	mFrameIndex = ( mFrameIndex + 1 ) % mSettings.numVirtualFrames;
