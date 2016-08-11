@@ -79,11 +79,31 @@ void ofApp::setup(){
 	// ofPixels tmpImagePix;
 	// ofLoadImage( tmpImagePix, "images/brighton.jpg" );
 	// mVkTex.load( tmpImagePix );
+	auto & renderer = dynamic_pointer_cast<ofVkRenderer>( ofGetCurrentRenderer() );
+
+	{   // initialise shaders from GLSL
+
+		of::vk::Shader::Settings shaderSettings{
+			renderer->getShaderManager(),
+			{
+				{ VK_SHADER_STAGE_VERTEX_BIT  , "default.vert" },
+				{ VK_SHADER_STAGE_FRAGMENT_BIT, "default.frag" },
+			}
+		};
+
+		// shader creation makes shader reflect. 
+		mShaderDefault = std::make_shared<of::vk::Shader>( shaderSettings );
+		shaderSettings.sources[VK_SHADER_STAGE_FRAGMENT_BIT] = "normalcolor.frag";
+		mShaderNormals = std::make_shared<of::vk::Shader>( shaderSettings );
+	}
+
+	auto & context = *renderer->getDefaultContext();
+	context.addShader( mShaderDefault );
+	context.addShader( mShaderNormals );
 
 	// use this to swap out the default context with a newly created one.
-	if ( true )
+	if ( false )
 	{
-		auto & renderer = dynamic_pointer_cast<ofVkRenderer>( ofGetCurrentRenderer() );
 
 		of::vk::Context::Settings contextSettings;
 
@@ -93,26 +113,11 @@ void ofApp::setup(){
 		contextSettings.shaderManager      = renderer->getShaderManager();
 
 		mExplicitContext = make_shared<of::vk::Context>( contextSettings );
+		mExplicitContext->setup( renderer.get() );
 
-		of::vk::Shader::Settings settings{
-			renderer->getShaderManager(),
-			{
-				{ VK_SHADER_STAGE_VERTEX_BIT  , "default.vert" },
-				{ VK_SHADER_STAGE_FRAGMENT_BIT, "default.frag" },
-			}
-		};
-
-		// shader creation makes shader reflect. 
-		mShaderDefault = std::make_shared<of::vk::Shader>( settings );
 		mExplicitContext->addShader( mShaderDefault );
-		settings.sources[VK_SHADER_STAGE_FRAGMENT_BIT] = "normalcolor.frag";
-		mShaderNormals = std::make_shared<of::vk::Shader>( settings );
 		mExplicitContext->addShader( mShaderNormals );
 
-		// this will analyse our shaders and build descriptorset
-		// layouts. it will also build pipelines.
-		mExplicitContext->setup( renderer.get() );
-		
 		renderer->setDefaultContext( mExplicitContext );
 	}
 

@@ -37,15 +37,6 @@ of::vk::Context::Context(const of::vk::Context::Settings& settings_)
 
 // ----------------------------------------------------------------------
 
-void of::vk::Context::addShader( std::shared_ptr<of::vk::Shader> shader_ ){
-	mShaders.push_back( shader_ );
-
-	// TODO: since this method may be called dynamically, we 
-	// should process shaders here as well.
-
-}
-// ----------------------------------------------------------------------
-
 void of::vk::Context::setup(ofVkRenderer* renderer_){
 
 	of::vk::Allocator::Settings settings{};
@@ -57,12 +48,6 @@ void of::vk::Context::setup(ofVkRenderer* renderer_){
 	mAlloc = std::make_shared<of::vk::Allocator>(settings);
 	mAlloc->setup();
 
-	// DescriptorPool and frameState are set up based on 
-	// the current library of DescriptorSetLayouts inside
-	// the ShaderManager.
-
-	setupDescriptorPool();
-	setupFrameState();
 
 	// CONSIDER: as the pipeline cache is one of the few elements which is actually mutexed 
 	// by vulkan, we could share a cache over mulitple contexts and the cache could therefore
@@ -107,7 +92,17 @@ void of::vk::Context::reset(){
 
 // ----------------------------------------------------------------------
 
-void of::vk::Context::setupFrameState(){
+void of::vk::Context::addShader( std::shared_ptr<of::vk::Shader> shader_ ){
+	if ( mCurrentFrameState.initialised ){
+		ofLogError() << "Cannot add shader after Context has been initialised. Add shader before you begin context for the first time.";
+	} else{
+		mShaders.push_back( shader_ );
+	}
+}
+
+// ----------------------------------------------------------------------
+
+void of::vk::Context::initialiseFrameState(){
 
 	// Frame holds stacks of memory, used to track
 	// current state for each uniform member 
@@ -145,7 +140,6 @@ void of::vk::Context::setupFrameState(){
 		}
 		
 	}
-
 	mCurrentFrameState = std::move( frame );
 }
 
@@ -228,6 +222,18 @@ void of::vk::Context::setupDescriptorPool(){
 void of::vk::Context::begin(size_t frame_){
 	mFrameIndex = int(frame_);
 	mAlloc->free(frame_);
+
+	// DescriptorPool and frameState are set up based on 
+	// the current library of DescriptorSetLayouts inside
+	// the ShaderManager.
+
+	if ( mCurrentFrameState.initialised == false ){
+		// We defer setting up descriptor pool 
+		// and framestate to when its first used here.
+		setupDescriptorPool();
+		initialiseFrameState();
+		mCurrentFrameState.initialised = true;
+	}
 
 	// make sure all shader uniforms are marked dirty when context is started fresh.
 	for ( auto & uniformBuffer : mCurrentFrameState.mUniformMembers ){

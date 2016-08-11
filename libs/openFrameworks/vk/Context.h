@@ -145,6 +145,7 @@ private:
 
 	struct Frame
 	{
+		bool initialised = false; // whether frame state has to be rebuilt
 		// map from descriptor set id to descriptor set state
 		std::map < uint64_t, DescriptorSetState > mUniformBufferState;
 		// map from uniform name to set and binding for uniform
@@ -190,7 +191,7 @@ private:
 	std::vector<VkDescriptorPool> mDescriptorPool;
 
 	// sets up backing memory to track state, based on shaders
-	void setupFrameState();
+	void initialiseFrameState();
 	void setupDescriptorPool( );
 
 	std::map<uint64_t, VkPipeline> mVkPipelines;
