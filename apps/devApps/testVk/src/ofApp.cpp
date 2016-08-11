@@ -81,15 +81,15 @@ void ofApp::setup(){
 	// mVkTex.load( tmpImagePix );
 
 	// use this to swap out the default context with a newly created one.
-	if ( false )
+	if ( true )
 	{
 		auto & renderer = dynamic_pointer_cast<ofVkRenderer>( ofGetCurrentRenderer() );
 
 		of::vk::Context::Settings contextSettings;
 
 		contextSettings.device             = renderer->getVkDevice();
-		contextSettings.numVirtualFrames   = renderer->getVirtualFrameCount();
-		contextSettings.renderPass         = renderer->getDefaultRenderPass();
+		contextSettings.numVirtualFrames   = renderer->getVirtualFramesCount();
+		contextSettings.defaultRenderPass  = renderer->getDefaultRenderPass();
 		contextSettings.shaderManager      = renderer->getShaderManager();
 
 		mExplicitContext = make_shared<of::vk::Context>( contextSettings );
@@ -97,14 +97,17 @@ void ofApp::setup(){
 		of::vk::Shader::Settings settings{
 			renderer->getShaderManager(),
 			{
-				{ VK_SHADER_STAGE_VERTEX_BIT  , "triangle.vert" },
-				{ VK_SHADER_STAGE_FRAGMENT_BIT, "triangle.frag" },
+				{ VK_SHADER_STAGE_VERTEX_BIT  , "default.vert" },
+				{ VK_SHADER_STAGE_FRAGMENT_BIT, "default.frag" },
 			}
 		};
 
 		// shader creation makes shader reflect. 
-		mShader = std::make_shared<of::vk::Shader>( settings );
-		mExplicitContext->addShader( mShader );
+		mShaderDefault = std::make_shared<of::vk::Shader>( settings );
+		mExplicitContext->addShader( mShaderDefault );
+		settings.sources[VK_SHADER_STAGE_FRAGMENT_BIT] = "normalcolor.frag";
+		mShaderNormals = std::make_shared<of::vk::Shader>( settings );
+		mExplicitContext->addShader( mShaderNormals );
 
 		// this will analyse our shaders and build descriptorset
 		// layouts. it will also build pipelines.
@@ -175,12 +178,14 @@ void ofApp::drawModeExplicit(){
 		.popMatrix();
 
 	context
+		.setShader( mShaderNormals )
 		.pushMatrix()
 		.translate( { 200, +200, -200 } )
 		.draw(cmd, ico )
 		.popMatrix();
 
 	context
+		.setShader( mShaderDefault )
 		.pushMatrix()
 		.setPolyMode( VK_POLYGON_MODE_POINT )
 		.translate( { 200, -200, 200 } )
@@ -307,8 +312,8 @@ void ofApp::keyPressed(int key){
 		}
 	}
 	else if ( key == ' ' ){
-		if ( mShader )
-			mShader->compile();
+		if ( mShaderDefault )
+			mShaderDefault->compile();
 	}
 
 }

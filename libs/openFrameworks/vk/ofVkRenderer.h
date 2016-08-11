@@ -282,7 +282,7 @@ public:
 		return mShaderManager;
 	}
 
-	const size_t getVirtualFrameCount(){
+	const size_t getVirtualFramesCount(){
 		return mFrameResources.size();
 	}
 

@@ -212,11 +212,14 @@ uint64_t of::vk::GraphicsPipelineState::calculateHash(){
 
 	std::vector<uint64_t> setLayoutKeys = mShader->getSetLayoutKeys();
 
-	std::array<uint64_t, 3> hashTable;
+	std::array<uint64_t, 5> hashTable;
 
 	hashTable[0] = SpookyHash::Hash64( setLayoutKeys.data(), sizeof( uint64_t ) * setLayoutKeys.size(), 0 );
 	hashTable[1] = SpookyHash::Hash64( &mRasterizationState, sizeof( mRasterizationState ), 0 );
 	hashTable[2] = mShader->getShaderCodeHash();
+	hashTable[3] = SpookyHash::Hash64( &mRenderPass, sizeof( mRenderPass ), 0 );
+	hashTable[4] = SpookyHash::Hash64( &mSubpass, sizeof( mSubpass ), 0 );
+
 
 	uint64_t hashOfHashes = SpookyHash::Hash64( hashTable.data(), hashTable.size() * sizeof( uint64_t ), 0 );
 

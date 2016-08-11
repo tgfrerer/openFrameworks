@@ -38,6 +38,10 @@ void resetConsoleColor(){
 of::vk::Shader::Shader( const Settings & settings_ )
 	: mSettings( settings_ )
 {
+	//if ( mShaderManager == nullptr ){
+	//	auto & renderer = dynamic_pointer_cast<ofVkRenderer>( ofGetCurrentRenderer() );
+	//	const_cast<std::shared_ptr<ShaderManager>&>(mShaderManager) = renderer->getShaderManager();
+	//}
 	compile();
 }
 

@@ -67,7 +67,7 @@ public:
 		VkDevice                   device = nullptr;
 		size_t                     numVirtualFrames = 0;
 		shared_ptr<ShaderManager>  shaderManager;
-		VkRenderPass               renderPass;
+		VkRenderPass               defaultRenderPass;
 		// context is initialised with a vector of shaders
 		// all these shaders contribute to the shared pipeline layout 
 		// for this context. The shaders need to be compatible in their
@@ -176,8 +176,8 @@ private:
 	std::vector<uint32_t       > mDSS_dirty;
 
 
-	// currently bound shader
-	std::shared_ptr<of::vk::Shader> mCurrentShader; 
+	//// currently bound shader
+	//std::shared_ptr<of::vk::Shader> mCurrentShader; 
 
 	const std::vector<VkDescriptorSet>& updateDescriptorSetState();
 
@@ -231,6 +231,9 @@ public:
 
 	void bindDescriptorSets( const VkCommandBuffer & cmd );
 	void bindPipeline( const VkCommandBuffer& cmd );
+
+	Context& setShader( const std::shared_ptr<of::vk::Shader>& shader_ );
+	Context& setRenderPass( const VkRenderPass& renderpass_ );
 
 	// return the one buffer which is used for all dynamic buffer memory within this context.
 	const VkBuffer& getVkBuffer() const;

@@ -130,7 +130,7 @@ public:
 		VkPipelineVertexInputStateCreateInfo vi;
 	} mVertexInfo;
 
-
+	
 
 private:
 

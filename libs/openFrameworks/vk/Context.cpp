@@ -151,10 +151,6 @@ void of::vk::Context::setupFrameState(){
 
 // ----------------------------------------------------------------------
 
-
-
-// ----------------------------------------------------------------------
-
 // Create a descriptor pool that has enough of each descriptor type as
 // referenced in our map of SetLayouts held in mDescriptorSetLayout
 // this might, if a descriptorPool was previously allocated, 
@@ -248,15 +244,10 @@ void of::vk::Context::begin(size_t frame_){
 	vkResetDescriptorPool( mSettings.device, mDescriptorPool[frame_], 0 );
 	
 	// reset pipeline state
+	mCurrentGraphicsPipelineState.reset();
 	{
-		// !TODO: resettting the pipeline state needs to be more 
-		// easy. Also, setting any render state that may affect
-		// the pipeline should invalidate the pipeline. 
-		mCurrentGraphicsPipelineState.reset();
-		mCurrentShader = mShaders.front();
-
-		mCurrentGraphicsPipelineState.setShader(mCurrentShader);
-		mCurrentGraphicsPipelineState.setRenderPass(mSettings.renderPass);	  /* !TODO: we should porbably expose this - and bind a default renderpass here */
+		mCurrentGraphicsPipelineState.setShader( mShaders.front() );
+		mCurrentGraphicsPipelineState.setRenderPass(mSettings.defaultRenderPass);	  /* !TODO: we should porbably expose this - and bind a default renderpass here */
 	}
 
 	mDSS_layoutKey.clear();
@@ -268,6 +259,20 @@ void of::vk::Context::begin(size_t frame_){
 // ----------------------------------------------------------------------
 
 void of::vk::Context::end(){
+}
+
+// ----------------------------------------------------------------------
+
+of::vk::Context & of::vk::Context::setShader( const std::shared_ptr<of::vk::Shader>& shader_ ){
+	mCurrentGraphicsPipelineState.setShader( shader_ );
+	return *this;
+}
+
+// ----------------------------------------------------------------------
+
+of::vk::Context & of::vk::Context::setRenderPass( const VkRenderPass & renderpass_ ){
+	mCurrentGraphicsPipelineState.setRenderPass( renderpass_ );
+	return *this;
 }
 
 // ----------------------------------------------------------------------
@@ -419,11 +424,11 @@ void of::vk::Context::flushUniformBufferState( ){
 
 	// iterate over all currently bound descriptorsets
 
-	for ( const auto& key : mCurrentShader->getSetLayoutKeys() ){
+	for ( const auto& key : mCurrentGraphicsPipelineState.getShader()->getSetLayoutKeys() ){
 		DescriptorSetState & descriptorSetState = mCurrentFrameState.mUniformBufferState[key];
 
 		std::vector<uint32_t>::iterator offsetIt = descriptorSetState.bindingOffsets.begin();
-		
+
 		// iterate over all currently bound descriptors 
 		for ( auto &uniformBuffer : descriptorSetState.bindings ){
 
@@ -437,7 +442,7 @@ void of::vk::Context::flushUniformBufferState( ){
 			if ( uniformBuffer.state.stackId == -1 ){
 
 				void * pDst = nullptr;
-				
+
 				VkDeviceSize numBytes = uniformBuffer.struct_size;
 				VkDeviceSize newOffset = 0;	// device GPU memory offset for this buffer 
 				auto success = mAlloc->allocate( numBytes, pDst, newOffset, mFrameIndex );
@@ -452,17 +457,17 @@ void of::vk::Context::flushUniformBufferState( ){
 				// store GPU memory offset with data
 				uniformBuffer.state.memoryOffset = newOffset;
 
-				++uniformBuffer.lastSavedStackId; 
+				++uniformBuffer.lastSavedStackId;
 				uniformBuffer.state.stackId = uniformBuffer.lastSavedStackId;
-				
-			} else { 
+
+			} else{
 				// otherwise, just re-use old memory offset, and therefore old memory
 				*offsetIt = uniformBuffer.state.memoryOffset;
 			}
 
 			++offsetIt;
 		}
-	}	// end for ( const auto& key : mCurrentShader->getSetLayoutKeys() )
+	}
 }
 
 // ----------------------------------------------------------------------
@@ -472,12 +477,13 @@ void of::vk::Context::bindDescriptorSets( const VkCommandBuffer & cmd ){
 	// Update mDSS_set
 	updateDescriptorSetState();
 	const auto & boundVkDescriptorSets = mDSS_set;
+	const auto & currentShader = mCurrentGraphicsPipelineState.getShader();
 
 	// get dynamic offsets for currently bound descriptorsets
 	// now append descriptorOffsets for this set to vector of descriptorOffsets for this layout
 	std::vector<uint32_t> dynamicBindingOffsets;
 
-	for ( const auto& key : mCurrentShader->getSetLayoutKeys() ){
+	for ( const auto& key : currentShader->getSetLayoutKeys() ){
 		DescriptorSetState & descriptorSetState = mCurrentFrameState.mUniformBufferState[key];
 		dynamicBindingOffsets.insert(
 			dynamicBindingOffsets.end(),
@@ -494,7 +500,7 @@ void of::vk::Context::bindDescriptorSets( const VkCommandBuffer & cmd ){
 	vkCmdBindDescriptorSets(
 		cmd,
 		VK_PIPELINE_BIND_POINT_GRAPHICS,                  // use graphics, not compute pipeline
-		*mCurrentShader->getPipelineLayout(),             // VkPipelineLayout object used to program the bindings.
+		*currentShader->getPipelineLayout(),              // VkPipelineLayout object used to program the bindings.
 		0, 						                          // firstset: first set index (of the above) to bind to - mDescriptorSet[0] will be bound to pipeline layout [firstset]
 		uint32_t( boundVkDescriptorSets.size() ),         // setCount: how many sets to bind
 		boundVkDescriptorSets.data(),                     // the descriptor sets to match up with our mPipelineLayout (need to be compatible)

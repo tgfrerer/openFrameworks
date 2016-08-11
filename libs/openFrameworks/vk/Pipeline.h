@@ -107,7 +107,7 @@ public:
 	// whether this pipeline state is dirty.
 	VkBool32          mDirty              = true;
 
-	void setShader( std::shared_ptr<of::vk::Shader> & shader ){
+	void setShader(const std::shared_ptr<of::vk::Shader> & shader ){
 		if ( shader.get() != mShader.get() ){
 			mShader = shader;
 			mDirty = true;
@@ -118,7 +118,7 @@ public:
 		return mShader;
 	}
 
-	void setRenderPass( VkRenderPass renderPass ){
+	void setRenderPass( const VkRenderPass& renderPass ){
 		if ( renderPass != mRenderPass ){
 			mRenderPass = renderPass;
 			mDirty = true;

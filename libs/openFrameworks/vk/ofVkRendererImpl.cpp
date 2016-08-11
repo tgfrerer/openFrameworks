@@ -56,9 +56,9 @@ void ofVkRenderer::setupDefaultContext(){
 
 	of::vk::Context::Settings contextSettings;
 	contextSettings.device             = mDevice;
-	contextSettings.numVirtualFrames   = getVirtualFrameCount();
+	contextSettings.numVirtualFrames   = getVirtualFramesCount();
 	contextSettings.shaderManager      = mShaderManager;
-	contextSettings.renderPass         = mRenderPass;
+	contextSettings.defaultRenderPass         = mRenderPass;
 	mDefaultContext = make_shared<of::vk::Context>( contextSettings );
 
 	// shader should not reflect before 
