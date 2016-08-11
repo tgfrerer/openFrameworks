@@ -350,9 +350,7 @@ void ofVkRenderer::setupDepthStencil(){
 		assert( !err );
 	}
 
-	
-
-};
+}
 
 // ----------------------------------------------------------------------
 
@@ -457,7 +455,7 @@ void ofVkRenderer::setupRenderPass(){
 
 	VkResult err = vkCreateRenderPass(mDevice, &renderPassInfo, nullptr, &mRenderPass);
 	assert(!err);
-};
+}
 
 
 // ----------------------------------------------------------------------
@@ -495,7 +493,7 @@ void ofVkRenderer::setupFrameBuffer( uint32_t swapchainImageIndex ){
 	VkResult err = vkCreateFramebuffer( mDevice, &frameBufferCreateInfo, nullptr, &mFrameResources[mFrameIndex].framebuffer );
 	assert( !err );
 	
-};
+}
 
 // ----------------------------------------------------------------------
 
@@ -518,7 +516,7 @@ void ofVkRenderer::flushSetupCommandBuffer(VkCommandBuffer cmd){
 
 	// CONSIDER: Q: Should we free the setup command buffer here?
 	// A: we can "leak" it - and then just reset the pool, that should work better.
-};
+}
 
 // ----------------------------------------------------------------------
 
@@ -652,10 +650,13 @@ void ofVkRenderer::finishRender(){
 	mFrameIndex = ( mFrameIndex + 1 ) % mSettings.numVirtualFrames;
 }
 
+// ----------------------------------------------------------------------
+
 const uint32_t ofVkRenderer::getSwapChainSize(){
 	return mSwapchain.getImageCount();
 }
 
+// ----------------------------------------------------------------------
 
 const VkRenderPass & ofVkRenderer::getDefaultRenderPass(){
 	return mRenderPass;

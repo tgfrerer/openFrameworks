@@ -6,9 +6,13 @@
 using namespace of;
 
 
+// ----------------------------------------------------------------------
+
 void vk::GraphicsPipelineState::setup(){
 	reset();
 }
+
+// ----------------------------------------------------------------------
 
 void vk::GraphicsPipelineState::reset()
 {
