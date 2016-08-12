@@ -321,9 +321,6 @@
     <ClInclude Include="..\..\..\openFrameworks\vk\ShaderManager.h">
       <Filter>libs\openFrameworks\vk</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\openFrameworks\vk\RenderPass.h">
-      <Filter>libs\openFrameworks\vk</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\..\openFrameworks\vk\spirv-cross\include\spirv_cross.hpp">
       <Filter>libs\openFrameworks\vk\spirv-cross\src</Filter>
     </ClInclude>
