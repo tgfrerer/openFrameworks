@@ -39,6 +39,10 @@ of::vk::Context::Context(const of::vk::Context::Settings& settings_)
 
 void of::vk::Context::setup(ofVkRenderer* renderer_){
 
+	// NOTE: some of setup is deferred to the first call to Context::begin()
+	// as this is where we can be sure that all shaders have been
+	// added to this context.
+
 	of::vk::Allocator::Settings settings{};
 	settings.device = mSettings.device;
 	settings.renderer = renderer_;
@@ -104,43 +108,49 @@ void of::vk::Context::addShader( std::shared_ptr<of::vk::Shader> shader_ ){
 
 void of::vk::Context::initialiseFrameState(){
 
-	// Frame holds stacks of memory, used to track
-	// current state for each uniform member 
-	// currently bound. 
+	//// Frame holds stacks of memory, used to track
+	//// current state for each uniform member 
+	//// currently bound. 
+	//Frame frame;
+
 	Frame frame;
 
-	// set space aside to back all descriptorsets 
-	for ( const auto & l : mShaderManager->getDescriptorSetLayouts() ){
-		const auto & key = l.first;
-		const auto & layout = l.second->setLayout;
-
-		auto & setState = frame.mUniformBufferState[key] = DescriptorSetState();
+	// iterate over all unifrom bindings
+	for ( const auto & b : mShaderManager->getUniformMeta() ){
 		
-		setState.bindingOffsets.resize( layout.bindings.size(), 0 );
+		const auto uniformKey = b.first;
+		const auto & uniformMeta = *b.second;
 
-		for ( const auto &binding : layout.bindings ){
-			UniformBufferState uboState;
-			uboState.name = binding.name;
-			uboState.struct_size = binding.size;
-			uboState.bindingId = binding.binding.binding;
-			uboState.state.data.resize( binding.size, 0 );
+		// we want the member name to be the full name, i.e. : "DefaultMatrices.ProjectionMatrix"
+		// to avoid clashes.
+		UniformBufferState uboState;
+		uboState.name = uniformMeta.name;
+		uboState.struct_size = uniformMeta.storageSize;
+		uboState.state.data.resize( uniformMeta.storageSize );
 
-			setState.bindings.emplace_back( std::move( uboState ));
-			UniformBufferState * lastUniformBufferStateAddr = &(setState.bindings.back());
+		frame.uboState[uniformKey] = std::move( uboState );
 
-			for ( const auto & member : binding.memberRanges ){
-				const auto & range       = member.second;
-				const auto & uniformName = member.first;
-				UniformMember m;
-				m.offset = uint32_t(range.offset);
-				m.range  = uint32_t(range.range);
-				m.buffer = lastUniformBufferStateAddr;
-				frame.mUniformMembers[uniformName] = std::move( m );
+		for ( const auto & member : uniformMeta.memberRanges ){
+			const auto & memberName  = member.first;
+			const auto & range       = member.second;
+			UniformMember m;
+			m.offset = uint32_t( range.offset );
+			m.range = uint32_t( range.range );
+			m.buffer = &frame.uboState[uniformKey];
+			frame.mUniformMembers[m.buffer->name + "." + memberName] = m ;
+			// Also add this ubo member to the global namespace - report if there is a namespace clash.
+			auto insertionResult = frame.mUniformMembers.insert({ memberName, std::move( m ) });
+			if ( insertionResult.second == false ){
+				auto & asdf = *insertionResult.first;
+				ofLogWarning() << "Shader analysis: UBO Member name is ambiguous: " << (*insertionResult.first).first << std::endl
+					<< "More than one UBO Blocks reference a variable with name: " << ( *insertionResult.first ).first;
 			}
 		}
 		
 	}
+	
 	mCurrentFrameState = std::move( frame );
+	
 }
 
 // ----------------------------------------------------------------------
@@ -151,43 +161,8 @@ void of::vk::Context::initialiseFrameState(){
 // reset that descriptorPool and also delete any descriptorSets associated
 // with that descriptorPool.
 void of::vk::Context::setupDescriptorPool(){
-	// To know how many descriptors of each type to allocate, 
-	// we group descriptors over all layouts by type and count each group.
 
-	// TODO: better ask the shader manager for an estimate based on all shaders
-	const auto & descriptorSetLayouts = mShaderManager->getDescriptorSetLayouts();
-
-	// Group descriptors by type over all unique DescriptorSetLayouts
-	std::map<VkDescriptorType, uint32_t> poolCounts; // size of pool necessary for each descriptor type
-	for ( const auto &u : descriptorSetLayouts ){
-
-		for ( const auto & bindingInfo : u.second->setLayout.bindings ){
-			const auto & it = poolCounts.find( bindingInfo.binding.descriptorType );
-			if ( it == poolCounts.end() ){
-				// descriptor of this type not yet found - insert new
-				poolCounts.emplace( bindingInfo.binding.descriptorType, bindingInfo.binding.descriptorCount );
-			} else{
-				// descriptor of this type already found - add count 
-				it->second += bindingInfo.binding.descriptorCount;
-			}
-		}
-	}
-
-	// TODO: we know that we can re-use dynamic buffer uniforms, 
-	// but for each image sampler that we encounter, let's allocate 
-	// about 16 image descriptors...
-
-	// ---------| invariant: poolCounts holds per-descriptorType count of descriptors
-
-	std::vector<VkDescriptorPoolSize> poolSizes;
-	poolSizes.reserve( poolCounts.size() );
-
-	for ( auto &p : poolCounts ){
-		poolSizes.push_back( { p.first, p.second } );
-	}
-
-	uint32_t setCount = uint32_t( descriptorSetLayouts.size() );	 // number of unique descriptorSets
-
+	std::vector<VkDescriptorPoolSize> poolSizes = mShaderManager->getVkDescriptorPoolSizes();
 
 	if ( !mDescriptorPool.empty() ){
 		// reset any currently set descriptorpools if necessary.
@@ -196,14 +171,19 @@ void of::vk::Context::setupDescriptorPool(){
 			vkResetDescriptorPool( mSettings.device, p, 0 );
 		}
 	} else {
-		// Create a pool for this context - each swapchain image has its own version of the pool
-		// All descriptors used by shaders associated to this context 
-		// will come from this pool
+		
+		// Create pools for this context - each virtual frame has its own version of the pool.
+		// All descriptors used by shaders associated to this context will come from this pool. 
+		//
+		// Note that this pool does not set VkDescriptorPoolCreateFlags - this means that all 
+		// descriptors allocated from this pool must be freed in bulk, by resetting the 
+		// descriptorPool, and cannot be individually freed.
+		
 		VkDescriptorPoolCreateInfo descriptorPoolInfo = {
 			VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,  // VkStructureType                sType;
 			nullptr,                                        // const void*                    pNext;
 			0,                                              // VkDescriptorPoolCreateFlags    flags;
-			setCount,                                       // uint32_t                       maxSets;
+			mShaderManager->getNumDescriptorSets(),         // uint32_t                       maxSets;
 			uint32_t( poolSizes.size() ),                   // uint32_t                       poolSizeCount;
 			poolSizes.data(),                               // const VkDescriptorPoolSize*    pPoolSizes;
 		};
@@ -228,8 +208,12 @@ void of::vk::Context::begin(size_t frame_){
 	// the ShaderManager.
 
 	if ( mCurrentFrameState.initialised == false ){
-		// We defer setting up descriptor pool 
-		// and framestate to when its first used here.
+		// We defer setting up descriptor related operations 
+		// and framestate to when its first used here,
+		// because only then can we be certain that all shaders
+		// used by this context have been processed.
+		mShaderManager->createVkDescriptorSetLayouts();
+
 		setupDescriptorPool();
 		initialiseFrameState();
 		mCurrentFrameState.initialised = true;
@@ -256,9 +240,7 @@ void of::vk::Context::begin(size_t frame_){
 		mCurrentGraphicsPipelineState.setRenderPass(mSettings.defaultRenderPass);	  /* !TODO: we should porbably expose this - and bind a default renderpass here */
 	}
 
-	mDSS_layoutKey.clear();
-	mDSS_dirty.clear();
-	mDSS_set.clear();
+	mPipelineLayoutState = PipelineLayoutState();
 
 }
 
@@ -290,13 +272,13 @@ const VkBuffer & of::vk::Context::getVkBuffer() const {
 // ----------------------------------------------------------------------
 
 of::vk::Context& of::vk::Context::pushBuffer( const std::string & ubo_ ){
-	auto uboMemberWithParentWithName = std::find_if( mCurrentFrameState.mUniformMembers.begin(), mCurrentFrameState.mUniformMembers.end(),
-		[&ubo_]( const std::pair<std::string, UniformMember> & lhs ) -> bool{
-		return ( lhs.second.buffer->name == ubo_ );
+	auto uboWithName = std::find_if( mCurrentFrameState.uboState.begin(), mCurrentFrameState.uboState.end(),
+		[&ubo_]( const std::pair<uint64_t, UniformBufferState> & lhs ) -> bool{
+		return ( lhs.second.name == ubo_ );
 	} );
 
-	if ( uboMemberWithParentWithName != mCurrentFrameState.mUniformMembers.end() ){
-		( uboMemberWithParentWithName->second.buffer->push() );
+	if ( uboWithName != mCurrentFrameState.uboState.end() ){
+		( uboWithName->second.push() );
 	}
 	return *this;
 }
@@ -304,13 +286,13 @@ of::vk::Context& of::vk::Context::pushBuffer( const std::string & ubo_ ){
 // ----------------------------------------------------------------------
 
 of::vk::Context& of::vk::Context::popBuffer( const std::string & ubo_ ){
-	auto uboMemberWithParentWithName = std::find_if( mCurrentFrameState.mUniformMembers.begin(), mCurrentFrameState.mUniformMembers.end(),
-		[&ubo_]( const std::pair<std::string, UniformMember> & lhs ) -> bool{
-		return ( lhs.second.buffer->name == ubo_ );
+	auto uboWithName = std::find_if( mCurrentFrameState.uboState.begin(), mCurrentFrameState.uboState.end(),
+		[&ubo_]( const std::pair<uint64_t, UniformBufferState> & lhs ) -> bool{
+		return ( lhs.second.name == ubo_ );
 	} );
 
-	if ( uboMemberWithParentWithName != mCurrentFrameState.mUniformMembers.end() ){
-		( uboMemberWithParentWithName->second.buffer->pop() );
+	if ( uboWithName != mCurrentFrameState.uboState.end() ){
+		( uboWithName->second.pop() );
 	}
 	return *this;
 }
@@ -319,9 +301,11 @@ of::vk::Context& of::vk::Context::popBuffer( const std::string & ubo_ ){
 
 of::vk::Context& of::vk::Context::draw(const VkCommandBuffer& cmd, const ofMesh & mesh_){
 
+	bindPipeline( cmd );
+
 	// store uniforms if needed
 	flushUniformBufferState();
-	bindPipeline( cmd );
+
 	bindDescriptorSets( cmd );
 
 	std::vector<VkDeviceSize> vertexOffsets;
@@ -428,21 +412,26 @@ bool of::vk::Context::storeMesh( const ofMesh & mesh_, std::vector<VkDeviceSize>
 
 void of::vk::Context::flushUniformBufferState( ){
 
+	updateDescriptorSetState();
+
 	// iterate over all currently bound descriptorsets
+	// as descriptorsetbindings overspill, we can just accumulate all offsets
+	// provided they are in the current order.
 
-	for ( const auto& key : mCurrentGraphicsPipelineState.getShader()->getSetLayoutKeys() ){
-		DescriptorSetState & descriptorSetState = mCurrentFrameState.mUniformBufferState[key];
+	std::vector<uint32_t> currentOffsets;
+	
+	// Lazily store data to GPU memory
+	// + If data has not changed, just store previous offset
+	//   into offsetList
+	
+	for ( const auto& bindingTable : mPipelineLayoutState.bindingState ){
+		// bindingState is a vector of binding tables: each binding table
+		// describes the bindings of a set. Each binding within a table 
+		// is a pair of <bindingNumber, unifromHash>
 
-		std::vector<uint32_t>::iterator offsetIt = descriptorSetState.bindingOffsets.begin();
-
-		// iterate over all currently bound descriptors 
-		for ( auto &uniformBuffer : descriptorSetState.bindings ){
-
-			// this is just for security.
-			if ( offsetIt == descriptorSetState.bindingOffsets.end() ){
-				ofLogError() << "Device offsets list is not of same size as uniformbuffer list.";
-				break;
-			}
+		for ( const auto & binding : bindingTable ){
+			const auto & uniformHash = binding.second;
+			auto & uniformBuffer = mCurrentFrameState.uboState[uniformHash];
 
 			// only write to GPU if descriptor is dirty
 			if ( uniformBuffer.state.stackId == -1 ){
@@ -452,7 +441,7 @@ void of::vk::Context::flushUniformBufferState( ){
 				VkDeviceSize numBytes = uniformBuffer.struct_size;
 				VkDeviceSize newOffset = 0;	// device GPU memory offset for this buffer 
 				auto success = mAlloc->allocate( numBytes, pDst, newOffset, mFrameIndex );
-				*offsetIt = (uint32_t)newOffset; // store offset into offsets list.
+				currentOffsets.push_back( (uint32_t)newOffset); // store offset into offsets list.
 				if ( !success ){
 					ofLogError() << "out of buffer space.";
 				}
@@ -468,39 +457,25 @@ void of::vk::Context::flushUniformBufferState( ){
 
 			} else{
 				// otherwise, just re-use old memory offset, and therefore old memory
-				*offsetIt = uniformBuffer.state.memoryOffset;
+				currentOffsets.push_back(uniformBuffer.state.memoryOffset);
 			}
-
-			++offsetIt;
 		}
 	}
+
+	mCurrentFrameState.bindingOffsets = std::move( currentOffsets );	
 }
 
 // ----------------------------------------------------------------------
 
 void of::vk::Context::bindDescriptorSets( const VkCommandBuffer & cmd ){
 	
-	// Update mDSS_set
-	updateDescriptorSetState();
-	const auto & boundVkDescriptorSets = mDSS_set;
+	// Update Pipeline Layout State, i.e. which set layouts are currently bound
+	const auto & boundVkDescriptorSets = mPipelineLayoutState.vkDescriptorSets;
 	const auto & currentShader = mCurrentGraphicsPipelineState.getShader();
 
 	// get dynamic offsets for currently bound descriptorsets
 	// now append descriptorOffsets for this set to vector of descriptorOffsets for this layout
-	std::vector<uint32_t> dynamicBindingOffsets;
-
-	for ( const auto& key : currentShader->getSetLayoutKeys() ){
-		DescriptorSetState & descriptorSetState = mCurrentFrameState.mUniformBufferState[key];
-		dynamicBindingOffsets.insert(
-			dynamicBindingOffsets.end(),
-			descriptorSetState.bindingOffsets.begin(), descriptorSetState.bindingOffsets.end()
-		);
-	}
-
-	// we build dynamic offsets by going over each of the currently bound descriptorSets in 
-	// currentlyBoundDescriptorsets, and for each dynamic binding within these sets, we add an offset to the list.
-	// we must guarantee that dynamicOffsets has the same number of elements as currentlBoundDescriptorSets has descriptors
-	// the number of descriptors is calculated by summing up all descriptorCounts per binding per descriptorSet
+	const std::vector<uint32_t> &dynamicBindingOffsets = mCurrentFrameState.bindingOffsets;
 
 	// Bind uniforms (the first set contains the matrices)
 	vkCmdBindDescriptorSets(
@@ -517,58 +492,102 @@ void of::vk::Context::bindDescriptorSets( const VkCommandBuffer & cmd ){
 
 // ----------------------------------------------------------------------
 
-const std::vector<VkDescriptorSet>& of::vk::Context::updateDescriptorSetState(){
+void of::vk::Context::updateDescriptorSetState(){
 
 	// Allocate & update any descriptorSets - from the first dirty
 	// descriptorSet to the end of the current descriptorSet sequence.
+
+	// Q: what to we do if a descriptor set that we already allocated
+	//    is requested again?
+	// A: We should re-use it - unless it contains image samplers - 
+	//    as the samplers need to be allocated with the descriptor
+	//    this means the descriptorSet cannot be re-used.
+	
+	if ( mPipelineLayoutState.dirtySetIndices.empty() ){
+		// descriptorset can be re-used.
+		return;
+	}
+	
+	// indices for VkDescriptorSets that have been freshly allocated
+	std::vector<size_t> allocatedSetIndices;
+	allocatedSetIndices.reserve( mPipelineLayoutState.dirtySetIndices.size() );
+
+	for ( const auto i : mPipelineLayoutState.dirtySetIndices ){
 		
-		for ( int i = 0; i != mDSS_dirty.size(); ++i ){
-			if ( mDSS_dirty[i] ){
+		const auto & descriptorSetLayoutHash = mPipelineLayoutState.setLayoutKeys[i];
+		      auto & descriptorSetCache      = mPipelineLayoutState.descriptorSetCache;
 
-				std::vector<VkDescriptorSetLayout> layouts;
-				layouts.reserve( mDSS_dirty.size() - i );
-				
-				for ( size_t j = i; j != mDSS_dirty.size(); ++j ){
-					layouts.push_back(mShaderManager->getDescriptorSetLayout(mDSS_layoutKey[j]) );
-				}
+		const auto it = descriptorSetCache.find( descriptorSetLayoutHash );
+		
+		if ( it != descriptorSetCache.end()  ){
+			// descriptor has been found in cashe
+			const auto   descriptorSetLayoutHash = it->first;
+			const auto & previouslyAllocatedDescriptorSet = it->second;
 
-				VkDescriptorSetAllocateInfo allocInfo{
-					VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,	 // VkStructureType                 sType;
-					nullptr,	                                     // const void*                     pNext;
-					mDescriptorPool[mFrameIndex],                       // VkDescriptorPool                descriptorPool;
-					uint32_t(layouts.size()),                        // uint32_t                        descriptorSetCount;
-					layouts.data()                                   // const VkDescriptorSetLayout*    pSetLayouts;
-				};
+			mPipelineLayoutState.vkDescriptorSets[i] = previouslyAllocatedDescriptorSet;
+			mPipelineLayoutState.bindingState[i]     = mPipelineLayoutState.bindingStateCache[descriptorSetLayoutHash];
 
-				vkAllocateDescriptorSets( mSettings.device, &allocInfo, &mDSS_set[i] );
-				updateDescriptorSets( layouts, i );
+		} else{
+			
+			VkDescriptorSetLayout layout = mShaderManager->getVkDescriptorSetLayout( descriptorSetLayoutHash );
 
-				break;
-			}
+			VkDescriptorSetAllocateInfo allocInfo{
+				VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,	 // VkStructureType                 sType;
+				nullptr,	                                     // const void*                     pNext;
+				mDescriptorPool[mFrameIndex],                    // VkDescriptorPool                descriptorPool;
+				1,                                               // uint32_t                        descriptorSetCount;
+				&layout                                          // const VkDescriptorSetLayout*    pSetLayouts;
+			};
+
+			vkAllocateDescriptorSets( mSettings.device, &allocInfo, &mPipelineLayoutState.vkDescriptorSets[i] );
+
+			// store VkDescriptorSet in state cache
+			descriptorSetCache[descriptorSetLayoutHash] = mPipelineLayoutState.vkDescriptorSets[i];
+			
+			// mark descriptorSet at index for write update
+			allocatedSetIndices.push_back( i );
 		}
+		
+	}
 
-	return mDSS_set;
+	if ( false == allocatedSetIndices.empty() ){
+		updateDescriptorSets( allocatedSetIndices );
+		
+		// now that the binding table for these new descriptorsetlayouts has
+		// been updated in mPipelineLayoutstate.bindingState, we want
+		// to copy the newly created tables into our bingingStateCache so 
+		// we don't have to re-create them, if a descriptorset is re-used.
+		for ( auto i : allocatedSetIndices ){
+			auto descriptorSetLayoutHash = mPipelineLayoutState.setLayoutKeys[i];
+			// store bindings table for this new descriptorSetLayout into bindingState cache,
+			// indexed by descriptorSetLayoutHash
+			mPipelineLayoutState.bindingStateCache[descriptorSetLayoutHash] = mPipelineLayoutState.bindingState[i];
+		}
+		
+	}
+
+	mPipelineLayoutState.dirtySetIndices.clear();
 }
 
 // ----------------------------------------------------------------------
 
-void of::vk::Context::updateDescriptorSets( std::vector<VkDescriptorSetLayout> &layouts, int firstSetIdx ){
+void of::vk::Context::updateDescriptorSets( const std::vector<size_t>& setIndices ){
 
 	// We assume mDSS_set[firstSetIdx .. mDSS_set.size()-1] are untyped, 
 	// and have not yet been used for drawing. We therefore write type
 	// information, and binding information into these descriptorSets.
 		
 	std::vector<VkWriteDescriptorSet> writeDescriptorSets;
-	writeDescriptorSets.reserve( layouts.size() );
+	writeDescriptorSets.reserve( setIndices.size() );
 
 	// Temporary storage for VkDescriptorBufferInfo
 	// so this can be pointed to from within the loop.
 	std::map < uint64_t, std::vector<VkDescriptorBufferInfo>> descriptorBufferInfoStorage;
 
 	// iterate over all setLayouts (since each element corresponds to a DescriptorSet)
-	for ( size_t j = firstSetIdx; j != mDSS_dirty.size(); ++j ){
-		const auto& key = mDSS_layoutKey[j];
-		const auto& bindings = mShaderManager->getBindings( mDSS_layoutKey[j] );
+	for ( const auto j : setIndices ){
+		const auto& key = mPipelineLayoutState.setLayoutKeys[j];
+		const auto& bindings = mShaderManager->getBindings( key );
 		// TODO: deal with bindings which are not uniform buffers.
 
 		// Since within context all our uniform bindings 
@@ -580,18 +599,21 @@ void of::vk::Context::updateDescriptorSets( std::vector<VkDescriptorSetLayout> &
 		// if descriptorCount was greater than the number of bindings in the set, 
 		// the next bindings will be overwritten.
 
-		uint32_t descriptor_array_count = 0;
-
-		// We need to get the number of descriptors by accumulating the descriptorCount
-		// over each layoutBinding
 
 		// Reserve vector size because otherwise reallocation when pushing will invalidate pointers
 		descriptorBufferInfoStorage[key].reserve( bindings.size() );
 
+		// now, we also store the current binding state into mPipelineLayoutState,
+		// so we have the two in sync.
+
+		// clear current binding state for this descriptor set index
+		mPipelineLayoutState.bindingState[j].clear();
+
 		// Go over each binding in descriptorSetLayout
-		for ( const auto &bindingInfo : bindings ){
-			// how many array elements in this binding?
-			descriptor_array_count = bindingInfo.binding.descriptorCount;
+		for ( const auto &b : bindings ){
+			
+			const auto & bindingNumber = b.first;
+			const auto & bindingInfo   = b.second;
 
 			// It appears that writeDescriptorSet does not immediately consume VkDescriptorBufferInfo*
 			// so we must make sure that this is around for when we need it:
@@ -599,7 +621,7 @@ void of::vk::Context::updateDescriptorSets( std::vector<VkDescriptorSetLayout> &
 			descriptorBufferInfoStorage[key].push_back( {
 				mAlloc->getBuffer(),                // VkBuffer        buffer;
 				0,                                  // VkDeviceSize    offset;		// we start any new binding at offset 0, as data for each descriptor will always be separately allocated and uploaded.
-				bindingInfo.size                    // VkDeviceSize    range;
+				bindingInfo->storageSize            // VkDeviceSize    range;
 			} );
 
 			const auto & bufElement = descriptorBufferInfoStorage[key].back();
@@ -609,32 +631,29 @@ void of::vk::Context::updateDescriptorSets( std::vector<VkDescriptorSetLayout> &
 			// A: Yes. This is why this method should write only one binding (== Descriptor) 
 			//    at a time - as all members of a binding must share the same VkDescriptorType.
 
-			auto descriptorType = bindingInfo.binding.descriptorType;
-			auto dstBinding = bindingInfo.binding.binding;
-
 			// Create one writeDescriptorSet per binding.
 
 			VkWriteDescriptorSet tmpDescriptorSet{
 				VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,                    // VkStructureType                  sType;
 				nullptr,                                                   // const void*                      pNext;
-				mDSS_set[j],                                               // VkDescriptorSet                  dstSet;
-				dstBinding,                                                // uint32_t                         dstBinding;
+				mPipelineLayoutState.vkDescriptorSets[j],                  // VkDescriptorSet                  dstSet;
+				bindingNumber,                                             // uint32_t                         dstBinding;
 				0,                                                         // uint32_t                         dstArrayElement; // starting element in array
-				descriptor_array_count,                                    // uint32_t                         descriptorCount;
-				descriptorType,                                            // VkDescriptorType                 descriptorType;
+				bindingInfo->descriptorCount,                              // uint32_t                         descriptorCount;
+				bindingInfo->type,                                         // VkDescriptorType                 descriptorType;
 				nullptr,                                                   // const VkDescriptorImageInfo*     pImageInfo;
 				&bufElement,                                               // const VkDescriptorBufferInfo*    pBufferInfo;
 				nullptr,                                                   // const VkBufferView*              pTexelBufferView;
 			};
 
+			// store writeDescriptorSet for later, so all writes happen in bulk
 			writeDescriptorSets.push_back( std::move( tmpDescriptorSet ) );
-
+			// store binding into our current binding state
+			mPipelineLayoutState.bindingState[j].insert( {bindingNumber,bindingInfo->hash} );
 		}
-
-		mDSS_dirty[j] = false;
 	}
 
-	vkUpdateDescriptorSets( mSettings.device, uint32_t( writeDescriptorSets.size() ), writeDescriptorSets.data(), 0, NULL );
+	vkUpdateDescriptorSets( mSettings.device, uint32_t( writeDescriptorSets.size() ), writeDescriptorSets.data(), 0, nullptr );
 
 }
 
@@ -664,17 +683,18 @@ void of::vk::Context::bindPipeline( const VkCommandBuffer & cmd ){
 		} 
 		mCurrentVkPipeline = mVkPipelines[pipelineHash];
 
-		mDSS_layoutKey.resize( layouts.size(), 0);
-		mDSS_dirty.resize(     layouts.size(), true );
-		mDSS_set.resize(       layouts.size(), nullptr );
+		mPipelineLayoutState.setLayoutKeys.resize( layouts.size(), 0);
+		mPipelineLayoutState.dirtySetIndices.reserve(layouts.size());
+		mPipelineLayoutState.vkDescriptorSets.resize(layouts.size(), nullptr );
+		mPipelineLayoutState.bindingState.resize( layouts.size() );
 
 		bool foundIncompatible = false; // invalidate all set bindings after and including first incompatible set
 		for ( size_t i = 0; i != layouts.size(); ++i ){
-			if ( mDSS_layoutKey[i] != layouts[i] 
+			if ( mPipelineLayoutState.setLayoutKeys[i] != layouts[i]
 				|| foundIncompatible ){
-				mDSS_layoutKey[i] = layouts[i];
-				mDSS_set[i] = nullptr;
-				mDSS_dirty[i] = true;
+				mPipelineLayoutState.setLayoutKeys[i] = layouts[i];
+				mPipelineLayoutState.vkDescriptorSets[i] = nullptr;
+				mPipelineLayoutState.dirtySetIndices.push_back(i);
 				foundIncompatible = true;
 			}
 		}

@@ -67,8 +67,8 @@ void ofVkRenderer::setupDefaultContext(){
 	of::vk::Shader::Settings settings{
 		mShaderManager,
 		{
-			{ VK_SHADER_STAGE_VERTEX_BIT  , "vert.spv" },
-			{ VK_SHADER_STAGE_FRAGMENT_BIT, "frag.spv" },
+			{ VK_SHADER_STAGE_VERTEX_BIT  , "default.vert" },
+			{ VK_SHADER_STAGE_FRAGMENT_BIT, "default.frag" },
 		}
 	};
 

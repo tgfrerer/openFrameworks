@@ -31,94 +31,63 @@ public:
 	
 
 private:
-	struct DescriptorSetLayoutInfo
-	{
-		of::vk::Shader::SetLayout setLayout;
-		VkDescriptorSetLayout     vkDescriptorSetLayout;
-	};
-	// map of descriptorsetlayoutKey to descriptorsetlayout
-	// this map is the central registry of DescriptorSetLayouts for all Shaders
-	// used with(in) this Context.
-	std::map<uint64_t, std::shared_ptr<DescriptorSetLayoutInfo>> mDescriptorSetLayouts;
 
-	friend class Shader;
-
-	void storeDescriptorSetLayout( Shader::SetLayout && setLayout_ ){
-
-		// 1. check if layout already exists
-		// 2. if no, store layout in our map.
-
-		auto & dsl = mDescriptorSetLayouts[setLayout_.key];
-
-		if ( dsl.get() == nullptr ){
-
-			// if no descriptor set was found, this means that 
-			// no element with such hash exists yet in the registry.
-
-			// create & store descriptorSetLayout based on bindings for this set
-			// This means first to extract just the bindings from the data structure
-			// so we can feed it to the vulkan api.
-			std::vector<VkDescriptorSetLayoutBinding> bindings;
-
-			bindings.reserve( setLayout_.bindings.size() );
-
-			for ( const auto & b : setLayout_.bindings ){
-				bindings.push_back( b.binding );
-			}
-
-			VkDescriptorSetLayoutCreateInfo createInfo{
-				VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,    // VkStructureType                        sType;
-				nullptr,                                                // const void*                            pNext;
-				0,                                                      // VkDescriptorSetLayoutCreateFlags       flags;
-				uint32_t( bindings.size() ),                            // uint32_t                               bindingCount;
-				bindings.data()                                         // const VkDescriptorSetLayoutBinding*    pBindings;
-			};
-
-			dsl = std::shared_ptr<DescriptorSetLayoutInfo>( new DescriptorSetLayoutInfo{ std::move( setLayout_ ), nullptr },
-				[device = mSettings.device]( DescriptorSetLayoutInfo* lhs ){
-				vkDestroyDescriptorSetLayout( device, lhs->vkDescriptorSetLayout, nullptr );
-				delete lhs;
-			} );
-
-			vkCreateDescriptorSetLayout( mSettings.device, &createInfo, nullptr, &dsl->vkDescriptorSetLayout );
-		}
-
-		ofLog() << "DescriptorSetLayout " << std::hex << setLayout_.key << " | Use Count: " << dsl.use_count();
-	}
+	// central store of uniforms - indexed by uniform hash
+	std::map<uint64_t, std::shared_ptr<of::vk::Shader::UniformMeta>>   mUniformStore;
+	
+	// central store of set layouts - indexed by set layout hash
+	// set layouts are ordered sequences of uniforms
+	std::map<uint64_t, std::shared_ptr<of::vk::Shader::SetLayoutMeta>> mSetLayoutStore;
 
 public:
 
-	const std::vector<of::vk::Shader::BindingInfo>& getBindings( uint64_t descriptorSetLayoutKey ){
-		static std::vector<of::vk::Shader::BindingInfo> failedBinding;
-		
-		const auto & it = mDescriptorSetLayouts.find( descriptorSetLayoutKey );
-		if ( it != mDescriptorSetLayouts.end() ){
-			return it->second->setLayout.bindings;
-		} else{
-			ofLogError() << "No binding for DescriptorSetLayout key: " << std::hex << descriptorSetLayoutKey;
-		}
-		
-		return failedBinding;
-	};
-
-	const VkDescriptorSetLayout getDescriptorSetLayout( uint64_t descriptorSetLayoutKey ){
-		static VkDescriptorSetLayout failedLayout = nullptr;
-
-		const auto & it = mDescriptorSetLayouts.find( descriptorSetLayoutKey );
-		if ( it != mDescriptorSetLayouts.end() ){
-			return it->second->vkDescriptorSetLayout;
-		} else{
-			ofLogError() << "No binding for DescriptorSetLayout key: " << std::hex << descriptorSetLayoutKey;
-		}
-
-		return failedLayout;
+	// TODO: these methods - as they may modify the contents of ShaderManager
+	// may need to be mutexed to be safe across threads.
+	std::shared_ptr<of::vk::Shader::UniformMeta>& borrowUniformMeta( uint64_t hash ){
+		return mUniformStore[hash];
 	}
 
-	const std::map<uint64_t, std::shared_ptr<DescriptorSetLayoutInfo>>& getDescriptorSetLayouts(){
-		return mDescriptorSetLayouts;
+	const std::shared_ptr<of::vk::Shader::UniformMeta>& getUniformMeta( uint64_t hash ) const{
+		static std::shared_ptr<of::vk::Shader::UniformMeta> failUniformMeta;
+		const auto &it = mUniformStore.find( hash );
+		if ( it != mUniformStore.end() ){
+			return it->second;
+		} else{
+			ofLogError() << "Could not find uniform with id: " << std::hex << hash;
+		}
+		return failUniformMeta;
+	}
+
+	std::shared_ptr<of::vk::Shader::SetLayoutMeta>& borrowSetLayoutMeta( uint64_t hash ){
+		return mSetLayoutStore[hash];
+	}
+
+	const std::map<uint32_t, std::shared_ptr<of::vk::Shader::UniformMeta>>& getBindings( uint64_t setLayoutHash ) const;
+	
+	const std::map<uint64_t, std::shared_ptr<of::vk::Shader::UniformMeta>>& getUniformMeta() const{
+		return mUniformStore;
 	};
 
-	
+
+private:
+
+	// central store of VkDescriptorSetLayouts, indexed by corresponding SetLayoutMeta hash
+	std::map<uint64_t, std::shared_ptr<VkDescriptorSetLayout>> mDescriptorSetLayoutStore;
+
+	// central store of bindings per descriptor set layout, indexed by descriptor set layout hash
+	std::map<uint64_t, std::map<uint32_t, std::shared_ptr<of::vk::Shader::UniformMeta>>> mBindingsPerSetStore;
+public:
+
+	// create VkDescriptorSetLayouts for all descriptors currently held in mSetLayoutStore
+	bool createVkDescriptorSetLayouts();
+
+	const VkDescriptorSetLayout& getVkDescriptorSetLayout( uint64_t descriptorSetLayoutKey );
+
+	// get number of descriptors of each type needed to fill all distinct DescriptorSetLayouts
+	std::vector<VkDescriptorPoolSize> getVkDescriptorPoolSizes();
+
+	// get number of descriptor sets
+	uint32_t getNumDescriptorSets();
 
 };	/* class ShaderManager */
 

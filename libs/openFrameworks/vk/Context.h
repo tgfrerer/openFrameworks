@@ -96,7 +96,6 @@ private:
 	// TODO: rename to UboBufferStack
 	struct UniformBufferState
 	{
-		uint32_t bindingId   =  0;    // binding id within set
 		uint32_t struct_size =  0;    // size in bytes of UniformBufferData.data vec
 		int32_t  lastSavedStackId = -1;    // rolling count of elements saved to stack
 		UniformBufferData state;
@@ -135,21 +134,21 @@ private:
 		uint32_t range;
 	};
 
-	struct DescriptorSetState
-	{
-		// all bindings associated with this descriptor set
-		std::list<UniformBufferState> bindings;
-		// GPU memory offset for all currently bound descriptors 
-		std::vector<uint32_t>  bindingOffsets;
-	};
 
 	struct Frame
 	{
-		bool initialised = false; // whether frame state has to be rebuilt
-		// map from descriptor set id to descriptor set state
-		std::map < uint64_t, DescriptorSetState > mUniformBufferState;
+		// all bindings for this context indexed by uboMeta Hash
+		std::map<uint64_t, UniformBufferState> uboState;
+
 		// map from uniform name to set and binding for uniform
 		std::map<std::string, UniformMember> mUniformMembers;
+
+		// current binding offset into GPU memory
+		// this needs to be reset every frame
+		std::vector< uint32_t> bindingOffsets;
+
+		// whether frame state has to be rebuilt
+		bool initialised = false; 
 	};
 
 	// We hold stacks of CPU memory as a backing and readsource for lazy GPU uploads on draw
@@ -169,23 +168,35 @@ private:
 	// and creates a pipeline.
 	GraphicsPipelineState mCurrentGraphicsPipelineState;
 
-	// current descriptor set layout bindings keys
-	std::vector<uint64_t       > mDSS_layoutKey;
-	// derived sets (nullptr if not yet initialised)
-	std::vector<VkDescriptorSet> mDSS_set;
-	// dirty flag for descriptor set state
-	std::vector<uint32_t       > mDSS_dirty;
+	struct PipelineLayoutState
+	{
+		// vector of descriptorSets, each with a map of bindings
+		std::vector<std::map<uint32_t, uint64_t>> bindingState;
+		// current DescriptorSetLayout hashes forming the PipelineLayout
+		std::vector<uint64_t       > setLayoutKeys;
+		// derived sets (nullptr if not yet initialised)
+		std::vector<VkDescriptorSet> vkDescriptorSets;
+		// vector of sets which have been invalidated
+		std::vector<size_t> dirtySetIndices;
 
+		// map from descriptorSetLayoutHash to DescriptorSet
+		std::map<uint64_t, VkDescriptorSet> descriptorSetCache;
+
+		// map from descriptorSetLayoutHash to binding table
+		std::map<uint64_t, std::map<uint32_t, uint64_t>> bindingStateCache;
+
+	};
+
+	PipelineLayoutState mPipelineLayoutState;
 
 	//// currently bound shader
 	//std::shared_ptr<of::vk::Shader> mCurrentShader; 
 
-	const std::vector<VkDescriptorSet>& updateDescriptorSetState();
+	void updateDescriptorSetState();
 
-	void updateDescriptorSets( std::vector<VkDescriptorSetLayout> &layouts, int i );
+	void updateDescriptorSets( const std::vector<size_t>& setIndices );
 
 	VkPipeline mCurrentVkPipeline = nullptr;
-
 
 	// One DescriptorPool per SwapChain frame.
 	std::vector<VkDescriptorPool> mDescriptorPool;

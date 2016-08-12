@@ -92,36 +92,62 @@ public:
 		std::map<VkShaderStageFlagBits, std::string> sources;
 	} mSettings;
 
+	// we need a table of uniforms
+	struct UboMemberRange
+	{
+		size_t offset ;
+		size_t range  ;
+	};
+
+	struct UniformMeta
+	{
+		VkDescriptorType      type = VK_DESCRIPTOR_TYPE_MAX_ENUM;
+		uint32_t              descriptorCount = 0;
+		size_t                storageSize;
+		std::string           name;
+		std::map< std::string, of::vk::Shader::UboMemberRange> memberRanges; // optional: memory offsets for members within UBO, indexed by name
+		VkShaderStageFlags    stageFlags = 0;  // stageFlags not included in hash !
+		
+		uint64_t              hash = 0;	/* hash of type, count, and name */
+		void calculateHash();
+		bool checkMemberRangesOverlap(
+			const std::map< std::string, of::vk::Shader::UboMemberRange>& lhs,
+			const std::map< std::string, of::vk::Shader::UboMemberRange> & rhs,
+			std::ostringstream & errorMsg) const;
+	};
+
+	struct UniformBindingInfo
+	{
+		uint32_t setNumber     = 0;
+		uint32_t bindingNumber = 0;
+	};
+
+	// (set id and binding number of uniform) indexed by UniformMeta hash
+	std::map<uint64_t, UniformBindingInfo> mBindingsTable;
+
+	struct SetLayoutMeta
+	{
+		// binding number to UniformMeta hash - binding numbers may be sparse.
+		std::map<uint32_t, uint64_t> bindingTable;
+
+		uint64_t hash = 0;
+		void calculateHash();
+	};
+
+
 private:
+	
+	// table of SetLayoutMeta pointers to keep track of use for Set Layout
+	std::vector<std::shared_ptr<SetLayoutMeta>> mPipelineLayoutPtrsMeta;
+	
+	// table of setlayouts describing pipeline layout
+	std::vector<uint64_t> mPipelineLayoutMeta;
+
 	// alias into mSettings
 	const std::shared_ptr<ShaderManager>& mShaderManager = mSettings.shaderManager;
 
+
 public: 
-	struct UboMemberRange
-	{
-		size_t offset;
-		size_t range;
-	};
-
-	struct BindingInfo
-	{
-		uint32_t set;                                        // Descriptor set this binding belongs to
-		VkDescriptorSetLayoutBinding binding;                // Describes mapping of binding number to descriptors, 
-		                                                     // number and type of descriptors under a binding.
-		uint32_t size;                                       // size in bytes (corresponds to struct size of the UBO)
-		                                                     // which has members with names ("projectionMatrix", "viewMatrix", ...) 
-		std::string name;                                    // Uniform Buffer Block name from shader
-		std::map< std::string, UboMemberRange> memberRanges; // Memory offsets for members within UBO, indexed by name
-	};
-
-	// layout for a descriptorSet
-	// use this to create vkDescriptorSetLayout
-	struct SetLayout
-	{
-		std::vector<BindingInfo> bindings; // must be in ascending order, but may be sparse
-		uint64_t key;
-		void calculateHash();
-	};
 
 	struct VertexInfo
 	{
@@ -153,19 +179,23 @@ private:
 
 	// Sequence of hashes of SetLayouts - which reference vkDescriptorSetLayouts in Context.
 	// This describes the sequence for the pipeline layout for this shader.
-	std::vector<uint64_t>  mDescriptorSetLayoutKeys;  
+	// std::vector<uint64_t>  mDescriptorSetLayoutKeys;  
 
 	// ----------------------------------------------------------------------
 	// Derive bindings from shader reflection using SPIR-V Cross.
 	// we want to extract as much information out of the shader metadata as possible
 	// all this data helps us to create descriptors, and also to create layouts fit
 	// for our pipelines.
-	static void reflect( const std::map<VkShaderStageFlagBits, std::shared_ptr<spirv_cross::Compiler>>& compilers, std::map<std::string, BindingInfo>& uniformInfo, VertexInfo& vertexInfo );
-	static void reflectUniformBuffers( const spirv_cross::Compiler & compiler, const spirv_cross::Resource & ubo, const VkShaderStageFlagBits & shaderStage, std::map<std::string, BindingInfo>& uniformInfo );
-	static void reflectVertexInputs(const spirv_cross::ShaderResources &shaderResources, const spirv_cross::Compiler & compiler, VertexInfo& vertexInfo );
+	void reflect( const std::map<VkShaderStageFlagBits, std::shared_ptr<spirv_cross::Compiler>>& compilers, VertexInfo& vertexInfo );
+	//static void reflectUniformBuffers( const spirv_cross::Compiler & compiler, const VkShaderStageFlagBits & shaderStage, std::map<std::string, BindingInfo>& uniformInfo );
+	
+	bool reflectUBOs( const spirv_cross::Compiler & compiler, const VkShaderStageFlagBits & shaderStage);
+	bool createSetLayouts();
+	void createVkPipelineLayout();
 
-	void buildSetLayouts(const std::map<std::string, BindingInfo> & bindingInfo);
-	void createPipelineLayout();
+	static void getSetAndBindingNumber( const spirv_cross::Compiler & compiler, const spirv_cross::Resource & ubo, uint32_t &descriptor_set, uint32_t &bindingNumber );
+	static void reflectVertexInputs(const spirv_cross::Compiler & compiler, VertexInfo& vertexInfo );
+
 
 	// based on file name ending, read either spirv or glsl file and fill vector of spirV words
 	bool getSpirV( const VkShaderStageFlagBits shaderType, const std::string & fileName, std::vector<uint32_t> &spirCode );
@@ -196,10 +226,11 @@ public:
 	// re-compile shader - this invalidates hashes only when shader has changed.
 	void compile();
 
+
 	// ----------------------------------------------------------------------
 
 	const std::vector<uint64_t>& getSetLayoutKeys() const{
-		return mDescriptorSetLayoutKeys;
+		return mPipelineLayoutMeta;
 	}
 
 	// ----------------------------------------------------------------------
@@ -227,7 +258,7 @@ public:
 	// ----------------------------------------------------------------------
 	const std::shared_ptr<VkPipelineLayout>& getPipelineLayout() {
 		if ( mPipelineLayout.get() == nullptr )
-			createPipelineLayout();
+			createVkPipelineLayout();
 		return mPipelineLayout;
 	}
 

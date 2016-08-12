@@ -3,8 +3,7 @@
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_ARB_shading_language_420pack : enable
 
-layout (location = 0) in vec4 inColor;
-layout (location = 1) in vec3 inNormal;
+layout (location = 0) in vec3 inNormal;
 
 // uniforms (resources)
 layout (set = 0, binding = 0) uniform DefaultMatrices 

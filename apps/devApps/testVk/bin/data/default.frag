@@ -26,7 +26,8 @@ void main()
 
   vec4 normalColor = vec4((inNormal + vec3(1.0)) * vec3(0.5) , 1.0);
   vec4 vertexColor = inColor;
-  
+  normalColor = modelMatrix * vertexColor;
+
   // set the actual fragment color here
   outFragColor = vertexColor;
 }

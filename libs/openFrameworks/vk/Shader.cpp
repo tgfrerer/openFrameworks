@@ -5,7 +5,7 @@
 #include "ofFileUtils.h"
 #include "spooky/SpookyV2.h"
 #include "shaderc/shaderc.hpp"
-
+#include <algorithm>
 
 // ----------------------------------------------------------------------
 
@@ -108,10 +108,8 @@ void of::vk::Shader::compile(){
 	}
 
 	if ( shaderDirty ){
-		
-		std::map<std::string, BindingInfo> reflectedBindings;
-		reflect( mSpvCrossCompilers, reflectedBindings, mVertexInfo );
-		buildSetLayouts( reflectedBindings ); /* writes setlayouts from this shader into context */
+		reflect( mSpvCrossCompilers, mVertexInfo );
+		createSetLayouts();
 	}
 	
 }
@@ -267,7 +265,6 @@ void of::vk::Shader::createVkShaderModule( const VkShaderStageFlagBits shaderTyp
 
 void of::vk::Shader::reflect( 
 	const std::map<VkShaderStageFlagBits, std::shared_ptr<spirv_cross::Compiler>>& compilers, 
-	std::map<std::string, BindingInfo> & uniformBufferInfo,
 	VertexInfo& vertexInfo
 ){
 	// storage for reflected information about UBOs
@@ -288,8 +285,6 @@ void of::vk::Shader::reflect(
 			ofLog() << string( 70, '-' );
 		}
 
-		auto shaderResources = compiler.get_shader_resources();
-
 		// ! TODO: process texture samplers
 		// This: http://gpuopen.com/wp-content/uploads/2016/03/VulkanFastPaths.pdf
 		// suggests one fast path is to bind all (!) textures into ONE DescriptorSet / binding 
@@ -297,18 +292,14 @@ void of::vk::Shader::reflect(
 		// into the array for the texture we want for this particular draw. 
 		// This would mean to create one descriptor per texture and to bind all these 
 		// texture descriptors to one binding - and to one descriptorset.
-		for ( auto & sampled_image : shaderResources.sampled_images ){
-
-		}
 
 		// --- uniform buffers ---
-		for ( auto & resource : shaderResources.uniform_buffers ){
-			reflectUniformBuffers( compiler, resource, shaderStage, uniformBufferInfo );
-		}
-
+		reflectUBOs( compiler, shaderStage );
+		//reflectUniformBuffers( compiler, shaderStage, uniformBufferInfo );
+		
 		// --- vertex inputs ---
 		if ( shaderStage & VK_SHADER_STAGE_VERTEX_BIT ){
-			reflectVertexInputs( shaderResources, compiler, vertexInfo );
+			reflectVertexInputs(compiler, vertexInfo );
 		} 
 		
 		ofLog(); 
@@ -318,116 +309,184 @@ void of::vk::Shader::reflect(
 
 // ----------------------------------------------------------------------
 
-void of::vk::Shader::reflectUniformBuffers( 
-	const spirv_cross::Compiler & compiler, 
-	const spirv_cross::Resource & ubo, 
-	const VkShaderStageFlagBits & shaderStage, 
-	std::map<std::string, BindingInfo>& uniformInfo /* inOut */
-){
-	// we need to build a unique list of uniforms
-	// and make sure that uniforms with the same name 
-	// refer to the same binding number and set index.
-	//
-	// also if a uniform is referred to by more than one
-	// shader stages this needs to be updated in the uniform's 
-	// accessibility stage flags.
+bool of::vk::Shader::reflectUBOs(const spirv_cross::Compiler & compiler, const VkShaderStageFlagBits & shaderStage)
+{
+	
+	auto uniformBuffers = compiler.get_shader_resources().uniform_buffers;
 
-	ostringstream os;
+	// TODO: sort resources by set, binding number
+	//std::sort( uniformBuffers.begin(), uniformBuffers.end(), [this]( const spirv_cross::Resource&lhs, const spirv_cross::Resource&rhs )->bool{
+	//	auto bindingNumberL = compiler.get_decoration( lhs.id, spv::DecorationBinding );
+	//} );
 
-	uint32_t descriptor_set = 0;
-	uint32_t bindingNumber = 0;
+	for ( const auto & ubo : uniformBuffers ){
 
-	// get a bitmask representing uniform decorations 
+		auto tmpUniform             = std::make_shared<UniformMeta>();
+		tmpUniform->descriptorCount = 1; // must be 1 for UBOs (arrays of UBOs are forbidden by the spec.)
+		tmpUniform->name            = ubo.name;
+		tmpUniform->storageSize     = compiler.get_declared_struct_size( compiler.get_type( ubo.type_id ) );
+		tmpUniform->type            = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC; /* All our uniform buffer are dynamic */
+		tmpUniform->stageFlags      = shaderStage;
+
+		auto bufferRanges = compiler.get_active_buffer_ranges( ubo.id );
+
+		for ( const auto &r : bufferRanges ){
+			// Note that SpirV-Cross will only tell us the ranges of *actually used* members within an UBO. 
+			// By merging the ranges later, we effectively also create aliases for member names which are 
+			// not consistently named the same.
+			auto memberName = compiler.get_member_name( ubo.type_id, r.index );
+			tmpUniform->memberRanges[memberName] = { r.offset, r.range };
+		}
+
+		tmpUniform->calculateHash();
+
+		// let's see if an uniform buffer with this fingerprint has already been seen.
+		// if yes, it would already be in uniformStore.
+
+		auto & uniform = mShaderManager->borrowUniformMeta(tmpUniform->hash);
+		
+		if ( uniform == nullptr ){
+			// Write uniform into store
+			uniform = std::move( tmpUniform );
+		} else{
+			  // Uniform with this key already exists.
+			if ( uniform->storageSize != tmpUniform->storageSize ){
+				ofLogError() << "Ubo: '" << uniform->name << "' re-defined with incompatible storage size.";
+				// !TODO: try to recover.
+				return false;
+			} else{
+				// Merge stage flags
+				uniform->stageFlags |= tmpUniform->stageFlags; 
+				// Merge memberRanges
+				ostringstream overlapMsg;
+				if ( uniform->checkMemberRangesOverlap( uniform->memberRanges, tmpUniform->memberRanges, overlapMsg ) ){
+					// member ranges overlap: print diagnostic message
+					ofLogWarning() << "Inconsistency found parsing UBO: '" << ubo.name << "': " << std::endl << overlapMsg.str();
+				}
+				uniform->memberRanges.insert( tmpUniform->memberRanges.begin(), tmpUniform->memberRanges.end() );
+			}
+		}
+
+		// ----------| invariant: uniform holds our current uniform
+
+		UniformBindingInfo bindingInfo;
+
+		getSetAndBindingNumber( compiler, ubo, bindingInfo.setNumber, bindingInfo.bindingNumber);
+		
+		// Now store the set and binding information for this shader
+		// we use this to check for consistent set and binding decorations for uniforms,
+		// and later, to create our descriptorSetLayout
+
+		auto localBindingIt = mBindingsTable.find( uniform->hash );
+		if ( localBindingIt == mBindingsTable.end() ){
+			// not yet seen this binding - store it
+			mBindingsTable[uniform->hash] = bindingInfo;
+		} else{
+			bool success = true;
+			if ( localBindingIt->second.setNumber != bindingInfo.setNumber ){
+				ofLogError() << "Ubo: '" << uniform->name << "' set number mismatch: " << bindingInfo.setNumber;
+				success = false;
+			} else if ( localBindingIt->second.bindingNumber != bindingInfo.bindingNumber ){
+				ofLogError() << "Ubo: '" << uniform->name << "' binding number mismatch: " << bindingInfo.bindingNumber;
+				success = false;
+			}
+			if ( !success ){
+				ofLogError() << "Binding and set number must match for Ubo member over all stages within the same shader";
+				ofLogError() << "Check if your set ids and binding numbers are consistent for: " << ubo.name;
+				return false;
+			}
+		}
+
+	} // end: for all uniform buffers
+
+	return true;
+}
+
+// ----------------------------------------------------------------------
+
+bool of::vk::Shader::createSetLayouts(){
+	
+	// Create set layouts based on shader local 
+	// bindings table, mBindingsTable.
+
+	// First translate mBindingsTable into a map of SetLayoutMeta,
+	// indexed by set number.
+
+	// SetLayoutMeta (= set layout binding tables) indexed by set id
+	map<uint32_t, std::shared_ptr<SetLayoutMeta>> descriptorSetLayoutsOderedBySetNumber;
+
+	for ( const auto & b : mBindingsTable ){
+		const auto & bindingHash   = b.first;
+		const auto & setNumber     = b.second.setNumber;
+		const auto & bindingNumber = b.second.bindingNumber;
+		
+		auto & setLayoutMeta = descriptorSetLayoutsOderedBySetNumber[setNumber];
+		
+		if ( setLayoutMeta == nullptr ){
+			setLayoutMeta = std::make_shared<SetLayoutMeta>();
+		}
+		setLayoutMeta->bindingTable.insert( { bindingNumber, bindingHash } );
+	}
+
+	
+	// Also build up mPipelineLayoutMeta, a vector which describes
+	// sequence of DescriptorSetMeta keys used to create 
+	// Pipeline Layout for this shader.
+
+	mPipelineLayoutMeta.reserve( descriptorSetLayoutsOderedBySetNumber.size() );
+	mPipelineLayoutPtrsMeta.reserve( descriptorSetLayoutsOderedBySetNumber.size() );
+
+	for ( auto&s: descriptorSetLayoutsOderedBySetNumber ){
+		const auto & setNumber     = s.first;
+		auto       & createdLayout = s.second;
+		createdLayout->calculateHash();
+
+		// Store newly created SetLayoutMeta in ShaderManager 
+		// (if it donesn't already exist there)
+		auto & storedLayout = mShaderManager->borrowSetLayoutMeta(createdLayout->hash);
+		
+		if ( storedLayout == nullptr ){
+			storedLayout = std::move( createdLayout );
+			ofLogNotice() << "Created new Descriptor Set Layout";
+		}
+		
+		mPipelineLayoutPtrsMeta.push_back( storedLayout );
+		mPipelineLayoutMeta.push_back( storedLayout->hash );
+		ofLogNotice() << "DescriptorSetLayout: " << std::hex << storedLayout->hash << " use count: " << storedLayout.use_count() -1; /*subtract 1 for shadermanager using it too.*/
+
+	}
+
+	return true;
+}
+// ----------------------------------------------------------------------
+
+void of::vk::Shader::getSetAndBindingNumber( const spirv_cross::Compiler & compiler, const spirv_cross::Resource & ubo, uint32_t &descriptor_set, uint32_t &bindingNumber ){
+	// see what kind of decorations this resource has
 	uint64_t decorationMask = compiler.get_decoration_mask( ubo.id );
-
-	// get the storage type for this ubo
-	auto storageType = compiler.get_type( ubo.type_id );
-	// get the storageSize (in bytes) for this ubo
-	uint32_t storageSize = compiler.get_declared_struct_size( storageType );
-
+	
 	if ( ( 1ull << spv::DecorationDescriptorSet ) & decorationMask ){
 		descriptor_set = compiler.get_decoration( ubo.id, spv::DecorationDescriptorSet );
-		os << ", set = " << descriptor_set;
 	} else{
 		// If undefined, set descriptor set id to 0. This is conformant with:
 		// https://www.khronos.org/registry/vulkan/specs/misc/GL_KHR_vulkan_glsl.txt
 		descriptor_set = 0;
-		ofLogWarning() << "Warning: Shader uniform " << ubo.name << "does not specify set id, and will " << endl
+		ofLogWarning() 
+			<< "Warning: Shader uniform " << ubo.name << "does not specify set id, and will " << endl
 			<< "therefore be mapped to set 0 - this might have unintended consequences.";
 	}
 
 	if ( ( 1ull << spv::DecorationBinding ) & decorationMask ){
 		bindingNumber = compiler.get_decoration( ubo.id, spv::DecorationBinding );
-		os << ", binding = " << bindingNumber;
 	} else{
 		ofLogWarning() << "Shader uniform" << ubo.name << "does not specify binding number.";
-	}
-
-	ofLog() << "Uniform Block: '" << ubo.name << "'" << os.str();
-
-	auto type = compiler.get_type( ubo.type_id );
-
-	// type for ubo descriptors is struct
-	// such structs will have member types, that is, they have elements within.
-	for ( uint32_t tI = 0; tI != type.member_types.size(); ++tI ){
-		auto mn = compiler.get_member_name( ubo.type_id, tI );
-		ofLog() << " " << ( tI+1 == type.member_types.size() ? char(192) : char(195) ) << std::setw(2) << tI << " : " << mn;
-	}
-
-	// let's look up if the current block name already exists in the 
-	// table of bindings for this shader, and if necessary update
-	// the shader stage flags to permit access to all stages that need it:
-
-	// shaderStage defines from which shader stages this layout is accessible
-	VkShaderStageFlags layoutAccessibleFromStages = shaderStage;
-
-	VkDescriptorSetLayoutBinding  newBinding{
-		bindingNumber,                                        // uint32_t              binding;
-		VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,            // VkDescriptorType      descriptorType;
-		                                                      // Note that descriptorCount will always be 1 with UNIFORM_BUFFER_DYNAMIC, as 
-		                                                      // arrays of UBOs are not allowed:
-		1,                                                    // uint32_t              descriptorCount;
-		layoutAccessibleFromStages,                           // VkShaderStageFlags    stageFlags;
-		nullptr,                                              // const VkSampler*      pImmutableSamplers;
-	};
-
-	if ( uniformInfo.find( ubo.name ) != uniformInfo.end() ){
-		// we have found a binding with the same name in another shader stage.
-		// therefore we: 
-		// 1.) need to update the binding accessiblity flag
-		// 2.) do some error checking to make sure the binding is the same.
-
-		auto& existingBinding = uniformInfo[ubo.name];
-		if ( existingBinding.set != descriptor_set
-			|| existingBinding.binding.binding != bindingNumber ){
-			ofLogError() << "Incompatible bindings between shader stages: " << ubo.name;
-		} else{
-			// all good, make sure the binding is also accessible in the 
-			// current stage.
-			newBinding.stageFlags |= existingBinding.binding.stageFlags;
-		}
-	}
-
-	uniformInfo[ubo.name].set = descriptor_set;
-	uniformInfo[ubo.name].binding = newBinding;
-	uniformInfo[ubo.name].size = storageSize;
-	uniformInfo[ubo.name].name = ubo.name;
-
-	// add name, offsets and sizes for individual members inside this ubo binding.
-
-	// get offset and range for elements from buffer
-	auto bufferRanges = compiler.get_active_buffer_ranges( ubo.id );
-
-	for ( const auto &r : bufferRanges ){
-		auto memberName = compiler.get_member_name( ubo.type_id, r.index );
-		uniformInfo[ubo.name].memberRanges[memberName] = { r.offset, r.range };
 	}
 }
 
 // ----------------------------------------------------------------------
 
-void of::vk::Shader::reflectVertexInputs(const spirv_cross::ShaderResources &shaderResources, const spirv_cross::Compiler & compiler, VertexInfo& vertexInfo ){
+void of::vk::Shader::reflectVertexInputs(const spirv_cross::Compiler & compiler, VertexInfo& vertexInfo ){
 	ofLog() << "Vertex Attribute locations";
+	const auto shaderResources = compiler.get_shader_resources();
 
 	vertexInfo.attribute.resize( shaderResources.stage_inputs.size() );
 	vertexInfo.bindingDescription.resize( shaderResources.stage_inputs.size() );
@@ -482,61 +541,13 @@ void of::vk::Shader::reflectVertexInputs(const spirv_cross::ShaderResources &sha
 
 // ----------------------------------------------------------------------
 
-void of::vk::Shader::buildSetLayouts(const std::map<std::string, BindingInfo> & bindingInfo ){
-	
-	// group BindingInfo by "set"
-	std::map<uint32_t, vector<BindingInfo>> bindingInfoMap;
-	for ( auto & binding : bindingInfo ){
-		bindingInfoMap[binding.second.set].push_back( binding.second );
-	};
-
-	// go over all sets, and sort uniforms by binding number asc.
-	for ( auto & s : bindingInfoMap ){
-		auto & uniformInfoVec = s.second;
-		std::sort( uniformInfoVec.begin(), uniformInfoVec.end(), []( const BindingInfo& lhs, const BindingInfo& rhs )->bool{
-			return lhs.binding.binding < rhs.binding.binding;
-		} );
-	}
-
-	// now we can create setLayouts 
-	mDescriptorSetLayoutKeys.resize( bindingInfoMap.size(), 0 );
-
-	uint32_t i = 0;
-	for ( auto & descriptorSet : bindingInfoMap ){
-		
-		const auto & setNumber   = descriptorSet.first;
-
-		if ( setNumber != i ){
-			// Q: is this really the case? 
-			// A: Most certainly yes - when you create the pipelineLayout, 
-			// layouts must be provided in an array, order in the array 
-			// defines descriptorSet id.
-			ofLogError() << "DescriptorSet ids in shader cannot be sparse. Missing definition for descriptorSet: " << i;
-		}
-
-		SetLayout layout;
-		layout.bindings = descriptorSet.second;
-
-		layout.calculateHash();
-		mDescriptorSetLayoutKeys[setNumber] = layout.key;
-
-		// Store the SetLayout in shader manager - if Shader Manager already 
-		// has a SetLayout of this key, this is a no-op.
-		mShaderManager->storeDescriptorSetLayout( std::move(layout) );
-
-		++i;
-	}
-}
-
-// ----------------------------------------------------------------------
-
-void of::vk::Shader::createPipelineLayout() {
+void of::vk::Shader::createVkPipelineLayout() {
 	
 	std::vector<VkDescriptorSetLayout> vkLayouts;
-	vkLayouts.reserve( mDescriptorSetLayoutKeys.size() );
+	vkLayouts.reserve( mPipelineLayoutMeta.size() );
 
-	for ( const auto &k : mDescriptorSetLayoutKeys ){
-		vkLayouts.push_back( mShaderManager->getDescriptorSetLayout( k ) );
+	for ( const auto &k : mPipelineLayoutMeta ){
+		vkLayouts.push_back( mShaderManager->getVkDescriptorSetLayout( k ) );
 	}
 	
 	VkPipelineLayoutCreateInfo pipelineInfo{
@@ -562,40 +573,96 @@ void of::vk::Shader::createPipelineLayout() {
 
 // ----------------------------------------------------------------------
 
-void of::vk::Shader::SetLayout::calculateHash(){
-	// calculate hash key based on current contents
-	// of set, binding information, and size 
+inline void of::vk::Shader::SetLayoutMeta::calculateHash(){
+	std::vector<uint64_t> flatBindings;
+	flatBindings.reserve( bindingTable.size() );
+	for ( const auto &b : bindingTable ){
+		flatBindings.push_back( b.second );
+	}
+	hash = SpookyHash::Hash64( flatBindings.data(), flatBindings.size() * sizeof( uint64_t ), 0 );
+}
+
+// ----------------------------------------------------------------------
+
+inline void of::vk::Shader::UniformMeta::calculateHash(){
 	
-	// first, we have to convert the binding info
-	// to plain old data, otherwise the hash will 
-	// take into account the std::map for memberRanges, 
-	// and this would make the hash non-deterministic.
+	hash = SpookyHash::Hash64( &this->type,
+		sizeof( type ) +
+		sizeof( descriptorCount )
+		, 0 );
 
-	struct BindingInfoPOD
-	{
-		uint32_t set;
-		VkDescriptorSetLayoutBinding binding;
-		uint32_t size;
-	};
+	hash = SpookyHash::Hash64( name.data(), name.size(), hash );
 
-	auto alignment = alignof( BindingInfoPOD );
-	assert( alignment == 8 );
+}
 
-	std::vector<BindingInfoPOD> podBindingInfo;
-	podBindingInfo.reserve( bindings.size() );
+// ----------------------------------------------------------------------
+// Check whether member ranges within an UBO overlap
+// Should this be the case, there is a good chance that the 
+// Ubo layout was inconsistently defined across shaders or 
+// shader stages, or that there was a typo in an UBO declaration.
+bool of::vk::Shader::UniformMeta::checkMemberRangesOverlap( 
+	const std::map< std::string, of::vk::Shader::UboMemberRange>& lhs,
+	const std::map< std::string, of::vk::Shader::UboMemberRange>& rhs,
+	std::ostringstream & errorMsg ) const{
 
-	for ( const auto& b : bindings ){
-		podBindingInfo.push_back( { b.set, b.binding, b.size } );
+	// Check whether member ranges overlap.
+	// 
+	// 0. combine member ranges eagerly
+	// 1. sort member ranges by start
+	// 2. for each sorted member range
+	//    2.0 move to next if current member is exact duplicate of last member [perfect match, that's what we want.]
+	//    2.1 check if current member offset ==  last member offset [overlap because start at same place]
+	//    2.1 check if (last member offset + last member range) > current member offset [overlap because current starts inside last]
+	
+	bool overlap = false;
+	
+	if ( rhs.empty() ){
+		// impossible that there might be a conflict if there is no second set to compare with. 
+		return false;
 	}
 
-	void * baseAddr = (void*)podBindingInfo.data();
-	
-	// We can calculate the size and be pretty sure that there will be no random
-	// padding data caught in the vector, as sizeof(BindingInfoPOD) is 40, which 
-	// nicely aligns to 8 byte.
-	
-	auto msgSize = podBindingInfo.size() * sizeof( BindingInfoPOD );
+	std::vector<std::pair<std::string, UboMemberRange>> ranges;
+	ranges.insert( ranges.begin(), lhs.begin(), lhs.end() );
+	ranges.insert( ranges.begin(), rhs.begin(), rhs.end() );
 
-	this->key = SpookyHash::Hash64(baseAddr , msgSize, 0 );
+	std::sort( ranges.begin(), ranges.end(), []( const std::pair<std::string, UboMemberRange> & lhs,
+		std::pair<std::string, UboMemberRange>&rhs )->bool{
+		return lhs.second.offset < rhs.second.offset;
+	} );
+
+	auto lastRangeIt = ranges.begin();
+	for ( auto rangeIt = ++ranges.begin(); rangeIt != ranges.end(); lastRangeIt = rangeIt++ ){
+
+		if ( rangeIt->first == lastRangeIt->first 
+			&& rangeIt->second.offset == lastRangeIt->second.offset
+			&& rangeIt->second.range == lastRangeIt->second.range
+			)
+		{
+			continue;
+		}
+
+		bool overlapStart = false;
+		bool overlapRange = false;
+		
+		if ( rangeIt->second.offset == lastRangeIt->second.offset ){
+			overlap = overlapStart = true;
+		}
+
+		if ( ( lastRangeIt->second.offset + lastRangeIt->second.range ) > rangeIt->second.offset ){
+			overlap = overlapRange = true;
+		}
+
+		if ( overlapStart || overlapRange ){
+			errorMsg << "Range for UBO Member Names: '" << rangeIt->first << "' and '" << lastRangeIt->first << "' overlap.";
+			if ( rangeIt->second.range == lastRangeIt->second.range ){
+				errorMsg << "\nCheck for a possible typo in this UBO member name.";
+			} else{
+				errorMsg << "\nCheck whether the elements within this UBO are laid out consistently over all shaders that use it within this Context.";
+			}
+		}
+
+	}
+
+	return overlap;
 }
 

@@ -93,6 +93,7 @@ void ofApp::setup(){
 
 		// shader creation makes shader reflect. 
 		mShaderDefault = std::make_shared<of::vk::Shader>( shaderSettings );
+		shaderSettings.sources[VK_SHADER_STAGE_VERTEX_BIT]   = "normalcolor.vert";
 		shaderSettings.sources[VK_SHADER_STAGE_FRAGMENT_BIT] = "normalcolor.frag";
 		mShaderNormals = std::make_shared<of::vk::Shader>( shaderSettings );
 	}
