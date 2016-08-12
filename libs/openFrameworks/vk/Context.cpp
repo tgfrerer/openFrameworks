@@ -34,6 +34,11 @@ of::vk::Context::Context(const of::vk::Context::Settings& settings_)
 : mSettings(settings_) {
 }
 
+// ----------------------------------------------------------------------
+of::vk::Context::~Context(){
+	reset();
+	mShaders.clear();
+}
 
 // ----------------------------------------------------------------------
 
@@ -64,12 +69,6 @@ void of::vk::Context::setup(ofVkRenderer* renderer_){
 
 void of::vk::Context::reset(){
 	
-
-	if ( nullptr != mPipelineCache ){
-		vkDestroyPipelineCache( mSettings.device, mPipelineCache, nullptr );
-		mPipelineCache = nullptr;
-	}
-
 	// Destroy all descriptors by destroying the pools they were
 	// allocated from.
 	for ( auto & p : mDescriptorPool ){
@@ -78,10 +77,7 @@ void of::vk::Context::reset(){
 	}
 	mDescriptorPool.clear();
 
-	// ! TODO: create pipeline layout manager - 
-	// so that you don't have to destroy shaders 
-	mShaders.clear();
-
+	mCurrentFrameState.initialised = false;
 	mAlloc->reset();
 
 	for ( auto &p : mVkPipelines ){
@@ -90,8 +86,13 @@ void of::vk::Context::reset(){
 			p.second = nullptr;
 		}
 	}
+
 	mVkPipelines.clear();
 
+	if ( nullptr != mPipelineCache ){
+		vkDestroyPipelineCache( mSettings.device, mPipelineCache, nullptr );
+		mPipelineCache = nullptr;
+	}
 }
 
 // ----------------------------------------------------------------------

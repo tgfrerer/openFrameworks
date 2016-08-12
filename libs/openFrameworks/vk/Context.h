@@ -217,9 +217,7 @@ public:
 	// have been implicitly deleted by defining mSettings const
 	Context( const of::vk::Context::Settings& settings_ );
 
-	~Context(){
-		reset();
-	}
+	~Context();
 
 	void addShader( std::shared_ptr<of::vk::Shader> shader_ );
 

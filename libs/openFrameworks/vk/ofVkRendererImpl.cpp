@@ -58,7 +58,7 @@ void ofVkRenderer::setupDefaultContext(){
 	contextSettings.device             = mDevice;
 	contextSettings.numVirtualFrames   = getVirtualFramesCount();
 	contextSettings.shaderManager      = mShaderManager;
-	contextSettings.defaultRenderPass         = mRenderPass;
+	contextSettings.defaultRenderPass  = mRenderPass;
 	mDefaultContext = make_shared<of::vk::Context>( contextSettings );
 
 	// shader should not reflect before 
@@ -80,6 +80,13 @@ void ofVkRenderer::setupDefaultContext(){
 	// layouts. it will also build pipelines.
 	mDefaultContext->setup( this );
 
+}
+
+// ----------------------------------------------------------------------
+void ofVkRenderer::resetDefaultContext(){
+	if ( mDefaultContext ){
+		mDefaultContext->reset();
+	}
 }
 // ----------------------------------------------------------------------
 
@@ -159,24 +166,20 @@ void ofVkRenderer::setupSwapChain(){
 // ----------------------------------------------------------------------
 
 void ofVkRenderer::resizeScreen( int w, int h ){
-	ofLog() << "Screen resize requested.";
+	ofLogVerbose() << "Screen resize requested.";
 
 	// Note: this needs to halt any multi-threaded operations
 	// or wait for all of them to finish.
 	
 	auto err = vkDeviceWaitIdle( mDevice );
-	setupSwapChain();
-
 	assert( !err );
 
+	setupSwapChain();
 
 	mWindowWidth = w;
 	mWindowHeight = h;
 
-	// reset default context 
-	setupDefaultContext();
-
-	ofLog() << "Screen resize complete";
+	ofLogVerbose() << "Screen resize complete";
 }
  
 // ----------------------------------------------------------------------

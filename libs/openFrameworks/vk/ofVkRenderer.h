@@ -56,6 +56,7 @@ public:
 	
 	void setup();
 	void setupDefaultContext();
+	void resetDefaultContext();
 	virtual ~ofVkRenderer() override;
 
 	virtual const string & getType() override{
