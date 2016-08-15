@@ -452,8 +452,8 @@ bool of::vk::Shader::createSetLayouts(){
 	// sequence of DescriptorSetMeta keys used to create 
 	// Pipeline Layout for this shader.
 
-	mPipelineLayoutMeta.reserve( descriptorSetLayoutsOderedBySetNumber.size() );
-	mPipelineLayoutPtrsMeta.reserve( descriptorSetLayoutsOderedBySetNumber.size() );
+	mPipelineLayoutMeta.resize( descriptorSetLayoutsOderedBySetNumber.size() );
+	mPipelineLayoutPtrsMeta.resize( descriptorSetLayoutsOderedBySetNumber.size() );
 
 	for ( auto&s: descriptorSetLayoutsOderedBySetNumber ){
 		const auto & setNumber     = s.first;
@@ -469,8 +469,8 @@ bool of::vk::Shader::createSetLayouts(){
 			ofLogNotice() << "Created new Descriptor Set Layout";
 		}
 		
-		mPipelineLayoutPtrsMeta.push_back( storedLayout );
-		mPipelineLayoutMeta.push_back( storedLayout->hash );
+		mPipelineLayoutPtrsMeta[setNumber] = storedLayout ;
+		mPipelineLayoutMeta[setNumber]     =  storedLayout->hash ;
 		ofLogNotice() << "DescriptorSetLayout: " << std::hex << storedLayout->hash << " use count: " << storedLayout.use_count() -1; /*subtract 1 for shadermanager using it too.*/
 
 	}
