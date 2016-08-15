@@ -25,13 +25,13 @@ systems/GPUs are expected to work, most proably requiring some
 modifications. 
 
 
-1. Install the Vulkan SDK from LunarG
+### Install the Vulkan SDK from LunarG
 
 	* download from: https://vulkan.lunarg.com
 	* [win] run installer to install sdk
 	* [win] install VulkanRT from RunTimeInstaller
 
-1.1 Troubleshooting: [windows, sdk 1.0.21.1] 
+#### Troubleshooting: [windows, sdk 1.0.21.1] 
 
 Check VulkanRT install- I ran into a repeated issue with the powershell script included with the VulkanRT installer failing to execute. This script, `.\ConfigLayersAndVulkanDLL.ps1` is responsible for setting up some registry values to tell the Vulkan loader where to find the validation layers. I found that manually executing the script twice (first run fails) using an Admin Powershell console helped. 
 
@@ -41,7 +41,7 @@ Check VulkanRT install- I ran into a repeated issue with the powershell script i
     .\ConfigLayersAndVulkanDLL.ps1 1 64
     # this time there should be no errors.
 
-2. Clone apothecary
+### Clone apothecary
 
 Apothecary is openFrameworks' dependency tracker and libraries build helper. For openFrameworks-vk it is needed to build the latest versions of `GLFW`, and `shaderc`.
 
@@ -55,7 +55,7 @@ Then, move into the apothecary base directory.
 
     cd apothecary/apothecary
 
-3. Update GLFW dependency using apothecary
+### Update GLFW dependency using apothecary
   
 For Windows, visual studio 2015, and 64 bit (recommended) do:
 
@@ -65,7 +65,7 @@ For Linux do:
 
     ./apothecary -a 64 update glfw
 
-4. Update/Create shaderc dependency using apothecary
+### Update/Create shaderc dependency using apothecary
 
 If you are on windows, you might want to check if apothecary has access to python. Python is required to build shaderc. In a mingw terminal, issue: 
 
@@ -79,7 +79,7 @@ To compile shaderc, for Windows, visual studio 2015, and 64 bit (recommended) do
 
 If compiling fails for any reason, delete the build folder in apothecary, read over the instructions again, and see if something might have been missed, then issue the above command again. I found that on Windows, with the ConEmu terminal manager, the PATH for python was not set correctly, and that running apothecary from the default "git for windows" console worked flawlessly.
  
-5. Copy dependencies 
+### Copy dependencies 
 
 Once you have the dependencies compiled, move to the base apothecary directory, where you will find two new directories with the build results: 
 
@@ -92,7 +92,9 @@ copy these two directories into:
 
 when asked, select "replace" to overwrite the old libraries in-place.
 
-6. In apps/devApps you'll find a project called `testVk`, that's the current example for Vulkan.
+### Open Test Project 
+
+In apps/devApps you'll find a project called `testVk`, that's the current example for Vulkan.
 
 ----------------------------------------------------------------------
 
