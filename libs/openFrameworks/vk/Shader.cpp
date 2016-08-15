@@ -272,18 +272,8 @@ void of::vk::Shader::reflect(
 	// for all shader stages
 	for ( auto &c : compilers ){
 
-		auto & compiler = *c.second;
+		auto & compiler    = *c.second;
 		auto & shaderStage = c.first;
-
-		if ( shaderStage & VK_SHADER_STAGE_VERTEX_BIT ){
-			ofLog();
-			ofLog() << "Vertex Stage";
-			ofLog() << string( 70, '-' );
-		} else if ( shaderStage & VK_SHADER_STAGE_FRAGMENT_BIT ){
-			ofLog();
-			ofLog() << "Fragment Stage";
-			ofLog() << string( 70, '-' );
-		}
 
 		// ! TODO: process texture samplers
 		// This: http://gpuopen.com/wp-content/uploads/2016/03/VulkanFastPaths.pdf
@@ -295,16 +285,50 @@ void of::vk::Shader::reflect(
 
 		// --- uniform buffers ---
 		reflectUBOs( compiler, shaderStage );
-		//reflectUniformBuffers( compiler, shaderStage, uniformBufferInfo );
 		
+
 		// --- vertex inputs ---
 		if ( shaderStage & VK_SHADER_STAGE_VERTEX_BIT ){
 			reflectVertexInputs(compiler, vertexInfo );
 		} 
 		
-		ofLog(); 
 	}  
-	
+
+	// print binding information to the console
+
+	struct BindingForLog
+	{
+		uint32_t setNumber;
+		uint32_t bindingNumber;
+		uint64_t uniformHash;
+	};
+
+	std::vector<BindingForLog> bindingForLog;
+	bindingForLog.reserve( mBindingsTable.size() );
+
+	for ( const auto& b : mBindingsTable ){
+		const auto & hash = b.first;
+		const auto & bindingTable = b.second;
+		bindingForLog.push_back( { bindingTable.setNumber, bindingTable.bindingNumber, hash } );
+	}
+
+	std::sort( bindingForLog.begin(), bindingForLog.end(), [](const BindingForLog & lhs, const BindingForLog & rhs)->bool{
+		return ( lhs.setNumber < rhs.setNumber || ( lhs.setNumber == rhs.setNumber && lhs.bindingNumber < rhs.bindingNumber ) );
+	} );
+
+	ofLog() << "Uniform Bindings:";
+	uint32_t setNumber = -1;
+	for ( const auto &b : bindingForLog ){
+		if ( setNumber != b.setNumber ){
+			ofLog() << "Set [" << std::setw( 2 ) << b.setNumber << "]";
+			setNumber = b.setNumber;
+		}
+		ofLog() << " " << char( 195 ) 
+			<< std::setw( 2 ) << b.bindingNumber << " : " 
+			<< std::hex << b.uniformHash 
+			<< " '" << mShaderManager->getUniformMeta( b.uniformHash )->name << "'";
+	}
+
 }
 
 // ----------------------------------------------------------------------
@@ -313,11 +337,6 @@ bool of::vk::Shader::reflectUBOs(const spirv_cross::Compiler & compiler, const V
 {
 	
 	auto uniformBuffers = compiler.get_shader_resources().uniform_buffers;
-
-	// TODO: sort resources by set, binding number
-	//std::sort( uniformBuffers.begin(), uniformBuffers.end(), [this]( const spirv_cross::Resource&lhs, const spirv_cross::Resource&rhs )->bool{
-	//	auto bindingNumberL = compiler.get_decoration( lhs.id, spv::DecorationBinding );
-	//} );
 
 	for ( const auto & ubo : uniformBuffers ){
 
