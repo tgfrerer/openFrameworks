@@ -12,6 +12,7 @@ class ofApp : public ofBaseApp{
 	std::shared_ptr<of::vk::Context> mExplicitContext;
 	std::shared_ptr<of::vk::Shader>  mShaderDefault;
 	std::shared_ptr<of::vk::Shader>  mShaderNormals;
+	std::shared_ptr<of::vk::Shader>  mShaderLambert;
 	//of::vk::Texture mVkTex;
 
 	public:

@@ -90,12 +90,16 @@ void ofApp::setup(){
 				{ VK_SHADER_STAGE_FRAGMENT_BIT, "default.frag" },
 			}
 		};
-
 		// shader creation makes shader reflect. 
 		mShaderDefault = std::make_shared<of::vk::Shader>( shaderSettings );
+		
 		shaderSettings.sources[VK_SHADER_STAGE_VERTEX_BIT]   = "normalcolor.vert";
 		shaderSettings.sources[VK_SHADER_STAGE_FRAGMENT_BIT] = "normalcolor.frag";
 		mShaderNormals = std::make_shared<of::vk::Shader>( shaderSettings );
+		
+		shaderSettings.sources[VK_SHADER_STAGE_VERTEX_BIT]   = "lambert.vert";
+		shaderSettings.sources[VK_SHADER_STAGE_FRAGMENT_BIT] = "lambert.frag";
+		mShaderLambert = std::make_shared<of::vk::Shader>( shaderSettings );
 	}
 
 	auto & context = *renderer->getDefaultContext();
@@ -165,14 +169,12 @@ void ofApp::drawModeExplicit(){
 	mCam1.begin();
 	
 	//context.bind( mCam1 );
-	//context.bind(shader1);
 	context
 		.setUniform( "globalColor", ofFloatColor::lightBlue )
 		.pushMatrix()
 		.translate( { -200, +200, 100 } )
 		.draw(cmd, ico)
 		.popMatrix();
-	//context.unbind( shader1 );
 	//context.unbind( mCam1 );
 
 	context
@@ -200,10 +202,12 @@ void ofApp::drawModeExplicit(){
 
 	context
 		.setUniform( "globalColor", ofFloatColor::red )
+		.setShader( mShaderLambert)
 		.setPolyMode( VK_POLYGON_MODE_FILL )
 		.draw(cmd, mFontMesh );
 	
 	context
+		.setShader( mShaderDefault )
 		.pushMatrix()
 		.rotateRad( ( ofGetFrameNum() % 360 )*DEG_TO_RAD, { 0.f,0.f,1.f } )
 		.draw(cmd, mLMesh )
@@ -318,8 +322,8 @@ void ofApp::keyPressed(int key){
 		}
 	}
 	else if ( key == ' ' ){
-		if ( mShaderDefault )
-			mShaderDefault->compile();
+		if ( mShaderLambert)
+			mShaderLambert->compile();
 	}
 
 }
