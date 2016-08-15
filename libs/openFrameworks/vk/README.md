@@ -20,30 +20,81 @@ you should be able to feed an `ofVkWindowSettings` object to
 ## Setup 
 
 This has been initially developed on: Windows 10/64bit, NVIDIA GTX 980
-(Vulkan API 1.0.8), Vulkan SDK 1.0.13. Other Vulkan capable
+(Vulkan API 1.0.8), Vulkan SDK 1.0.21. Other Vulkan capable
 systems/GPUs are expected to work, most proably requiring some
 modifications. 
 
-1. Install the Vulkan SDK from LunarG
+
+### Install the Vulkan SDK from LunarG
 
 	* download from: https://vulkan.lunarg.com
 	* [win] run installer to install sdk
 	* [win] install VulkanRT from RunTimeInstaller
 
-2. update GLFW using apothecary
-   
-   Check the apothecary GLFW headers to make sure they are at version 3.2
+#### Troubleshooting: [windows, sdk 1.0.21.1] 
 
-    If they aren't it's possible you might have to temporarily checkout [this PR](https://github.com/openframeworks/openFrameworks/pull/5099) to update the apothecary GLFW recipe, and recompile the GLFW library.
+Check VulkanRT install- I ran into a repeated issue with the powershell script included with the VulkanRT installer failing to execute. This script, `.\ConfigLayersAndVulkanDLL.ps1` is responsible for setting up some registry values to tell the Vulkan loader where to find the validation layers. I found that manually executing the script twice (first run fails) using an Admin Powershell console helped. 
 
-    Once the update-glfw PR has been merged with openFrameworks/master, this step will hopefully be less awkward.
+    cd "C:\Program Files (x86)\VulkanRT\1.0.21.1"
+    .\ConfigLayersAndVulkanDLL.ps1 1 64
+    # and then again!
+    .\ConfigLayersAndVulkanDLL.ps1 1 64
+    # this time there should be no errors.
 
-    ```cd openFrameworks/scripts/apothecary
-    ./apothecary update glfw```
+### Clone apothecary
 
+Apothecary is openFrameworks' dependency tracker and libraries build helper. For openFrameworks-vk it is needed to build the latest versions of `GLFW`, and `shaderc`.
 
-3. In apps/devApps you'll find a project called `testVk`, that's where
-   some things can be tested.
+To get apothecary with some extra build recipes needed for Vulkan, clone it from here:
+
+    git clone https://github.com/openFrameworks-vk/apothecary apothecary
+
+Apothecary requires a linux-like environment, on Windows, the most reliable for apothecary is MinGW64, wich comes bundled when you install git for windows. (https://git-for-windows.github.io/). 
+
+Then, move into the apothecary base directory.
+
+    cd apothecary/apothecary
+
+### Update GLFW dependency using apothecary
+  
+For Windows, visual studio 2015, and 64 bit (recommended) do:
+
+    ./apothecary -a 64 -t vs update glfw
+
+For Linux do: 
+
+    ./apothecary -a 64 update glfw
+
+### Update/Create shaderc dependency using apothecary
+
+If you are on windows, you might want to check if apothecary has access to python. Python is required to build shaderc. In a mingw terminal, issue: 
+
+    python --version
+
+If python is installed, you should see a version number, otherwise, install python for windows (3.5+) from here: https://www.python.org/downloads/windows/. Make sure you tick "Add Python to PATH" so that python is accessible from the console.
+
+To compile shaderc, for Windows, visual studio 2015, and 64 bit (recommended) do:
+
+    ./apothecary -a 64 -t vs update shaderc
+
+If compiling fails for any reason, delete the build folder in apothecary, read over the instructions again, and see if something might have been missed, then issue the above command again. I found that on Windows, with the ConEmu terminal manager, the PATH for python was not set correctly, and that running apothecary from the default "git for windows" console worked flawlessly.
+ 
+### Copy dependencies 
+
+Once you have the dependencies compiled, move to the base apothecary directory, where you will find two new directories with the build results: 
+
+    glfw
+    shaderc
+
+copy these two directories into: 
+
+    openframeworks-vk/libs/
+
+when asked, select "replace" to overwrite the old libraries in-place.
+
+### Open Test Project 
+
+In apps/devApps you'll find a project called `testVk`, that's the current example for Vulkan.
 
 ----------------------------------------------------------------------
 
@@ -196,7 +247,7 @@ ofMatrix4x4 clip(1.0f,  0.0f, 0.0f, 0.0f,
 - [X] Shader: compile from glsl
 - [ ] Shader: add "#pragma parameter" sugar
 - [X] Shader: auto-recompile from GLSL on change
-- [ ] Add Shader manager
+- [X] Add Shader manager
 - [ ] Add Buffer object - this is to back UBO, Attribute buffers and Index Buffers
 
 
@@ -205,8 +256,8 @@ ofMatrix4x4 clip(1.0f,  0.0f, 0.0f, 0.0f,
 # Design Principles
 
 1. Make it correct
-2. Keep it simple
 3. Make it extensible
+2. Keep it simple
 4. Optimise
 
 
