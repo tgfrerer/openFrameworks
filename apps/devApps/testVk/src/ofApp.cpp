@@ -168,8 +168,15 @@ void ofApp::drawModeExplicit(){
 	
 	mCam1.begin();
 	
+	context
+		.setUniform( "globalColor", ofFloatColor::red )
+		.setShader( mShaderLambert )
+		.setPolyMode( VK_POLYGON_MODE_FILL )
+		.draw( cmd, mFontMesh );
+
 	//context.bind( mCam1 );
 	context
+		.setShader( mShaderDefault )
 		.setUniform( "globalColor", ofFloatColor::lightBlue )
 		.pushMatrix()
 		.translate( { -200, +200, 100 } )
@@ -200,14 +207,11 @@ void ofApp::drawModeExplicit(){
 		.draw(cmd, ico )
 		.popMatrix();
 
-	context
-		.setUniform( "globalColor", ofFloatColor::red )
-		.setShader( mShaderLambert)
-		.setPolyMode( VK_POLYGON_MODE_FILL )
-		.draw(cmd, mFontMesh );
 	
 	context
 		.setShader( mShaderDefault )
+		.setPolyMode( VK_POLYGON_MODE_FILL )
+		.setUniform( "globalColor", ofFloatColor::darkBlue )
 		.pushMatrix()
 		.rotateRad( ( ofGetFrameNum() % 360 )*DEG_TO_RAD, { 0.f,0.f,1.f } )
 		.draw(cmd, mLMesh )

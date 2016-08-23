@@ -286,6 +286,8 @@ void of::vk::Shader::reflect(
 		// --- uniform buffers ---
 		reflectUBOs( compiler, shaderStage );
 		
+		// --- samplers
+		reflectSamplers( compiler, shaderStage );
 
 		// --- vertex inputs ---
 		if ( shaderStage & VK_SHADER_STAGE_VERTEX_BIT ){
@@ -326,26 +328,25 @@ void of::vk::Shader::reflect(
 		ofLog() << " " << char( 195 ) 
 			<< std::setw( 2 ) << b.bindingNumber << " : " 
 			<< std::hex << b.uniformHash 
-			<< " '" << mShaderManager->getUniformMeta( b.uniformHash )->name << "'";
+			<< " '" << mShaderManager->getDescriptorInfo( b.uniformHash )->name << "'";
 	}
 
 }
 
 // ----------------------------------------------------------------------
 
-bool of::vk::Shader::reflectUBOs(const spirv_cross::Compiler & compiler, const VkShaderStageFlagBits & shaderStage)
-{
-	
+bool of::vk::Shader::reflectUBOs( const spirv_cross::Compiler & compiler, const VkShaderStageFlagBits & shaderStage ){
+
 	auto uniformBuffers = compiler.get_shader_resources().uniform_buffers;
 
 	for ( const auto & ubo : uniformBuffers ){
 
-		auto tmpUniform             = std::make_shared<UniformMeta>();
-		tmpUniform->descriptorCount = 1; // must be 1 for UBOs (arrays of UBOs are forbidden by the spec.)
-		tmpUniform->name            = ubo.name;
-		tmpUniform->storageSize     = compiler.get_declared_struct_size( compiler.get_type( ubo.type_id ) );
-		tmpUniform->type            = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC; /* All our uniform buffer are dynamic */
-		tmpUniform->stageFlags      = shaderStage;
+		auto tmpUniform         = std::make_shared<DescriptorInfo>();
+		tmpUniform->count       = 1; // must be 1 for UBOs (arrays of UBOs are forbidden by the spec.)
+		tmpUniform->name        = ubo.name;
+		tmpUniform->storageSize = compiler.get_declared_struct_size( compiler.get_type( ubo.type_id ) );
+		tmpUniform->type        = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC; /* All our uniform buffer are dynamic */
+		tmpUniform->stageFlags  = shaderStage;
 
 		auto bufferRanges = compiler.get_active_buffer_ranges( ubo.id );
 
@@ -359,23 +360,23 @@ bool of::vk::Shader::reflectUBOs(const spirv_cross::Compiler & compiler, const V
 
 		tmpUniform->calculateHash();
 
-		// let's see if an uniform buffer with this fingerprint has already been seen.
-		// if yes, it would already be in uniformStore.
+		// Let's see if an uniform buffer with this fingerprint has already been seen.
+		// If yes, it would already be in uniformStore.
 
-		auto & uniform = mShaderManager->borrowUniformMeta(tmpUniform->hash);
-		
+		auto & uniform = mShaderManager->borrowDescriptorInfo( tmpUniform->hash );
+
 		if ( uniform == nullptr ){
 			// Write uniform into store
 			uniform = std::move( tmpUniform );
 		} else{
-			  // Uniform with this key already exists.
+			// Uniform with this key already exists.
 			if ( uniform->storageSize != tmpUniform->storageSize ){
 				ofLogError() << "Ubo: '" << uniform->name << "' re-defined with incompatible storage size.";
 				// !TODO: try to recover.
 				return false;
 			} else{
 				// Merge stage flags
-				uniform->stageFlags |= tmpUniform->stageFlags; 
+				uniform->stageFlags |= tmpUniform->stageFlags;
 				// Merge memberRanges
 				ostringstream overlapMsg;
 				if ( uniform->checkMemberRangesOverlap( uniform->memberRanges, tmpUniform->memberRanges, overlapMsg ) ){
@@ -386,38 +387,89 @@ bool of::vk::Shader::reflectUBOs(const spirv_cross::Compiler & compiler, const V
 			}
 		}
 
-		// ----------| invariant: uniform holds our current uniform
-
-		UniformBindingInfo bindingInfo;
-
-		getSetAndBindingNumber( compiler, ubo, bindingInfo.setNumber, bindingInfo.bindingNumber);
-		
-		// Now store the set and binding information for this shader
-		// we use this to check for consistent set and binding decorations for uniforms,
-		// and later, to create our descriptorSetLayout
-
-		auto localBindingIt = mBindingsTable.find( uniform->hash );
-		if ( localBindingIt == mBindingsTable.end() ){
-			// not yet seen this binding - store it
-			mBindingsTable[uniform->hash] = bindingInfo;
-		} else{
-			bool success = true;
-			if ( localBindingIt->second.setNumber != bindingInfo.setNumber ){
-				ofLogError() << "Ubo: '" << uniform->name << "' set number mismatch: " << bindingInfo.setNumber;
-				success = false;
-			} else if ( localBindingIt->second.bindingNumber != bindingInfo.bindingNumber ){
-				ofLogError() << "Ubo: '" << uniform->name << "' binding number mismatch: " << bindingInfo.bindingNumber;
-				success = false;
-			}
-			if ( !success ){
-				ofLogError() << "Binding and set number must match for Ubo member over all stages within the same shader";
-				ofLogError() << "Check if your set ids and binding numbers are consistent for: " << ubo.name;
-				return false;
-			}
+		if ( false == addResourceToBindingsTable( compiler, ubo, uniform ) ){
+			ofLogError() << "Could not add uniform to bindings table.";
+			return false;
 		}
 
 	} // end: for all uniform buffers
 
+	return true;
+}
+
+// ----------------------------------------------------------------------
+
+bool of::vk::Shader::reflectSamplers( const spirv_cross::Compiler & compiler, const VkShaderStageFlagBits & shaderStage ){
+
+	auto sampledImages = compiler.get_shader_resources().sampled_images;
+
+	for ( const auto & sampledImage : sampledImages){
+
+		auto tmpUniform = std::make_shared<DescriptorInfo>();
+		tmpUniform->count = 1; //!TODO: find out how to query array size
+		tmpUniform->name = sampledImage.name;
+		tmpUniform->storageSize = 0; // sampled image is an opaque type and has no size
+		tmpUniform->type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		tmpUniform->stageFlags = shaderStage;
+
+
+		tmpUniform->calculateHash();
+
+		// Let's see if an uniform buffer with this fingerprint has already been seen.
+		// If yes, it would already be in uniformStore.
+
+		auto & uniform = mShaderManager->borrowDescriptorInfo( tmpUniform->hash );
+
+		if ( uniform == nullptr ){
+			// Write uniform into store
+			uniform = std::move( tmpUniform );
+		} else{
+			// Uniform with this key already exists.
+		}
+
+		if ( false == addResourceToBindingsTable( compiler, sampledImage, uniform ) ){
+			ofLogError() << "Could not add uniform to bindings table.";
+			return false;
+		}
+
+	} // end: for all uniform buffers
+
+	return true;
+}
+
+// ----------------------------------------------------------------------
+
+bool of::vk::Shader::addResourceToBindingsTable( const spirv_cross::Compiler & compiler, const spirv_cross::Resource & ubo, std::shared_ptr<of::vk::Shader::DescriptorInfo> & uniform ){
+	
+	// uniform holds our current uniform
+
+	UniformBindingInfo bindingInfo;
+
+	getSetAndBindingNumber( compiler, ubo, bindingInfo.setNumber, bindingInfo.bindingNumber );
+
+	// Now store the set and binding information for this shader
+	// we use this to check for consistent set and binding decorations for uniforms,
+	// and later, to create our descriptorSetLayout
+
+	auto localBindingIt = mBindingsTable.find( uniform->hash );
+	if ( localBindingIt == mBindingsTable.end() ){
+		// not yet seen this binding - store it
+		mBindingsTable[uniform->hash] = bindingInfo;
+	} else{
+		bool success = true;
+		if ( localBindingIt->second.setNumber != bindingInfo.setNumber ){
+			ofLogError() << "Ubo: '" << uniform->name << "' set number mismatch: " << bindingInfo.setNumber;
+			success = false;
+		} else if ( localBindingIt->second.bindingNumber != bindingInfo.bindingNumber ){
+			ofLogError() << "Ubo: '" << uniform->name << "' binding number mismatch: " << bindingInfo.bindingNumber;
+			success = false;
+		}
+		if ( !success ){
+			ofLogError() << "Binding and set number must match for Ubo member over all stages within the same shader";
+			ofLogError() << "Check if your set ids and binding numbers are consistent for: " << ubo.name;
+			return false;
+		}
+	}
 	return true;
 }
 
@@ -479,25 +531,25 @@ bool of::vk::Shader::createSetLayouts(){
 }
 // ----------------------------------------------------------------------
 
-void of::vk::Shader::getSetAndBindingNumber( const spirv_cross::Compiler & compiler, const spirv_cross::Resource & ubo, uint32_t &descriptor_set, uint32_t &bindingNumber ){
+void of::vk::Shader::getSetAndBindingNumber( const spirv_cross::Compiler & compiler, const spirv_cross::Resource & resource, uint32_t &descriptor_set, uint32_t &bindingNumber ){
 	// see what kind of decorations this resource has
-	uint64_t decorationMask = compiler.get_decoration_mask( ubo.id );
+	uint64_t decorationMask = compiler.get_decoration_mask( resource.id );
 	
 	if ( ( 1ull << spv::DecorationDescriptorSet ) & decorationMask ){
-		descriptor_set = compiler.get_decoration( ubo.id, spv::DecorationDescriptorSet );
+		descriptor_set = compiler.get_decoration( resource.id, spv::DecorationDescriptorSet );
 	} else{
 		// If undefined, set descriptor set id to 0. This is conformant with:
 		// https://www.khronos.org/registry/vulkan/specs/misc/GL_KHR_vulkan_glsl.txt
 		descriptor_set = 0;
 		ofLogWarning() 
-			<< "Warning: Shader uniform " << ubo.name << "does not specify set id, and will " << endl
-			<< "therefore be mapped to set 0 - this might have unintended consequences.";
+			<< "Warning: Shader uniform " << resource.name << "does not specify set id, and will " << endl
+			<< "therefore be mapped to set 0 - this could have unintended consequences.";
 	}
 
 	if ( ( 1ull << spv::DecorationBinding ) & decorationMask ){
-		bindingNumber = compiler.get_decoration( ubo.id, spv::DecorationBinding );
+		bindingNumber = compiler.get_decoration( resource.id, spv::DecorationBinding );
 	} else{
-		ofLogWarning() << "Shader uniform" << ubo.name << "does not specify binding number.";
+		ofLogWarning() << "Shader uniform" << resource.name << "does not specify binding number.";
 	}
 }
 
@@ -603,13 +655,15 @@ inline void of::vk::Shader::SetLayoutMeta::calculateHash(){
 
 // ----------------------------------------------------------------------
 
-inline void of::vk::Shader::UniformMeta::calculateHash(){
+inline void of::vk::Shader::DescriptorInfo::calculateHash(){
 	
+	// hash of type, descriptorcount, storagesize
 	hash = SpookyHash::Hash64( &this->type,
 		sizeof( type ) +
-		sizeof( descriptorCount )
+		sizeof( count ) +
+		sizeof( storageSize )
 		, 0 );
-
+	
 	hash = SpookyHash::Hash64( name.data(), name.size(), hash );
 
 }
@@ -619,9 +673,9 @@ inline void of::vk::Shader::UniformMeta::calculateHash(){
 // Should this be the case, there is a good chance that the 
 // Ubo layout was inconsistently defined across shaders or 
 // shader stages, or that there was a typo in an UBO declaration.
-bool of::vk::Shader::UniformMeta::checkMemberRangesOverlap( 
-	const std::map< std::string, of::vk::Shader::UboMemberRange>& lhs,
-	const std::map< std::string, of::vk::Shader::UboMemberRange>& rhs,
+bool of::vk::Shader::DescriptorInfo::checkMemberRangesOverlap( 
+	const MemberMap& lhs,
+	const MemberMap& rhs,
 	std::ostringstream & errorMsg ) const{
 
 	// Check whether member ranges overlap.

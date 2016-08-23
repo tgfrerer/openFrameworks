@@ -39,6 +39,8 @@ class ofVkRenderer;
 namespace of {
 namespace vk {
 
+
+class Texture;  // ffdecl.
 class Allocator; // ffdecl.
 
 /// \brief  Context stores any transient data
@@ -94,7 +96,7 @@ private:
 	};
 
 	// TODO: rename to UboBufferStack
-	struct UniformBufferState
+	struct UboBufferStack
 	{
 		uint32_t struct_size =  0;    // size in bytes of UniformBufferData.data vec
 		int32_t  lastSavedStackId = -1;    // rolling count of elements saved to stack
@@ -120,14 +122,14 @@ private:
 	};
 
 	// TODO: rename to UboMemberBacking
-	struct UniformMember   // sub-element of a binding witin a set
+	struct UboBindingInfo   // sub-element of a binding witin a set
 	{
 		// the important thing here is that a binding can have multiple uniforms
 		// (or UBO members as they are called in SPIR-V)
 
 		// but one uniform can only belong to one binding.
 
-		UniformBufferState* buffer; // this points to the buffer that will be affected by this binding - there is one buffer for each binding  - 
+		UboBufferStack* buffer;     // this points to the buffer that will be affected by this binding - there is one buffer for each binding  - 
 									// this is the index into the bufferOffsets vector for the shader layout this binding belongs to.
 
 		uint32_t offset;
@@ -138,10 +140,13 @@ private:
 	struct Frame
 	{
 		// all bindings for this context indexed by uboMeta Hash
-		std::map<uint64_t, UniformBufferState> uboState;
+		std::map<uint64_t, UboBufferStack> uboState;
 
-		// map from uniform name to set and binding for uniform
-		std::map<std::string, UniformMember> mUniformMembers;
+		// map from uniform name to uniformMember
+		std::map<std::string, UboBindingInfo> mUniformMembers;
+
+		// map from texture name to 
+		std::map<std::string, std::shared_ptr<of::vk::Texture>> mUniformImages;
 
 		// current binding offset into GPU memory
 		// this needs to be reset every frame

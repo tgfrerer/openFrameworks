@@ -2,6 +2,7 @@
 #include "ofVkRenderer.h"
 #include "vk/vkAllocator.h"
 #include "vk/Shader.h"
+#include "vk/Texture.h"
 #include "vk/Pipeline.h"
 #include "spooky/SpookyV2.h"
 
@@ -116,39 +117,45 @@ void of::vk::Context::initialiseFrameState(){
 
 	Frame frame;
 
-	// iterate over all unifrom bindings
-	for ( const auto & b : mShaderManager->getUniformMeta() ){
-		
+	// iterate over all uniform bindings
+	for ( const auto & b : mShaderManager->getDescriptorInfos() ){
+
 		const auto uniformKey = b.first;
 		const auto & uniformMeta = *b.second;
 
-		// we want the member name to be the full name, i.e. : "DefaultMatrices.ProjectionMatrix"
-		// to avoid clashes.
-		UniformBufferState uboState;
-		uboState.name = uniformMeta.name;
-		uboState.struct_size = uniformMeta.storageSize;
-		uboState.state.data.resize( uniformMeta.storageSize );
+		if ( uniformMeta.type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC ){
+			// we want the member name to be the full name, 
+			// i.e. : "DefaultMatrices.ProjectionMatrix", to avoid clashes.
+			UboBufferStack uboState;
+			uboState.name = uniformMeta.name;
+			uboState.struct_size = uniformMeta.storageSize;
+			uboState.state.data.resize( uniformMeta.storageSize );
 
-		frame.uboState[uniformKey] = std::move( uboState );
+			frame.uboState[uniformKey] = std::move( uboState );
 
-		for ( const auto & member : uniformMeta.memberRanges ){
-			const auto & memberName  = member.first;
-			const auto & range       = member.second;
-			UniformMember m;
-			m.offset = uint32_t( range.offset );
-			m.range = uint32_t( range.range );
-			m.buffer = &frame.uboState[uniformKey];
-			frame.mUniformMembers[m.buffer->name + "." + memberName] = m ;
-			// Also add this ubo member to the global namespace - report if there is a namespace clash.
-			auto insertionResult = frame.mUniformMembers.insert({ memberName, std::move( m ) });
-			if ( insertionResult.second == false ){
-				auto & asdf = *insertionResult.first;
-				ofLogWarning() << "Shader analysis: UBO Member name is ambiguous: " << (*insertionResult.first).first << std::endl
-					<< "More than one UBO Blocks reference a variable with name: " << ( *insertionResult.first ).first;
+			for ( const auto & member : uniformMeta.memberRanges ){
+				const auto & memberName = member.first;
+				const auto & range = member.second;
+				UboBindingInfo m;
+				m.offset = uint32_t( range.offset );
+				m.range = uint32_t( range.range );
+				m.buffer = &frame.uboState[uniformKey];
+				frame.mUniformMembers[m.buffer->name + "." + memberName] = m;
+				// Also add this ubo member to the global namespace - report if there is a namespace clash.
+				auto insertionResult = frame.mUniformMembers.insert( { memberName, std::move( m ) } );
+				if ( insertionResult.second == false ){
+					ofLogWarning() << "Shader analysis: UBO Member name is ambiguous: " << ( *insertionResult.first ).first << std::endl
+						<< "More than one UBO Blocks reference a variable with name: " << ( *insertionResult.first ).first;
+				}
 			}
-		}
+
+		} else if ( uniformMeta.type == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER){
 		
-	}
+
+		
+		}// end if type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC
+	
+	}  // end for all uniform bindings
 	
 	mCurrentFrameState = std::move( frame );
 	
@@ -274,7 +281,7 @@ const VkBuffer & of::vk::Context::getVkBuffer() const {
 
 of::vk::Context& of::vk::Context::pushBuffer( const std::string & ubo_ ){
 	auto uboWithName = std::find_if( mCurrentFrameState.uboState.begin(), mCurrentFrameState.uboState.end(),
-		[&ubo_]( const std::pair<uint64_t, UniformBufferState> & lhs ) -> bool{
+		[&ubo_]( const std::pair<uint64_t, UboBufferStack> & lhs ) -> bool{
 		return ( lhs.second.name == ubo_ );
 	} );
 
@@ -288,7 +295,7 @@ of::vk::Context& of::vk::Context::pushBuffer( const std::string & ubo_ ){
 
 of::vk::Context& of::vk::Context::popBuffer( const std::string & ubo_ ){
 	auto uboWithName = std::find_if( mCurrentFrameState.uboState.begin(), mCurrentFrameState.uboState.end(),
-		[&ubo_]( const std::pair<uint64_t, UniformBufferState> & lhs ) -> bool{
+		[&ubo_]( const std::pair<uint64_t, UboBufferStack> & lhs ) -> bool{
 		return ( lhs.second.name == ubo_ );
 	} );
 
@@ -521,7 +528,7 @@ void of::vk::Context::updateDescriptorSetState(){
 		const auto it = descriptorSetCache.find( descriptorSetLayoutHash );
 		
 		if ( it != descriptorSetCache.end()  ){
-			// descriptor has been found in cashe
+			// descriptor has been found in cache
 			const auto   descriptorSetLayoutHash = it->first;
 			const auto & previouslyAllocatedDescriptorSet = it->second;
 
@@ -574,16 +581,15 @@ void of::vk::Context::updateDescriptorSetState(){
 
 void of::vk::Context::updateDescriptorSets( const std::vector<size_t>& setIndices ){
 
-	// We assume mDSS_set[firstSetIdx .. mDSS_set.size()-1] are untyped, 
-	// and have not yet been used for drawing. We therefore write type
-	// information, and binding information into these descriptorSets.
-		
 	std::vector<VkWriteDescriptorSet> writeDescriptorSets;
 	writeDescriptorSets.reserve( setIndices.size() );
 
-	// Temporary storage for VkDescriptorBufferInfo
-	// so this can be pointed to from within the loop.
+	// temporary storage for bufferInfo objects - we use this to aggregate the data
+	// for UBO bindings and keep it alive outside the loop scope so it can be submitted
+	// to the API after we accumulate inside the loop.
 	std::map < uint64_t, std::vector<VkDescriptorBufferInfo>> descriptorBufferInfoStorage;
+	
+	std::map < uint64_t, std::vector<VkDescriptorImageInfo>> descriptorImageInfoStorage;
 
 	// iterate over all setLayouts (since each element corresponds to a DescriptorSet)
 	for ( const auto j : setIndices ){
@@ -597,7 +603,7 @@ void of::vk::Context::updateDescriptorSets( const std::vector<size_t>& setIndice
 		// the correct memory location for each ubo element.
 
 		// Note that here, you point the writeDescriptorSet to dstBinding and dstSet; 
-		// if descriptorCount was greater than the number of bindings in the set, 
+		// if count was greater than the number of bindings in the set, 
 		// the next bindings will be overwritten.
 
 
@@ -614,43 +620,74 @@ void of::vk::Context::updateDescriptorSets( const std::vector<size_t>& setIndice
 		for ( const auto &b : bindings ){
 			
 			const auto & bindingNumber = b.first;
-			const auto & bindingInfo   = b.second;
+			const auto & descriptorInfo   = b.second;
 
 			// It appears that writeDescriptorSet does not immediately consume VkDescriptorBufferInfo*
 			// so we must make sure that this is around for when we need it:
 
-			descriptorBufferInfoStorage[key].push_back( {
-				mAlloc->getBuffer(),                // VkBuffer        buffer;
-				0,                                  // VkDeviceSize    offset;		// we start any new binding at offset 0, as data for each descriptor will always be separately allocated and uploaded.
-				bindingInfo->storageSize            // VkDeviceSize    range;
-			} );
+			if ( VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC == descriptorInfo->type ){
 
-			const auto & bufElement = descriptorBufferInfoStorage[key].back();
+				descriptorBufferInfoStorage[key].push_back( {
+					mAlloc->getBuffer(),                // VkBuffer        buffer;
+					0,                                  // VkDeviceSize    offset;		// we start any new binding at offset 0, as data for each descriptor will always be separately allocated and uploaded.
+					descriptorInfo->storageSize         // VkDeviceSize    range;
+				} );
 
-			// Q: Is it possible that elements of a descriptorSet are of different VkDescriptorType?
-			//
-			// A: Yes. This is why this method should write only one binding (== Descriptor) 
-			//    at a time - as all members of a binding must share the same VkDescriptorType.
+				const auto & bufElement = descriptorBufferInfoStorage[key].back();
 
-			// Create one writeDescriptorSet per binding.
+				// Q: Is it possible that elements of a descriptorSet are of different VkDescriptorType?
+				//
+				// A: Yes. This is why this method should write only one binding (== Descriptor) 
+				//    at a time - as all members of a binding must share the same VkDescriptorType.
 
-			VkWriteDescriptorSet tmpDescriptorSet{
-				VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,                    // VkStructureType                  sType;
-				nullptr,                                                   // const void*                      pNext;
-				mPipelineLayoutState.vkDescriptorSets[j],                  // VkDescriptorSet                  dstSet;
-				bindingNumber,                                             // uint32_t                         dstBinding;
-				0,                                                         // uint32_t                         dstArrayElement; // starting element in array
-				bindingInfo->descriptorCount,                              // uint32_t                         descriptorCount;
-				bindingInfo->type,                                         // VkDescriptorType                 descriptorType;
-				nullptr,                                                   // const VkDescriptorImageInfo*     pImageInfo;
-				&bufElement,                                               // const VkDescriptorBufferInfo*    pBufferInfo;
-				nullptr,                                                   // const VkBufferView*              pTexelBufferView;
-			};
+				// Create one writeDescriptorSet per binding.
 
-			// store writeDescriptorSet for later, so all writes happen in bulk
-			writeDescriptorSets.push_back( std::move( tmpDescriptorSet ) );
+				VkWriteDescriptorSet tmpDescriptorSet{
+					VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,                    // VkStructureType                  sType;
+					nullptr,                                                   // const void*                      pNext;
+					mPipelineLayoutState.vkDescriptorSets[j],                  // VkDescriptorSet                  dstSet;
+					bindingNumber,                                             // uint32_t                         dstBinding;
+					0,                                                         // uint32_t                         dstArrayElement; // starting element in array
+					descriptorInfo->count,                                     // uint32_t                         count;
+					descriptorInfo->type,                                      // VkDescriptorType                 descriptorType;
+					nullptr,                                                   // const VkDescriptorImageInfo*     pImageInfo;
+					&bufElement,                                               // const VkDescriptorBufferInfo*    pBufferInfo;
+					nullptr,                                                   // const VkBufferView*              pTexelBufferView;
+				};
+
+				// store writeDescriptorSet for later, so all writes happen in bulk
+				writeDescriptorSets.push_back( std::move( tmpDescriptorSet ) );
+			} else if ( VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER == descriptorInfo->type){
+
+				//!TODO: link in image info.
+				VkDescriptorImageInfo tmpImageInfo{
+					//descriptorInfo->sampler,	                               // VkSampler        sampler;
+					//descriptorInfo->imageView,	                               // VkImageView      imageView;
+					//descriptorInfo->imageLayout,                               // VkImageLayout    imageLayout;
+				};
+				
+				descriptorImageInfoStorage[key].emplace_back( std::move(tmpImageInfo) );
+
+				const auto & imgElement = descriptorImageInfoStorage[key].back();
+
+				VkWriteDescriptorSet tmpDescriptorSet{
+					VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,                    // VkStructureType                  sType;
+					nullptr,                                                   // const void*                      pNext;
+					mPipelineLayoutState.vkDescriptorSets[j],                  // VkDescriptorSet                  dstSet;
+					bindingNumber,                                             // uint32_t                         dstBinding;
+					0,                                                         // uint32_t                         dstArrayElement; // starting element in array
+					descriptorInfo->count,                                     // uint32_t                         count;
+					descriptorInfo->type,                                      // VkDescriptorType                 descriptorType;
+					&imgElement,                                               // const VkDescriptorImageInfo*     pImageInfo;
+					nullptr,                                                   // const VkDescriptorBufferInfo*    pBufferInfo;
+					nullptr,                                                   // const VkBufferView*              pTexelBufferView;
+				};
+
+				writeDescriptorSets.push_back( std::move( tmpDescriptorSet ) );
+			}
+
 			// store binding into our current binding state
-			mPipelineLayoutState.bindingState[j].insert( {bindingNumber,bindingInfo->hash} );
+			mPipelineLayoutState.bindingState[j].insert( {bindingNumber,descriptorInfo->hash} );
 		}
 	}
 

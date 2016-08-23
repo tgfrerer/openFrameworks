@@ -315,9 +315,6 @@
     <ClInclude Include="..\..\..\openFrameworks\vk\spooky\SpookyV2.h">
       <Filter>libs\openFrameworks\vk\spooky</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\openFrameworks\vk\vkTexture.h">
-      <Filter>libs\openFrameworks\vk</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\..\openFrameworks\vk\ShaderManager.h">
       <Filter>libs\openFrameworks\vk</Filter>
     </ClInclude>
@@ -332,6 +329,9 @@
     </ClInclude>
     <ClInclude Include="..\..\..\openFrameworks\vk\spirv-cross\include\spirv_common.hpp">
       <Filter>libs\openFrameworks\vk\spirv-cross\src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\openFrameworks\vk\Texture.h">
+      <Filter>libs\openFrameworks\vk</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

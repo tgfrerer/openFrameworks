@@ -95,25 +95,29 @@ public:
 	// we need a table of uniforms
 	struct UboMemberRange
 	{
-		size_t offset ;
-		size_t range  ;
+		size_t offset;
+		size_t range;
 	};
 
-	struct UniformMeta
+	// Metadata for descriptor 
+	// - descriptor can be of type dynamic_uniform or combined_image_sampler
+	struct DescriptorInfo
 	{
-		VkDescriptorType      type = VK_DESCRIPTOR_TYPE_MAX_ENUM;
-		uint32_t              descriptorCount = 0;
-		size_t                storageSize;
-		std::string           name;
-		std::map< std::string, of::vk::Shader::UboMemberRange> memberRanges; // optional: memory offsets for members within UBO, indexed by name
-		VkShaderStageFlags    stageFlags = 0;  // stageFlags not included in hash !
+		using MemberMap = std::map< std::string, of::vk::Shader::UboMemberRange>;
 		
-		uint64_t              hash = 0;	/* hash of type, count, and name */
+		VkDescriptorType      type = VK_DESCRIPTOR_TYPE_MAX_ENUM;  /* used for hash */
+		uint32_t              count = 0;                           /* used for hash */
+		size_t                storageSize;                         /* used for hash */
+		std::string           name;                                /* used for hash */
+		
+		VkShaderStageFlags    stageFlags = 0;
+		MemberMap             memberRanges; // optional: memory offsets for members within UBO, indexed by name
+		
+		uint64_t              hash = 0;                            /* hash of type, count, name, storageSize */
+		
 		void calculateHash();
-		bool checkMemberRangesOverlap(
-			const std::map< std::string, of::vk::Shader::UboMemberRange>& lhs,
-			const std::map< std::string, of::vk::Shader::UboMemberRange> & rhs,
-			std::ostringstream & errorMsg) const;
+		
+		bool checkMemberRangesOverlap( const MemberMap& lhs, const MemberMap & rhs, std::ostringstream & errorMsg) const;
 	};
 
 	struct UniformBindingInfo
@@ -122,12 +126,12 @@ public:
 		uint32_t bindingNumber = 0;
 	};
 
-	// (set id and binding number of uniform) indexed by UniformMeta hash
+	// (set id and binding number of uniform) indexed by DescriptorInfo hash
 	std::map<uint64_t, UniformBindingInfo> mBindingsTable;
 
 	struct SetLayoutMeta
 	{
-		// binding number to UniformMeta hash - binding numbers may be sparse.
+		// binding number to DescriptorInfo hash - binding numbers may be sparse.
 		std::map<uint32_t, uint64_t> bindingTable;
 
 		uint64_t hash = 0;
@@ -189,7 +193,9 @@ private:
 	void reflect( const std::map<VkShaderStageFlagBits, std::shared_ptr<spirv_cross::Compiler>>& compilers, VertexInfo& vertexInfo );
 	//static void reflectUniformBuffers( const spirv_cross::Compiler & compiler, const VkShaderStageFlagBits & shaderStage, std::map<std::string, BindingInfo>& uniformInfo );
 	
-	bool reflectUBOs( const spirv_cross::Compiler & compiler, const VkShaderStageFlagBits & shaderStage);
+	bool reflectUBOs( const spirv_cross::Compiler & compiler, const VkShaderStageFlagBits & shaderStage );
+	bool reflectSamplers( const spirv_cross::Compiler & compiler, const VkShaderStageFlagBits & shaderStage);
+	bool addResourceToBindingsTable( const spirv_cross::Compiler & compiler, const spirv_cross::Resource & ubo, std::shared_ptr<of::vk::Shader::DescriptorInfo> & uniform );
 	bool createSetLayouts();
 	void createVkPipelineLayout();
 

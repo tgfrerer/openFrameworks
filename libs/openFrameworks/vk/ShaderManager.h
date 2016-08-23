@@ -32,8 +32,8 @@ public:
 
 private:
 
-	// central store of uniforms - indexed by uniform hash
-	std::map<uint64_t, std::shared_ptr<of::vk::Shader::UniformMeta>>   mUniformStore;
+	// central store of descriptor infos - indexed by descriptor info hash
+	std::map<uint64_t, std::shared_ptr<of::vk::Shader::DescriptorInfo>>   mDescriptorInfoStore;
 	
 	// central store of set layouts - indexed by set layout hash
 	// set layouts are ordered sequences of uniforms
@@ -43,29 +43,29 @@ public:
 
 	// TODO: these methods - as they may modify the contents of ShaderManager
 	// may need to be mutexed to be safe across threads.
-	std::shared_ptr<of::vk::Shader::UniformMeta>& borrowUniformMeta( uint64_t hash ){
-		return mUniformStore[hash];
+	std::shared_ptr<of::vk::Shader::DescriptorInfo>& borrowDescriptorInfo( uint64_t hash ){
+		return mDescriptorInfoStore[hash];
 	}
 
-	const std::shared_ptr<of::vk::Shader::UniformMeta>& getUniformMeta( uint64_t hash ) const{
-		static std::shared_ptr<of::vk::Shader::UniformMeta> failUniformMeta;
-		const auto &it = mUniformStore.find( hash );
-		if ( it != mUniformStore.end() ){
+	const std::shared_ptr<of::vk::Shader::DescriptorInfo>& getDescriptorInfo( uint64_t hash ) const{
+		static std::shared_ptr<of::vk::Shader::DescriptorInfo> failDescriptorInfo;
+		const auto &it = mDescriptorInfoStore.find( hash );
+		if ( it != mDescriptorInfoStore.end() ){
 			return it->second;
 		} else{
 			ofLogError() << "Could not find uniform with id: " << std::hex << hash;
 		}
-		return failUniformMeta;
+		return failDescriptorInfo;
 	}
 
 	std::shared_ptr<of::vk::Shader::SetLayoutMeta>& borrowSetLayoutMeta( uint64_t hash ){
 		return mSetLayoutStore[hash];
 	}
 
-	const std::map<uint32_t, std::shared_ptr<of::vk::Shader::UniformMeta>>& getBindings( uint64_t setLayoutHash ) const;
+	const std::map<uint32_t, std::shared_ptr<of::vk::Shader::DescriptorInfo>>& getBindings( uint64_t setLayoutHash ) const;
 	
-	const std::map<uint64_t, std::shared_ptr<of::vk::Shader::UniformMeta>>& getUniformMeta() const{
-		return mUniformStore;
+	const std::map<uint64_t, std::shared_ptr<of::vk::Shader::DescriptorInfo>>& getDescriptorInfos() const{
+		return mDescriptorInfoStore;
 	};
 
 
@@ -75,7 +75,7 @@ private:
 	std::map<uint64_t, std::shared_ptr<VkDescriptorSetLayout>> mDescriptorSetLayoutStore;
 
 	// central store of bindings per descriptor set layout, indexed by descriptor set layout hash
-	std::map<uint64_t, std::map<uint32_t, std::shared_ptr<of::vk::Shader::UniformMeta>>> mBindingsPerSetStore;
+	std::map<uint64_t, std::map<uint32_t, std::shared_ptr<of::vk::Shader::DescriptorInfo>>> mBindingsPerSetStore;
 public:
 
 	// create VkDescriptorSetLayouts for all descriptors currently held in mSetLayoutStore

@@ -222,7 +222,7 @@
     <ClInclude Include="..\..\..\openFrameworks\vk\spooky\SpookyV2.h" />
     <ClInclude Include="..\..\..\openFrameworks\vk\Swapchain.h" />
     <ClInclude Include="..\..\..\openFrameworks\vk\vkAllocator.h" />
-    <ClInclude Include="..\..\..\openFrameworks\vk\vkTexture.h" />
+    <ClInclude Include="..\..\..\openFrameworks\vk\Texture.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\openFrameworks\3d\of3dPrimitives.cpp" />

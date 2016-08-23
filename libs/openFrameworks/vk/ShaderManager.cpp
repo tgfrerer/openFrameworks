@@ -2,8 +2,8 @@
 #include "ofLog.h"
 
 // ----------------------------------------------------------------------
-const std::map<uint32_t, std::shared_ptr<of::vk::Shader::UniformMeta>>& of::vk::ShaderManager::getBindings( uint64_t setLayoutHash )const{
-	static std::map<uint32_t, std::shared_ptr<of::vk::Shader::UniformMeta>> failedBinding;
+const std::map<uint32_t, std::shared_ptr<of::vk::Shader::DescriptorInfo>>& of::vk::ShaderManager::getBindings( uint64_t setLayoutHash )const{
+	static std::map<uint32_t, std::shared_ptr<of::vk::Shader::DescriptorInfo>> failedBinding;
 	const auto it = mBindingsPerSetStore.find( setLayoutHash );
 	if ( mBindingsPerSetStore.end() != it ){
 		return it->second;
@@ -29,7 +29,7 @@ bool of::vk::ShaderManager::createVkDescriptorSetLayouts(){
 		for ( const auto& bindingInfo : setLayoutMeta.bindingTable ){
 			const auto& bindingNumber = bindingInfo.first;
 			const auto& uniformHash   = bindingInfo.second;
-			const auto& uniformMeta   = mUniformStore[uniformHash];
+			const auto& uniformMeta   = mDescriptorInfoStore[uniformHash];
 
 			if ( uniformMeta == nullptr ){
 				ofLogError() << "Cannot find uniform binding with id: " << std::hex << uniformHash << ".";
@@ -39,7 +39,7 @@ bool of::vk::ShaderManager::createVkDescriptorSetLayouts(){
 			//----------| invariant: uniformMeta for this setLayoutHash was valid
 
 			// Store / add this binding to central descriptorSet->bindings store
-			// as this references an object held in mUniformStore, the object's
+			// as this references an object held in mDescriptorInfoStore, the object's
 			// use_count will increase with each reference, and tell how many 
 			// copies of this uniform are needed.
 			mBindingsPerSetStore[setLayoutHash].insert( { bindingNumber, uniformMeta } );
@@ -47,7 +47,7 @@ bool of::vk::ShaderManager::createVkDescriptorSetLayouts(){
 			bindings.push_back( {                                // VkDescriptorSetLayoutBinding: 
 				bindingNumber,                                   // uint32_t                               binding;
 				uniformMeta->type,                               // VkDescriptorType                       descriptorType;
-				uniformMeta->descriptorCount,                    // uint32_t                               descriptorCount;
+				uniformMeta->count,                    // uint32_t                               count;
 				uniformMeta->stageFlags,                         // VkShaderStageFlags                     stageFlags;
 				nullptr,                                         // const VkSampler*                       pImmutableSamplers;
 			} );
@@ -111,13 +111,13 @@ std::vector<VkDescriptorPoolSize> of::vk::ShaderManager::getVkDescriptorPoolSize
 			const auto & bindingNumber = b.first;
 			const auto & bindingHash   = b.second;
 
-			auto & uniformMeta = getUniformMeta( bindingHash );
+			auto & descriptorInfo = getDescriptorInfo( bindingHash );
 			
-			if ( uniformMeta ){
-				if ( poolSizeMap.end() == poolSizeMap.find( uniformMeta->type ) ){
-					poolSizeMap.insert( { uniformMeta->type, uniformMeta->descriptorCount } );
+			if ( descriptorInfo ){
+				if ( poolSizeMap.end() == poolSizeMap.find( descriptorInfo->type ) ){
+					poolSizeMap.insert( { descriptorInfo->type, descriptorInfo->count } );
 				} else{
-					poolSizeMap[uniformMeta->type] += uniformMeta->descriptorCount;
+					poolSizeMap[descriptorInfo->type] += descriptorInfo->count;
 				}
 			}
 		}
