@@ -115,7 +115,7 @@ std::vector<VkDescriptorPoolSize> of::vk::ShaderManager::getVkDescriptorPoolSize
 			
 			if ( descriptorInfo ){
 				if ( poolSizeMap.end() == poolSizeMap.find( descriptorInfo->type ) ){
-					poolSizeMap.insert( { descriptorInfo->type, descriptorInfo->count } );
+					poolSizeMap.insert( { descriptorInfo->type, descriptorInfo->count} );
 				} else{
 					poolSizeMap[descriptorInfo->type] += descriptorInfo->count;
 				}

@@ -586,13 +586,17 @@ void of::vk::Shader::reflectVertexInputs(const spirv_cross::Compiler & compiler,
 		vertexInfo.attribute[i].binding = location;    // .binding  == pipeline binding number == where attribute takes data from
 
 		switch ( attributeType.vecsize ){
+		case 2:
+			vertexInfo.attribute[i].format = VK_FORMAT_R32G32_SFLOAT;        // 2-part float
+			break;
 		case 3:
-			vertexInfo.attribute[i].format = VK_FORMAT_R32G32B32_SFLOAT;	     // 3-part float
+			vertexInfo.attribute[i].format = VK_FORMAT_R32G32B32_SFLOAT;     // 3-part float
 			break;
 		case 4:
 			vertexInfo.attribute[i].format = VK_FORMAT_R32G32B32A32_SFLOAT;	 // 4-part float
 			break;
 		default:
+			ofLogWarning() << "Could not determine vertex attribute type for: " << attributeInput.name;
 			break;
 		}
 	}
