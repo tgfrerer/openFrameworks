@@ -83,6 +83,11 @@ static void releaseProgram(GLuint id){
 }
 
 //--------------------------------------------------------------
+ofShader::TransformFeedbackBinding::TransformFeedbackBinding(const ofBufferObject & buffer)
+:size(buffer.size())
+,buffer(buffer){}
+
+//--------------------------------------------------------------
 ofShader::ofShader() :
 program(0),
 bLoaded(false)
@@ -180,12 +185,12 @@ ofShader & ofShader::operator=(ofShader && mom){
 }
 
 //--------------------------------------------------------------
-bool ofShader::load(string shaderName) {
-	return load(shaderName + ".vert", shaderName + ".frag");
+bool ofShader::load(std::filesystem::path shaderName) {
+    return load(shaderName.string() + ".vert", shaderName.string() + ".frag");
 }
 
 //--------------------------------------------------------------
-bool ofShader::load(string vertName, string fragName, string geomName) {
+bool ofShader::load(std::filesystem::path vertName, std::filesystem::path fragName, std::filesystem::path geomName) {
 	if(vertName.empty() == false) setupShaderFromFile(GL_VERTEX_SHADER, vertName);
 	if(fragName.empty() == false) setupShaderFromFile(GL_FRAGMENT_SHADER, fragName);
 #ifndef TARGET_OPENGLES
@@ -197,8 +202,75 @@ bool ofShader::load(string vertName, string fragName, string geomName) {
 	return linkProgram();
 }
 
+#if !defined(TARGET_OPENGLES) && defined(glDispatchCompute)
 //--------------------------------------------------------------
-bool ofShader::setupShaderFromFile(GLenum type, string filename) {
+bool ofShader::loadCompute(std::filesystem::path shaderName) {
+	return setupShaderFromFile(GL_COMPUTE_SHADER, shaderName) && linkProgram();
+}
+#endif
+
+//--------------------------------------------------------------
+bool ofShader::setup(const Settings & settings) {
+	for (auto shader : settings.shaderFiles) {
+		auto ty = shader.first;
+		auto file = shader.second;
+		if (!setupShaderFromFile(ty, file)) {
+			return false;
+		}
+	}
+
+	for (auto shader : settings.shaderSources) {
+		auto ty = shader.first;
+		auto source = shader.second;
+        if (!setupShaderFromSource(ty, source, settings.sourceDirectoryPath)) {
+			return false;
+		}
+	}
+	
+	if (ofIsGLProgrammableRenderer() && settings.bindDefaults) {
+		bindDefaults();
+	}
+
+	return linkProgram();
+}
+
+#if !defined(TARGET_OPENGLES)
+//--------------------------------------------------------------
+bool ofShader::setup(const TransformFeedbackSettings & settings) {
+	for (auto shader : settings.shaderFiles) {
+		auto ty = shader.first;
+		auto file = shader.second;
+		if (!setupShaderFromFile(ty, file)) {
+			return false;
+		}
+	}
+
+	for (auto shader : settings.shaderSources) {
+		auto ty = shader.first;
+		auto source = shader.second;
+        if (!setupShaderFromSource(ty, source, settings.sourceDirectoryPath)) {
+			return false;
+		}
+	}
+
+	if (ofIsGLProgrammableRenderer() && settings.bindDefaults) {
+		bindDefaults();
+	}
+
+	if (!settings.varyingsToCapture.empty()) {
+		std::vector<const char*> varyings(settings.varyingsToCapture.size());
+		std::transform(settings.varyingsToCapture.begin(), settings.varyingsToCapture.end(), varyings.begin(), [](const std::string & str) {
+			return str.c_str();
+		});
+        glTransformFeedbackVaryings(getProgram(), varyings.size(), varyings.data(), settings.bufferMode);
+	}
+
+	return linkProgram();
+}
+#endif
+
+//--------------------------------------------------------------
+bool ofShader::setupShaderFromFile(GLenum type, std::filesystem::path filename) {
 	ofBuffer buffer = ofBufferFromFile(filename);
 	// we need to make absolutely sure to have an absolute path here, so that any #includes
 	// within the shader files have a root directory to traverse from.
@@ -452,7 +524,8 @@ void ofShader::checkShaderInfoLog(GLuint shader, GLenum type, ofLogLevel logLeve
 			std::smatch matches;
 			string infoString = ofTrim(infoBuffer);
 			if (std::regex_search(infoString, matches, intel) || std::regex_search(infoString, matches, nvidia_ati)){
-				ofBuffer buf = shaders[type].expandedSource;
+                ofBuffer buf;
+                buf.set(shaders[type].expandedSource);
 				ofBuffer::Line line = buf.getLines().begin();
 				int  offendingLineNumber = ofToInt(matches[1]);
 				ostringstream msg;
@@ -724,6 +797,48 @@ void ofShader::begin()  const{
 void ofShader::end()  const{
 	ofGetGLRenderer()->unbind(*this);
 }
+
+#if !defined(TARGET_OPENGLES)
+//--------------------------------------------------------------
+void ofShader::beginTransformFeedback(GLenum mode) const {
+	begin();
+	glBeginTransformFeedback(mode);
+}
+
+//--------------------------------------------------------------
+void ofShader::beginTransformFeedback(GLenum mode, const TransformFeedbackBinding & binding) const {
+	binding.buffer.bindRange(GL_TRANSFORM_FEEDBACK_BUFFER, binding.index, binding.offset, binding.size);
+	beginTransformFeedback(mode);
+}
+
+//--------------------------------------------------------------
+void ofShader::beginTransformFeedback(GLenum mode, const std::vector<TransformFeedbackBinding> & bindings) const {
+	for (auto & binding : bindings) {
+		binding.buffer.bindRange(GL_TRANSFORM_FEEDBACK_BUFFER, binding.index, binding.offset, binding.size);
+	}
+	beginTransformFeedback(mode);
+}
+
+//--------------------------------------------------------------
+void ofShader::endTransformFeedback() const {
+	glEndTransformFeedback();
+	end();
+}
+
+//--------------------------------------------------------------
+void ofShader::endTransformFeedback(const TransformFeedbackBinding & binding) const {
+	binding.buffer.unbindRange(GL_TRANSFORM_FEEDBACK_BUFFER, binding.index);
+	endTransformFeedback();
+}
+
+//--------------------------------------------------------------
+void ofShader::endTransformFeedback(const std::vector<TransformFeedbackBinding> & bindings) const {
+	for (auto & binding : bindings) {
+		binding.buffer.unbindRange(GL_TRANSFORM_FEEDBACK_BUFFER, binding.index);
+	}
+	endTransformFeedback();
+}
+#endif
 
 #if !defined(TARGET_OPENGLES) && defined(glDispatchCompute)
 //--------------------------------------------------------------

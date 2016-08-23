@@ -15,6 +15,7 @@ class ofMatrix3x3;
 class ofParameterGroup;
 class ofBufferObject;
 
+
 class ofShader {
 public:
 	ofShader();
@@ -24,10 +25,45 @@ public:
     ofShader(ofShader && shader);
     ofShader & operator=(ofShader && shader);
 	
-	bool load(string shaderName);
-	bool load(string vertName, string fragName, string geomName="");
-	
-	
+    bool load(std::filesystem::path shaderName);
+    bool load(std::filesystem::path vertName, std::filesystem::path fragName, std::filesystem::path geomName="");
+#if !defined(TARGET_OPENGLES) && defined(glDispatchCompute)
+    bool loadCompute(std::filesystem::path shaderName);
+#endif
+
+	struct Settings {
+        std::map<GLuint, std::filesystem::path> shaderFiles;
+		std::map<GLuint, std::string> shaderSources;
+        std::string sourceDirectoryPath;
+		bool bindDefaults = true;
+	};
+
+#if !defined(TARGET_OPENGLES)
+	struct TransformFeedbackSettings {
+        std::map<GLuint, std::filesystem::path> shaderFiles;
+		std::map<GLuint, std::string> shaderSources;
+		std::vector<std::string> varyingsToCapture;
+        std::string sourceDirectoryPath;
+		bool bindDefaults = true;
+		GLuint bufferMode = GL_INTERLEAVED_ATTRIBS; // GL_INTERLEAVED_ATTRIBS or GL_SEPARATE_ATTRIBS
+	};
+
+	struct TransformFeedbackBinding {
+        TransformFeedbackBinding(const ofBufferObject & buffer);
+
+		GLuint index = 0;
+		GLuint offset = 0;
+		GLuint size;
+	private:
+		const ofBufferObject & buffer;
+		friend class ofShader;
+	};
+#endif
+
+	bool setup(const Settings & settings);
+#if !defined(TARGET_OPENGLES)
+	bool setup(const TransformFeedbackSettings & settings);
+#endif
 	
 	// these are essential to call before linking the program with geometry shaders
 	void setGeometryInputType(GLenum type); // type: GL_POINTS, GL_LINES, GL_LINES_ADJACENCY_EXT, GL_TRIANGLES, GL_TRIANGLES_ADJACENCY_EXT
@@ -43,6 +79,15 @@ public:
 
 	void begin() const;
 	void end() const;
+
+#if !defined(TARGET_OPENGLES)
+	void beginTransformFeedback(GLenum mode) const;
+	void beginTransformFeedback(GLenum mode, const TransformFeedbackBinding & binding) const;
+	void beginTransformFeedback(GLenum mode, const std::vector<TransformFeedbackBinding> & binding) const;
+	void endTransformFeedback() const;
+	void endTransformFeedback(const TransformFeedbackBinding & binding) const;
+	void endTransformFeedback(const std::vector<TransformFeedbackBinding> & binding) const;
+#endif
 	
 #if !defined(TARGET_OPENGLES) && defined(glDispatchCompute)
 	void dispatchCompute(GLuint x, GLuint y, GLuint z) const;
@@ -135,7 +180,7 @@ public:
 	// these methods create and compile a shader from source or file
 	// type: GL_VERTEX_SHADER, GL_FRAGMENT_SHADER, GL_GEOMETRY_SHADER_EXT etc.
 	bool setupShaderFromSource(GLenum type, string source, string sourceDirectoryPath = "");
-	bool setupShaderFromFile(GLenum type, string filename);
+    bool setupShaderFromFile(GLenum type, std::filesystem::path filename);
 	
 	// links program with all compiled shaders
 	bool linkProgram();
