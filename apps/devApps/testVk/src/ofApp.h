@@ -10,10 +10,13 @@ class ofApp : public ofBaseApp{
 	ofMesh	  mLMesh;
 
 	std::shared_ptr<of::vk::Context> mExplicitContext;
+	
 	std::shared_ptr<of::vk::Shader>  mShaderDefault;
 	std::shared_ptr<of::vk::Shader>  mShaderNormals;
 	std::shared_ptr<of::vk::Shader>  mShaderLambert;
-	//of::vk::Texture mVkTex;
+	std::shared_ptr<of::vk::Shader>  mShaderTextured;
+	
+	std::shared_ptr<of::vk::Texture> mVkTex;
 
 	public:
 		void setup();

@@ -46,39 +46,16 @@ void ofApp::setup(){
 
 	};
 
-	/*
-
-	lets think for a bit about how we would want rendering to work in a vulkan idiomatic way.
-
-	vulkan needs : 
+	// ---------- WIP: texture loading & binding
+	 
+	ofPixels tmpImagePix;
+	ofLoadImage( tmpImagePix, "images/brighton.png" );
 	
-	renderpass
-		pipeline  
-			vertex inputs
-			descriptor sets
-				uniform buffers
-				sampled images
-	
-	Vertex inputs and descriptor inputs need to be immutable, as they are not immediately consumed,
-	but will only be released for reuse once the frame has been rendered async.
-	
-	Also, most of your data is immutable. There needs to be a way to mark buffers as immutable.
+	mVkTex = std::make_shared<of::vk::Texture>();
+	mVkTex->load( tmpImagePix );
 
-	really, when you draw, you say: 
-		here is some geometry, 
-		here are the standard transformations (model-, view-, projection-matrices)
-		here are additional transform parameters - 
-		here is a material - now draw geometry with these transformations with this material.
+	// ---------- end texture loading
 
-	When you do skinning for example, is this part of the material? no, it's part of the transformations
-
-	*/
-
-	// WIP: texture loading & binding
-	// 
-	// ofPixels tmpImagePix;
-	// ofLoadImage( tmpImagePix, "images/brighton.jpg" );
-	// mVkTex.load( tmpImagePix );
 	auto & renderer = dynamic_pointer_cast<ofVkRenderer>( ofGetCurrentRenderer() );
 
 	{   // initialise shaders from GLSL
@@ -100,11 +77,17 @@ void ofApp::setup(){
 		shaderSettings.sources[VK_SHADER_STAGE_VERTEX_BIT]   = "lambert.vert";
 		shaderSettings.sources[VK_SHADER_STAGE_FRAGMENT_BIT] = "lambert.frag";
 		mShaderLambert = std::make_shared<of::vk::Shader>( shaderSettings );
+
+		shaderSettings.sources[VK_SHADER_STAGE_VERTEX_BIT] = "textured.vert";
+		shaderSettings.sources[VK_SHADER_STAGE_FRAGMENT_BIT] = "textured.frag";
+		mShaderTextured = std::make_shared<of::vk::Shader>( shaderSettings );
+
 	}
 
 	auto & context = *renderer->getDefaultContext();
 	context.addShader( mShaderDefault );
 	context.addShader( mShaderNormals );
+	context.addShader( mShaderTextured );
 
 	// use this to swap out the default context with a newly created one.
 	if ( false )
@@ -122,6 +105,8 @@ void ofApp::setup(){
 
 		mExplicitContext->addShader( mShaderDefault );
 		mExplicitContext->addShader( mShaderNormals );
+		mExplicitContext->addShader( mShaderLambert );
+		mExplicitContext->addShader( mShaderTextured );
 
 		renderer->setDefaultContext( mExplicitContext );
 	}
@@ -164,17 +149,21 @@ void ofApp::drawModeExplicit(){
 	auto & context  = *renderer->getDefaultContext();
 	auto & cmd      = renderer->getCurrentDrawCommandBuffer();
 
-	static ofMesh ico = ofMesh::icosphere( 50, 3 );
-	
+	static ofMesh ico  = ofMesh::icosphere( 50, 3 );
+	static ofMesh rect = ofMesh::plane( 1024/2 , 768/2, 2, 2,OF_PRIMITIVE_TRIANGLES );
+
 	mCam1.begin();
 	
 	context
-		.setUniform( "globalColor", ofFloatColor::red )
-		.setShader( mShaderLambert )
+		.pushMatrix()
+		.translate( { 0,0,-10 } )
+		.debugSetTexture( "tex_0", mVkTex )
+		.setUniform( "globalColor", ofFloatColor::white )
+		.setShader( mShaderTextured )
 		.setPolyMode( VK_POLYGON_MODE_FILL )
-		.draw( cmd, mFontMesh );
+		.draw( cmd, rect )
+		.popMatrix();
 
-	//context.bind( mCam1 );
 	context
 		.setShader( mShaderDefault )
 		.setUniform( "globalColor", ofFloatColor::lightBlue )
@@ -182,7 +171,6 @@ void ofApp::drawModeExplicit(){
 		.translate( { -200, +200, 100 } )
 		.draw(cmd, ico)
 		.popMatrix();
-	//context.unbind( mCam1 );
 
 	context
 		.setPolyMode( VK_POLYGON_MODE_LINE )
@@ -207,7 +195,12 @@ void ofApp::drawModeExplicit(){
 		.draw(cmd, ico )
 		.popMatrix();
 
-	
+	context
+		.setUniform( "globalColor", ofFloatColor::red )
+		.setShader( mShaderLambert )
+		.setPolyMode( VK_POLYGON_MODE_FILL )
+		.draw( cmd, mFontMesh );
+
 	context
 		.setShader( mShaderDefault )
 		.setPolyMode( VK_POLYGON_MODE_FILL )
@@ -326,8 +319,8 @@ void ofApp::keyPressed(int key){
 		}
 	}
 	else if ( key == ' ' ){
-		if ( mShaderLambert)
-			mShaderLambert->compile();
+		if ( mShaderTextured)
+			mShaderTextured->compile();
 	}
 
 }
