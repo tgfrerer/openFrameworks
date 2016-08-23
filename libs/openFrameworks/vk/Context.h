@@ -95,7 +95,6 @@ private:
 		std::vector<uint8_t> data;  // this is the data - size of this vector depends on struct_size received from spirV-cross, this is the size for the whole binding / for the whole ubo struct.
 	};
 
-	// TODO: rename to UboStack
 	struct UboStack
 	{
 		uint32_t struct_size =  0;    // size in bytes of UniformBufferData.data vec
@@ -143,14 +142,16 @@ private:
 		std::map<uint64_t, UboStack> uboState;
 
 		// map from uniform name to uniformMember
-		std::map<std::string, UboBindingInfo> mUniformMembers;
-
-		// map from texture name to 
-		std::map<std::string, std::shared_ptr<of::vk::Texture>> mUniformImages;
+		std::map<std::string, UboBindingInfo> mUboMembers;
 
 		// current binding offset into GPU memory
 		// this needs to be reset every frame
 		std::vector< uint32_t> bindingOffsets;
+
+		// --- non-dynamic state
+
+		// map from texture name to texture
+		std::map<std::string, std::shared_ptr<of::vk::Texture>> mUniformImages;
 
 		// whether frame state has to be rebuilt
 		bool initialised = false; 
@@ -308,14 +309,16 @@ public:
 		return *this;
 	}
 
+	Context& debugSetTexture( std::string name, std::shared_ptr<of::vk::Texture> tex );
+
 };
 
 // ----------------------------------------------------------------------
 
 template<typename UniformT>
 inline Context& Context::setUniform( const std::string & name_, const UniformT & uniform_ ){
-	auto uboIt = mCurrentFrameState.mUniformMembers.find( name_ );
-	if ( uboIt == mCurrentFrameState.mUniformMembers.end() ){
+	auto uboIt = mCurrentFrameState.mUboMembers.find( name_ );
+	if ( uboIt == mCurrentFrameState.mUboMembers.end() ){
 		ofLogWarning() << "Cannot set uniform: '" << name_ << "' - Not found in shader.";
 		return *this;
 	}
@@ -336,8 +339,8 @@ inline Context& Context::setUniform( const std::string & name_, const UniformT &
 template<typename UniformT>
 inline UniformT& Context::getUniform( const std::string & name_ ){
 	static UniformT errUniform;
-	auto uboIt = mCurrentFrameState.mUniformMembers.find( name_ );
-	if ( uboIt == mCurrentFrameState.mUniformMembers.end() ){
+	auto uboIt = mCurrentFrameState.mUboMembers.find( name_ );
+	if ( uboIt == mCurrentFrameState.mUboMembers.end() ){
 		ofLogWarning() << "Cannot get uniform: '" << name_ << "' - Not found in shader.";
 		return errUniform;
 	}
@@ -357,8 +360,8 @@ inline UniformT& Context::getUniform( const std::string & name_ ){
 template<typename UniformT>
 inline const UniformT& Context::getUniform( const std::string & name_ ) const {
 	static const UniformT errUniform;
-	auto uboIt = mCurrentFrameState.mUniformMembers.find( name_ );
-	if ( uboIt == mCurrentFrameState.mUniformMembers.end() ){
+	auto uboIt = mCurrentFrameState.mUboMembers.find( name_ );
+	if ( uboIt == mCurrentFrameState.mUboMembers.end() ){
 		ofLogWarning() << "Cannot get uniform: '" << name_ << "' - Not found in shader.";
 		return errUniform;
 	}

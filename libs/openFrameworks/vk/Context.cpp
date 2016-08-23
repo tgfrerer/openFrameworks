@@ -140,9 +140,9 @@ void of::vk::Context::initialiseFrameState(){
 				m.offset = uint32_t( range.offset );
 				m.range = uint32_t( range.range );
 				m.buffer = &frame.uboState[uniformKey];
-				frame.mUniformMembers[m.buffer->name + "." + memberName] = m;
+				frame.mUboMembers[m.buffer->name + "." + memberName] = m;
 				// Also add this ubo member to the global namespace - report if there is a namespace clash.
-				auto insertionResult = frame.mUniformMembers.insert( { memberName, std::move( m ) } );
+				auto insertionResult = frame.mUboMembers.insert( { memberName, std::move( m ) } );
 				if ( insertionResult.second == false ){
 					ofLogWarning() << "Shader analysis: UBO Member name is ambiguous: " << ( *insertionResult.first ).first << std::endl
 						<< "More than one UBO Blocks reference a variable with name: " << ( *insertionResult.first ).first;
@@ -150,8 +150,8 @@ void of::vk::Context::initialiseFrameState(){
 			}
 
 		} else if ( uniformMeta.type == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER){
-		
-
+			//!TODO: texture assignment needs to get more flexible - 
+			frame.mUniformImages[uniformMeta.name] = std::make_shared<of::vk::Texture>();
 		
 		}// end if type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC
 	
@@ -228,7 +228,7 @@ void of::vk::Context::begin(size_t frame_){
 	}
 
 	// make sure all shader uniforms are marked dirty when context is started fresh.
-	for ( auto & uniformBuffer : mCurrentFrameState.mUniformMembers ){
+	for ( auto & uniformBuffer : mCurrentFrameState.mUboMembers ){
 		auto & buffer = *uniformBuffer.second.buffer;
 		buffer.lastSavedStackId = -1;
 		buffer.stateStack.clear();
@@ -418,6 +418,14 @@ bool of::vk::Context::storeMesh( const ofMesh & mesh_, std::vector<VkDeviceSize>
 
 // ----------------------------------------------------------------------
 
+of::vk::Context & of::vk::Context::debugSetTexture( std::string name, std::shared_ptr<of::vk::Texture> tex ){
+	// TODO: insert return statement here
+	mCurrentFrameState.mUniformImages[name] = tex;
+	return *this;
+}
+
+// ----------------------------------------------------------------------
+
 void of::vk::Context::flushUniformBufferState( ){
 
 	updateDescriptorSetState();
@@ -428,9 +436,8 @@ void of::vk::Context::flushUniformBufferState( ){
 
 	std::vector<uint32_t> currentOffsets;
 	
-	// Lazily store data to GPU memory
-	// + If data has not changed, just store previous offset
-	//   into offsetList
+	// Lazily store data to GPU memory for dynamic ubo bindings
+	// + If data has not changed, just store previous offset into offsetList
 	
 	for ( const auto& bindingTable : mPipelineLayoutState.bindingState ){
 		// bindingState is a vector of binding tables: each binding table
@@ -439,7 +446,16 @@ void of::vk::Context::flushUniformBufferState( ){
 
 		for ( const auto & binding : bindingTable ){
 			const auto & uniformHash = binding.second;
-			auto & uniformBuffer = mCurrentFrameState.uboState[uniformHash];
+
+			auto it = mCurrentFrameState.uboState.find( uniformHash );
+			if ( it == mCurrentFrameState.uboState.end() ){
+				// current binding not in uboState - could be an image sampler binding.
+				continue;
+			}
+
+			// ----------| invariant: uniformHash was found in uboState
+
+			auto & uniformBuffer = it->second;
 
 			// only write to GPU if descriptor is dirty
 			if ( uniformBuffer.state.stackId == -1 ){
@@ -619,7 +635,7 @@ void of::vk::Context::updateDescriptorSets( const std::vector<size_t>& setIndice
 		// Go over each binding in descriptorSetLayout
 		for ( const auto &b : bindings ){
 			
-			const auto & bindingNumber = b.first;
+			const auto & bindingNumber    = b.first;
 			const auto & descriptorInfo   = b.second;
 
 			// It appears that writeDescriptorSet does not immediately consume VkDescriptorBufferInfo*
@@ -659,11 +675,13 @@ void of::vk::Context::updateDescriptorSets( const std::vector<size_t>& setIndice
 				writeDescriptorSets.push_back( std::move( tmpDescriptorSet ) );
 			} else if ( VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER == descriptorInfo->type){
 
+				auto & texture = mCurrentFrameState.mUniformImages[descriptorInfo->name];
+				
 				//!TODO: link in image info.
 				VkDescriptorImageInfo tmpImageInfo{
-					//descriptorInfo->sampler,	                               // VkSampler        sampler;
-					//descriptorInfo->imageView,	                               // VkImageView      imageView;
-					//descriptorInfo->imageLayout,                               // VkImageLayout    imageLayout;
+					texture->getVkSampler(),  	                               // VkSampler        sampler;
+					texture->getVkImageView(),                                 // VkImageView      imageView;
+					VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,                  // VkImageLayout    imageLayout;
 				};
 				
 				descriptorImageInfoStorage[key].emplace_back( std::move(tmpImageInfo) );
