@@ -292,6 +292,7 @@
     <ClCompile Include="..\..\..\openFrameworks\communication\ofSerial.cpp" />
     <ClCompile Include="..\..\..\openFrameworks\vk\Shader.cpp" />
     <ClCompile Include="..\..\..\openFrameworks\vk\ShaderManager.cpp" />
+    <ClCompile Include="..\..\..\openFrameworks\vk\Texture.cpp" />
     <ClCompile Include="..\..\..\openFrameworks\vk\spirv-cross\include\spirv_cross.cpp" />
     <ClCompile Include="..\..\..\openFrameworks\vk\spooky\SpookyV2.cpp" />
     <ClCompile Include="..\..\..\openFrameworks\vk\vkAllocator.cpp" />

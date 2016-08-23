@@ -566,5 +566,8 @@
     <ClCompile Include="..\..\..\openFrameworks\vk\ShaderManager.cpp">
       <Filter>libs\openFrameworks\vk</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\openFrameworks\vk\Texture.cpp">
+      <Filter>libs\openFrameworks\vk</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>
