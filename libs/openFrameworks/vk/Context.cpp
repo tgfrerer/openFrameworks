@@ -126,7 +126,7 @@ void of::vk::Context::initialiseFrameState(){
 		if ( uniformMeta.type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC ){
 			// we want the member name to be the full name, 
 			// i.e. : "DefaultMatrices.ProjectionMatrix", to avoid clashes.
-			UboBufferStack uboState;
+			UboStack uboState;
 			uboState.name = uniformMeta.name;
 			uboState.struct_size = uniformMeta.storageSize;
 			uboState.state.data.resize( uniformMeta.storageSize );
@@ -281,7 +281,7 @@ const VkBuffer & of::vk::Context::getVkBuffer() const {
 
 of::vk::Context& of::vk::Context::pushBuffer( const std::string & ubo_ ){
 	auto uboWithName = std::find_if( mCurrentFrameState.uboState.begin(), mCurrentFrameState.uboState.end(),
-		[&ubo_]( const std::pair<uint64_t, UboBufferStack> & lhs ) -> bool{
+		[&ubo_]( const std::pair<uint64_t, UboStack> & lhs ) -> bool{
 		return ( lhs.second.name == ubo_ );
 	} );
 
@@ -295,7 +295,7 @@ of::vk::Context& of::vk::Context::pushBuffer( const std::string & ubo_ ){
 
 of::vk::Context& of::vk::Context::popBuffer( const std::string & ubo_ ){
 	auto uboWithName = std::find_if( mCurrentFrameState.uboState.begin(), mCurrentFrameState.uboState.end(),
-		[&ubo_]( const std::pair<uint64_t, UboBufferStack> & lhs ) -> bool{
+		[&ubo_]( const std::pair<uint64_t, UboStack> & lhs ) -> bool{
 		return ( lhs.second.name == ubo_ );
 	} );
 

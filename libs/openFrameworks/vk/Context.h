@@ -95,8 +95,8 @@ private:
 		std::vector<uint8_t> data;  // this is the data - size of this vector depends on struct_size received from spirV-cross, this is the size for the whole binding / for the whole ubo struct.
 	};
 
-	// TODO: rename to UboBufferStack
-	struct UboBufferStack
+	// TODO: rename to UboStack
+	struct UboStack
 	{
 		uint32_t struct_size =  0;    // size in bytes of UniformBufferData.data vec
 		int32_t  lastSavedStackId = -1;    // rolling count of elements saved to stack
@@ -129,7 +129,7 @@ private:
 
 		// but one uniform can only belong to one binding.
 
-		UboBufferStack* buffer;     // this points to the buffer that will be affected by this binding - there is one buffer for each binding  - 
+		UboStack* buffer;     // this points to the buffer that will be affected by this binding - there is one buffer for each binding  - 
 									// this is the index into the bufferOffsets vector for the shader layout this binding belongs to.
 
 		uint32_t offset;
@@ -140,7 +140,7 @@ private:
 	struct Frame
 	{
 		// all bindings for this context indexed by uboMeta Hash
-		std::map<uint64_t, UboBufferStack> uboState;
+		std::map<uint64_t, UboStack> uboState;
 
 		// map from uniform name to uniformMember
 		std::map<std::string, UboBindingInfo> mUniformMembers;
