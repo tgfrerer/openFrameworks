@@ -121,19 +121,20 @@ void of::vk::Context::initialiseFrameState(){
 	for ( const auto & b : mShaderManager->getDescriptorInfos() ){
 
 		const auto uniformKey = b.first;
-		const auto & uniformMeta = *b.second;
+		const auto & descriptorInfo = *b.second;
 
-		if ( uniformMeta.type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC ){
+		if ( descriptorInfo.type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC ){
 			// we want the member name to be the full name, 
 			// i.e. : "DefaultMatrices.ProjectionMatrix", to avoid clashes.
 			UboStack uboState;
-			uboState.name = uniformMeta.name;
-			uboState.struct_size = uniformMeta.storageSize;
-			uboState.state.data.resize( uniformMeta.storageSize );
+			uboState.name        = descriptorInfo.name;
+			uboState.struct_size = descriptorInfo.storageSize;
+			uboState.state.data.resize( descriptorInfo.storageSize );
 
 			frame.uboState[uniformKey] = std::move( uboState );
+			frame.uboNames[descriptorInfo.name] = &frame.uboState[uniformKey];
 
-			for ( const auto & member : uniformMeta.memberRanges ){
+			for ( const auto & member : descriptorInfo.memberRanges ){
 				const auto & memberName = member.first;
 				const auto & range = member.second;
 				UboBindingInfo m;
@@ -145,13 +146,13 @@ void of::vk::Context::initialiseFrameState(){
 				auto insertionResult = frame.mUboMembers.insert( { memberName, std::move( m ) } );
 				if ( insertionResult.second == false ){
 					ofLogWarning() << "Shader analysis: UBO Member name is ambiguous: " << ( *insertionResult.first ).first << std::endl
-						<< "More than one UBO Blocks reference a variable with name: " << ( *insertionResult.first ).first;
+						<< "More than one UBO Block reference a variable with name: "   << ( *insertionResult.first ).first;
 				}
 			}
 
-		} else if ( uniformMeta.type == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER){
+		} else if ( descriptorInfo.type == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER){
 			//!TODO: texture assignment needs to get more flexible - 
-			frame.mUniformImages[uniformMeta.name] = std::make_shared<of::vk::Texture>();
+			frame.mUniformImages[descriptorInfo.name] = std::make_shared<of::vk::Texture>();
 		
 		}// end if type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC
 	
@@ -228,13 +229,9 @@ void of::vk::Context::begin(size_t frame_){
 	}
 
 	// make sure all shader uniforms are marked dirty when context is started fresh.
-	for ( auto & uniformBuffer : mCurrentFrameState.mUboMembers ){
-		auto & buffer = *uniformBuffer.second.buffer;
-		buffer.lastSavedStackId = -1;
-		buffer.stateStack.clear();
-		buffer.state.memoryOffset = 0;
-		buffer.state.stackId = -1;
-		buffer.state.data.resize( buffer.struct_size, 0 );
+	for ( auto & uboStatePair : mCurrentFrameState.uboState ){
+		auto & buffer = uboStatePair.second;
+		buffer.reset();
 	}
 
 	// Reset current DescriptorPool
@@ -280,13 +277,10 @@ const VkBuffer & of::vk::Context::getVkBuffer() const {
 // ----------------------------------------------------------------------
 
 of::vk::Context& of::vk::Context::pushBuffer( const std::string & ubo_ ){
-	auto uboWithName = std::find_if( mCurrentFrameState.uboState.begin(), mCurrentFrameState.uboState.end(),
-		[&ubo_]( const std::pair<uint64_t, UboStack> & lhs ) -> bool{
-		return ( lhs.second.name == ubo_ );
-	} );
+	auto uboWithName = mCurrentFrameState.uboNames.find(ubo_);
 
-	if ( uboWithName != mCurrentFrameState.uboState.end() ){
-		( uboWithName->second.push() );
+	if ( uboWithName != mCurrentFrameState.uboNames.end() ){
+		( uboWithName->second->push() );
 	}
 	return *this;
 }
@@ -294,13 +288,10 @@ of::vk::Context& of::vk::Context::pushBuffer( const std::string & ubo_ ){
 // ----------------------------------------------------------------------
 
 of::vk::Context& of::vk::Context::popBuffer( const std::string & ubo_ ){
-	auto uboWithName = std::find_if( mCurrentFrameState.uboState.begin(), mCurrentFrameState.uboState.end(),
-		[&ubo_]( const std::pair<uint64_t, UboStack> & lhs ) -> bool{
-		return ( lhs.second.name == ubo_ );
-	} );
+	auto uboWithName = mCurrentFrameState.uboNames.find( ubo_ );
 
-	if ( uboWithName != mCurrentFrameState.uboState.end() ){
-		( uboWithName->second.pop() );
+	if ( uboWithName != mCurrentFrameState.uboNames.end() ){
+		( uboWithName->second->pop() );
 	}
 	return *this;
 }

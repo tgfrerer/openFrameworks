@@ -104,6 +104,14 @@ private:
 		std::string name; // name for this UniformBuffer Block
 		std::list<UniformBufferData> stateStack;
 		
+		void reset(){
+			stateStack.clear();
+			lastSavedStackId   = -1;
+			state.memoryOffset = 0;
+			state.stackId      = -1;
+			state.data.resize( struct_size, 0 );
+		}
+
 		void push(){
 			stateStack.push_back( state );
 			state.stackId = -1;
@@ -140,6 +148,9 @@ private:
 	{
 		// all bindings for this context indexed by uboMeta Hash
 		std::map<uint64_t, UboStack> uboState;
+
+		// dictionary of ubo names to pointer to UboStack held by uboState
+		std::map<std::string, UboStack*> uboNames;
 
 		// map from uniform name to uniformMember
 		std::map<std::string, UboBindingInfo> mUboMembers;
