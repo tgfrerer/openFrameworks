@@ -129,7 +129,7 @@ public:
 	// (set id and binding number of uniform) indexed by DescriptorInfo hash
 	std::map<uint64_t, UniformBindingInfo> mBindingsTable;
 
-	struct SetLayoutMeta
+	struct SetLayoutInfo
 	{
 		// binding number to DescriptorInfo hash - binding numbers may be sparse.
 		std::map<uint32_t, uint64_t> bindingTable;
@@ -141,8 +141,8 @@ public:
 
 private:
 	
-	// table of SetLayoutMeta pointers to keep track of use for Set Layout
-	std::vector<std::shared_ptr<SetLayoutMeta>> mPipelineLayoutPtrsMeta;
+	// table of SetLayoutInfo pointers to keep track of use for Set Layout
+	std::vector<std::shared_ptr<SetLayoutInfo>> mPipelineLayoutPtrsMeta;
 	
 	// table of setlayouts describing pipeline layout
 	std::vector<uint64_t> mPipelineLayoutMeta;

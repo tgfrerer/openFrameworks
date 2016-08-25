@@ -37,7 +37,7 @@ private:
 	
 	// central store of set layouts - indexed by set layout hash
 	// set layouts are ordered sequences of uniforms
-	std::map<uint64_t, std::shared_ptr<of::vk::Shader::SetLayoutMeta>> mSetLayoutStore;
+	std::map<uint64_t, std::shared_ptr<of::vk::Shader::SetLayoutInfo>> mSetLayoutStore;
 
 public:
 
@@ -58,7 +58,7 @@ public:
 		return failDescriptorInfo;
 	}
 
-	std::shared_ptr<of::vk::Shader::SetLayoutMeta>& borrowSetLayoutMeta( uint64_t hash ){
+	std::shared_ptr<of::vk::Shader::SetLayoutInfo>& borrowSetLayoutMeta( uint64_t hash ){
 		return mSetLayoutStore[hash];
 	}
 
@@ -71,7 +71,7 @@ public:
 
 private:
 
-	// central store of VkDescriptorSetLayouts, indexed by corresponding SetLayoutMeta hash
+	// central store of VkDescriptorSetLayouts, indexed by corresponding SetLayoutInfo hash
 	std::map<uint64_t, std::shared_ptr<VkDescriptorSetLayout>> mDescriptorSetLayoutStore;
 
 	// central store of bindings per descriptor set layout, indexed by descriptor set layout hash

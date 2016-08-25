@@ -480,11 +480,11 @@ bool of::vk::Shader::createSetLayouts(){
 	// Create set layouts based on shader local 
 	// bindings table, mBindingsTable.
 
-	// First translate mBindingsTable into a map of SetLayoutMeta,
+	// First translate mBindingsTable into a map of SetLayoutInfo,
 	// indexed by set number.
 
-	// SetLayoutMeta (= set layout binding tables) indexed by set id
-	map<uint32_t, std::shared_ptr<SetLayoutMeta>> descriptorSetLayoutsOderedBySetNumber;
+	// SetLayoutInfo (= set layout binding tables) indexed by set id
+	map<uint32_t, std::shared_ptr<SetLayoutInfo>> descriptorSetLayoutsOderedBySetNumber;
 
 	for ( const auto & b : mBindingsTable ){
 		const auto & bindingHash   = b.first;
@@ -494,7 +494,7 @@ bool of::vk::Shader::createSetLayouts(){
 		auto & setLayoutMeta = descriptorSetLayoutsOderedBySetNumber[setNumber];
 		
 		if ( setLayoutMeta == nullptr ){
-			setLayoutMeta = std::make_shared<SetLayoutMeta>();
+			setLayoutMeta = std::make_shared<SetLayoutInfo>();
 		}
 		setLayoutMeta->bindingTable.insert( { bindingNumber, bindingHash } );
 	}
@@ -512,7 +512,7 @@ bool of::vk::Shader::createSetLayouts(){
 		auto       & createdLayout = s.second;
 		createdLayout->calculateHash();
 
-		// Store newly created SetLayoutMeta in ShaderManager 
+		// Store newly created SetLayoutInfo in ShaderManager 
 		// (if it donesn't already exist there)
 		auto & storedLayout = mShaderManager->borrowSetLayoutMeta(createdLayout->hash);
 		
@@ -648,7 +648,7 @@ void of::vk::Shader::createVkPipelineLayout() {
 
 // ----------------------------------------------------------------------
 
-inline void of::vk::Shader::SetLayoutMeta::calculateHash(){
+inline void of::vk::Shader::SetLayoutInfo::calculateHash(){
 	std::vector<uint64_t> flatBindings;
 	flatBindings.reserve( bindingTable.size() );
 	for ( const auto &b : bindingTable ){
