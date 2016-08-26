@@ -189,10 +189,13 @@ private:
 	{
 		// vector of descriptorSets, each with a map of bindings
 		std::vector<std::map<uint32_t, uint64_t>> bindingState;
+		
 		// current DescriptorSetLayout hashes forming the PipelineLayout
 		std::vector<uint64_t       > setLayoutKeys;
+
 		// derived sets (nullptr if not yet initialised)
 		std::vector<VkDescriptorSet> vkDescriptorSets;
+		
 		// vector of sets which have been invalidated
 		std::vector<size_t> dirtySetIndices;
 
@@ -206,9 +209,6 @@ private:
 
 	PipelineLayoutState mPipelineLayoutState;
 
-	//// currently bound shader
-	//std::shared_ptr<of::vk::Shader> mCurrentShader; 
-
 	void updateDescriptorSetState();
 
 	void updateDescriptorSets( const std::vector<size_t>& setIndices );
@@ -218,13 +218,18 @@ private:
 	// One DescriptorPool per SwapChain frame.
 	std::vector<VkDescriptorPool> mDescriptorPool;
 
-	// sets up backing memory to track state, based on shaders
-	void initialiseFrameState();
-	void setupDescriptorPool( );
+	// Create one pool per virtual frame - each with enough space
+	// to allocate all descriptors enumerated in mDescriptorPoolSizes
+	void setupDescriptorPool();
 
+	// Map from pipeline state hash to VkPipeline object
 	std::map<uint64_t, VkPipeline> mVkPipelines;
+
 	// all shaders attached to this context
 	std::vector<std::shared_ptr<of::vk::Shader>> mShaders;
+
+	// sets up backing memory to track state, based on shaders
+	void initialiseFrameState();
 
 public:
 

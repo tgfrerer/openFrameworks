@@ -150,7 +150,7 @@ void ofApp::drawModeExplicit(){
 	auto & cmd      = renderer->getCurrentDrawCommandBuffer();
 
 	static ofMesh ico  = ofMesh::icosphere( 50, 3 );
-	static ofMesh rect = ofMesh::plane( 1024/2 , 768/2, 2, 2,OF_PRIMITIVE_TRIANGLES );
+	static ofMesh rect = ofMesh::plane( 1024 / 2, 768 / 2, 2, 2, OF_PRIMITIVE_TRIANGLES );
 
 	mCam1.begin();
 	
@@ -165,8 +165,8 @@ void ofApp::drawModeExplicit(){
 		.popMatrix();
 
 	context
-		.setShader( mShaderDefault )
 		.setUniform( "globalColor", ofFloatColor::lightBlue )
+		.setShader( mShaderDefault )
 		.pushMatrix()
 		.translate( { -200, +200, 100 } )
 		.draw(cmd, ico)

@@ -536,7 +536,7 @@ void of::vk::Context::updateDescriptorSetState(){
 		
 		if ( it != descriptorSetCache.end()  ){
 			// descriptor has been found in cache
-			const auto   descriptorSetLayoutHash = it->first;
+			const auto   descriptorSetLayoutHash          = it->first;
 			const auto & previouslyAllocatedDescriptorSet = it->second;
 
 			mPipelineLayoutState.vkDescriptorSets[i] = previouslyAllocatedDescriptorSet;
@@ -554,7 +554,14 @@ void of::vk::Context::updateDescriptorSetState(){
 				&layout                                          // const VkDescriptorSetLayout*    pSetLayouts;
 			};
 
-			vkAllocateDescriptorSets( mSettings.device, &allocInfo, &mPipelineLayoutState.vkDescriptorSets[i] );
+			auto err = vkAllocateDescriptorSets( mSettings.device, &allocInfo, &mPipelineLayoutState.vkDescriptorSets[i] );
+			
+			if ( err != VK_SUCCESS ){
+				ofLogWarning() << "Failed to allocate descriptors";
+				// !TODO: in this case, we need to create a new pool, and allocate descriptors from the 
+				// new pool.
+				// Also, mDescriptorPoolSizes needs to grow.
+			}
 
 			// store VkDescriptorSet in state cache
 			descriptorSetCache[descriptorSetLayoutHash] = mPipelineLayoutState.vkDescriptorSets[i];

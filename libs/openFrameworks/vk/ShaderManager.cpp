@@ -38,8 +38,9 @@ bool of::vk::ShaderManager::createVkDescriptorSetLayouts(){
 			
 			//----------| invariant: uniformMeta for this setLayoutHash was valid
 
-			// Store / add this binding to central descriptorSet->bindings store
-			// as this references an object held in mDescriptorInfoStore, the object's
+			// Store / add this binding to central descriptorSet->bindings store.
+			//
+			// As this references an object held in mDescriptorInfoStore, the object's
 			// use_count will increase with each reference, and tell how many 
 			// copies of this uniform are needed.
 			mBindingsPerSetStore[setLayoutHash].insert( { bindingNumber, uniformMeta } );
@@ -47,7 +48,7 @@ bool of::vk::ShaderManager::createVkDescriptorSetLayouts(){
 			bindings.push_back( {                                // VkDescriptorSetLayoutBinding: 
 				bindingNumber,                                   // uint32_t                               binding;
 				uniformMeta->type,                               // VkDescriptorType                       descriptorType;
-				uniformMeta->count,                    // uint32_t                               count;
+				uniformMeta->count,                              // uint32_t                               count;
 				uniformMeta->stageFlags,                         // VkShaderStageFlags                     stageFlags;
 				nullptr,                                         // const VkSampler*                       pImmutableSamplers;
 			} );
