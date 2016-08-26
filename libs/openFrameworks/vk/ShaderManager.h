@@ -76,6 +76,13 @@ private:
 
 	// central store of bindings per descriptor set layout, indexed by descriptor set layout hash
 	std::map<uint64_t, std::map<uint32_t, std::shared_ptr<of::vk::Shader::DescriptorInfo>>> mBindingsPerSetStore;
+
+	// Map from descriptorSetLayout hash to descriptor pool sizes needed to allocate descriptors for this set
+	std::map<uint64_t, std::vector<VkDescriptorPoolSize>> mPoolSizesPerDescriptorSetCache;
+
+	// populates mPoolSizesPerDescriptorSetCache based on all known DescriptorSetLayouts 
+	void updatePoolSizesPerDescriptorSetCache();
+
 public:
 
 	// create VkDescriptorSetLayouts for all descriptors currently held in mSetLayoutStore
@@ -85,6 +92,10 @@ public:
 
 	// get minimum number of descriptors of each type needed to fill all distinct DescriptorSetLayouts
 	std::vector<VkDescriptorPoolSize> getVkDescriptorPoolSizes();
+
+	const std::vector<VkDescriptorPoolSize> & getDescriptorPoolSizesForSetLayout( uint64_t descriptorSetLayoutHash_ ){
+		return mPoolSizesPerDescriptorSetCache.at( descriptorSetLayoutHash_ );
+	}
 
 	// get number of descriptor sets
 	uint32_t getNumDescriptorSets();

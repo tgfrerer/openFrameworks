@@ -207,6 +207,8 @@ private:
 
 	};
 
+	// State and caches for current frame - this is reset every time 
+	// the context begins recording a new frame.
 	PipelineLayoutState mPipelineLayoutState;
 
 	void updateDescriptorSetState();
@@ -218,9 +220,26 @@ private:
 	// One DescriptorPool per SwapChain frame.
 	std::vector<VkDescriptorPool> mDescriptorPool;
 
-	// Create one pool per virtual frame - each with enough space
+	// list of overspill pools per swapchain frame for
+	// when pool is too small and new pool needs to be allocated.
+	std::vector<std::vector<VkDescriptorPool>> mDescriptorPoolOverspillPools;
+
+	// bitfield indicating whether the descriptor pool for a virtual frame is dirty 
+	// each bit represents a virtual frame index. 
+	// we're not expecting more than 64 virtual frames (more than 3 seldom make sense)
+	uint64_t mDescriptorPoolsDirty = -1; // all bits '1' == all dirty
+
+	// Number of descriptors per type, one (or more) vector entries per descriptor type
+	std::vector<VkDescriptorPoolSize> mDescriptorPoolSizes;
+
+	// Max number of sets which can be allocated from the main per-frame descriptor pool
+	uint32_t mDescriptorPoolMaxSets = 0;
+
+	// Create one descriptor pool per virtual frame - each with enough space
 	// to allocate all descriptors enumerated in mDescriptorPoolSizes
-	void setupDescriptorPool();
+	void setupDescriptorPools();
+
+	void resetDescriptorPool( size_t frame_ );
 
 	// Map from pipeline state hash to VkPipeline object
 	std::map<uint64_t, VkPipeline> mVkPipelines;

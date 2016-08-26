@@ -57,6 +57,13 @@ void of::vk::Context::setup( ofVkRenderer* renderer_ ){
 	mAlloc = std::make_shared<of::vk::Allocator>( settings );
 	mAlloc->setup();
 
+	if ( mSettings.numVirtualFrames > 64 ){
+		ofLogError() << "Context: Number of virtual frames must not be greater than 64. \n";
+		// More than 3 virtual frames rarely make sense - 
+		// And more than 64 will lead to unpredictable behaviour of mDescriptorPoolsDirty bitfield, 
+		// which is used to control whether descriptorPools need to be re-created. 
+		// mDescriptorPoolsDirty can only hold 64 bits.
+	}
 
 	// CONSIDER: as the pipeline cache is one of the few elements which is actually mutexed 
 	// by vulkan, we could share a cache over mulitple contexts and the cache could therefore
@@ -71,17 +78,32 @@ void of::vk::Context::reset(){
 
 	// Destroy all descriptors by destroying the pools they were
 	// allocated from.
+
+	for ( auto &pools : mDescriptorPoolOverspillPools ){
+		for ( auto &p : pools ){
+			if ( p != nullptr){
+				vkDestroyDescriptorPool( mSettings.device, p, nullptr );
+			}
+		}
+	}
+	mDescriptorPoolOverspillPools.clear();
+
 	for ( auto & p : mDescriptorPool ){
-		vkDestroyDescriptorPool( mSettings.device, p, 0 );
-		p = nullptr;
+		if ( p != nullptr ){
+			vkDestroyDescriptorPool( mSettings.device, p, nullptr );
+		}
 	}
 	mDescriptorPool.clear();
 
+	mDescriptorPoolsDirty = -1;
+	mDescriptorPoolMaxSets = 0;
+
 	mCurrentFrameState.initialised = false;
+
 	mAlloc->reset();
 
 	for ( auto &p : mVkPipelines ){
-		if ( nullptr != p.second ){
+		if ( p.second != nullptr ){
 			vkDestroyPipeline( mSettings.device, p.second, nullptr );
 			p.second = nullptr;
 		}
@@ -89,7 +111,7 @@ void of::vk::Context::reset(){
 
 	mVkPipelines.clear();
 
-	if ( nullptr != mPipelineCache ){
+	if ( mPipelineCache != nullptr ){
 		vkDestroyPipelineCache( mSettings.device, mPipelineCache, nullptr );
 		mPipelineCache = nullptr;
 	}
@@ -171,41 +193,96 @@ void of::vk::Context::setupDescriptorPools(){
 			ofLogNotice() << "DescriptorPool re-initialised. Resetting.";
 			vkResetDescriptorPool( mSettings.device, p, 0 );
 		}
-	} else {
-		
-		// Create pools for this context - each virtual frame has its own version of the pool.
-		// All descriptors used by shaders associated to this context will come from this pool. 
-		//
-		// Note that this pool does not set VkDescriptorPoolCreateFlags - this means that all 
-		// descriptors allocated from this pool must be freed in bulk, by resetting the 
-		// descriptorPool, and cannot be individually freed.
-		
-		VkDescriptorPoolCreateInfo descriptorPoolInfo = {
-			VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,  // VkStructureType                sType;
-			nullptr,                                        // const void*                    pNext;
-			0,                                              // VkDescriptorPoolCreateFlags    flags;
-			mShaderManager->getNumDescriptorSets(),         // uint32_t                       maxSets;
-			uint32_t( poolSizes.size() ),                   // uint32_t                       poolSizeCount;
-			poolSizes.data(),                               // const VkDescriptorPoolSize*    pPoolSizes;
-		};
-
-		// create as many descriptorpools as there are swapchain images.
-		mDescriptorPool.resize( mSettings.numVirtualFrames );
-		for ( size_t i = 0; i != mSettings.numVirtualFrames; ++i ){
-			auto err = vkCreateDescriptorPool( mSettings.device, &descriptorPoolInfo, nullptr, &mDescriptorPool[i] );
-			assert( !err );
+		for ( auto &poolVec : mDescriptorPoolOverspillPools ){
+			for ( auto pool : poolVec ){
+				vkResetDescriptorPool( mSettings.device, pool, 0 );
+				vkDestroyDescriptorPool( mSettings.device, pool, nullptr );
+			}
+			poolVec.clear();
 		}
+	} else{
+
+		// create as many slots for descriptorpools as there are swapchain images.
+		mDescriptorPool.resize( mSettings.numVirtualFrames, nullptr );
+
+		// create empty overspill pools - just in case.
+		mDescriptorPoolOverspillPools.resize( mSettings.numVirtualFrames );
 	}
 }
 
 // ----------------------------------------------------------------------
 
-void of::vk::Context::begin(size_t frame_){
-	mFrameIndex = int(frame_);
-	mAlloc->free(frame_);
+// Reset descriptorPool for this frame - and if descriptorsets were created 
+// for this frame using overspill descriptor pools, a new, consolidated 
+// descriptorpool is created.
+void of::vk::Context::resetDescriptorPool( size_t frame_ ){
 
-	// DescriptorPool and frameState are set up based on 
-	// the current library of DescriptorSetLayouts inside
+	// mDescriptorPoolsDirty is a 64 bit bitflag, where the lowest bit 
+	// represents virtual frame 0, and the highest bit virtual frame 64.
+	// The bitflag values tell us whether a descriptorPool for the virtual
+	// frame is dirty. If so, we need to destroy and re-create the 
+	// decriptorPool attached to this virtual frame.
+
+
+	if ( 0 == ( ( 1ULL << frame_ ) & mDescriptorPoolsDirty ) ){
+		vkResetDescriptorPool( mSettings.device, mDescriptorPool[frame_], 0 );
+		return;
+	}
+
+	// ---------| invariant: descriptor pool for this virtual frame is dirty 
+
+	// Delete any overspill pools
+
+	for ( auto &pool : mDescriptorPoolOverspillPools[frame_] ){
+	   // we need to delete all old pools, and consolidate them into 
+	   // the main pool.
+
+		vkResetDescriptorPool( mSettings.device, pool, 0 );
+		vkDestroyDescriptorPool( mSettings.device, pool, nullptr );
+	}
+
+	mDescriptorPoolOverspillPools[frame_].clear();
+
+	// Reset and destroy the main descriptor pool for this virtual frame
+	// and build the main pool based on 
+
+	if ( mDescriptorPool[frame_] != nullptr ){
+		auto err = vkResetDescriptorPool( mSettings.device, mDescriptorPool[frame_], 0 );
+		assert( !err );
+		vkDestroyDescriptorPool( mSettings.device, mDescriptorPool[frame_], nullptr );
+	}
+ 
+	// Create pool for this context - each virtual frame has its own version of the pool.
+	// All descriptors used by shaders associated to this context will come from this pool. 
+	//
+	// Note that this pool does not set VkDescriptorPoolCreateFlags - this means that all 
+	// descriptors allocated from this pool must be freed in bulk, by resetting the 
+	// descriptorPool, and cannot be individually freed.
+
+	VkDescriptorPoolCreateInfo descriptorPoolInfo = {
+		VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,             // VkStructureType                sType;
+		nullptr,                                                   // const void*                    pNext;
+		0,                                                         // VkDescriptorPoolCreateFlags    flags;
+		mDescriptorPoolMaxSets,                                    // uint32_t                       maxSets;
+		uint32_t( mDescriptorPoolSizes.size() ),                   // uint32_t                       poolSizeCount;
+		mDescriptorPoolSizes.data(),                               // const VkDescriptorPoolSize*    pPoolSizes;
+	};
+
+	vkCreateDescriptorPool( mSettings.device, &descriptorPoolInfo, nullptr, &mDescriptorPool[frame_] );
+
+	// mark this particular descriptorPool as not dirty
+	mDescriptorPoolsDirty ^= ( 1ULL << frame_ );
+
+}
+
+// ----------------------------------------------------------------------
+
+void of::vk::Context::begin( size_t frame_ ){
+	mFrameIndex = int( frame_ );
+	mAlloc->free( frame_ );
+
+	// DescriptorPool and FrameState are set up based on 
+	// the current collection of all DescriptorSetLayouts inside
 	// the ShaderManager.
 
 	if ( mCurrentFrameState.initialised == false ){
@@ -214,8 +291,8 @@ void of::vk::Context::begin(size_t frame_){
 		// because only then can we be certain that all shaders
 		// used by this context have been processed.
 		mShaderManager->createVkDescriptorSetLayouts();
+		setupDescriptorPools();
 
-		setupDescriptorPool();
 		initialiseFrameState();
 		mCurrentFrameState.initialised = true;
 	}
@@ -226,15 +303,15 @@ void of::vk::Context::begin(size_t frame_){
 		buffer.reset();
 	}
 
-	// Reset current DescriptorPool
+	// Reset frees all descriptors allocated from current DescriptorPool
+	// if descriptorPool was not large enough, creates a new, larger DescriptorPool.
+	resetDescriptorPool( frame_ );
 
-	vkResetDescriptorPool( mSettings.device, mDescriptorPool[frame_], 0 );
-	
-	// reset pipeline state
+	// Reset pipeline state
 	mCurrentGraphicsPipelineState.reset();
 	{
 		mCurrentGraphicsPipelineState.setShader( mShaders.front() );
-		mCurrentGraphicsPipelineState.setRenderPass(mSettings.defaultRenderPass);	  /* !TODO: we should porbably expose this - and bind a default renderpass here */
+		mCurrentGraphicsPipelineState.setRenderPass( mSettings.defaultRenderPass );	  /* !TODO: we should porbably expose this - and bind a default renderpass here */
 	}
 
 	mPipelineLayoutState = PipelineLayoutState();
@@ -336,12 +413,12 @@ of::vk::Context& of::vk::Context::draw( const VkCommandBuffer& cmd, const ofMesh
 
 bool of::vk::Context::storeMesh( const ofMesh & mesh_, std::vector<VkDeviceSize>& vertexOffsets, std::vector<VkDeviceSize>& indexOffsets ){
 	// CONSIDER: add option to interleave 
-	
-	uint32_t numVertices   = uint32_t(mesh_.getVertices().size() );
-	uint32_t numColors     = uint32_t(mesh_.getColors().size()   );
-	uint32_t numNormals    = uint32_t(mesh_.getNormals().size()  );
-	uint32_t numTexCooords = uint32_t(mesh_.getTexCoords().size());
-	uint32_t numIndices    = uint32_t( mesh_.getIndices().size() );
+
+	uint32_t numVertices = uint32_t( mesh_.getVertices().size() );
+	uint32_t numColors = uint32_t( mesh_.getColors().size() );
+	uint32_t numNormals = uint32_t( mesh_.getNormals().size() );
+	uint32_t numTexCooords = uint32_t( mesh_.getTexCoords().size() );
+	uint32_t numIndices = uint32_t( mesh_.getIndices().size() );
 
 	// CONSIDER: add error checking - make sure 
 	// numVertices == numColors == numNormals == numTexCooords
@@ -449,7 +526,7 @@ void of::vk::Context::flushUniformBufferState(){
 				auto success = mAlloc->allocate( numBytes, pDst, newOffset, mFrameIndex );
 				currentOffsets.push_back( (uint32_t)newOffset ); // store offset into offsets list.
 				if ( !success ){
-					ofLogError() << "out of buffer space.";
+					ofLogError() << "out of buffer memory space.";
 				}
 				// ----------| invariant: allocation successful
 
@@ -538,20 +615,59 @@ void of::vk::Context::updateDescriptorSetState(){
 			VkDescriptorSetLayout layout = mShaderManager->getVkDescriptorSetLayout( descriptorSetLayoutHash );
 
 			VkDescriptorSetAllocateInfo allocInfo{
-				VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,	 // VkStructureType                 sType;
-				nullptr,	                                     // const void*                     pNext;
-				mDescriptorPool[mFrameIndex],                    // VkDescriptorPool                descriptorPool;
-				1,                                               // uint32_t                        descriptorSetCount;
-				&layout                                          // const VkDescriptorSetLayout*    pSetLayouts;
+				VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,	   // VkStructureType                 sType;
+				nullptr,	                                       // const void*                     pNext;
+				mDescriptorPool[mFrameIndex],                      // VkDescriptorPool                descriptorPool;
+				1,                                                 // uint32_t                        descriptorSetCount;
+				&layout                                            // const VkDescriptorSetLayout*    pSetLayouts;
 			};
 
 			auto err = vkAllocateDescriptorSets( mSettings.device, &allocInfo, &mPipelineLayoutState.vkDescriptorSets[i] );
 
 			if ( err != VK_SUCCESS ){
-				ofLogWarning() << "Failed to allocate descriptors";
-				// !TODO: in this case, we need to create a new pool, and allocate descriptors from the 
-				// new pool.
-				// Also, mDescriptorPoolSizes needs to grow.
+
+				// Allocation failed. 
+
+				ofLogWarning() << "Failed to allocate descriptors - Creating & allocating from overspill pool.";
+
+				// To still be able to allocate, we need to create a new pool, and allocate descriptors from the 
+				// new pool:
+
+				auto &poolSizes = mShaderManager->getDescriptorPoolSizesForSetLayout( descriptorSetLayoutHash );
+
+				VkDescriptorPoolCreateInfo descriptorPoolInfo = {
+					VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,  // VkStructureType                sType;
+					nullptr,                                        // const void*                    pNext;
+					0,                                              // VkDescriptorPoolCreateFlags    flags;
+					1,                                              // uint32_t                       maxSets;
+					uint32_t( poolSizes.size() ),                   // uint32_t                       poolSizeCount;
+					poolSizes.data(),                               // const VkDescriptorPoolSize*    pPoolSizes;
+				};
+				VkDescriptorPool overspillPool = nullptr;
+				vkCreateDescriptorPool( mSettings.device, &descriptorPoolInfo, nullptr, &overspillPool );
+
+				// Store overspill pool in per-virtual-frame vector of overspill pools.
+				//
+				// Once this frame has finished rendered and before it is re-used, 
+				// all overspill pools for the frame will get destroyed and consolidated 
+				// into a main frame pool, to mimimize re-allocations.
+				mDescriptorPoolOverspillPools[mFrameIndex].emplace_back( std::move( overspillPool ) );
+
+				mDescriptorPoolsDirty = -1; // mark flags for all frames as dirty
+
+				// mDescriptorPoolSizes needs to grow - so that future frames won't need to overspill 
+				mDescriptorPoolSizes.insert( mDescriptorPoolSizes.end(), poolSizes.cbegin(), poolSizes.cend() );
+
+				// Number of sets needs to increase, too.
+				mDescriptorPoolMaxSets++;   // increase max sets 
+
+				// Update allocation info to now point to newly created overspill pool to allocate from.
+				allocInfo.descriptorPool = mDescriptorPoolOverspillPools[mFrameIndex].back();
+
+				// Allocate the descriptorset from the newly created overspill pool
+				err = vkAllocateDescriptorSets( mSettings.device, &allocInfo, &mPipelineLayoutState.vkDescriptorSets[i] );
+				assert( !err );
+
 			}
 
 			// store VkDescriptorSet in state cache

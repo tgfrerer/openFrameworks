@@ -101,14 +101,31 @@ const VkDescriptorSetLayout& of::vk::ShaderManager::getVkDescriptorSetLayout( ui
 
 std::vector<VkDescriptorPoolSize> of::vk::ShaderManager::getVkDescriptorPoolSizes(){
 
+	updatePoolSizesPerDescriptorSetCache();
+	
+	std::vector<VkDescriptorPoolSize> poolSizes;
+
+	for ( const auto & sizePair : mPoolSizesPerDescriptorSetCache ){
+		const auto & key = sizePair.first;
+		const auto & poolSizeVec = sizePair.second;
+		poolSizes.insert( poolSizes.end(), poolSizeVec.cbegin(), poolSizeVec.cend() );
+	}
+
+	return poolSizes;
+}
+
+// ----------------------------------------------------------------------
+
+void of::vk::ShaderManager::updatePoolSizesPerDescriptorSetCache(){
+	
 	// To know how many descriptors of each type to allocate, 
 	// we group descriptors over all layouts by type and count each group.
-
-	std::map<VkDescriptorType, uint32_t> poolSizeMap;
 
 	for ( const auto& s : mSetLayoutStore ){
 		const auto & hash = s.first;
 		const auto & setLayoutMeta = s.second;
+
+		std::map<VkDescriptorType, uint32_t> poolSizeMap;
 
 		for ( const auto & b : setLayoutMeta->bindingTable ){
 			const auto & bindingNumber = b.first;
@@ -124,19 +141,21 @@ std::vector<VkDescriptorPoolSize> of::vk::ShaderManager::getVkDescriptorPoolSize
 				}
 			}
 		}
-	}
+		
 		// flatten map into vector of VkDescriptorPoolSize
 
+		std::vector<VkDescriptorPoolSize> poolSizes;
+		poolSizes.reserve( poolSizeMap.size() );
 
-	std::vector<VkDescriptorPoolSize> poolSizes;
-	poolSizes.reserve( poolSizeMap.size() );
+		std::transform( poolSizeMap.cbegin(), poolSizeMap.cend(), std::back_inserter( poolSizes ),
+			[]( const std::pair<VkDescriptorType, uint32_t>& lhs ) -> VkDescriptorPoolSize {
+			return{ lhs.first,lhs.second };
+		} );
 
-	std::transform( poolSizeMap.cbegin(), poolSizeMap.cend(), std::back_inserter( poolSizes ), 
-		[](const std::pair<VkDescriptorType,uint32_t>& lhs) -> VkDescriptorPoolSize {
-		return{ lhs.first,lhs.second };
-	} );
+		mPoolSizesPerDescriptorSetCache[hash] = poolSizes;
+	}
 
-	return poolSizes;
+
 }
 
 // ----------------------------------------------------------------------
