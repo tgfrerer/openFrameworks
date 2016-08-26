@@ -1,13 +1,13 @@
 #pragma once
 #include "vulkan/vulkan.h"
-#include "vk/vkAllocator.h"
 #include "ofPixels.h"
 
 namespace of{
 namespace vk{
 
-
-// how do we give texture access to a command buffer?
+// TODO: Texture issues commands to the queue, and creates command buffers to do so.
+//       There should be a way to make these operations more transparent. 
+//       Also, transfer from host memory to device memory should be handled more transparently.
 
 class Texture
 {

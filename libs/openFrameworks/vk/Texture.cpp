@@ -1,4 +1,5 @@
 #include "vk/Texture.h"
+#include "ofVkRenderer.h"
 
 void of::vk::Texture::load( const ofPixels & pix_ ){
 	auto renderer = dynamic_pointer_cast<ofVkRenderer>( ofGetCurrentRenderer() );

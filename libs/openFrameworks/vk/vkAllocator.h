@@ -1,10 +1,13 @@
 #pragma once
 
 #include <vulkan/vulkan.h>
-#include "ofVkRenderer.h"
+#include <vector>
+
+class ofVkRenderer; // ffdecl.
 
 namespace of{
 namespace vk{
+
 
 class Allocator
 {

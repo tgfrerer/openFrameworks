@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ofMain.h"
+#include "vk/ofVkRenderer.h"
 #include "vk/Texture.h"
 
 class ofApp : public ofBaseApp{

@@ -250,6 +250,7 @@ void of::vk::Context::resetDescriptorPool( size_t frame_ ){
 		auto err = vkResetDescriptorPool( mSettings.device, mDescriptorPool[frame_], 0 );
 		assert( !err );
 		vkDestroyDescriptorPool( mSettings.device, mDescriptorPool[frame_], nullptr );
+		mDescriptorPool[frame_] = nullptr;
 	}
  
 	// Create pool for this context - each virtual frame has its own version of the pool.

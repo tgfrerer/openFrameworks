@@ -1,4 +1,5 @@
 #include "vk/vkAllocator.h"
+#include "vk/ofVkRenderer.h"
 #include "ofLog.h"
 
 // ----------------------------------------------------------------------
