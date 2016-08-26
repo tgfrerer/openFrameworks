@@ -3,10 +3,8 @@
 void of::vk::Texture::load( const ofPixels & pix_ ){
 	auto renderer = dynamic_pointer_cast<ofVkRenderer>( ofGetCurrentRenderer() );
 
-	mRenderer = renderer;
-
 	// get device
-	auto device = renderer->getVkDevice();
+	mDevice = renderer->getVkDevice();
 
 	// get command pool
 	auto& cmdPool = renderer->getCommandPool();
@@ -57,7 +55,7 @@ void of::vk::Texture::load( const ofPixels & pix_ ){
 	};
 
 
-	auto err = vkCreateImage( device, &createInfo, nullptr, &mTexData.image );
+	auto err = vkCreateImage( mDevice, &createInfo, nullptr, &mTexData.image );
 	assert( !err );
 
 	// now that we have created an abstract image view
@@ -67,7 +65,7 @@ void of::vk::Texture::load( const ofPixels & pix_ ){
 	// what kind of memory to allocate.
 
 	VkMemoryRequirements memReq;
-	vkGetImageMemoryRequirements( device, mTexData.image, &memReq );
+	vkGetImageMemoryRequirements( mDevice, mTexData.image, &memReq );
 
 	VkMemoryAllocateInfo allocInfo;
 	renderer->getMemoryAllocationInfo( memReq,
@@ -75,23 +73,23 @@ void of::vk::Texture::load( const ofPixels & pix_ ){
 		, allocInfo );
 
 	// allocate device memory, and point to the new memory object in mTexData
-	vkAllocateMemory( device, &allocInfo, nullptr, &mTexData.mem );
+	vkAllocateMemory( mDevice, &allocInfo, nullptr, &mTexData.mem );
 
 	// TODO: create a VkImageView image view - so we can actually sample this image.
 	// the view deals with swizzles - and also with mipmamplevels. It is also 
 	// defines the subresource range for the image.
 
 	// attach deviceMemory to img
-	vkBindImageMemory( device, mTexData.image, mTexData.mem, 0 );
+	vkBindImageMemory( mDevice, mTexData.image, mTexData.mem, 0 );
 
 	// now we want to write out pixels to device memory
 
 	void * pData;
-	vkMapMemory( device, mTexData.mem, 0, allocInfo.allocationSize, 0, &pData );
+	vkMapMemory( mDevice, mTexData.mem, 0, allocInfo.allocationSize, 0, &pData );
 	// write to mapped memory - as this is coherent, write will 
 	// be visible to GPU without need to flush
 	memcpy( pData, pix_.getData(), pix_.getTotalBytes() );
-	vkUnmapMemory( device, mTexData.mem );
+	vkUnmapMemory( mDevice, mTexData.mem );
 
 	// first, we need a command buffer we can store the pipeline barrier command into
 	// this command - the pipeline barrier with an image barrier - will transfer the 
@@ -106,7 +104,7 @@ void of::vk::Texture::load( const ofPixels & pix_ ){
 			VK_COMMAND_BUFFER_LEVEL_PRIMARY,
 			1,
 		};
-		vkAllocateCommandBuffers( device, &allocInfo, &cmd );
+		vkAllocateCommandBuffers( mDevice, &allocInfo, &cmd );
 	}
 
 	VkCommandBufferBeginInfo beginInfo{
@@ -154,7 +152,7 @@ void of::vk::Texture::load( const ofPixels & pix_ ){
 	fenceInfo.pNext = nullptr;
 	fenceInfo.flags = 0;
 	VkFence cmdFence;
-	err = vkCreateFence( device, &fenceInfo, nullptr, &cmdFence );
+	err = vkCreateFence( mDevice, &fenceInfo, nullptr, &cmdFence );
 	assert( !err );
 
 	VkSubmitInfo submitInfo{
@@ -182,11 +180,11 @@ void of::vk::Texture::load( const ofPixels & pix_ ){
 	// You could now use vkGetFenceStatus to check whether the transfer has been completed. 
 
 	// cleanups
-	vkWaitForFences( device, 1, &cmdFence, true, 100000 ); // wait at most 100 ms
+	vkWaitForFences( mDevice, 1, &cmdFence, true, 100000 ); // wait at most 100 ms
 														  // free command buffer now that the command has executed.
 	//vkFreeCommandBuffers( device, cmdPool, 1, &cmd );
 
-	vkDestroyFence( device, cmdFence, nullptr );
+	vkDestroyFence( mDevice, cmdFence, nullptr );
 
 	// create an image view which may or may not get sampled.
 
@@ -214,7 +212,7 @@ void of::vk::Texture::load( const ofPixels & pix_ ){
 		}
 	};
 
-	vkCreateImageView( device, &view_info, nullptr, &mTexData.view );
+	vkCreateImageView( mDevice, &view_info, nullptr, &mTexData.view );
 
 	VkSamplerCreateFlags samplerFlags = 0;
 
@@ -239,6 +237,6 @@ void of::vk::Texture::load( const ofPixels & pix_ ){
 		VK_FALSE,                                     // VkBool32                unnormalizedCoordinates;
 	};
 
-	vkCreateSampler( device, &samplerInfo, nullptr, &mTexData.sampler );
+	vkCreateSampler( mDevice, &samplerInfo, nullptr, &mTexData.sampler );
 
 }

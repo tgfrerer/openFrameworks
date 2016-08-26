@@ -28,7 +28,7 @@ public:
 
 private:
 	TexData mTexData;
-	std::weak_ptr<ofVkRenderer> mRenderer;
+	VkDevice mDevice = nullptr;
 
 public:
 
@@ -46,32 +46,31 @@ public:
 	void load( const ofPixels& pix_ );;
 
 	~Texture(){
-		if ( auto renderer = mRenderer.lock() ){
+		
+		// get device
+		if ( mDevice ){
 
-			// get device
-			auto device = renderer->getVkDevice();
-			auto err = vkDeviceWaitIdle( device );
+			auto err = vkDeviceWaitIdle( mDevice );
 			assert( !err );
 			// let's cleanup - 
 
 			if ( mTexData.view ){
-				vkDestroyImageView( device, mTexData.view, nullptr );
+				vkDestroyImageView( mDevice, mTexData.view, nullptr );
 				mTexData.view = nullptr;
 			}
 			if ( mTexData.image ){
-				vkDestroyImage( device, mTexData.image, nullptr );
+				vkDestroyImage( mDevice, mTexData.image, nullptr );
 				mTexData.image = nullptr;
 			}
 			if ( mTexData.sampler ){
-				vkDestroySampler( device, mTexData.sampler, nullptr );
+				vkDestroySampler( mDevice, mTexData.sampler, nullptr );
 				mTexData.sampler = nullptr;
 			}
 
 			if ( mTexData.mem ){
-				vkFreeMemory( device, mTexData.mem, nullptr );
+				vkFreeMemory( mDevice, mTexData.mem, nullptr );
 				mTexData.mem = nullptr;
 			}
-			mTexData = TexData();
 		}
 		
 	};
