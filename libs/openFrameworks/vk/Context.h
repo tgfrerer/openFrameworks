@@ -234,9 +234,9 @@ private:
 public:
 
 
-	// must be constructed with this method, default constructor
-	// copy, and move constructor
-	// have been implicitly deleted by defining mSettings const
+	// Context must be constructed using this method, default constructor,
+	// copy- and move-constructor have been implicitly deleted,
+	// by defining mSettings const.
 	Context( const of::vk::Context::Settings& settings_ );
 
 	~Context();

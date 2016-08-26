@@ -2,6 +2,7 @@
 #include "ofLog.h"
 
 // ----------------------------------------------------------------------
+
 const std::map<uint32_t, std::shared_ptr<of::vk::Shader::DescriptorInfo>>& of::vk::ShaderManager::getBindings( uint64_t setLayoutHash )const{
 	static std::map<uint32_t, std::shared_ptr<of::vk::Shader::DescriptorInfo>> failedBinding;
 	const auto it = mBindingsPerSetStore.find( setLayoutHash );
@@ -97,6 +98,7 @@ const VkDescriptorSetLayout& of::vk::ShaderManager::getVkDescriptorSetLayout( ui
 }
 
 // ----------------------------------------------------------------------
+
 std::vector<VkDescriptorPoolSize> of::vk::ShaderManager::getVkDescriptorPoolSizes(){
 
 	// To know how many descriptors of each type to allocate, 
@@ -105,26 +107,26 @@ std::vector<VkDescriptorPoolSize> of::vk::ShaderManager::getVkDescriptorPoolSize
 	std::map<VkDescriptorType, uint32_t> poolSizeMap;
 
 	for ( const auto& s : mSetLayoutStore ){
-		const auto & hash          = s.first;
+		const auto & hash = s.first;
 		const auto & setLayoutMeta = s.second;
-		
+
 		for ( const auto & b : setLayoutMeta->bindingTable ){
 			const auto & bindingNumber = b.first;
-			const auto & bindingHash   = b.second;
+			const auto & bindingHash = b.second;
 
 			auto & descriptorInfo = getDescriptorInfo( bindingHash );
-			
+
 			if ( descriptorInfo ){
 				if ( poolSizeMap.end() == poolSizeMap.find( descriptorInfo->type ) ){
-					poolSizeMap.insert( { descriptorInfo->type, descriptorInfo->count} );
+					poolSizeMap.insert( { descriptorInfo->type, descriptorInfo->count } );
 				} else{
 					poolSizeMap[descriptorInfo->type] += descriptorInfo->count;
 				}
 			}
 		}
 	}
+		// flatten map into vector of VkDescriptorPoolSize
 
-	// flatten map into vector of VkDescriptorPoolSize
 
 	std::vector<VkDescriptorPoolSize> poolSizes;
 	poolSizes.reserve( poolSizeMap.size() );

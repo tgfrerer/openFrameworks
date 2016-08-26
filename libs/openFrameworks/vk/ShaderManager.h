@@ -83,7 +83,7 @@ public:
 
 	const VkDescriptorSetLayout& getVkDescriptorSetLayout( uint64_t descriptorSetLayoutKey );
 
-	// get number of descriptors of each type needed to fill all distinct DescriptorSetLayouts
+	// get minimum number of descriptors of each type needed to fill all distinct DescriptorSetLayouts
 	std::vector<VkDescriptorPoolSize> getVkDescriptorPoolSizes();
 
 	// get number of descriptor sets
