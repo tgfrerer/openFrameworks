@@ -46,6 +46,13 @@ bool of::vk::ShaderManager::createVkDescriptorSetLayouts(){
 			// copies of this uniform are needed.
 			mBindingsPerSetStore[setLayoutHash].insert( { bindingNumber, uniformMeta } );
 
+			// If uniform references a combined image sampler, we want to add a reference for this
+			// sampler to the central registry.
+
+			if ( uniformMeta->type == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER ){
+				mTextureUsage[uniformMeta->name].push_back( setLayoutHash );
+			}
+
 			bindings.push_back( {                                // VkDescriptorSetLayoutBinding: 
 				bindingNumber,                                   // uint32_t                               binding;
 				uniformMeta->type,                               // VkDescriptorType                       descriptorType;

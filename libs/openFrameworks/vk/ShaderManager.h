@@ -39,6 +39,9 @@ private:
 	// set layouts are ordered sequences of uniforms
 	std::map<uint64_t, std::shared_ptr<of::vk::Shader::SetLayoutInfo>> mSetLayoutStore;
 
+	// map from texture name to vector of descriptorsets referencing this texture
+	std::map<std::string, std::vector<uint64_t>> mTextureUsage;
+
 public:
 
 	// TODO: these methods - as they may modify the contents of ShaderManager
@@ -68,6 +71,16 @@ public:
 		return mDescriptorInfoStore;
 	};
 
+	// returns which descriptorsets reference texture with name_
+	const std::vector<uint64_t>& getTextureUsage( const std::string & name_ ){
+		static std::vector<uint64_t> empty_vec;
+		auto it = mTextureUsage.find( name_ );
+		if ( it != mTextureUsage.end() ){
+			return it->second;
+		} else{
+			return empty_vec;
+		}
+	};
 
 private:
 

@@ -396,7 +396,7 @@ VulkanDebugCallback(
 	SetConsoleTextAttribute( hConsole, 7 + 0 * 16 );
 #endif
 	// if error returns true, this layer will try to bail out and not forward the command
-	return false; 
+	return true; 
 }
 
 // ----------------------------------------------------------------------
@@ -435,7 +435,7 @@ void ofVkRenderer::createDebugLayers()
 		ofExit(-1);
 		return;
 	}
-				   
+
 	// this method is not available by default.
 	{
 		// note that we execute the function pointers we searched for earlier, 

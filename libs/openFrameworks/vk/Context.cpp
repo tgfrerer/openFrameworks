@@ -167,9 +167,9 @@ void of::vk::Context::initialiseFrameState(){
 			}
 
 		} else if ( descriptorInfo.type == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER ){
-			//!TODO: texture assignment needs to get more flexible - 
-			frame.mUniformImages[descriptorInfo.name] = std::make_shared<of::vk::Texture>();
-
+			// add a dummy texture 
+			frame.mUniformTextures[descriptorInfo.name] = std::make_shared<of::vk::Texture>();
+			
 		}// end if type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC
 
 	}  // end for all uniform bindings
@@ -212,9 +212,6 @@ void of::vk::Context::setupDescriptorPools(){
 
 // ----------------------------------------------------------------------
 
-// Reset descriptorPool for this frame - and if descriptorsets were created 
-// for this frame using overspill descriptor pools, a new, consolidated 
-// descriptorpool is created.
 void of::vk::Context::resetDescriptorPool( size_t frame_ ){
 
 	// mDescriptorPoolsDirty is a 64 bit bitflag, where the lowest bit 
@@ -222,7 +219,6 @@ void of::vk::Context::resetDescriptorPool( size_t frame_ ){
 	// The bitflag values tell us whether a descriptorPool for the virtual
 	// frame is dirty. If so, we need to destroy and re-create the 
 	// decriptorPool attached to this virtual frame.
-
 
 	if ( 0 == ( ( 1ULL << frame_ ) & mDescriptorPoolsDirty ) ){
 		vkResetDescriptorPool( mSettings.device, mDescriptorPool[frame_], 0 );
@@ -312,7 +308,7 @@ void of::vk::Context::begin( size_t frame_ ){
 	mCurrentGraphicsPipelineState.reset();
 	{
 		mCurrentGraphicsPipelineState.setShader( mShaders.front() );
-		mCurrentGraphicsPipelineState.setRenderPass( mSettings.defaultRenderPass );	  /* !TODO: we should porbably expose this - and bind a default renderpass here */
+		mCurrentGraphicsPipelineState.setRenderPass( mSettings.defaultRenderPass );	  /* TODO: we should porbably expose this - and bind a default renderpass here */
 	}
 
 	mPipelineLayoutState = PipelineLayoutState();
@@ -371,6 +367,10 @@ of::vk::Context& of::vk::Context::popBuffer( const std::string & ubo_ ){
 of::vk::Context& of::vk::Context::draw( const VkCommandBuffer& cmd, const ofMesh & mesh_ ){
 
 	bindPipeline( cmd );
+
+	// allocate descriptors if pipeline set indices dirty
+	// write into any newly allocated descriptors
+	updateDescriptorSetState();
 
 	// store uniforms if needed
 	flushUniformBufferState();
@@ -479,8 +479,19 @@ bool of::vk::Context::storeMesh( const ofMesh & mesh_, std::vector<VkDeviceSize>
 
 // ----------------------------------------------------------------------
 
-of::vk::Context & of::vk::Context::debugSetTexture( std::string name, std::shared_ptr<of::vk::Texture> tex ){
-	mCurrentFrameState.mUniformImages[name] = tex;
+of::vk::Context & of::vk::Context::bindTexture( std::shared_ptr<of::vk::Texture> tex, const std::string& name ){
+	// look up descriptorSetLayouts which reference this texture binding,
+	// and mark them as tainted.
+	mCurrentFrameState.mUniformTextures[name] = tex;
+	
+	const auto & dirtySetKeys = mShaderManager->getTextureUsage( name );
+	for ( const auto &k : dirtySetKeys ){
+		// remove dirty sets from cache so they have to be re-created.
+		mPipelineLayoutState.descriptorSetCache.erase( k );
+	}
+	
+	mCurrentGraphicsPipelineState.mDirty = true;
+
 	return *this;
 }
 
@@ -488,7 +499,6 @@ of::vk::Context & of::vk::Context::debugSetTexture( std::string name, std::share
 
 void of::vk::Context::flushUniformBufferState(){
 
-	updateDescriptorSetState();
 
 	// iterate over all currently bound descriptorsets
 	// as descriptorsetbindings overspill, we can just accumulate all offsets
@@ -585,7 +595,8 @@ void of::vk::Context::updateDescriptorSetState(){
 	//    is requested again?
 	// A: We should re-use it - unless it contains image samplers - 
 	//    as the samplers need to be allocated with the descriptor
-	//    this means the descriptorSet cannot be re-used.
+	//    this means a descriptorSet with image sampler cannot be 
+	//    re-used unless it is used with the same image sampler.
 
 	if ( mPipelineLayoutState.dirtySetIndices.empty() ){
 		// descriptorset can be re-used.
@@ -680,6 +691,8 @@ void of::vk::Context::updateDescriptorSetState(){
 
 	}
 
+	// Initialise newly allocated descriptors by writing to them
+
 	if ( false == allocatedSetIndices.empty() ){
 		updateDescriptorSets( allocatedSetIndices );
 
@@ -733,6 +746,8 @@ void of::vk::Context::updateDescriptorSets( const std::vector<size_t>& setIndice
 		// Reserve vector size because otherwise reallocation when pushing will invalidate pointers
 		descriptorBufferInfoStorage[key].reserve( bindings.size() );
 
+		descriptorImageInfoStorage[key].reserve( bindings.size() );
+
 		// now, we also store the current binding state into mPipelineLayoutState,
 		// so we have the two in sync.
 
@@ -782,9 +797,9 @@ void of::vk::Context::updateDescriptorSets( const std::vector<size_t>& setIndice
 				writeDescriptorSets.push_back( std::move( tmpDescriptorSet ) );
 			} else if ( VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER == descriptorInfo->type ){
 
-				auto & texture = mCurrentFrameState.mUniformImages[descriptorInfo->name];
-
-				//!TODO: link in image info.
+				auto & texture = mCurrentFrameState.mUniformTextures[descriptorInfo->name];
+				
+				//!TODO: implement texture arrays, which means dstArrayElement needs to be updated, too.
 				VkDescriptorImageInfo tmpImageInfo{
 					texture->getVkSampler(),  	                               // VkSampler        sampler;
 					texture->getVkImageView(),                                 // VkImageView      imageView;
@@ -851,15 +866,16 @@ void of::vk::Context::bindPipeline( const VkCommandBuffer & cmd ){
 		mPipelineLayoutState.vkDescriptorSets.resize( layouts.size(), nullptr );
 		mPipelineLayoutState.bindingState.resize( layouts.size() );
 
-		bool foundIncompatible = false; // invalidate all set bindings after and including first incompatible set
+		// invalidate all set bindings after and including first incompatible set
+		bool foundIncompatible = false; 
 		for ( size_t i = 0; i != layouts.size(); ++i ){
-			if ( mPipelineLayoutState.setLayoutKeys[i] != layouts[i]
-				|| foundIncompatible ){
+			//if ( mPipelineLayoutState.setLayoutKeys[i] != layouts[i]
+			//	|| foundIncompatible ){
 				mPipelineLayoutState.setLayoutKeys[i] = layouts[i];
 				mPipelineLayoutState.vkDescriptorSets[i] = nullptr;
 				mPipelineLayoutState.dirtySetIndices.push_back( i );
 				foundIncompatible = true;
-			}
+			//}
 		}
 
 		// Bind the rendering pipeline (including the shaders)

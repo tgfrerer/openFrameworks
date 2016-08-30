@@ -136,8 +136,8 @@ private:
 
 		// but one uniform can only belong to one binding.
 
-		UboStack* buffer;     // this points to the buffer that will be affected by this binding - there is one buffer for each binding  - 
-									// this is the index into the bufferOffsets vector for the shader layout this binding belongs to.
+		UboStack* buffer;     // this points to the buffer that will be affected by this binding - there is one buffer for each binding,
+		                      // this is the index into the bufferOffsets vector for the shader layout this binding belongs to.
 
 		uint32_t offset;
 		uint32_t range;
@@ -162,7 +162,7 @@ private:
 		// --- non-dynamic state
 
 		// map from texture name to texture
-		std::map<std::string, std::shared_ptr<of::vk::Texture>> mUniformImages;
+		std::map<std::string, std::shared_ptr<of::vk::Texture>> mUniformTextures;
 
 		// whether frame state has to be rebuilt
 		bool initialised = false; 
@@ -178,7 +178,7 @@ private:
 	
 	// --------- pipeline info
 
-	// !TODO: pipeline cache should be shared over all contexts.
+	// TODO: pipeline cache should be shared over all contexts.
 	VkPipelineCache       mPipelineCache = nullptr;
 
 	// object which tracks current pipeline state
@@ -239,6 +239,9 @@ private:
 	// to allocate all descriptors enumerated in mDescriptorPoolSizes
 	void setupDescriptorPools();
 
+	// Reset descriptorPool for this frame - and if descriptorSets were created 
+	// for this frame using overspill descriptor pools, a new, consolidated 
+	// descriptorPool (capable of holding everything) is created.
 	void resetDescriptorPool( size_t frame_ );
 
 	// Map from pipeline state hash to VkPipeline object
@@ -344,7 +347,7 @@ public:
 		return *this;
 	}
 
-	Context& debugSetTexture( std::string name, std::shared_ptr<of::vk::Texture> tex );
+	Context& bindTexture( std::shared_ptr<of::vk::Texture> tex, const std::string & name);
 
 };
 
