@@ -54,6 +54,12 @@ void ofApp::setup(){
 	mVkTex = std::make_shared<of::vk::Texture>();
 	mVkTex->load( tmpImagePix );
 
+	ofLoadImage( tmpImagePix, "images/tulips.png" );
+
+	mVkTexAlt = std::make_shared<of::vk::Texture>();
+	mVkTexAlt->load( tmpImagePix );
+
+
 	// ---------- end texture loading
 
 	auto & renderer = dynamic_pointer_cast<ofVkRenderer>( ofGetCurrentRenderer() );
@@ -157,7 +163,7 @@ void ofApp::drawModeExplicit(){
 	context
 		.pushMatrix()
 		.translate( { 0,0,-10 } )
-		.debugSetTexture( "tex_0", mVkTex )
+		.bindTexture(  mVkTex, "tex_0" )
 		.setUniform( "globalColor", ofFloatColor::white )
 		.setShader( mShaderTextured )
 		.setPolyMode( VK_POLYGON_MODE_FILL )
@@ -165,14 +171,15 @@ void ofApp::drawModeExplicit(){
 		.popMatrix();
 
 	context
-		.setUniform( "globalColor", ofFloatColor::lightBlue )
-		.setShader( mShaderDefault )
 		.pushMatrix()
+		.setUniform( "globalColor", ofFloatColor::lightBlue )
+		.bindTexture( mVkTexAlt, "tex_0" )
 		.translate( { -200, +200, 100 } )
-		.draw(cmd, ico)
+		.draw( cmd, rect )
 		.popMatrix();
 
 	context
+		.setShader( mShaderDefault )
 		.setPolyMode( VK_POLYGON_MODE_LINE )
 		.pushMatrix()
 		.setUniform( "globalColor", ofFloatColor::white )

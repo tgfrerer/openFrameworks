@@ -18,6 +18,7 @@ class ofApp : public ofBaseApp{
 	std::shared_ptr<of::vk::Shader>  mShaderTextured;
 	
 	std::shared_ptr<of::vk::Texture> mVkTex;
+	std::shared_ptr<of::vk::Texture> mVkTexAlt;
 
 	public:
 		void setup();
