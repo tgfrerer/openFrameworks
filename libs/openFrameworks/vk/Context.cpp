@@ -499,15 +499,11 @@ of::vk::Context & of::vk::Context::bindTexture( std::shared_ptr<of::vk::Texture>
 
 void of::vk::Context::flushUniformBufferState(){
 
-
-	// iterate over all currently bound descriptorsets
-	// as descriptorsetbindings overspill, we can just accumulate all offsets
-	// provided they are in the current order.
-
 	std::vector<uint32_t> currentOffsets;
 
-	// Lazily store data to GPU memory for dynamic ubo bindings
-	// + If data has not changed, just store previous offset into offsetList
+	// Lazily store data to GPU memory for dynamic ubo bindings,
+	// and update current Frame State bindingOffsets -
+	// If data has not changed, return previous bindingOffsets.
 
 	for ( const auto& bindingTable : mPipelineLayoutState.bindingState ){
 		// bindingState is a vector of binding tables: each binding table
@@ -640,10 +636,10 @@ void of::vk::Context::updateDescriptorSetState(){
 
 				// Allocation failed. 
 
-				ofLogWarning() << "Failed to allocate descriptors - Creating & allocating from overspill pool.";
+				ofLogNotice() << "Failed to allocate descriptors - Creating & allocating from overspill pool.";
 
-				// To still be able to allocate, we need to create a new pool, and allocate descriptors from the 
-				// new pool:
+				// To still be able to allocate, we need to create a new pool, 
+				// and allocate descriptors from the new pool:
 
 				auto &poolSizes = mShaderManager->getDescriptorPoolSizesForSetLayout( descriptorSetLayoutHash );
 
@@ -862,20 +858,21 @@ void of::vk::Context::bindPipeline( const VkCommandBuffer & cmd ){
 		mCurrentVkPipeline = mVkPipelines[pipelineHash];
 
 		mPipelineLayoutState.setLayoutKeys.resize( layouts.size(), 0 );
+		mPipelineLayoutState.bindingState.resize( layouts.size() );
 		mPipelineLayoutState.dirtySetIndices.reserve( layouts.size() );
 		mPipelineLayoutState.vkDescriptorSets.resize( layouts.size(), nullptr );
-		mPipelineLayoutState.bindingState.resize( layouts.size() );
 
-		// invalidate all set bindings after and including first incompatible set
-		bool foundIncompatible = false; 
+		// Note that we invalidate all sets eagerly, so that in the next step
+		// descriptorsets will either get loaded from the cache or, if 
+		// cache miss, allocated. 
+		
+		// Binding a texture will have invalidated all cached descriptorSets 
+		// which reference the texture, so we are guaranteed that new 
+		// descriptors are allocated for the changed texture bindings.
+
 		for ( size_t i = 0; i != layouts.size(); ++i ){
-			//if ( mPipelineLayoutState.setLayoutKeys[i] != layouts[i]
-			//	|| foundIncompatible ){
 				mPipelineLayoutState.setLayoutKeys[i] = layouts[i];
-				mPipelineLayoutState.vkDescriptorSets[i] = nullptr;
 				mPipelineLayoutState.dirtySetIndices.push_back( i );
-				foundIncompatible = true;
-			//}
 		}
 
 		// Bind the rendering pipeline (including the shaders)

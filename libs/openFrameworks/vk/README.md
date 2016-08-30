@@ -144,17 +144,68 @@ engines and advice from presentations given by Vulkan driver writers.
 
 ## Context
 
-To allow rendering using similar techniques as in old-style OpenGL
-immediate mode and to make experimenting more fun, there is a Context 
-class which is responsible to deal with tracking drawing state and to
-translate this into meaningful Vulkan Command buffers and pipeline
-changes.
+Context tracks pipeline and dynamic drawing state - and helps keeping track of memory, descriptors and shaders. The aim for Context should be to provide a friendly environment to quickly prototype drawing using vulkan.
 
-Context also has a matrix stack, which makes it possible to use the
-familiar ofPush/ofPopMatrix methods here.
+You'll find an example on how to use a more explicit, faster, and more powerful drawing syntax in the `testVk` directory, under [apps/devApps/testVk](https://github.com/openframeworks-vk/openFrameworks/apps/devApps/testVk/src/ofApp.cpp#L163). 
 
-The aim for Context should be to provide a friendly environment to
-quickly prototype drawing using vulkan.
+Context is initialised with a list of shaders. Only these shaders can then be used to draw within the Context. When a Context begins, the first shader that was added to the Context is bound automatically as the default shader. Shaders stay bound to the Context until another shader is bound or the Context is ended.
+
+Most Context methods return a reference to the Context itself, which makes them chainable. You can therefore write code like this:
+
+  context
+    .pushMatrix()
+    .translate( { 0,0,-10 } )
+    .bindTexture(  mVkTex, "tex_0" )
+    .setUniform( "globalColor", ofFloatColor::white )
+    .setShader( mShaderTextured )
+    .setPolyMode( VK_POLYGON_MODE_FILL )
+    .draw( cmd, rect )
+    .popMatrix();
+
+
+UBO ("Uniform Buffer Object") bindings inside shaders are shared inside the Context, if they have the same name across shader files.
+
+Shared UBOs must match types and numbers of members, or `Context` will return an error message when analysing the shaders.
+
+Context allows you to set values for uniform buffer object members, such as: 
+
+    context.setUniform( "globalColor", ofFloatColor::white );
+
+Where `globalColor` is a vec4 member inside the shader UBO named `Style`: 
+
+    //glsl shader code: 
+
+    layout (set = 0, binding = 1) uniform Style
+    {
+      vec4 globalColor;
+    };
+
+Note that the same member can be addressed as: 
+
+    context.setUniform( "Style.globalColor", ofFloatColor::white );
+
+Context will auto-detect if the type you pass using the setUniform method is compatible with the shader uniform.
+
+To retrieve the current value of a uniform member variable call: 
+
+    ofFloatColor currentColor = context.getUniform<ofFloatColor>( "Style.globalColor");
+
+Note that this is a templated call.
+
+Uniform members keep their value for as long as the context remains open, that is, until Context::end() is called. 
+
+Uniform members can be `pushed` and `popped` on stacks using `Context`. To push the UBO containing the current matrix state, call:
+
+    pushBuffer( "DefaultMatrices" );
+
+Or, simply, `Context::pushMatrix()`.
+
+And
+
+    popBuffer( "DefaultMatrices" );
+
+will restore the state of all UBO members attached to `DefaultMatrices`.
+
 
 ----------------------------------------------------------------------
 
@@ -183,19 +234,11 @@ Most cards without special VRAM such as Intel integrated cards are perfectly hap
 
 ## SPIR-V Cross
 
-Vulkan introduces a new intermediary shader language, SPIR-V. Vulkan only accepts SPIR-V as shader language. SPIR-V
-files come precompiled, as a blob of 32bit words.
+Vulkan introduces a new intermediary shader language, SPIR-V. Vulkan only accepts SPIR-V as shader language. SPIR-V files come precompiled, as a blob of 32bit words.
 
-You generate these from GLSL source using the
-`glslLangValidator`, part of the Vulkan SDK. There is also a Google
-sponsored tool out there, `shaderc` which does more or less the same
-thing, but is slightly more powerful when it comes to parsing include
-files. It's likely that other front-ends will be added to SPIR-V, and
-you might be able to write shader code in a number of other languages,
-that will compile down to SPIR-V. So SPIR-V is what any shader
-language eventually boils down to.
+You can generate SPIR-V from GLSL source using the `glslLangValidator`, which is part of the Vulkan SDK. 
 
-Spir-V Cross, a new static dependency added to openFrameworks/vk
+Spir-V Cross, which is included in source within openFrameworks/vk,
 allows us to do reflection at runtime on these shader programs. This
 makes it possible to derive our pipeline binding points much less
 painfully, and on the fly.
@@ -203,11 +246,15 @@ painfully, and on the fly.
 It could also allow us to cross-compile spirv shader code to GLSL or
 even .cpp if we wanted, which is pretty nifty.
 
-Currently spir-v cross is provided as a static windows 64 bit lib for
-release and debug taragets. It's worth investigating to create an
-apothecary recipe to generate a dynamic library (one lib for debug
-*and* release) which would make it possible to track development of
-SPIR-V cross more closely.
+----------------------------------------------------------------------
+
+## ShaderC
+
+To compile glsl shader code into SPIR-V, we include shaderc, a static library which is the reference GLSL shader compiler with some helpers and syntactic sugar added by Google, who maintain this project. 
+
+There is a recipe for shaderc included in `https://github.com/openframeworks-vk/apothecary`. The recipe file contains hints in the comments on the command line parameters to invoke on the recipe depending on the target operating system.
+
+This allows us to ingest shaders as GLSL, and to print out error messages if there was a compilation error. If there was a compilation error, `vk::Shader` will print out the context of the offending line alongside the compilation message. If a previous version of the shader compiled successfully, shader compilation aborts at this point, and the previous shader is used for rendering until the new version compiles successfully. This helps when prototyping. 
 
 ----------------------------------------------------------------------
 
@@ -243,7 +290,7 @@ ofMatrix4x4 clip(1.0f,  0.0f, 0.0f, 0.0f,
 - [x] Add vertex color support
 - [x] Add support for drawing wireframes (part of default pipeline generation)
 - [x] Dynamically derive pipelines from render states such as POLYGON_MODE, BLENDING_MODE etc.
-- [ ] Texture support
+- [X] Texture support
 - [X] Shader: compile from glsl
 - [ ] Shader: add "#pragma parameter" sugar
 - [X] Shader: auto-recompile from GLSL on change
