@@ -146,21 +146,21 @@ engines and advice from presentations given by Vulkan driver writers.
 
 Context tracks pipeline and dynamic drawing state - and helps keeping track of memory, descriptors and shaders. The aim for Context should be to provide a friendly environment to quickly prototype drawing using vulkan.
 
-You'll find an example on how to use a more explicit, faster, and more powerful drawing syntax in the `testVk` directory, under [apps/devApps/testVk](https://github.com/openframeworks-vk/openFrameworks/apps/devApps/testVk/src/ofApp.cpp#L163). 
+You'll find an example on how to use a more explicit, faster, and more powerful drawing syntax in the `testVk` directory, under [apps/devApps/testVk](https://github.com/openframeworks-vk/openFrameworks/blob/vk/apps/devApps/testVk/src/ofApp.cpp#L163). 
 
 Context is initialised with a list of shaders. Only these shaders can then be used to draw within the Context. When a Context begins, the first shader that was added to the Context is bound automatically as the default shader. Shaders stay bound to the Context until another shader is bound or the Context is ended.
 
 Most Context methods return a reference to the Context itself, which makes them chainable. You can therefore write code like this:
 
-  context
-    .pushMatrix()
-    .translate( { 0,0,-10 } )
-    .bindTexture(  mVkTex, "tex_0" )
-    .setUniform( "globalColor", ofFloatColor::white )
-    .setShader( mShaderTextured )
-    .setPolyMode( VK_POLYGON_MODE_FILL )
-    .draw( cmd, rect )
-    .popMatrix();
+    context
+      .pushMatrix()
+      .translate( { 0,0,-10 } )
+      .bindTexture(  mVkTex, "tex_0" )
+      .setUniform( "globalColor", ofFloatColor::white )
+      .setShader( mShaderTextured )
+      .setPolyMode( VK_POLYGON_MODE_FILL )
+      .draw( cmd, rect )
+      .popMatrix();
 
 
 UBO ("Uniform Buffer Object") bindings inside shaders are shared inside the Context, if they have the same name across shader files.
