@@ -83,7 +83,7 @@ private:
 	const shared_ptr<ShaderManager>& mShaderManager = mSettings.shaderManager;
 
 	// allocator used for dynamic data
-	shared_ptr<of::vk::Allocator> mAlloc;
+	unique_ptr<of::vk::Allocator> mAlloc;
 
 	// -----------	Frame state CPU memory backing
 

@@ -54,7 +54,7 @@ void of::vk::Context::setup( ofVkRenderer* renderer_ ){
 	settings.frames = uint32_t( mSettings.numVirtualFrames );
 	settings.size = ( 2UL << 24 ) * settings.frames;  // (16 MB * number of swapchain images)
 
-	mAlloc = std::make_shared<of::vk::Allocator>( settings );
+	mAlloc = std::make_unique<of::vk::Allocator>( settings );
 	mAlloc->setup();
 
 	if ( mSettings.numVirtualFrames > 64 ){
