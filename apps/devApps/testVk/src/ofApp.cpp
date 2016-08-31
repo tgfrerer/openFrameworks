@@ -174,7 +174,7 @@ void ofApp::drawModeExplicit(){
 		.pushMatrix()
 		.setUniform( "globalColor", ofFloatColor::lightBlue )
 		.bindTexture( mVkTexAlt, "tex_0" )
-		.translate( { -200, +200, 100 } )
+		.translate( { -200, +200, -400 } )
 		.draw( cmd, rect )
 		.popMatrix();
 
