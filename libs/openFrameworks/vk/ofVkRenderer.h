@@ -12,8 +12,14 @@
 #include "vk/Context.h"
 #include "ofMesh.h"
 
+
+#define RENDERER_FUN_NOT_IMPLEMENTED {                  \
+	ofLog() << __FUNCTION__  ": not yet implemented.";\
+};                                                      \
+
+
 class ofShapeTessellation;
-//class ofMesh;
+
 
 namespace of{
 namespace vk{
@@ -70,25 +76,26 @@ public:
 
 	const VkRenderPass& getDefaultRenderPass();
 
-	virtual void draw( const ofPolyline & poly ) const{};
-	virtual void draw( const ofPath & shape ) const{};
+	virtual void draw( const ofPolyline & poly )const RENDERER_FUN_NOT_IMPLEMENTED;
+	virtual void draw( const ofPath & shape ) const RENDERER_FUN_NOT_IMPLEMENTED;
 	virtual void draw( const ofMesh & vertexData, ofPolyRenderMode renderType, bool useColors, bool useTextures, bool useNormals ) const;
-	virtual void draw( const of3dPrimitive& model, ofPolyRenderMode renderType ) const{};
-	virtual void draw( const ofNode& model ) const{};
-	virtual void draw( const ofImage & image, float x, float y, float z, float w, float h, float sx, float sy, float sw, float sh ) const{};
-	virtual void draw( const ofFloatImage & image, float x, float y, float z, float w, float h, float sx, float sy, float sw, float sh ) const{};
-	virtual void draw( const ofShortImage & image, float x, float y, float z, float w, float h, float sx, float sy, float sw, float sh ) const{};
-	virtual void draw( const ofBaseVideoDraws & video, float x, float y, float w, float h ) const{};
+	virtual void draw( const of3dPrimitive& model, ofPolyRenderMode renderType ) const RENDERER_FUN_NOT_IMPLEMENTED;
+	virtual void draw( const ofNode& model ) const RENDERER_FUN_NOT_IMPLEMENTED;
+	virtual void draw( const ofImage & image, float x, float y, float z, float w, float h, float sx, float sy, float sw, float sh ) const RENDERER_FUN_NOT_IMPLEMENTED;
+	virtual void draw( const ofFloatImage & image, float x, float y, float z, float w, float h, float sx, float sy, float sw, float sh ) const RENDERER_FUN_NOT_IMPLEMENTED;
+	virtual void draw( const ofShortImage & image, float x, float y, float z, float w, float h, float sx, float sy, float sw, float sh ) const RENDERER_FUN_NOT_IMPLEMENTED;
+	virtual void draw( const ofBaseVideoDraws & video, float x, float y, float w, float h ) const RENDERER_FUN_NOT_IMPLEMENTED;
 
-	virtual void pushView(){};
-	virtual void popView(){};
+	virtual void pushView() RENDERER_FUN_NOT_IMPLEMENTED;
+	virtual void popView()  RENDERER_FUN_NOT_IMPLEMENTED;
 
-	virtual void viewport( ofRectangle viewport ){};
-	virtual void viewport( float x = 0, float y = 0, float width = -1, float height = -1, bool vflip = true ){};
+	virtual void viewport( ofRectangle viewport ) RENDERER_FUN_NOT_IMPLEMENTED;
+	virtual void viewport( float x = 0, float y = 0, float width = -1, float height = -1, bool vflip = true ) RENDERER_FUN_NOT_IMPLEMENTED;
 
-	virtual void setupScreenPerspective( float width = -1, float height = -1, float fov = 60, float nearDist = 0, float farDist = 0 ){};
-	virtual void setupScreenOrtho( float width = -1, float height = -1, float nearDist = -1, float farDist = 1 ){};
-	virtual void setOrientation( ofOrientation orientation, bool vFlip ){};
+	virtual void setupScreenPerspective( float width = -1, float height = -1, float fov = 60, float nearDist = 0, float farDist = 0 ) RENDERER_FUN_NOT_IMPLEMENTED;
+	virtual void setupScreenOrtho( float width = -1, float height = -1, float nearDist = -1, float farDist = 1 ) RENDERER_FUN_NOT_IMPLEMENTED;
+	
+	virtual void setOrientation( ofOrientation orientation, bool vFlip ) RENDERER_FUN_NOT_IMPLEMENTED;
 
 	virtual ofRectangle getCurrentViewport() const override;
 	virtual ofRectangle getNativeViewport() const override;
@@ -96,7 +103,7 @@ public:
 	virtual int getViewportHeight() const override;
 
 	virtual bool isVFlipped() const override;
-	virtual void setCoordHandedness( ofHandednessType handedness ){};
+	virtual void setCoordHandedness( ofHandednessType handedness ) RENDERER_FUN_NOT_IMPLEMENTED;
 	virtual ofHandednessType getCoordHandedness() const override;
 
 	virtual void pushMatrix() override;
@@ -105,27 +112,27 @@ public:
 	virtual glm::mat4x4 getCurrentMatrix( ofMatrixMode matrixMode_ ) const override;
 	virtual glm::mat4x4 getCurrentOrientationMatrix() const override;
 
-	virtual void translate( float x, float y, float z = 0 ){
-		translate( { x,y,z } );
-	};
+	virtual void translate( float x, float y, float z = 0 );;
+
 	virtual void translate( const glm::vec3& p );
-	virtual void scale( float xAmnt, float yAmnt, float zAmnt = 1 ){};
+	virtual void scale( float xAmnt, float yAmnt, float zAmnt = 1 ) RENDERER_FUN_NOT_IMPLEMENTED;
+
 	virtual void rotateRad( float degrees, float axisX, float axisY, float axisZ ) override;
 	virtual void rotateXRad( float degrees ) override;
 	virtual void rotateYRad( float degrees ) override;
 	virtual void rotateZRad( float degrees ) override;
 	virtual void rotateRad( float degrees ) override;
 
-	virtual void matrixMode( ofMatrixMode mode ){};
+	virtual void matrixMode( ofMatrixMode mode ) RENDERER_FUN_NOT_IMPLEMENTED;
 
 
-	virtual void loadMatrix( const glm::mat4x4 & m ){};
-	virtual void loadMatrix( const float *m ){};
-	virtual void loadIdentityMatrix( void ){};
-	virtual void loadViewMatrix( const glm::mat4x4 & m ){};
-	virtual void multViewMatrix( const glm::mat4x4 & m ){};
-	virtual void multMatrix( const glm::mat4x4 & m ){};
-	virtual void multMatrix( const float *m ){};
+	virtual void loadMatrix( const glm::mat4x4 & m ) RENDERER_FUN_NOT_IMPLEMENTED;
+	virtual void loadMatrix( const float *m ) RENDERER_FUN_NOT_IMPLEMENTED;
+	virtual void loadIdentityMatrix( void ) RENDERER_FUN_NOT_IMPLEMENTED;
+	virtual void loadViewMatrix( const glm::mat4x4 & m )RENDERER_FUN_NOT_IMPLEMENTED;
+	virtual void multViewMatrix( const glm::mat4x4 & m )RENDERER_FUN_NOT_IMPLEMENTED;
+	virtual void multMatrix( const glm::mat4x4 & m )RENDERER_FUN_NOT_IMPLEMENTED;
+	virtual void multMatrix( const float *m )RENDERER_FUN_NOT_IMPLEMENTED;
 
 	virtual glm::mat4x4 getCurrentViewMatrix() const override;
 	virtual glm::mat4x4 getCurrentNormalMatrix() const override;
@@ -133,11 +140,11 @@ public:
 	virtual void bind( const ofCamera & camera, const ofRectangle & viewport );
 	virtual void unbind( const ofCamera & camera );
 
-	virtual void setupGraphicDefaults(){};
-	virtual void setupScreen(){};
+	virtual void setupGraphicDefaults()RENDERER_FUN_NOT_IMPLEMENTED;
+	virtual void setupScreen()RENDERER_FUN_NOT_IMPLEMENTED;
 	void resizeScreen( int w, int h );
 
-	virtual void setRectMode( ofRectMode mode ){};
+	virtual void setRectMode( ofRectMode mode )RENDERER_FUN_NOT_IMPLEMENTED;
 
 	virtual ofRectMode getRectMode() override;
 
@@ -145,60 +152,58 @@ public:
 
 	virtual ofFillFlag getFillMode() override;
 
-	virtual void setLineWidth( float lineWidth ){};
-	virtual void setDepthTest( bool depthTest ){};
+	virtual void setLineWidth( float lineWidth ) RENDERER_FUN_NOT_IMPLEMENTED;
+	virtual void setDepthTest( bool depthTest ) RENDERER_FUN_NOT_IMPLEMENTED;
 
-	virtual void setBlendMode( ofBlendMode blendMode ){};
-	virtual void setLineSmoothing( bool smooth ){};
+	virtual void setBlendMode( ofBlendMode blendMode )RENDERER_FUN_NOT_IMPLEMENTED;
+	virtual void setLineSmoothing( bool smooth ) RENDERER_FUN_NOT_IMPLEMENTED;
 
-	virtual void setCircleResolution( int res ){};
-	virtual void enableAntiAliasing(){};
-	virtual void disableAntiAliasing(){};
+	virtual void setCircleResolution( int res ) RENDERER_FUN_NOT_IMPLEMENTED;
+	virtual void enableAntiAliasing() RENDERER_FUN_NOT_IMPLEMENTED;
+	virtual void disableAntiAliasing() RENDERER_FUN_NOT_IMPLEMENTED;
 
-	virtual void setColor( int r, int g, int b ){};
-	virtual void setColor( int r, int g, int b, int a ){
-		setColor( ofColor( r, g, b, a ));
-	};
+	virtual void setColor( int r, int g, int b );
+	virtual void setColor( int r, int g, int b, int a );
 	virtual void setColor( const ofColor & color );
-	virtual void setColor( const ofColor & color, int _a ){};
-	virtual void setColor( int gray ){};
-	virtual void setHexColor( int hexColor ){};
+	virtual void setColor( const ofColor & color, int _a );
+	virtual void setColor( int gray );
+	virtual void setHexColor( int hexColor );;
 
-	virtual void setBitmapTextMode( ofDrawBitmapMode mode ){};
+	virtual void setBitmapTextMode( ofDrawBitmapMode mode ) RENDERER_FUN_NOT_IMPLEMENTED;
 
 	virtual ofColor getBackgroundColor() override;
-	virtual void setBackgroundColor( const ofColor & c ){};
+	virtual void setBackgroundColor( const ofColor & c ) RENDERER_FUN_NOT_IMPLEMENTED;
 
-	virtual void background( const ofColor & c ){};
-	virtual void background( float brightness ){};
-	virtual void background( int hexColor, float _a = 255.0f ){};
-	virtual void background( int r, int g, int b, int a = 255 ){};
-	virtual void setBackgroundAuto( bool bManual ){};
+	virtual void background( const ofColor & c ) RENDERER_FUN_NOT_IMPLEMENTED;
+	virtual void background( float brightness ) RENDERER_FUN_NOT_IMPLEMENTED;
+	virtual void background( int hexColor, float _a = 255.0f ) RENDERER_FUN_NOT_IMPLEMENTED;
+	virtual void background( int r, int g, int b, int a = 255 ) RENDERER_FUN_NOT_IMPLEMENTED;
+	virtual void setBackgroundAuto( bool bManual ) RENDERER_FUN_NOT_IMPLEMENTED;
 
 	virtual bool getBackgroundAuto() override;
 
-	virtual void clear(){};
-	virtual void clear( float r, float g, float b, float a = 0 ){};
-	virtual void clear( float brightness, float a = 0 ){};
-	virtual void clearAlpha(){};
+	virtual void clear() RENDERER_FUN_NOT_IMPLEMENTED;
+	virtual void clear( float r, float g, float b, float a = 0 ) RENDERER_FUN_NOT_IMPLEMENTED;
+	virtual void clear( float brightness, float a = 0 ) RENDERER_FUN_NOT_IMPLEMENTED;
+	virtual void clearAlpha() RENDERER_FUN_NOT_IMPLEMENTED;
 
-	virtual void drawLine( float x1, float y1, float z1, float x2, float y2, float z2 ) const{};
+	virtual void drawLine( float x1, float y1, float z1, float x2, float y2, float z2 ) const RENDERER_FUN_NOT_IMPLEMENTED;
 	virtual void drawRectangle( float x, float y, float z, float w, float h ) const;
-	virtual void drawTriangle( float x1, float y1, float z1, float x2, float y2, float z2, float x3, float y3, float z3 ) const{};
-	virtual void drawCircle( float x, float y, float z, float radius ) const{};
-	virtual void drawEllipse( float x, float y, float z, float width, float height ) const{};
-	virtual void drawString( string text, float x, float y, float z ) const{};
-	virtual void drawString( const ofTrueTypeFont & font, string text, float x, float y ) const{};
+	virtual void drawTriangle( float x1, float y1, float z1, float x2, float y2, float z2, float x3, float y3, float z3 ) const RENDERER_FUN_NOT_IMPLEMENTED;
+	virtual void drawCircle( float x, float y, float z, float radius ) const RENDERER_FUN_NOT_IMPLEMENTED;
+	virtual void drawEllipse( float x, float y, float z, float width, float height ) const RENDERER_FUN_NOT_IMPLEMENTED;
+	virtual void drawString( string text, float x, float y, float z ) const RENDERER_FUN_NOT_IMPLEMENTED;
+	virtual void drawString( const ofTrueTypeFont & font, string text, float x, float y ) const RENDERER_FUN_NOT_IMPLEMENTED;
 
 	virtual ofPath & getPath() override;
 	virtual ofStyle getStyle() const override;
-	virtual void setStyle( const ofStyle & style ){};
-	virtual void pushStyle(){};
-	virtual void popStyle(){};
+	virtual void setStyle( const ofStyle & style ) RENDERER_FUN_NOT_IMPLEMENTED;
+	virtual void pushStyle() RENDERER_FUN_NOT_IMPLEMENTED;
+	virtual void popStyle() RENDERER_FUN_NOT_IMPLEMENTED;
 
-	virtual void setCurveResolution( int resolution ){};
+	virtual void setCurveResolution( int resolution ) RENDERER_FUN_NOT_IMPLEMENTED;
 
-	virtual void setPolyMode( ofPolyWindingMode mode ){};
+	virtual void setPolyMode( ofPolyWindingMode mode ) RENDERER_FUN_NOT_IMPLEMENTED;
 
 	virtual const of3dGraphics & get3dGraphics() const override;
 	virtual of3dGraphics & get3dGraphics() override;
@@ -240,52 +245,33 @@ public:
 
 	// return handle to renderer's vkDevice
 	// CONSIDER: error checking for when device has not been aqcuired yet.
-	const VkDevice& getVkDevice() const{
-		return mDevice;
-	};
+	const VkDevice& getVkDevice() const;
 
-	const VkPhysicalDeviceProperties& getVkPhysicalDeviceProperties() const {
-		return mPhysicalDeviceProperties;
-	}
+	const VkPhysicalDeviceProperties& getVkPhysicalDeviceProperties() const;
 
 	// get memory allocation info for best matching memory type that matches any of the type bits and flags
 	bool  getMemoryAllocationInfo( const VkMemoryRequirements& memReqs, VkFlags memProps, VkMemoryAllocateInfo& memInfo ) const;
 
-	// testing
+	// get draw command pool
+	const VkCommandPool& getCommandPool() const;
 
-	const VkCommandPool& getCommandPool() const {
-		return mDrawCommandPool;
-	}
+	// get draw command buffer
+	const VkCommandBuffer& getCurrentDrawCommandBuffer() const;
 
-	const VkCommandBuffer& getCurrentDrawCommandBuffer() const {
-		if ( mFrameIndex < mFrameResources.size() ){
-			return mFrameResources[mFrameIndex].cmd;
-		} else{
-			static VkCommandBuffer errorCmdBuffer = nullptr;
-			ofLogError() << "No current draw command buffer";
-			return errorCmdBuffer;
-		}
-	}
+	// get current draw queue (careful: access is not thread-safe!)
+	const VkQueue& getQueue() const;
 
-	const VkQueue& getQueue() const {
-		return mQueue;
-	}
+	const shared_ptr<of::vk::Context>& getDefaultContext();
 
-	const shared_ptr<of::vk::Context>& getDefaultContext(){
-		return mDefaultContext;
-	}
+	void setDefaultContext( std::shared_ptr<of::vk::Context>& defaultContext );
 
-	void setDefaultContext( std::shared_ptr<of::vk::Context>& defaultContext){
-		mDefaultContext = defaultContext;
-	}
+	shared_ptr<of::vk::ShaderManager>& getShaderManager();
 
-	shared_ptr<of::vk::ShaderManager>& getShaderManager(){
-		return mShaderManager;
-	}
-
-	const size_t getVirtualFramesCount(){
-		return mFrameResources.size();
-	}
+	// Return number of virtual frames (n.b. that's not swapchain frames) for this renderer
+	// virtual frames are frames that are produced and submitted to the swapchain.
+	// Once submitted, they are re-used as soon as their respective fence signals that
+	// they have finished rendering.
+	const size_t getVirtualFramesCount();
 
 private:
 
@@ -369,3 +355,77 @@ public:
 
 	friend class of::vk::Context;
 };
+
+// ----------------------------------------------------------------------
+// inline methods
+
+inline const VkDevice& ofVkRenderer::getVkDevice() const{
+	return mDevice;
+};
+
+inline const VkPhysicalDeviceProperties& ofVkRenderer::getVkPhysicalDeviceProperties() const{
+	return mPhysicalDeviceProperties;
+}
+
+inline const shared_ptr<of::vk::Context>& ofVkRenderer::getDefaultContext(){
+	return mDefaultContext;
+}
+
+inline void ofVkRenderer::setDefaultContext( std::shared_ptr<of::vk::Context>& defaultContext ){
+	mDefaultContext = defaultContext;
+}
+
+inline shared_ptr<of::vk::ShaderManager>& ofVkRenderer::getShaderManager(){
+	return mShaderManager;
+}
+
+inline const size_t ofVkRenderer::getVirtualFramesCount(){
+	return mFrameResources.size();
+}
+
+inline const VkCommandPool& ofVkRenderer::getCommandPool() const{
+	return mDrawCommandPool;
+}
+
+inline const VkCommandBuffer& ofVkRenderer::getCurrentDrawCommandBuffer() const{
+	if ( mFrameIndex < mFrameResources.size() ){
+		return mFrameResources[mFrameIndex].cmd;
+	} else{
+		static VkCommandBuffer errorCmdBuffer = nullptr;
+		ofLogError() << "No current draw command buffer";
+		return errorCmdBuffer;
+	}
+}
+
+inline const VkQueue& ofVkRenderer::getQueue() const{
+	return mQueue;
+}
+
+
+
+inline void ofVkRenderer::translate( float x, float y, float z ){
+	translate( { x,y,z } );
+}
+
+inline void ofVkRenderer::setColor( int r, int g, int b ){
+	setColor( ofColor( r, g, b, 255.f ) );
+}
+
+inline void ofVkRenderer::setColor( int r, int g, int b, int a ){
+	setColor( ofColor( r, g, b, a ) );
+}
+inline void ofVkRenderer::setColor( const ofColor & color, int _a ){
+	setColor( ofColor( color.r, color.g, color.b, _a ) );
+}
+
+inline void ofVkRenderer::setColor( int gray ){
+	setColor( ofColor( gray ) );
+}
+
+inline void ofVkRenderer::setHexColor( int hexColor ){
+	setColor( ofColor::fromHex( hexColor ) );
+}
+
+// ----------------------------------------------------------------------
+// clean up macros
+#undef RENDERER_FUN_NOT_IMPLEMENTED
