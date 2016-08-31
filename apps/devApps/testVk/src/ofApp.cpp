@@ -62,7 +62,7 @@ void ofApp::setup(){
 
 	// ---------- end texture loading
 
-	auto & renderer = dynamic_pointer_cast<ofVkRenderer>( ofGetCurrentRenderer() );
+	const auto & renderer = dynamic_pointer_cast<ofVkRenderer>( ofGetCurrentRenderer() );
 
 	{   // initialise shaders from GLSL
 
@@ -151,7 +151,7 @@ void ofApp::draw(){
 
 void ofApp::drawModeExplicit(){
 	
-	auto & renderer = dynamic_pointer_cast<ofVkRenderer>( ofGetCurrentRenderer() );
+	const auto & renderer = dynamic_pointer_cast<ofVkRenderer>( ofGetCurrentRenderer() );
 	auto & context  = *renderer->getDefaultContext();
 	auto & cmd      = renderer->getCurrentDrawCommandBuffer();
 
