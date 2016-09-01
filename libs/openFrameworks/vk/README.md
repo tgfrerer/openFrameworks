@@ -1,7 +1,7 @@
 
 # Experimental Renderer using the Vulkan API
 
-This renderer is more than experimental. Expect everything to change
+This renderer is experimental. Expect things to change without warning
 all the time. Send pull requests to influence what changes.
 
 ## Switch between GL and VK rendering mode
@@ -27,11 +27,16 @@ modifications.
 
 ### Install the Vulkan SDK from LunarG
 
-	* download from: https://vulkan.lunarg.com
-	* [win] run installer to install sdk
-	* [win] install VulkanRT from RunTimeInstaller
+Download the matching SDK for your system from: https://vulkan.lunarg.com
 
-#### Troubleshooting: [windows, sdk 1.0.21.1] 
+#### Windows 
+
+* Run the installer .exe to install the SDK. 
+* Check if the vulkan runtime installed successfully.
+
+This installer should have automatically installed VulkanRT, which is the Vulkan runtime. If not, check out the toubleshooting section.
+	
+##### Troubleshooting: [windows, sdk 1.0.21.1] 
 
 Check VulkanRT install- I ran into a repeated issue with the powershell script included with the VulkanRT installer failing to execute. This script, `.\ConfigLayersAndVulkanDLL.ps1` is responsible for setting up some registry values to tell the Vulkan loader where to find the validation layers. I found that manually executing the script twice (first run fails) using an Admin Powershell console helped. 
 
@@ -40,6 +45,24 @@ Check VulkanRT install- I ran into a repeated issue with the powershell script i
     # and then again!
     .\ConfigLayersAndVulkanDLL.ps1 1 64
     # this time there should be no errors.
+
+#### Linux 
+
+* Run the SDK archive package - it will expand into a folder, 
+* Copy it into `~/sdks/VulkanSDK`
+
+Now you will need to set some runtime variables for debug programs so that the debug layers can be found. I'm using a shell script to set up these system-wide ENV variables. Note that you will have to replace the correct path to your latest vulkan sdk directory: 
+
+    # This script lives at: /etc/profile.d/vk-environment.sh
+    # Set VULKAN environment variables. 
+    export VULKAN_SDK=/home/tim/sdks/VulkanSDK/1.0.21.1/x86_64  # <-- replace with your own path to VK_SDK here
+    export PATH="$VULKAN_SDK/bin:$PATH"
+    export LD_LIBRARY_PATH=$VULKAN_SDK/lib
+    export VK_LAYER_PATH=$VULKAN_SDK/etc/explicit_layer.d
+
+You might have to log out and back in again, for the variables to take effect. 
+
+Run `vulkaninfo` to see which version of the SDK you are running. (It will say it in the fist line.) 
 
 ### Clone apothecary
 
@@ -117,28 +140,10 @@ The idea is that you might want to prototype your app by slapping
 together some of these building blocks, and then, replacing some of
 these blocks (the ones that actually make a difference in speed, usability or aesthetics) with customised elements.
 
-Generators should exist for a whide range of common Vulkan objects which are ready to be used together or not at all if need be. Using these generators we can create a default renderer environment, the Context, which may function as a starting point for exploration.
+Generators should exist for a whide range of common Vulkan objects which are ready to be used together or not at all if need be. Using these generators we can create a default renderer environment, the Context, which can be a starting point for exploration.
 
 Advanced users will probably want to write their own scene graphs, renderer addons etc. Great! We should make sure that this is possible.
 
-So that the basic elements and helper methods inside
-openFrameworks/vk have maximum compatiblity with:
-
-1. each other, 
-2. the Vulkan Api, and 
-3. possible 3rd party middleware libraries, 
-
-any function returns and parameters aim to be *undecorated* Vulkan API
-types. Think of it as a C-style API. It's not super pretty and
-clever, but it's bound to work everywhere. And Dijkstra might be happy.
-
-This implies that the openFrameworks Vulkan middle layer will aim not to
-produce objects within shared pointers or even to encapsulate Vulkan
-objects with "helper" classes if it can be avoided.
-
-That said, `of::vk::Context`, an environment to simulate immediate mode 
-rendering aims to follow best practices learned from research into game 
-engines and advice from presentations given by Vulkan driver writers.  
 
 ----------------------------------------------------------------------
 
