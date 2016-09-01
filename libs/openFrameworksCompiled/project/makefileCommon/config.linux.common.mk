@@ -215,7 +215,7 @@ endif
 #   generation.
 #
 #   Each item in the PLATFORM_CORE_EXCLUSIONS list will be treated as a complete
-#   string unless teh user adds a wildcard (%) operator to match subdirectories.
+#   string unless the user adds a wildcard (%) operator to match subdirectories.
 #   GNU make only allows one wildcard for matching.  The second wildcard (%) is
 #   treated literally.
 #
@@ -257,7 +257,8 @@ PLATFORM_CORE_EXCLUSIONS += $(OF_LIBS_PATH)/glut/%
 PLATFORM_CORE_EXCLUSIONS += $(OF_LIBS_PATH)/rtAudio/%
 PLATFORM_CORE_EXCLUSIONS += $(OF_LIBS_PATH)/openssl/%
 PLATFORM_CORE_EXCLUSIONS += $(OF_LIBS_PATH)/boost/%
-PLATFORM_CORE_EXCLUSIONS += $(OF_LIBS_PATH)/glfw/%
+# PLATFORM_CORE_EXCLUSIONS += $(OF_LIBS_PATH)/glfw/%
+# PLATFORM_CORE_EXCLUSIONS += $(OF_LIBS_PATH)/shaderc/%
 
 ifeq ($(USE_FMOD),0)
 	PLATFORM_CORE_EXCLUSIONS += $(OF_LIBS_PATH)/fmodex/%
@@ -334,6 +335,7 @@ PLATFORM_STATIC_LIBRARIES += $(OF_LIBS_PATH)/poco/lib/$(ABI_LIB_SUBPATH)/libPoco
 PLATFORM_STATIC_LIBRARIES += $(OF_LIBS_PATH)/poco/lib/$(ABI_LIB_SUBPATH)/libPocoJSON.a
 PLATFORM_STATIC_LIBRARIES += $(OF_LIBS_PATH)/poco/lib/$(ABI_LIB_SUBPATH)/libPocoXML.a
 PLATFORM_STATIC_LIBRARIES += $(OF_LIBS_PATH)/poco/lib/$(ABI_LIB_SUBPATH)/libPocoFoundation.a
+PLATFORM_STATIC_LIBRARIES += $(OF_LIBS_PATH)/shaderc/lib/$(ABI_LIB_SUBPATH)/shaderc_combined.a
 
 # shared libraries 
 PLATFORM_SHARED_LIBRARIES =

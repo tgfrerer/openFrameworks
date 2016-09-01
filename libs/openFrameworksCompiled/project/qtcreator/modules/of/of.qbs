@@ -55,7 +55,6 @@ Module{
                 "rtAudio",
                 "openssl",
                 "boost",
-                "glfw",
                 "openFrameworksCompiled",
             ];
         }else if(platform==="msys2"){
@@ -119,7 +118,6 @@ Module{
                 "glew",
                 "gtk+-3.0",
                 "libmpg123",
-                "glfw3",
             ].concat(pkgConfigs)
         }else if(qbs.targetOS.indexOf("windows")!=-1){
             return [
@@ -149,6 +147,7 @@ Module{
                 "boost_filesystem",
                 "boost_system",
                 "vulkan",
+                "glfw3",
             ];
         }else if(platform === "msys2"){
             return [
