@@ -21,14 +21,13 @@
 //   An ordered array of DescriptorSetLayout is used to describe a PipelineLayout,
 //   it shows which DescriptorSets in sequence describe the inputs for a pipeline.
 //   
-//   
-//   set 0 \
+//   set 0
 //   |- binding 0 - descriptor 0
 //   |- binding 1 - decriptors[] 1,2,3
 //   |- <empty>
 //   |- binding 3 - descriptor 4
 //   
-//   set 1 \
+//   set 1
 //   |- binding 0
 //   |- binding 1
 //   

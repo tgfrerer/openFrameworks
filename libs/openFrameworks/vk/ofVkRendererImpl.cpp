@@ -588,7 +588,7 @@ void ofVkRenderer::startRender(){
 	}
 
 	{	// set dynamic viewport and scissor values for renderpass
-		auto & currentViewport = ofGetCurrentViewport();
+		const auto & currentViewport = ofGetCurrentViewport();
 
 		// Update dynamic viewport state
 		VkViewport viewport = {};

@@ -188,7 +188,7 @@ bool of::vk::Shader::getSpirV( const VkShaderStageFlagBits shaderStage, const st
 			auto scanResult = sscanf( errorMessage.c_str(), scanString.str().c_str(), &lineNumber );
 
 			if ( scanResult != std::char_traits<wchar_t>::eof() ){
-				auto & lineIt = fileBuf.getLines().begin();
+				auto lineIt = fileBuf.getLines().begin();
 				size_t currentLine = 1; /* Line numbers start counting at 1 */
 
 				while (lineIt != fileBuf.getLines().end()){

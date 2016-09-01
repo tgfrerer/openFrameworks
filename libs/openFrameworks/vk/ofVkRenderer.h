@@ -14,7 +14,7 @@
 
 
 #define RENDERER_FUN_NOT_IMPLEMENTED {                  \
-	ofLog() << __FUNCTION__  ": not yet implemented.";\
+	ofLog() << __FUNCTION__ << ": not yet implemented.";\
 };                                                      \
 
 
@@ -141,7 +141,11 @@ public:
 	virtual void unbind( const ofCamera & camera );
 
 	virtual void setupGraphicDefaults()RENDERER_FUN_NOT_IMPLEMENTED;
-	virtual void setupScreen()RENDERER_FUN_NOT_IMPLEMENTED;
+
+	virtual void setupScreen(){
+		// noop
+	};
+
 	void resizeScreen( int w, int h );
 
 	virtual void setRectMode( ofRectMode mode )RENDERER_FUN_NOT_IMPLEMENTED;

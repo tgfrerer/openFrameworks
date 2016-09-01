@@ -213,7 +213,7 @@ void ofApp::drawModeExplicit(){
 		.setPolyMode( VK_POLYGON_MODE_FILL )
 		.setUniform( "globalColor", ofFloatColor::darkBlue )
 		.pushMatrix()
-		.rotateRad( ( ofGetFrameNum() % 360 )*DEG_TO_RAD, { 0.f,0.f,1.f } )
+	    .rotateRad( ( ofGetFrameNum() % 360 ) * DEG_TO_RAD, { 0.f,0.f,1.f } )
 		.draw(cmd, mLMesh )
 		.popMatrix();
 
@@ -259,14 +259,14 @@ void ofApp::drawModeMeshes(){
 	mFontMesh.draw();
 
 	ofPushMatrix();
-	ofRotate( ofGetFrameNum() % 360 ); // this should rotate at a speed of one revolution every 6 seconds if frame rate is locked to vsync.
+	ofRotateDeg( ofGetFrameNum() % 360 ); // this should rotate at a speed of one revolution every 6 seconds if frame rate is locked to vsync.
 	mLMesh.draw();
 	ofPopMatrix();
 
 	ofSetColor( ofColor::teal );
 	ofPushMatrix();
 	ofTranslate( 200, 0 );
-	ofRotate( 360.f * ( ( ofGetElapsedTimeMillis() % 6000 ) / 6000.f ) ); // this should rotate at a speed of one revolution every 6 seconds.
+	ofRotateDeg( 360.f * ( ( ofGetElapsedTimeMillis() % 6000 ) / 6000.f ) ); // this should rotate at a speed of one revolution every 6 seconds.
 	mLMesh.draw();
 	ofPopMatrix();
 
@@ -283,7 +283,7 @@ void ofApp::drawModeLines(){
 
 	ofPushMatrix();
 	int xOffset = ofGetFrameNum() % w;
-	ofTranslate( xOffset - w * 1.5, -h / 2 );
+	ofTranslate( xOffset - w * 1.5f, -h / 2.f );
 	for ( int i = 0; i * 100 < w * 2; ++i ){
 		ofTranslate( 100, 0 );
 		ofDrawRectangle( { -5,0,5,float( h ) } );
@@ -302,7 +302,7 @@ void ofApp::drawModeSpinning(){
 
 	ofPushMatrix();
 	ofTranslate( 0, 0);
-	ofRotate( ( ofGetFrameNum() % 120 ) * ( 360 / 120.f ) );
+	ofRotateDeg( ( ofGetFrameNum() % 120 ) * ( 360 / 120.f ) );
 	ofDrawRectangle( { -1200,-50,2400,100 } );
 	ofPopMatrix();
 	mCam1.end();
