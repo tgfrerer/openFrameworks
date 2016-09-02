@@ -308,7 +308,6 @@ private:
 	void                     setupRenderPass();
 	
 	void                     setupFrameBuffer(uint32_t swapchainImageIndex);
-	void                     flushSetupCommandBuffer(VkCommandBuffer cmd);
 
 
 	// our main (primary) gpu queue. all commandbuffers are submitted to this queue

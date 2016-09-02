@@ -500,29 +500,6 @@ void ofVkRenderer::setupFrameBuffer( uint32_t swapchainImageIndex ){
 
 // ----------------------------------------------------------------------
 
-void ofVkRenderer::flushSetupCommandBuffer(VkCommandBuffer cmd){
-	VkResult err;
-
-	err = vkEndCommandBuffer( cmd );
-	assert( !err );
-
-	VkSubmitInfo submitInfo = {};
-	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-	submitInfo.commandBufferCount = 1;
-	submitInfo.pCommandBuffers = &cmd;
-
-	err = vkQueueSubmit( mQueue, 1, &submitInfo, VK_NULL_HANDLE );
-	assert( !err );
-
-	err = vkQueueWaitIdle( mQueue );
-	assert( !err );
-
-	// CONSIDER: Q: Should we free the setup command buffer here?
-	// A: we can "leak" it - and then just reset the pool, that should work better.
-}
-
-// ----------------------------------------------------------------------
-
 void ofVkRenderer::startRender(){
 
 	// start of new frame
