@@ -1,5 +1,5 @@
 #pragma once
-#include "vulkan/vulkan.h"
+#include "vulkan/vulkan.hpp"
 #include "ofPixels.h"
 
 namespace of{
@@ -17,29 +17,29 @@ public:
 		// All data neccessary to describe a Vulkan texture 
 		// Q: how are mip levels dealt with?
 
-		VkImage           image       = nullptr;
-		VkDeviceMemory    mem         = nullptr;
-		VkImageView       view        = nullptr;
-		VkSampler         sampler     = nullptr;
+		::vk::Image           image       = nullptr;
+		::vk::DeviceMemory    mem         = nullptr;
+		::vk::ImageView       view        = nullptr;
+		::vk::Sampler         sampler     = nullptr;
 
-		int32_t           tex_width   = 0;
-		int32_t           tex_height  = 0;
+		uint32_t           tex_width   = 0;
+		uint32_t           tex_height  = 0;
 	};
 
 private:
 	TexData mTexData;
-	VkDevice mDevice = nullptr;
+	::vk::Device mDevice = nullptr;
 
 public:
 
 	Texture(){
 	};
 
-	VkSampler getVkSampler(){
+	::vk::Sampler getVkSampler(){
 		return mTexData.sampler;
 	}
 
-	VkImageView getVkImageView(){
+	::vk::ImageView getVkImageView(){
 		return mTexData.view;
 	}
 

@@ -71,13 +71,13 @@ ofVkRenderer::ofVkRenderer(const ofAppBaseWindow * _window, Settings settings )
 // ----------------------------------------------------------------------
 
 
-const VkInstance& ofVkRenderer::getInstance() {
+const vk::Instance& ofVkRenderer::getInstance() {
 	return mInstance;
 }
 
 // ----------------------------------------------------------------------
 
-const VkSurfaceKHR& ofVkRenderer::getWindowSurface() {
+vk::SurfaceKHR& ofVkRenderer::getWindowSurface() {
 	return mWindowSurface;
 }
 
@@ -140,41 +140,30 @@ void ofVkRenderer::destroySurface(){
 
  void ofVkRenderer::createInstance()
 {
-	ofLog() << "createInstance";
-
+	ofLog() << "Creating instance.";
 	
 	std::string appName = "openFrameworks" + ofGetVersionInfo();
 
-	VkApplicationInfo applicationInfo{};
-	{
-		applicationInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-		applicationInfo.apiVersion = mSettings.vkVersion;
-		applicationInfo.applicationVersion = VK_MAKE_VERSION(0, 1, 0);
-		applicationInfo.pApplicationName = appName.c_str();
-	}
+	vk::ApplicationInfo applicationInfo;
+	applicationInfo
+		.setApiVersion( mSettings.vkVersion )
+		.setApplicationVersion( VK_MAKE_VERSION( 0, 1, 0 ) )
+		.setPApplicationName( appName.c_str() )
+		.setPEngineName( "openFrameworks Vulkan Renderer" )
+		.setEngineVersion( VK_MAKE_VERSION( 0, 0, 0 ) )
+		;
 
-	VkInstanceCreateInfo instanceCreateInfo{};
-	{
-		instanceCreateInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
-		instanceCreateInfo.pApplicationInfo = &applicationInfo;
+	vk::InstanceCreateInfo instanceCreateInfo;
+	instanceCreateInfo
+		.setPApplicationInfo        ( &applicationInfo )
+		.setEnabledLayerCount       ( mInstanceLayers.size() )
+		.setPpEnabledLayerNames     ( mInstanceLayers.data() )
+		.setEnabledExtensionCount   ( mInstanceExtensions.size() )
+		.setPpEnabledExtensionNames ( mInstanceExtensions.data() )
+		.setPNext                   ( &mDebugCallbackCreateInfo ) /* <-- enables debugging the instance creation. */
+		;
 
-		instanceCreateInfo.enabledLayerCount       = uint32_t(mInstanceLayers.size());
-		instanceCreateInfo.ppEnabledLayerNames     = mInstanceLayers.data();
-		instanceCreateInfo.enabledExtensionCount   = uint32_t(mInstanceExtensions.size());
-		instanceCreateInfo.ppEnabledExtensionNames = mInstanceExtensions.data();
-
-		// this enables debugging the instance creation.
-		// it is slightly weird.
-		instanceCreateInfo.pNext                   = &mDebugCallbackCreateInfo;
-	}
-
-	auto err = vkCreateInstance(&instanceCreateInfo, nullptr, &mInstance);
-
-	if (err != VK_SUCCESS) {
-		ofLogError() << "Could not create Instance: " << err;
-		std::exit(-1);
-	}
-
+	mInstance = vk::createInstance( instanceCreateInfo );
 	ofLog() << "Successfully created instance.";
 }
 
@@ -191,50 +180,40 @@ void ofVkRenderer::createDevice()
 {
 	// enumerate physical devices list to find 
 	// first available device
+	auto deviceList = mInstance.enumeratePhysicalDevices();
+
+	// CONSIDER: find the best appropriate GPU
+	// Select a physical device (GPU) from the above queried list of options.
+	// For now, we assume the first one to be the best one.
+	mPhysicalDevice = deviceList.front();
+
+	// query the gpu for more info about itself
+	mPhysicalDeviceProperties = mPhysicalDevice.getProperties();
+
+	ofLog() << "GPU Type: " << mPhysicalDeviceProperties.deviceName;
+
 	{
-		uint32_t numDevices = 0;
-		// get the count for physical devices 
-		// how many GPUs are available?
-		auto err = vkEnumeratePhysicalDevices(mInstance, &numDevices, VK_NULL_HANDLE);
-		assert( !err );
+		ofVkWindowSettings tmpSettings;
+		tmpSettings.vkVersion = mPhysicalDeviceProperties.apiVersion;
+		ofLog() << "GPU API Version: " << tmpSettings.getVkVersionMajor() << "."
+			<< tmpSettings.getVersionMinor() << "." << tmpSettings.getVersionPatch();
 
-		std::vector<VkPhysicalDevice> deviceList(numDevices);
-		err = vkEnumeratePhysicalDevices(mInstance, &numDevices, deviceList.data());
-		assert( !err );
-
-		// CONSIDER: find the best appropriate GPU
-		// Select a physical device (GPU) from the above queried list of options.
-		// For now, we assume the first one to be the best one.
-		mPhysicalDevice = deviceList.front();
-
-		// query the gpu for more info about itself
-		vkGetPhysicalDeviceProperties(mPhysicalDevice, &mPhysicalDeviceProperties);
-
-		ofLog() << "GPU Type: " << mPhysicalDeviceProperties.deviceName;
-		
-		{
-			ofVkWindowSettings tmpSettings;
-			tmpSettings.vkVersion = mPhysicalDeviceProperties.apiVersion;
-			ofLog() << "GPU Driver API Version: " << tmpSettings.getVkVersionMajor() << "."
-				<< tmpSettings.getVersionMinor() << "." << tmpSettings.getVersionPatch();
-		}
-
-		// let's find out the devices' memory properties
-		vkGetPhysicalDeviceMemoryProperties( mPhysicalDevice, &mPhysicalDeviceMemoryProperties );
+		uint32_t driverVersion = mPhysicalDeviceProperties.driverVersion;
+		ofLog() << "GPU Driver Version: " << std::hex << driverVersion;
 	}
+
+	// let's find out the devices' memory properties
+	mPhysicalDeviceMemoryProperties = mPhysicalDevice.getMemoryProperties();
 
 	// query queue families for the first queue supporting graphics
 	{
-		uint32_t numQFP = 0;
 		// query number of queue family properties
-		vkGetPhysicalDeviceQueueFamilyProperties(mPhysicalDevice, &numQFP, VK_NULL_HANDLE);
-		std::vector<VkQueueFamilyProperties> queueFamilyPropertyList(numQFP);
-		vkGetPhysicalDeviceQueueFamilyProperties(mPhysicalDevice, &numQFP, queueFamilyPropertyList.data());
+		std::vector<vk::QueueFamilyProperties> queueFamilyPropertyList = mPhysicalDevice.getQueueFamilyProperties();
 
 		bool foundGraphics = false;
 		for (uint32_t i = 0; i < queueFamilyPropertyList.size(); ++i) {
 			// test queue family against flag bitfields
-			if (queueFamilyPropertyList[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) {
+			if (queueFamilyPropertyList[i].queueFlags & vk::QueueFlagBits::eGraphics) {
 				foundGraphics = true;
 				mVkGraphicsFamilyIndex = i;
 				break;
@@ -250,17 +229,11 @@ void ofVkRenderer::createDevice()
 	// query debug layers available for instance
 	{
 		std::ostringstream console;
-		uint32_t layerCount;
-		auto err = vkEnumerateInstanceLayerProperties(&layerCount, VK_NULL_HANDLE);
-		assert( !err );
 
-		vector<VkLayerProperties> layerPropertyList(layerCount);
-		err = vkEnumerateInstanceLayerProperties(&layerCount, layerPropertyList.data());
-		assert( !err );
-
+		vector<vk::LayerProperties> instanceLayerPropertyList = vk::enumerateInstanceLayerProperties();
 
 		console << "Available Instance Layers:" << std::endl << std::endl;
-		for (auto &l : layerPropertyList) {
+		for (auto &l : instanceLayerPropertyList ) {
 			console << std::right << std::setw( 40 ) << l.layerName << " : " << l.description << std::endl;
 		}
 		ofLog() << console.str();
@@ -269,75 +242,68 @@ void ofVkRenderer::createDevice()
 	// query debug layers available for physical device
 	{
 		std::ostringstream console;
-		uint32_t layerCount;
-		auto err = vkEnumerateDeviceLayerProperties(mPhysicalDevice, &layerCount, VK_NULL_HANDLE);
-		assert( !err );
 
-		vector<VkLayerProperties> layerPropertyList(layerCount);
-		err = vkEnumerateDeviceLayerProperties(mPhysicalDevice, &layerCount, layerPropertyList.data());
-		assert( !err );
+		vector<vk::LayerProperties> deviceLayerPropertylist = mPhysicalDevice.enumerateDeviceLayerProperties();
 
 		console << "Available Device Layers:" << std::endl << std::endl;
-		for (auto &l : layerPropertyList) {
+		for (auto &l : deviceLayerPropertylist ) {
 			console << std::right << std::setw( 40 ) << l.layerName << " : " << l.description << std::endl;
 		}
 		ofLog() << console.str();
 	}
 
+	float queuePriority[] = { 1.f };
+
+	vk::DeviceQueueCreateInfo queueCreateInfo;
+	queueCreateInfo
+		.setQueueFamilyIndex ( mVkGraphicsFamilyIndex) /* <-- vkGraphicsFamilyIndex was queried earlier, when we went through all available queues, and selected the first graphcis capable queue. */
+		.setQueueCount       ( 1 )
+		.setPQueuePriorities ( queuePriority )
+		;
+
+	// TODO: check which features must be switched on for 
+	//       default openFrameworks operations.
+	vk::PhysicalDeviceFeatures deviceFeatures = mPhysicalDevice.getFeatures();
+	deviceFeatures
+		.setFillModeNonSolid(VK_TRUE); // allow line drawing
 	
-	
-	// create a device
-	VkDeviceQueueCreateInfo deviceQueueCreateInfo{};
-	{
-		float queuePriority[] = { 1.f };
-		deviceQueueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-		deviceQueueCreateInfo.queueFamilyIndex = mVkGraphicsFamilyIndex;
-		deviceQueueCreateInfo.queueCount = 1;		// tell vulkan how many queues to allocate
-		deviceQueueCreateInfo.pQueuePriorities = queuePriority;
-	}
 
-	VkDeviceCreateInfo deviceCreateInfo{};
-	{
-		deviceCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-		deviceCreateInfo.queueCreateInfoCount = 1;
-		deviceCreateInfo.pQueueCreateInfos = &deviceQueueCreateInfo;
+	vk::DeviceCreateInfo deviceCreateInfo;
+	deviceCreateInfo
+		.setQueueCreateInfoCount      ( 1 )
+		.setPQueueCreateInfos         ( &queueCreateInfo )
+		.setEnabledLayerCount         ( mDeviceLayers.size() )
+		.setPpEnabledLayerNames       ( mDeviceLayers.data() )
+		.setEnabledExtensionCount     ( mDeviceExtensions.size() )
+		.setPpEnabledExtensionNames   ( mDeviceExtensions.data() )
+		.setPEnabledFeatures          ( &deviceFeatures )
+		;
 
-		deviceCreateInfo.enabledLayerCount       = uint32_t(mDeviceLayers.size());
-		deviceCreateInfo.ppEnabledLayerNames     = mDeviceLayers.data();
-		deviceCreateInfo.enabledExtensionCount   = uint32_t(mDeviceExtensions.size());
-		deviceCreateInfo.ppEnabledExtensionNames = mDeviceExtensions.data();
-	}
+	// create device	
+	mDevice = mPhysicalDevice.createDevice( deviceCreateInfo );
 
-	auto err = vkCreateDevice(mPhysicalDevice, &deviceCreateInfo, VK_NULL_HANDLE, &mDevice);
-
-	if (err == VK_SUCCESS) {
-		ofLogNotice() << "Successfully created Vulkan device";
-	} else {
-		ofLogError() << "error creating vulkan device: " << err;
-		ofExit(-1);
-	}
+	ofLogNotice() << "Successfully created Vulkan device";
 
 	// fetch queue handle into mQueue
-	vkGetDeviceQueue(mDevice, mVkGraphicsFamilyIndex, 0, &mQueue);
+	mQueue = mDevice.getQueue( mVkGraphicsFamilyIndex, 0 );
 
 	// query possible depth formats, find the 
 	// first format that supports attachment as a depth stencil 
 	//
 	// Since all depth formats may be optional, we need to find a suitable depth format to use
 	// Start with the highest precision packed format
-	std::vector<VkFormat> depthFormats = {
-		VK_FORMAT_D32_SFLOAT_S8_UINT,
-		VK_FORMAT_D32_SFLOAT,
-		VK_FORMAT_D24_UNORM_S8_UINT,
-		VK_FORMAT_D16_UNORM_S8_UINT,
-		VK_FORMAT_D16_UNORM
+	std::vector<vk::Format> depthFormats = {
+		vk::Format::eD32SfloatS8Uint,
+		vk::Format::eD32Sfloat,
+		vk::Format::eD24UnormS8Uint,
+		vk::Format::eD16Unorm,
+		vk::Format::eD16UnormS8Uint
 	};
 
 	for ( auto& format : depthFormats ){
-		VkFormatProperties formatProps;
-		vkGetPhysicalDeviceFormatProperties( mPhysicalDevice, format, &formatProps );
+		vk::FormatProperties formatProps = mPhysicalDevice.getFormatProperties( format );
 		// Format must support depth stencil attachment for optimal tiling
-		if ( formatProps.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT ){
+		if ( formatProps.optimalTilingFeatures & vk::FormatFeatureFlagBits::eDepthStencilAttachment){
 			mDepthFormat = format;
 			break;
 		}

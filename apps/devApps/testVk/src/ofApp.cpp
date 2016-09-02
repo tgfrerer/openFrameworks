@@ -163,12 +163,13 @@ void ofApp::drawModeExplicit(){
 	context
 		.pushMatrix()
 		.translate( { 0,0,-10 } )
-		.bindTexture(  mVkTex, "tex_0" )
+		.bindTexture( mVkTex, "tex_0" )
 		.setUniform( "globalColor", ofFloatColor::white )
 		.setShader( mShaderTextured )
 		.setPolyMode( VK_POLYGON_MODE_FILL )
 		.draw( cmd, rect )
 		.popMatrix();
+		
 
 	context
 		.pushMatrix()

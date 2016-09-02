@@ -20,61 +20,56 @@ void of::vk::Allocator::setup(){
 
 		ofLogWarning() << "of::vk::Allocator::setup : Settings.device must match Settings.renderer->getVkDevice()";
 		// error checking: make sure mSettings.device == mSettings.renderer->getVkDevice()
-		const_cast<VkDevice&>( mSettings.device ) = mSettings.renderer->getVkDevice();
+		const_cast<::vk::Device&>( mSettings.device ) = mSettings.renderer->getVkDevice();
 	}
 
 	// we need to find out the min buffer uniform alignment from the 
 	// physical device.
 
 	// make this dependent on the type of buffer this allocator stands for 
-	const_cast<VkDeviceSize&>( mAlignment )     = mSettings.renderer->getVkPhysicalDeviceProperties().limits.minUniformBufferOffsetAlignment;
+	const_cast<::vk::DeviceSize&>( mAlignment )     = mSettings.renderer->getVkPhysicalDeviceProperties().limits.minUniformBufferOffsetAlignment;
 
 	// make sure reserved memory is multiple of alignment, and that we can fit in the number of requested frames.	
-	const_cast<VkDeviceSize&>( mSettings.size ) = mSettings.frames * mAlignment * ( ( mSettings.size / mSettings.frames + mAlignment - 1 ) / mAlignment );
+	const_cast<::vk::DeviceSize&>( mSettings.size ) = mSettings.frames * mAlignment * ( ( mSettings.size / mSettings.frames + mAlignment - 1 ) / mAlignment );
 
-	// Vertex shader uniform buffer block
-	VkBufferCreateInfo bufferInfo{
-		VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,                   // VkStructureType        sType;
-		nullptr,                                                // const void*            pNext;
-		0,                                                      // VkBufferCreateFlags    flags;
-		mSettings.size,                                         // VkDeviceSize           size;
-		VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT 
-		| VK_BUFFER_USAGE_INDEX_BUFFER_BIT
-		| VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,                    // VkBufferUsageFlags     usage;
-		VK_SHARING_MODE_EXCLUSIVE,                              // VkSharingMode          sharingMode;
-		0,                                                      // uint32_t               queueFamilyIndexCount;
-		nullptr,                                                // const uint32_t*        pQueueFamilyIndices;
-	};
-	
+	::vk::BufferCreateInfo bufferCreateInfo;
+
+	bufferCreateInfo
+		.setSize( mSettings.size)
+		.setUsage( ::vk::BufferUsageFlagBits::eIndexBuffer | ::vk::BufferUsageFlagBits::eUniformBuffer | ::vk::BufferUsageFlagBits::eVertexBuffer )
+		.setSharingMode( ::vk::SharingMode::eExclusive )
+		;
+
 	// allocate physical memory from device
 	
-	// 1. create a buffer 
-	vkCreateBuffer( mSettings.device, &bufferInfo, nullptr, &mBuffer );
-
+	// 1. create a buffer
 	// 2. add backing memory to buffer
-
+	
+	mBuffer = mSettings.device.createBuffer( bufferCreateInfo );
+	
 	// 2.1 Get memory requirements including size, alignment and memory type 
-	VkMemoryRequirements memReqs;
-	vkGetBufferMemoryRequirements( mSettings.device, mBuffer, &memReqs );
+	::vk::MemoryRequirements memReqs = mSettings.device.getBufferMemoryRequirements( mBuffer );
+
 
 	// 2.2 Get the appropriate memory type for this type of buffer allocation
 	// Only memory types that are visible to the host and coherent (coherent means they
 	// appear to the GPU without the need of explicit range flushes)
 	// Vulkan 1.0 guarantees the presence of at least one host-visible+coherent memory heap.
-	VkMemoryAllocateInfo allocationInfo {};
+	::vk::MemoryAllocateInfo allocateInfo;
 	
 	bool result = mSettings.renderer->getMemoryAllocationInfo(
 		memReqs,
-		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-		allocationInfo
+		::vk::MemoryPropertyFlagBits::eHostVisible | ::vk::MemoryPropertyFlagBits::eHostCoherent,
+		allocateInfo
 	);
 
 	// 2.3 Finally, to the allocation
 	// todo: check for and recover from allocation errors
-	vkAllocateMemory( mSettings.device, &allocationInfo, nullptr, &mDeviceMemory );
+	mDeviceMemory = mSettings.device.allocateMemory( allocateInfo );
 
 	// 2.4 Attach memory to buffer (buffer must not be already backed by memory)
-	vkBindBufferMemory( mSettings.device, mBuffer, mDeviceMemory, 0 );
+	mSettings.device.bindBufferMemory( mBuffer, mDeviceMemory, 0 );
+	
 
 	mOffsetEnd.clear();
 	mOffsetEnd.resize( mSettings.frames, 0 );
@@ -83,12 +78,7 @@ void of::vk::Allocator::setup(){
 	mBaseAddress.resize( mSettings.frames, 0 );
 
 	// Map full memory range for CPU write access
-	vkMapMemory(
-		mSettings.device,
-		mDeviceMemory,
-		0,
-		VK_WHOLE_SIZE, 0, (void**)&mBaseAddress[0]
-	);
+	mBaseAddress[0] = (uint8_t*)mSettings.device.mapMemory( mDeviceMemory, 0, VK_WHOLE_SIZE );
 
 	for ( uint32_t i = 1; i != mBaseAddress.size(); ++i ){
 		// offset the pointer by full frame sizes
@@ -103,13 +93,13 @@ void of::vk::Allocator::setup(){
 void of::vk::Allocator::reset(){
 
 	if ( mDeviceMemory ){
-		vkUnmapMemory( mSettings.device, mDeviceMemory );
-		vkFreeMemory( mSettings.device, mDeviceMemory, nullptr );
+		mSettings.device.unmapMemory( mDeviceMemory );
+		mSettings.device.freeMemory( mDeviceMemory );
 		mDeviceMemory = nullptr;
 	}
 
 	if ( mBuffer ){
-		vkDestroyBuffer( mSettings.device, mBuffer, nullptr );
+		mSettings.device.destroyBuffer( mBuffer );
 		mBuffer = nullptr;
 	}
 
@@ -123,7 +113,7 @@ void of::vk::Allocator::reset(){
 // param   current swapchain image index
 // returns pAddr writeable memory address
 // returns offset memory offset in bytes relative to start of buffer to reach address
-bool of::vk::Allocator::allocate( VkDeviceSize byteCount_, void*& pAddr, VkDeviceSize& offset, size_t swapIdx ){
+bool of::vk::Allocator::allocate( ::vk::DeviceSize byteCount_, void*& pAddr, ::vk::DeviceSize& offset, size_t swapIdx ){
 	uint32_t alignedByteCount = mAlignment * ( ( byteCount_ + mAlignment - 1 ) / mAlignment );
 
 	if ( mOffsetEnd[swapIdx] + alignedByteCount <= (mSettings.size / mSettings.frames) ){

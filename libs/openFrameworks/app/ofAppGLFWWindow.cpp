@@ -1434,7 +1434,7 @@ VkResult ofAppGLFWWindow::createVkSurface(){
 	// create a window surface for this window, 
 	// and store the pointer to it with the renderer.
 	auto r = dynamic_pointer_cast<ofVkRenderer>( currentRenderer );
-	return glfwCreateWindowSurface( r->getInstance(), windowP, VK_NULL_HANDLE, const_cast<VkSurfaceKHR*>( &( r->getWindowSurface() ) ) );
+	return glfwCreateWindowSurface( r->getInstance(), windowP, VK_NULL_HANDLE, reinterpret_cast<VkSurfaceKHR*>( &( r->getWindowSurface() ) ) );
 }
 
 //------------------------------------------------------------

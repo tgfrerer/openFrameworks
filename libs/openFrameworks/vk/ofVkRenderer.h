@@ -1,5 +1,5 @@
 #pragma once
-#include <vulkan/vulkan.h>
+#include <vulkan/vulkan.hpp>
 #include "ofBaseTypes.h"
 #include "ofPolyline.h"
 #include "ofMatrix4x4.h"
@@ -51,11 +51,11 @@ public:
 
 	const struct Settings
 	{
-		uint32_t vkVersion = 1 << 22;                                  // target version
-		uint32_t numVirtualFrames = 0;                                 // number of virtual frames to allocate and to produce - set this through vkWindowSettings
-		uint32_t numSwapchainImages = 0;                               // number of swapchain images to aim for (api gives no guarantee for this.)
-		VkPresentModeKHR swapchainType = VK_PRESENT_MODE_FIFO_KHR;	   // selected swapchain type (api only guarantees FIFO)
-		bool useDebugLayers = false;                                    // whether to use vulkan debug layers
+		uint32_t vkVersion = 1 << 22;                                      // target version
+		uint32_t numVirtualFrames = 0;                                     // number of virtual frames to allocate and to produce - set this through vkWindowSettings
+		uint32_t numSwapchainImages = 0;                                   // number of swapchain images to aim for (api gives no guarantee for this.)
+		::vk::PresentModeKHR swapchainType = ::vk::PresentModeKHR::eFifo;	   // selected swapchain type (api only guarantees FIFO)
+		bool useDebugLayers = false;                                       // whether to use vulkan debug layers
 	} mSettings;
 
 	ofVkRenderer( const ofAppBaseWindow * window, Settings settings ); 
@@ -74,7 +74,7 @@ public:
 
 	const uint32_t getSwapChainSize();
 
-	const VkRenderPass& getDefaultRenderPass();
+	const ::vk::RenderPass& getDefaultRenderPass();
 
 	virtual void draw( const ofPolyline & poly )const RENDERER_FUN_NOT_IMPLEMENTED;
 	virtual void draw( const ofPath & shape ) const RENDERER_FUN_NOT_IMPLEMENTED;
@@ -231,11 +231,11 @@ private:
 	void createDebugLayers();
 	void destroyDebugLayers();
 
-	VkInstance                         mInstance                           = nullptr;  // vulkan loader instance
-	VkDevice                           mDevice                             = nullptr;  // virtual device
-	VkPhysicalDevice                   mPhysicalDevice                     = nullptr;  // actual GPU
-	VkPhysicalDeviceProperties         mPhysicalDeviceProperties = {};
-	VkPhysicalDeviceMemoryProperties   mPhysicalDeviceMemoryProperties;
+	::vk::Instance                         mInstance                           = nullptr;  // vulkan loader instance
+	::vk::Device                           mDevice                             = nullptr;  // virtual device
+	::vk::PhysicalDevice                   mPhysicalDevice                     = nullptr;  // actual GPU
+	::vk::PhysicalDeviceProperties         mPhysicalDeviceProperties = {};
+	::vk::PhysicalDeviceMemoryProperties   mPhysicalDeviceMemoryProperties;
 
 	std::vector<const char*>           mInstanceLayers;                                // debug layer list for instance
 	std::vector<const char*>           mInstanceExtensions;                            // debug layer list for device
@@ -249,21 +249,21 @@ public:
 
 	// return handle to renderer's vkDevice
 	// CONSIDER: error checking for when device has not been aqcuired yet.
-	const VkDevice& getVkDevice() const;
+	const ::vk::Device& getVkDevice() const;
 
-	const VkPhysicalDeviceProperties& getVkPhysicalDeviceProperties() const;
+	const ::vk::PhysicalDeviceProperties& getVkPhysicalDeviceProperties() const;
 
 	// get memory allocation info for best matching memory type that matches any of the type bits and flags
-	bool  getMemoryAllocationInfo( const VkMemoryRequirements& memReqs, VkFlags memProps, VkMemoryAllocateInfo& memInfo ) const;
+	bool  getMemoryAllocationInfo( const ::vk::MemoryRequirements& memReqs, ::vk::MemoryPropertyFlags memProps, ::vk::MemoryAllocateInfo& memInfo ) const;
 
 	// get draw command pool
-	const VkCommandPool& getCommandPool() const;
+	const ::vk::CommandPool& getCommandPool() const;
 
 	// get draw command buffer
-	const VkCommandBuffer& getCurrentDrawCommandBuffer() const;
+	const ::vk::CommandBuffer& getCurrentDrawCommandBuffer() const;
 
 	// get current draw queue (careful: access is not thread-safe!)
-	const VkQueue& getQueue() const;
+	const ::vk::Queue& getQueue() const;
 
 	const shared_ptr<of::vk::Context>& getDefaultContext();
 
@@ -281,21 +281,21 @@ private:
 
 	ofRectangle mViewport;
 
-	VkCommandPool            mDrawCommandPool = nullptr;
+	::vk::CommandPool            mDrawCommandPool = nullptr;
 	
 	struct FrameResources
 	{
-		VkCommandBuffer                       cmd                     = nullptr;
-		VkSemaphore                           semaphoreImageAcquired  = nullptr;
-		VkSemaphore                           semaphoreRenderComplete = nullptr;
-		VkFence                               fence                   = nullptr;
-		VkFramebuffer                         framebuffer             = nullptr;
+		::vk::CommandBuffer                       cmd                     = nullptr;
+		::vk::Semaphore                           semaphoreImageAcquired  = nullptr;
+		::vk::Semaphore                           semaphoreRenderComplete = nullptr;
+		::vk::Fence                               fence                   = nullptr;
+		::vk::Framebuffer                         framebuffer             = nullptr;
 	};
 
 	std::vector<FrameResources> mFrameResources; // one frame resource per virtual frame
 	uint32_t                    mFrameIndex = 0; // index of frame currently in production
 
-	VkRenderPass                mRenderPass = nullptr; /*main renderpass*/ 
+	::vk::RenderPass                mRenderPass = nullptr; /*main renderpass*/
 
 
 	void                     setupFrameResources();
@@ -312,26 +312,26 @@ private:
 
 	// our main (primary) gpu queue. all commandbuffers are submitted to this queue
 	// as are present commands.
-	VkQueue	mQueue = nullptr;
+	::vk::Queue	mQueue = nullptr;
 
 	// the actual window drawing surface to actually really show something on screen.
 	// this is set externally using GLFW.
-	VkSurfaceKHR mWindowSurface = nullptr;	
+	::vk::SurfaceKHR mWindowSurface = nullptr;
 
-	VkSurfaceFormatKHR mWindowColorFormat = {};
+	::vk::SurfaceFormatKHR mWindowColorFormat = {};
 
 	// Depth buffer format
 	// Depth format is selected during Vulkan initialization, in createDevice()
-	VkFormat mDepthFormat;
+	::vk::Format mDepthFormat;
 
 	// our depth stencil: 
 	// we only need one since there is only ever one frame in flight.
 	// !TODO: maybe move this into swapchain
 	struct DepthStencilResource
 	{
-		VkImage image      = nullptr;
-		VkDeviceMemory mem = nullptr;
-		VkImageView view   = nullptr;
+		::vk::Image image      = nullptr;
+		::vk::DeviceMemory mem = nullptr;
+		::vk::ImageView view   = nullptr;
 	};
 
 	// one depth stencil image per swapchain frame
@@ -353,8 +353,8 @@ private:
 
 public:
 
-	const VkInstance& getInstance();
-	const VkSurfaceKHR& getWindowSurface();
+	const ::vk::Instance& getInstance();
+	::vk::SurfaceKHR& getWindowSurface();
 
 	friend class of::vk::Context;
 };
@@ -362,11 +362,11 @@ public:
 // ----------------------------------------------------------------------
 // inline methods
 
-inline const VkDevice& ofVkRenderer::getVkDevice() const{
+inline const ::vk::Device& ofVkRenderer::getVkDevice() const{
 	return mDevice;
 };
 
-inline const VkPhysicalDeviceProperties& ofVkRenderer::getVkPhysicalDeviceProperties() const{
+inline const ::vk::PhysicalDeviceProperties& ofVkRenderer::getVkPhysicalDeviceProperties() const{
 	return mPhysicalDeviceProperties;
 }
 
@@ -386,21 +386,21 @@ inline const size_t ofVkRenderer::getVirtualFramesCount(){
 	return mFrameResources.size();
 }
 
-inline const VkCommandPool& ofVkRenderer::getCommandPool() const{
+inline const ::vk::CommandPool& ofVkRenderer::getCommandPool() const{
 	return mDrawCommandPool;
 }
 
-inline const VkCommandBuffer& ofVkRenderer::getCurrentDrawCommandBuffer() const{
+inline const ::vk::CommandBuffer& ofVkRenderer::getCurrentDrawCommandBuffer() const{
 	if ( mFrameIndex < mFrameResources.size() ){
 		return mFrameResources[mFrameIndex].cmd;
 	} else{
-		static VkCommandBuffer errorCmdBuffer = nullptr;
+		static ::vk::CommandBuffer errorCmdBuffer;
 		ofLogError() << "No current draw command buffer";
 		return errorCmdBuffer;
 	}
 }
 
-inline const VkQueue& ofVkRenderer::getQueue() const{
+inline const ::vk::Queue& ofVkRenderer::getQueue() const{
 	return mQueue;
 }
 

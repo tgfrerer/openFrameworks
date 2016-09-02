@@ -396,7 +396,8 @@ of::vk::Context& of::vk::Context::draw( const VkCommandBuffer& cmd, const ofMesh
 	// Bind vertex data buffers to current pipeline. 
 	// The vector indices into bufferRefs, vertexOffsets correspond to [binding numbers] of the currently bound pipeline.
 	// See Shader.h for an explanation of how this is mapped to shader attribute locations
-	vector<VkBuffer> bufferRefs( vertexOffsets.size(), getVkBuffer() );
+	auto buf = getVkBuffer();
+	vector<VkBuffer> bufferRefs( vertexOffsets.size(),buf);
 	vkCmdBindVertexBuffers( cmd, 0, uint32_t( bufferRefs.size() ), bufferRefs.data(), vertexOffsets.data() );
 
 	if ( indexOffsets.empty() ){
