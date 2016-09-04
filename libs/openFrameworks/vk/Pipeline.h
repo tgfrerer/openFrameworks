@@ -1,6 +1,6 @@
 #pragma once
 
-#include "vulkan/vulkan.h"
+#include "vulkan/vulkan.hpp"
 #include <string>
 #include <array>
 
@@ -79,18 +79,18 @@ class GraphicsPipelineState
 
 private:	// default state for pipeline
 
-	VkPipelineInputAssemblyStateCreateInfo mInputAssemblyState;
-	VkPipelineTessellationStateCreateInfo  mTessellationState;
-	VkPipelineViewportStateCreateInfo      mViewportState;
-	VkPipelineRasterizationStateCreateInfo mRasterizationState;
-	VkPipelineMultisampleStateCreateInfo   mMultisampleState;
-	VkPipelineDepthStencilStateCreateInfo  mDepthStencilState;
-	VkPipelineColorBlendAttachmentState    mDefaultBlendAttachmentState;
-	VkPipelineColorBlendStateCreateInfo    mColorBlendState;
-	std::array<VkDynamicState, 2>          mDefaultDynamicStates;
-	VkPipelineDynamicStateCreateInfo       mDynamicState;
+	::vk::PipelineInputAssemblyStateCreateInfo mInputAssemblyState;
+	::vk::PipelineTessellationStateCreateInfo  mTessellationState;
+	::vk::PipelineViewportStateCreateInfo      mViewportState;
+	::vk::PipelineRasterizationStateCreateInfo mRasterizationState;
+	::vk::PipelineMultisampleStateCreateInfo   mMultisampleState;
+	::vk::PipelineDepthStencilStateCreateInfo  mDepthStencilState;
+	::vk::PipelineColorBlendAttachmentState    mDefaultBlendAttachmentState;
+	::vk::PipelineColorBlendStateCreateInfo    mColorBlendState;
+	std::array<::vk::DynamicState, 2>          mDefaultDynamicStates;
+	::vk::PipelineDynamicStateCreateInfo       mDynamicState;
 	
-	VkRenderPass      mRenderPass         = nullptr;
+	::vk::RenderPass      mRenderPass         = nullptr;
 	uint32_t          mSubpass            = 0;
 	int32_t           mBasePipelineIndex  = -1;
 
@@ -118,21 +118,21 @@ public:
 		return mShader;
 	}
 
-	void setRenderPass( const VkRenderPass& renderPass ){
+	void setRenderPass( const ::vk::RenderPass& renderPass ){
 		if ( renderPass != mRenderPass ){
 			mRenderPass = renderPass;
 			mDirty = true;
 		}
 	}
 
-	void setPolyMode(VkPolygonMode & polyMode){
+	void setPolyMode( ::vk::PolygonMode & polyMode){
 		if ( mRasterizationState.polygonMode != polyMode ){
 			mRasterizationState.polygonMode = polyMode;
 			mDirty = true;
 		}
 	}
 
-	VkPipeline createPipeline( const VkDevice& device, const VkPipelineCache& pipelineCache, VkPipeline basePipelineHandle = nullptr );
+	::vk::Pipeline createPipeline( const ::vk::Device& device, const ::vk::PipelineCache& pipelineCache, ::vk::Pipeline basePipelineHandle = nullptr );
 
 };
 
@@ -141,29 +141,19 @@ public:
 /// \brief  Create a pipeline cache object
 /// \detail Optionally load from disk, if filepath given.
 /// \note  	Ownership: passed on.
-static VkPipelineCache&& createPipelineCache( const VkDevice& device, std::string filePath = "" ){
-	VkPipelineCache cache;
+static ::vk::PipelineCache&& createPipelineCache( const ::vk::Device& device, std::string filePath = "" ){
+	::vk::PipelineCache cache;
 	ofBuffer cacheFileBuffer;
 
-	VkPipelineCacheCreateInfo info{
-		VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO,                // VkStructureType               sType;
-		nullptr,                                                     // const void*                   pNext;
-		0,                                                           // VkPipelineCacheCreateFlags    flags;
-		0,                                                           // size_t                        initialDataSize;
-		nullptr,                                                     // const void*                   pInitialData;
-	};
+	::vk::PipelineCacheCreateInfo info;
 
 	if ( ofFile( filePath ).exists() ){
 		cacheFileBuffer = ofBufferFromFile( filePath, true );
-		info.initialDataSize = cacheFileBuffer.size();
-		info.pInitialData = cacheFileBuffer.getData();
+		info.setInitialDataSize(cacheFileBuffer.size());
+		info.setPInitialData(cacheFileBuffer.getData());
 	}
 
-	auto err = vkCreatePipelineCache( device, &info, nullptr, &cache );
-
-	if ( err != VK_SUCCESS ){
-		ofLogError() << "Vulkan error in " << __FILE__ << ", line " << __LINE__;
-	}
+	cache = device.createPipelineCache( info );
 
 	return std::move( cache );
 };

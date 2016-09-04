@@ -241,9 +241,9 @@ public:
 	// ----------------------------------------------------------------------
 
 	// return vector create info for all shader modules which compiled successfully
-	const std::vector<VkPipelineShaderStageCreateInfo> getShaderStageCreateInfo(){
+	const std::vector<::vk::PipelineShaderStageCreateInfo> getShaderStageCreateInfo(){
 		
-		std::vector<VkPipelineShaderStageCreateInfo> stageInfo;
+		std::vector<::vk::PipelineShaderStageCreateInfo> stageInfo;
 		stageInfo.reserve( mShaderStages.size() );
 		
 		for ( const auto& s : mShaderStages ){
@@ -256,12 +256,12 @@ public:
 	// ----------------------------------------------------------------------
 	// return vertex input state create info
 	// this hold the layout and wiring of attribute inputs to vertex bindings
-	const VkPipelineVertexInputStateCreateInfo& getVertexInputState(){
+	const ::vk::PipelineVertexInputStateCreateInfo& getVertexInputState(){
 		return mVertexInfo.vi;
 	}
 	
 	// ----------------------------------------------------------------------
-	const std::shared_ptr<VkPipelineLayout>& getPipelineLayout() {
+	const std::shared_ptr<::vk::PipelineLayout>& getPipelineLayout() {
 		if ( mPipelineLayout.get() == nullptr )
 			createVkPipelineLayout();
 		return mPipelineLayout;
