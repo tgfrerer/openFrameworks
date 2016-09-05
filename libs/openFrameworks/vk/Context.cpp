@@ -264,17 +264,6 @@ void of::vk::Context::resetDescriptorPool( size_t frame_ ){
 		.setPPoolSizes    ( mDescriptorPoolSizes.data() )
 		;
 
-	{
-		// reset availalbe descriptor counts
-		memset( mAvailableDescriptorCounts.data(), 0, VK_DESCRIPTOR_TYPE_RANGE_SIZE * sizeof( uint32_t ) );
-
-		// Count descriptors, by-type, available for allocation from
-		// main descriptor pool held by this frame.
-		for ( const auto &dS : mDescriptorPoolSizes ){
-			mAvailableDescriptorCounts[size_t( dS.type )] += dS.descriptorCount;
-		}
-	}
-
 	mDescriptorPool[frame_] = mSettings.device.createDescriptorPool( descriptorPoolInfo );
 
 	// mark this particular descriptorPool as not dirty
@@ -313,6 +302,17 @@ void of::vk::Context::begin( size_t frame_ ){
 	// Reset frees all descriptors allocated from current DescriptorPool
 	// if descriptorPool was not large enough, creates a new, larger DescriptorPool.
 	resetDescriptorPool( frame_ );
+
+	{
+		// reset availalbe descriptor counts
+		memset( mAvailableDescriptorCounts.data(), 0, VK_DESCRIPTOR_TYPE_RANGE_SIZE * sizeof( uint32_t ) );
+
+		// Count descriptors, by-type, available for allocation from
+		// main descriptor pool held by this frame.
+		for ( const auto &dS : mDescriptorPoolSizes ){
+			mAvailableDescriptorCounts[size_t( dS.type )] += dS.descriptorCount;
+		}
+	}
 
 	// Reset pipeline state
 	mCurrentGraphicsPipelineState.reset();
