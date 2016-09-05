@@ -116,7 +116,7 @@ void of::vk::Shader::compile(){
 
 // ----------------------------------------------------------------------
 
-bool of::vk::Shader::isSpirCodeDirty( const VkShaderStageFlagBits shaderStage, uint64_t spirvHash ){
+bool of::vk::Shader::isSpirCodeDirty( const ::vk::ShaderStageFlagBits shaderStage, uint64_t spirvHash ){
 
 	if ( mSpvHash.find( shaderStage ) == mSpvHash.end() ){
 		// hash not found so must be dirty
@@ -131,7 +131,7 @@ bool of::vk::Shader::isSpirCodeDirty( const VkShaderStageFlagBits shaderStage, u
 
 // ----------------------------------------------------------------------
 
-bool of::vk::Shader::getSpirV( const VkShaderStageFlagBits shaderStage, const std::string & fileName, std::vector<uint32_t> &spirCode ){
+bool of::vk::Shader::getSpirV( const ::vk::ShaderStageFlagBits shaderStage, const std::string & fileName, std::vector<uint32_t> &spirCode ){
 	
 	auto f = ofFile( fileName );
 	auto fExt = f.getExtension();
@@ -149,10 +149,10 @@ bool of::vk::Shader::getSpirV( const VkShaderStageFlagBits shaderStage, const st
 		shaderc_shader_kind shaderType = shaderc_shader_kind::shaderc_glsl_infer_from_source;
 
 		switch ( shaderStage ){
-		case VK_SHADER_STAGE_VERTEX_BIT:
+		case ::vk::ShaderStageFlagBits::eVertex :
 			shaderType = shaderc_shader_kind::shaderc_glsl_default_vertex_shader;
 			break;
-		case VK_SHADER_STAGE_FRAGMENT_BIT:
+		case ::vk::ShaderStageFlagBits::eFragment : 
 			shaderType = shaderc_shader_kind::shaderc_glsl_default_fragment_shader;
 			break;
 		default:
@@ -227,44 +227,41 @@ bool of::vk::Shader::getSpirV( const VkShaderStageFlagBits shaderStage, const st
 
 // ----------------------------------------------------------------------
 
-void of::vk::Shader::createVkShaderModule( const VkShaderStageFlagBits shaderType, const std::vector<uint32_t> &spirCode ){
+void of::vk::Shader::createVkShaderModule( const ::vk::ShaderStageFlagBits shaderType, const std::vector<uint32_t> &spirCode ){
 
-	VkShaderModuleCreateInfo info{
-		VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,	            // VkStructureType              sType;
-		nullptr,                                                    // const void*                  pNext;
-		0,	                                                        // VkShaderModuleCreateFlags    flags;
-		spirCode.size() * sizeof( uint32_t ),                       // size_t                       codeSize;
-		spirCode.data()                                             // const uint32_t*              pCode;
-	};
+	::vk::ShaderModuleCreateInfo shaderModuleCreateInfo; 
+	shaderModuleCreateInfo
+		.setFlags( ::vk::ShaderModuleCreateFlagBits() )
+		.setCodeSize( spirCode.size() * sizeof(uint32_t))
+		.setPCode( spirCode.data() )
+		;
 
-	auto & deviceHandle = mShaderManager->mSettings.device;
+	auto & device = mShaderManager->mSettings.device;
 
-	VkShaderModule module;
-	auto err = vkCreateShaderModule( deviceHandle, &info, nullptr, &module );
-	assert( !err );
+	::vk::ShaderModule module = device.createShaderModule( shaderModuleCreateInfo );
 
-	auto tmpShaderStage = std::shared_ptr<ShaderStage>( new ShaderStage, [device = deviceHandle](ShaderStage* lhs){
-		vkDestroyShaderModule( device, lhs->module, nullptr );
+	auto tmpShaderStage = std::shared_ptr<ShaderStage>( new ShaderStage, [d = device](ShaderStage* lhs){
+		d.destroyShaderModule( lhs->module );
 		delete lhs;
 	} );
 
 	tmpShaderStage->module = module;
-	tmpShaderStage->createInfo = {
-		VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,    // VkStructureType                     sType;
-		nullptr,                                                // const void*                         pNext;
-		0,	                                                    // VkPipelineShaderStageCreateFlags    flags;
-		shaderType,                                             // VkShaderStageFlagBits               stage;
-		tmpShaderStage->module,                                 // VkShaderModule                      module;
-		"main",                                                 // const char*                         pName;
-		nullptr                                                 // const VkSpecializationInfo*         pSpecializationInfo;
-	};
+
+	tmpShaderStage->createInfo = ::vk::PipelineShaderStageCreateInfo();
+	tmpShaderStage->createInfo
+		.setStage( shaderType )
+		.setModule( tmpShaderStage->module )
+		.setPName( "main" )
+		.setPSpecializationInfo( nullptr )
+		;
+
 	mShaderStages[shaderType] = std::move( tmpShaderStage );
 }
 
 // ----------------------------------------------------------------------
 
 void of::vk::Shader::reflect( 
-	const std::map<VkShaderStageFlagBits, std::shared_ptr<spirv_cross::Compiler>>& compilers, 
+	const std::map<::vk::ShaderStageFlagBits, std::shared_ptr<spirv_cross::Compiler>>& compilers, 
 	VertexInfo& vertexInfo
 ){
 	// storage for reflected information about UBOs
@@ -290,7 +287,7 @@ void of::vk::Shader::reflect(
 		reflectSamplers( compiler, shaderStage );
 
 		// --- vertex inputs ---
-		if ( shaderStage & VK_SHADER_STAGE_VERTEX_BIT ){
+		if ( shaderStage == ::vk::ShaderStageFlagBits::eVertex ){
 			reflectVertexInputs(compiler, vertexInfo );
 		} 
 		
@@ -335,7 +332,7 @@ void of::vk::Shader::reflect(
 
 // ----------------------------------------------------------------------
 
-bool of::vk::Shader::reflectUBOs( const spirv_cross::Compiler & compiler, const VkShaderStageFlagBits & shaderStage ){
+bool of::vk::Shader::reflectUBOs( const spirv_cross::Compiler & compiler, const ::vk::ShaderStageFlagBits & shaderStage ){
 
 	auto uniformBuffers = compiler.get_shader_resources().uniform_buffers;
 
@@ -345,7 +342,7 @@ bool of::vk::Shader::reflectUBOs( const spirv_cross::Compiler & compiler, const 
 		tmpUniform->count       = 1; // must be 1 for UBOs (arrays of UBOs are forbidden by the spec.)
 		tmpUniform->name        = ubo.name;
 		tmpUniform->storageSize = compiler.get_declared_struct_size( compiler.get_type( ubo.type_id ) );
-		tmpUniform->type        = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC; /* All our uniform buffer are dynamic */
+		tmpUniform->type        = ::vk::DescriptorType::eUniformBufferDynamic; /* All our uniform buffer are dynamic */
 		tmpUniform->stageFlags  = shaderStage;
 
 		auto bufferRanges = compiler.get_active_buffer_ranges( ubo.id );
@@ -399,7 +396,7 @@ bool of::vk::Shader::reflectUBOs( const spirv_cross::Compiler & compiler, const 
 
 // ----------------------------------------------------------------------
 
-bool of::vk::Shader::reflectSamplers( const spirv_cross::Compiler & compiler, const VkShaderStageFlagBits & shaderStage ){
+bool of::vk::Shader::reflectSamplers( const spirv_cross::Compiler & compiler, const ::vk::ShaderStageFlagBits & shaderStage ){
 
 	auto sampledImages = compiler.get_shader_resources().sampled_images;
 
@@ -409,7 +406,7 @@ bool of::vk::Shader::reflectSamplers( const spirv_cross::Compiler & compiler, co
 		tmpUniform->count = 1; //!TODO: find out how to query array size
 		tmpUniform->name = sampledImage.name;
 		tmpUniform->storageSize = 0; // sampled image is an opaque type and has no size
-		tmpUniform->type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		tmpUniform->type = ::vk::DescriptorType::eCombinedImageSampler;
 		tmpUniform->stageFlags = shaderStage;
 
 
@@ -579,7 +576,7 @@ void of::vk::Shader::reflectVertexInputs(const spirv_cross::Compiler & compiler,
 		// Binding Description: Describe how to read data from buffer based on binding number
 		vertexInfo.bindingDescription[i].binding = location;  // which binding number we are describing
 		vertexInfo.bindingDescription[i].stride = ( attributeType.width / 8 ) * attributeType.vecsize * attributeType.columns;
-		vertexInfo.bindingDescription[i].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+		vertexInfo.bindingDescription[i].inputRate = ::vk::VertexInputRate::eVertex;
 
 		// Attribute description: Map shader location to pipeline binding number
 		vertexInfo.attribute[i].location = location;   // .location == which shader attribute location
@@ -587,13 +584,13 @@ void of::vk::Shader::reflectVertexInputs(const spirv_cross::Compiler & compiler,
 
 		switch ( attributeType.vecsize ){
 		case 2:
-			vertexInfo.attribute[i].format = VK_FORMAT_R32G32_SFLOAT;        // 2-part float
+			vertexInfo.attribute[i].format = ::vk::Format::eR32G32Sfloat;        // 2-part float
 			break;
 		case 3:
-			vertexInfo.attribute[i].format = VK_FORMAT_R32G32B32_SFLOAT;     // 3-part float
+			vertexInfo.attribute[i].format = ::vk::Format::eR32G32B32Sfloat;     // 3-part float
 			break;
 		case 4:
-			vertexInfo.attribute[i].format = VK_FORMAT_R32G32B32A32_SFLOAT;	 // 4-part float
+			vertexInfo.attribute[i].format = ::vk::Format::eR32G32B32A32Sfloat;	 // 4-part float
 			break;
 		default:
 			ofLogWarning() << "Could not determine vertex attribute type for: " << attributeInput.name;
@@ -601,49 +598,46 @@ void of::vk::Shader::reflectVertexInputs(const spirv_cross::Compiler & compiler,
 		}
 	}
 
-	VkPipelineVertexInputStateCreateInfo vi{
-		VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO, // VkStructureType                             sType;
-		nullptr,                                                   // const void*                                 pNext;
-		0,                                                         // VkPipelineVertexInputStateCreateFlags       flags;
-		uint32_t( vertexInfo.bindingDescription.size() ),          // uint32_t                                    vertexBindingDescriptionCount;
-		vertexInfo.bindingDescription.data(),                      // const VkVertexInputBindingDescription*      pVertexBindingDescriptions;
-		uint32_t( vertexInfo.attribute.size() ),                   // uint32_t                                    vertexAttributeDescriptionCount;
-		vertexInfo.attribute.data()                                // const VkVertexInputAttributeDescription*    pVertexAttributeDescriptions;
-	};
+	::vk::PipelineVertexInputStateCreateInfo vertexInputStateCreateInfo = ::vk::PipelineVertexInputStateCreateInfo(); 
+	vertexInputStateCreateInfo
+		.setVertexBindingDescriptionCount( vertexInfo.bindingDescription.size() )
+		.setPVertexBindingDescriptions( vertexInfo.bindingDescription.data() )
+		.setVertexAttributeDescriptionCount( vertexInfo.attribute.size() )
+		.setPVertexAttributeDescriptions( vertexInfo.attribute.data() )
+		;
 
-	vertexInfo.vi = std::move( vi );
+	vertexInfo.vi = std::move( vertexInputStateCreateInfo );
 }
 
 // ----------------------------------------------------------------------
 
 void of::vk::Shader::createVkPipelineLayout() {
 	
-	std::vector<VkDescriptorSetLayout> vkLayouts;
+	std::vector<::vk::DescriptorSetLayout> vkLayouts;
 	vkLayouts.reserve( mPipelineLayoutMeta.size() );
 
 	for ( const auto &k : mPipelineLayoutMeta ){
 		vkLayouts.push_back( mShaderManager->getVkDescriptorSetLayout( k ) );
 	}
 	
-	VkPipelineLayoutCreateInfo pipelineInfo{
-		VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,    // VkStructureType                 sType;
-		nullptr,                                          // const void*                     pNext;
-		0,                                                // VkPipelineLayoutCreateFlags     flags;
-		uint32_t( vkLayouts.size() ),                     // uint32_t                        setLayoutCount;
-		vkLayouts.data(),                                 // const VkDescriptorSetLayout*    pSetLayouts;
-		0,                                                // uint32_t                        pushConstantRangeCount;
-		nullptr                                           // const VkPushConstantRange*      pPushConstantRanges;
-	};
-	
+	auto pipelineInfo = ::vk::PipelineLayoutCreateInfo();
+	pipelineInfo
+		.setSetLayoutCount( vkLayouts.size())
+		.setPSetLayouts( vkLayouts.data() )
+		.setPushConstantRangeCount( 0 )
+		.setPPushConstantRanges( nullptr )
+		;
+
 	auto & deviceHandle = mShaderManager->mSettings.device;
 
-	mPipelineLayout = std::shared_ptr<VkPipelineLayout>( new VkPipelineLayout, 
-		[device = deviceHandle]( VkPipelineLayout* lhs ){
-		vkDestroyPipelineLayout( device, *lhs, nullptr );
+	mPipelineLayout = std::shared_ptr<::vk::PipelineLayout>( new ::vk::PipelineLayout,
+		[device = deviceHandle]( ::vk::PipelineLayout* lhs ){
+		device.destroyPipelineLayout( *lhs );
 		delete lhs;
 	} );
 
-	vkCreatePipelineLayout( deviceHandle, &pipelineInfo, nullptr, mPipelineLayout.get() );
+	*mPipelineLayout = deviceHandle.createPipelineLayout( pipelineInfo );
+
 }
 
 // ----------------------------------------------------------------------

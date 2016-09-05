@@ -24,7 +24,7 @@ bool of::vk::ShaderManager::createVkDescriptorSetLayouts(){
 
 		// create vkbinding description for each binding
 
-		std::vector<VkDescriptorSetLayoutBinding> bindings;
+		std::vector<::vk::DescriptorSetLayoutBinding> bindings;
 		bindings.reserve( setLayoutMeta.bindingTable.size() );
 
 		for ( const auto& bindingInfo : setLayoutMeta.bindingTable ){
@@ -49,7 +49,7 @@ bool of::vk::ShaderManager::createVkDescriptorSetLayouts(){
 			// If uniform references a combined image sampler, we want to add a reference for this
 			// sampler to the central registry.
 
-			if ( uniformMeta->type == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER ){
+			if ( uniformMeta->type == ::vk::DescriptorType::eCombinedImageSampler ){
 				mTextureUsage[uniformMeta->name].push_back( setLayoutHash );
 			}
 
@@ -62,24 +62,22 @@ bool of::vk::ShaderManager::createVkDescriptorSetLayouts(){
 			} );
 		}
 
-		VkDescriptorSetLayoutCreateInfo descriptorSetLayoutInfo{
-			VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO, // VkStructureType                        sType;
-			nullptr,                                             // const void*                            pNext;
-			0,                                                   // VkDescriptorSetLayoutCreateFlags       flags;
-			static_cast<uint32_t>(bindings.size()),              // uint32_t                               bindingCount;
-			bindings.data()                                      // const VkDescriptorSetLayoutBinding*    pBindings;
-		};
+		auto descriptorSetLayoutInfo = ::vk::DescriptorSetLayoutCreateInfo();
+		descriptorSetLayoutInfo
+			.setBindingCount( bindings.size() )
+			.setPBindings( bindings.data())
+			;
 
-		auto descriptorSetLayout = std::shared_ptr<VkDescriptorSetLayout>( new VkDescriptorSetLayout, 
-			[device=mSettings.device](VkDescriptorSetLayout * lhs){
-			if ( *lhs != nullptr ){
-				vkDestroyDescriptorSetLayout( device, *lhs, nullptr );
+		auto descriptorSetLayout = std::shared_ptr<::vk::DescriptorSetLayout>( new ::vk::DescriptorSetLayout, 
+			[device=mSettings.device](::vk::DescriptorSetLayout * lhs){
+			if ( *lhs ){
+				device.destroyDescriptorSetLayout( *lhs );
 			}
 			delete lhs;
 		} );
 
-		auto err = vkCreateDescriptorSetLayout( mSettings.device, &descriptorSetLayoutInfo, nullptr, descriptorSetLayout.get() );
-		assert( !err );
+		*descriptorSetLayout = mSettings.device.createDescriptorSetLayout( descriptorSetLayoutInfo );
+
 		mDescriptorSetLayoutStore[setLayoutHash] = std::move( descriptorSetLayout );
 	}
 
@@ -88,11 +86,11 @@ bool of::vk::ShaderManager::createVkDescriptorSetLayouts(){
 
 // ----------------------------------------------------------------------
 
-const VkDescriptorSetLayout& of::vk::ShaderManager::getVkDescriptorSetLayout( uint64_t descriptorSetLayoutKey ){
+const ::vk::DescriptorSetLayout& of::vk::ShaderManager::getVkDescriptorSetLayout( uint64_t descriptorSetLayoutKey ){
 
 	//! TODO: create descriptorSetLayout if possible.
 
-	static VkDescriptorSetLayout failedLayout = nullptr;
+	static ::vk::DescriptorSetLayout failedLayout;
 
 	const auto & foundLayout = mDescriptorSetLayoutStore.find( descriptorSetLayoutKey );
 	if ( foundLayout != mDescriptorSetLayoutStore.end() ){
@@ -106,11 +104,11 @@ const VkDescriptorSetLayout& of::vk::ShaderManager::getVkDescriptorSetLayout( ui
 
 // ----------------------------------------------------------------------
 
-std::vector<VkDescriptorPoolSize> of::vk::ShaderManager::getVkDescriptorPoolSizes(){
+std::vector<::vk::DescriptorPoolSize> of::vk::ShaderManager::getVkDescriptorPoolSizes(){
 
 	updatePoolSizesPerDescriptorSetCache();
 	
-	std::vector<VkDescriptorPoolSize> poolSizes;
+	std::vector<::vk::DescriptorPoolSize> poolSizes;
 
 	for ( const auto & sizePair : mPoolSizesPerDescriptorSetCache ){
 		const auto & key = sizePair.first;
@@ -132,7 +130,7 @@ void of::vk::ShaderManager::updatePoolSizesPerDescriptorSetCache(){
 		const auto & hash = s.first;
 		const auto & setLayoutMeta = s.second;
 
-		std::map<VkDescriptorType, uint32_t> poolSizeMap;
+		std::map<::vk::DescriptorType, uint32_t> poolSizeMap;
 
 		for ( const auto & b : setLayoutMeta->bindingTable ){
 			const auto & bindingNumber = b.first;
@@ -151,11 +149,11 @@ void of::vk::ShaderManager::updatePoolSizesPerDescriptorSetCache(){
 		
 		// flatten map into vector of VkDescriptorPoolSize
 
-		std::vector<VkDescriptorPoolSize> poolSizes;
+		std::vector<::vk::DescriptorPoolSize> poolSizes;
 		poolSizes.reserve( poolSizeMap.size() );
 
 		std::transform( poolSizeMap.cbegin(), poolSizeMap.cend(), std::back_inserter( poolSizes ),
-			[]( const std::pair<VkDescriptorType, uint32_t>& lhs ) -> VkDescriptorPoolSize {
+			[]( const std::pair<::vk::DescriptorType, uint32_t>& lhs ) -> ::vk::DescriptorPoolSize {
 			return{ lhs.first,lhs.second };
 		} );
 

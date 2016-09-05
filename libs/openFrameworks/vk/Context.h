@@ -66,10 +66,10 @@ public:
 
 	struct Settings
 	{
-		VkDevice                   device = nullptr;
+		::vk::Device               device = nullptr;
 		size_t                     numVirtualFrames = 0;
 		shared_ptr<ShaderManager>  shaderManager;
-		VkRenderPass               defaultRenderPass;
+		::vk::RenderPass           defaultRenderPass;
 		// context is initialised with a vector of shaders
 		// all these shaders contribute to the shared pipeline layout 
 		// for this context. The shaders need to be compatible in their
@@ -179,7 +179,7 @@ private:
 	// --------- pipeline info
 
 	// TODO: pipeline cache should be shared over all contexts.
-	VkPipelineCache       mPipelineCache = nullptr;
+	::vk::PipelineCache       mPipelineCache = nullptr;
 
 	// object which tracks current pipeline state
 	// and creates a pipeline.
@@ -194,13 +194,13 @@ private:
 		std::vector<uint64_t       > setLayoutKeys;
 
 		// derived sets (nullptr if not yet initialised)
-		std::vector<VkDescriptorSet> vkDescriptorSets;
+		std::vector<::vk::DescriptorSet> vkDescriptorSets;
 		
 		// vector of sets which have been invalidated
 		std::vector<size_t> dirtySetIndices;
 
 		// map from descriptorSetLayoutHash to DescriptorSet
-		std::map<uint64_t, VkDescriptorSet> descriptorSetCache;
+		std::map<uint64_t, ::vk::DescriptorSet> descriptorSetCache;
 
 		// map from descriptorSetLayoutHash to binding table
 		std::map<uint64_t, std::map<uint32_t, uint64_t>> bindingStateCache;
@@ -215,14 +215,14 @@ private:
 
 	void updateDescriptorSets( const std::vector<size_t>& setIndices );
 
-	VkPipeline mCurrentVkPipeline = nullptr;
+	::vk::Pipeline mCurrentVkPipeline = nullptr;
 
 	// One DescriptorPool per SwapChain frame.
-	std::vector<VkDescriptorPool> mDescriptorPool;
+	std::vector<::vk::DescriptorPool> mDescriptorPool;
 
 	// list of overspill pools per swapchain frame for
 	// when pool is too small and new pool needs to be allocated.
-	std::vector<std::vector<VkDescriptorPool>> mDescriptorPoolOverspillPools;
+	std::vector<std::vector<::vk::DescriptorPool>> mDescriptorPoolOverspillPools;
 
 	// bitfield indicating whether the descriptor pool for a virtual frame is dirty 
 	// each bit represents a virtual frame index. 
@@ -230,7 +230,7 @@ private:
 	uint64_t mDescriptorPoolsDirty = -1; // all bits '1' == all dirty
 
 	// Number of descriptors per type, one (or more) vector entries per descriptor type
-	std::vector<VkDescriptorPoolSize> mDescriptorPoolSizes;
+	std::vector<::vk::DescriptorPoolSize> mDescriptorPoolSizes;
 
 	// Max number of sets which can be allocated from the main per-frame descriptor pool
 	uint32_t mDescriptorPoolMaxSets = 0;
@@ -245,7 +245,7 @@ private:
 	void resetDescriptorPool( size_t frame_ );
 
 	// Map from pipeline state hash to VkPipeline object
-	std::map<uint64_t, VkPipeline> mVkPipelines;
+	std::map<uint64_t, ::vk::Pipeline> mVkPipelines;
 
 	// all shaders attached to this context
 	std::vector<std::shared_ptr<of::vk::Shader>> mShaders;
@@ -283,14 +283,14 @@ public:
 	// updates descriptorOffsets - saves these in frameShadow
 	void flushUniformBufferState();
 
-	void bindDescriptorSets( const VkCommandBuffer & cmd );
-	void bindPipeline( const VkCommandBuffer& cmd );
+	void bindDescriptorSets( const ::vk::CommandBuffer & cmd );
+	void bindPipeline( const ::vk::CommandBuffer& cmd );
 
 	Context& setShader( const std::shared_ptr<of::vk::Shader>& shader_ );
-	Context& setRenderPass( const VkRenderPass& renderpass_ );
+	Context& setRenderPass( const ::vk::RenderPass& renderpass_ );
 
 	// return the one buffer which is used for all dynamic buffer memory within this context.
-	const VkBuffer& getVkBuffer() const;
+	const ::vk::Buffer& getVkBuffer() const;
 
 	const std::shared_ptr<ShaderManager> & getShaderManager(){
 		return mShaderManager;
@@ -336,13 +336,13 @@ public:
 	}
 
 	// draw a mesh using current context draw state
-	Context& draw(const VkCommandBuffer& cmd, const ofMesh& mesh_);
+	Context& draw(const ::vk::CommandBuffer& cmd, const ofMesh& mesh_);
 
 	// store vertex and index data inside the current dynamic memory frame
 	// return memory mapping offets based on current memory buffer.
-	bool storeMesh( const ofMesh& mesh_, std::vector<VkDeviceSize>& vertexOffsets, std::vector<VkDeviceSize>& indexOffsets );
+	bool storeMesh( const ofMesh& mesh_, std::vector<VkDeviceSize>& vertexOffsets, std::vector<::vk::DeviceSize>& indexOffsets );
 	
-	Context& setPolyMode( VkPolygonMode polyMode_){
+	Context& setPolyMode( ::vk::PolygonMode polyMode_){
 		mCurrentGraphicsPipelineState.setPolyMode( polyMode_ );
 		return *this;
 	}

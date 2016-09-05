@@ -557,7 +557,7 @@ ofRectMode ofVkRenderer::getRectMode()
 
 void ofVkRenderer::setFillMode( ofFillFlag fill ){
 	if ( mDefaultContext ){
-		fill == OF_FILLED ? mDefaultContext->setPolyMode( VK_POLYGON_MODE_FILL ) : mDefaultContext->setPolyMode( VK_POLYGON_MODE_LINE );
+		fill == OF_FILLED ? mDefaultContext->setPolyMode( ::vk::PolygonMode::eFill ) : mDefaultContext->setPolyMode( ::vk::PolygonMode::eLine );
 	}
 }
 

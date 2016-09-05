@@ -29,6 +29,12 @@ void of::vk::GraphicsPipelineState::reset()
 	// viewport and scissor are tracked as dynamic states, so this object
 	// will not get used.
 	mViewportState = ::vk::PipelineViewportStateCreateInfo();
+	mViewportState
+		.setViewportCount( 1 )
+		.setPViewports( nullptr )
+		.setScissorCount( 1 )
+		.setPScissors( nullptr )
+		;
 
 	mRasterizationState = ::vk::PipelineRasterizationStateCreateInfo();
 	mRasterizationState
@@ -109,8 +115,8 @@ void of::vk::GraphicsPipelineState::reset()
 		;
 
 	mDefaultDynamicStates = {
-		::vk::DynamicState::eViewport,
 		::vk::DynamicState::eScissor,
+		::vk::DynamicState::eViewport,
 	};
 
 	mDynamicState = ::vk::PipelineDynamicStateCreateInfo();
@@ -130,7 +136,7 @@ void of::vk::GraphicsPipelineState::reset()
 // ----------------------------------------------------------------------
 
 ::vk::Pipeline of::vk::GraphicsPipelineState::createPipeline( const ::vk::Device & device, const ::vk::PipelineCache & pipelineCache, ::vk::Pipeline basePipelineHandle_ ){
-		::vk::Pipeline pipeline = nullptr;
+		::vk::Pipeline pipeline;
 
 		// naive: create a pipeline based on current internal state
 
@@ -159,6 +165,7 @@ void of::vk::GraphicsPipelineState::reset()
 		}
 
 		::vk::GraphicsPipelineCreateInfo pipelineCreateInfo;
+		
 		pipelineCreateInfo
 			.setFlags               ( createFlags )
 			.setStageCount          ( stageCreateInfo.size() )

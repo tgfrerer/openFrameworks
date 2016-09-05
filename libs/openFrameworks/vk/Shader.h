@@ -1,7 +1,7 @@
 #pragma once
 #include <string>
 #include <map>
-#include "vulkan/vulkan.h"
+#include "vulkan/vulkan.hpp"
 #include "vk/spirv-cross/include/spirv_cross.hpp"
 
 //   The smallest unit we may bind in Vulkan are DescriptorSets.
@@ -88,7 +88,7 @@ public:
 	const struct Settings
 	{
 		std::shared_ptr<of::vk::ShaderManager> shaderManager;
-		std::map<VkShaderStageFlagBits, std::string> sources;
+		std::map<::vk::ShaderStageFlagBits, std::string> sources;
 	} mSettings;
 
 	// we need a table of uniforms
@@ -104,15 +104,15 @@ public:
 	{
 		using MemberMap = std::map< std::string, of::vk::Shader::UboMemberRange>;
 		
-		VkDescriptorType      type = VK_DESCRIPTOR_TYPE_MAX_ENUM;  /* used for hash */
-		uint32_t              count = 0;                           /* used for hash */
-		size_t                storageSize;                         /* used for hash */
-		std::string           name;                                /* used for hash */
+		::vk::DescriptorType    type;                                /* used for hash */
+		uint32_t                count = 0;                           /* used for hash */
+		size_t                  storageSize = 0;                     /* used for hash */
+		std::string             name;                                /* used for hash */
 		
-		VkShaderStageFlags    stageFlags = 0;
-		MemberMap             memberRanges; // optional: memory offsets for members within UBO, indexed by name
+		::vk::ShaderStageFlags  stageFlags;
+		MemberMap               memberRanges; // optional: memory offsets for members within UBO, indexed by name
 		
-		uint64_t              hash = 0;                            /* hash of type, count, name, storageSize */
+		uint64_t                hash = 0;                            /* hash of type, count, name, storageSize */
 		
 		void calculateHash();
 		
@@ -154,31 +154,31 @@ public:
 
 	struct VertexInfo
 	{
-		std::vector<VkVertexInputBindingDescription>   bindingDescription;	  // describes data input parameters for pipeline slots
-		std::vector<VkVertexInputAttributeDescription> attribute;	          // mapping of attribute locations to pipeline slots
-		VkPipelineVertexInputStateCreateInfo vi;
+		std::vector<::vk::VertexInputBindingDescription>   bindingDescription;	  // describes data input parameters for pipeline slots
+		std::vector<::vk::VertexInputAttributeDescription> attribute;	          // mapping of attribute locations to pipeline slots
+		::vk::PipelineVertexInputStateCreateInfo vi;
 	} mVertexInfo;
 
 	
 
 private:
 
-	mutable std::shared_ptr<VkPipelineLayout> mPipelineLayout; 
+	mutable std::shared_ptr<::vk::PipelineLayout> mPipelineLayout;
 	uint64_t mShaderHash = 0;
 	bool     mShaderHashDirty = true;
 
 	struct ShaderStage{
-		VkShaderModule module;
-		VkPipelineShaderStageCreateInfo createInfo;
+		::vk::ShaderModule module;
+		::vk::PipelineShaderStageCreateInfo createInfo;
 	};
 
-	std::map<VkShaderStageFlagBits, std::shared_ptr<ShaderStage>> mShaderStages;
+	std::map<::vk::ShaderStageFlagBits, std::shared_ptr<ShaderStage>> mShaderStages;
 
-	std::map<VkShaderStageFlagBits, std::shared_ptr<spirv_cross::Compiler>> mSpvCrossCompilers;
+	std::map<::vk::ShaderStageFlagBits, std::shared_ptr<spirv_cross::Compiler>> mSpvCrossCompilers;
 	
 	// hashes for pre-compiled spirv
 	// we use this to find out if shader code has changed.
-	std::map<VkShaderStageFlagBits, uint64_t> mSpvHash;
+	std::map<::vk::ShaderStageFlagBits, uint64_t> mSpvHash;
 
 	// Sequence of hashes of SetLayouts - which reference vkDescriptorSetLayouts in Context.
 	// This describes the sequence for the pipeline layout for this shader.
@@ -189,11 +189,11 @@ private:
 	// we want to extract as much information out of the shader metadata as possible
 	// all this data helps us to create descriptors, and also to create layouts fit
 	// for our pipelines.
-	void reflect( const std::map<VkShaderStageFlagBits, std::shared_ptr<spirv_cross::Compiler>>& compilers, VertexInfo& vertexInfo );
+	void reflect( const std::map<::vk::ShaderStageFlagBits, std::shared_ptr<spirv_cross::Compiler>>& compilers, VertexInfo& vertexInfo );
 	//static void reflectUniformBuffers( const spirv_cross::Compiler & compiler, const VkShaderStageFlagBits & shaderStage, std::map<std::string, BindingInfo>& uniformInfo );
 	
-	bool reflectUBOs( const spirv_cross::Compiler & compiler, const VkShaderStageFlagBits & shaderStage );
-	bool reflectSamplers( const spirv_cross::Compiler & compiler, const VkShaderStageFlagBits & shaderStage);
+	bool reflectUBOs( const spirv_cross::Compiler & compiler, const ::vk::ShaderStageFlagBits & shaderStage );
+	bool reflectSamplers( const spirv_cross::Compiler & compiler, const ::vk::ShaderStageFlagBits & shaderStage);
 	bool addResourceToBindingsTable( const spirv_cross::Compiler & compiler, const spirv_cross::Resource & ubo, std::shared_ptr<of::vk::Shader::DescriptorInfo> & uniform );
 	bool createSetLayouts();
 	void createVkPipelineLayout();
@@ -203,13 +203,13 @@ private:
 
 
 	// based on file name ending, read either spirv or glsl file and fill vector of spirV words
-	bool getSpirV( const VkShaderStageFlagBits shaderType, const std::string & fileName, std::vector<uint32_t> &spirCode );
+	bool getSpirV( const ::vk::ShaderStageFlagBits shaderType, const std::string & fileName, std::vector<uint32_t> &spirCode );
 	
 	// find out if module is dirty
-	bool isSpirCodeDirty( const VkShaderStageFlagBits shaderStage, uint64_t spirvHash );
+	bool isSpirCodeDirty( const ::vk::ShaderStageFlagBits shaderStage, uint64_t spirvHash );
 
 	// create vkShader module from binary spirv code
-	void createVkShaderModule( const VkShaderStageFlagBits shaderType, const std::vector<uint32_t> &spirCode);
+	void createVkShaderModule( const ::vk::ShaderStageFlagBits shaderType, const std::vector<uint32_t> &spirCode);
 
 
 public:

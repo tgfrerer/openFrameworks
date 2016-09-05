@@ -68,8 +68,8 @@ void ofVkRenderer::setupDefaultContext(){
 	of::vk::Shader::Settings settings{
 		mShaderManager,
 		{
-			{ VK_SHADER_STAGE_VERTEX_BIT  , "default.vert" },
-			{ VK_SHADER_STAGE_FRAGMENT_BIT, "default.frag" },
+			{ ::vk::ShaderStageFlagBits::eVertex  , "default.vert" },
+			{ ::vk::ShaderStageFlagBits::eFragment, "default.frag" },
 		}
 	};
 

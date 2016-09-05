@@ -81,16 +81,18 @@ void of::vk::Context::reset(){
 
 	for ( auto &pools : mDescriptorPoolOverspillPools ){
 		for ( auto &p : pools ){
-			if ( p != nullptr){
-				vkDestroyDescriptorPool( mSettings.device, p, nullptr );
+			if ( p ){
+				mSettings.device.destroyDescriptorPool( p );
+				p = nullptr;
 			}
 		}
 	}
 	mDescriptorPoolOverspillPools.clear();
 
 	for ( auto & p : mDescriptorPool ){
-		if ( p != nullptr ){
-			vkDestroyDescriptorPool( mSettings.device, p, nullptr );
+		if ( p ){
+			mSettings.device.destroyDescriptorPool( p );
+			p = nullptr;
 		}
 	}
 	mDescriptorPool.clear();
@@ -103,16 +105,16 @@ void of::vk::Context::reset(){
 	mAlloc->reset();
 
 	for ( auto &p : mVkPipelines ){
-		if ( p.second != nullptr ){
-			vkDestroyPipeline( mSettings.device, p.second, nullptr );
+		if ( p.second ){
+			mSettings.device.destroyPipeline( p.second );
 			p.second = nullptr;
 		}
 	}
 
 	mVkPipelines.clear();
 
-	if ( mPipelineCache != nullptr ){
-		vkDestroyPipelineCache( mSettings.device, mPipelineCache, nullptr );
+	if ( mPipelineCache){
+		mSettings.device.destroyPipelineCache( mPipelineCache );
 		mPipelineCache = nullptr;
 	}
 }
@@ -139,7 +141,7 @@ void of::vk::Context::initialiseFrameState(){
 		const auto uniformKey = b.first;
 		const auto & descriptorInfo = *b.second;
 
-		if ( descriptorInfo.type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC ){
+		if ( descriptorInfo.type == ::vk::DescriptorType::eUniformBufferDynamic ){
 			// we want the member name to be the full name, 
 			// i.e. : "DefaultMatrices.ProjectionMatrix", to avoid clashes.
 			UboStack uboState;
@@ -166,7 +168,7 @@ void of::vk::Context::initialiseFrameState(){
 				}
 			}
 
-		} else if ( descriptorInfo.type == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER ){
+		} else if ( descriptorInfo.type == ::vk::DescriptorType::eCombinedImageSampler ){
 			// add a dummy texture 
 			frame.mUniformTextures[descriptorInfo.name] = std::make_shared<of::vk::Texture>();
 			
@@ -221,7 +223,7 @@ void of::vk::Context::resetDescriptorPool( size_t frame_ ){
 	// decriptorPool attached to this virtual frame.
 
 	if ( 0 == ( ( 1ULL << frame_ ) & mDescriptorPoolsDirty ) ){
-		vkResetDescriptorPool( mSettings.device, mDescriptorPool[frame_], 0 );
+		mSettings.device.resetDescriptorPool( mDescriptorPool[frame_] );
 		return;
 	}
 
@@ -232,9 +234,8 @@ void of::vk::Context::resetDescriptorPool( size_t frame_ ){
 	for ( auto &pool : mDescriptorPoolOverspillPools[frame_] ){
 	   // we need to delete all old pools, and consolidate them into 
 	   // the main pool.
-
-		vkResetDescriptorPool( mSettings.device, pool, 0 );
-		vkDestroyDescriptorPool( mSettings.device, pool, nullptr );
+		mSettings.device.resetDescriptorPool( pool );
+		mSettings.device.destroyDescriptorPool( pool );
 	}
 
 	mDescriptorPoolOverspillPools[frame_].clear();
@@ -242,10 +243,9 @@ void of::vk::Context::resetDescriptorPool( size_t frame_ ){
 	// Reset and destroy the main descriptor pool for this virtual frame
 	// and build the main pool based on 
 
-	if ( mDescriptorPool[frame_] != nullptr ){
-		auto err = vkResetDescriptorPool( mSettings.device, mDescriptorPool[frame_], 0 );
-		assert( !err );
-		vkDestroyDescriptorPool( mSettings.device, mDescriptorPool[frame_], nullptr );
+	if ( mDescriptorPool[frame_] ){
+		mSettings.device.resetDescriptorPool( mDescriptorPool[frame_] );
+		mSettings.device.destroyDescriptorPool( mDescriptorPool[frame_] );
 		mDescriptorPool[frame_] = nullptr;
 	}
  
@@ -256,16 +256,15 @@ void of::vk::Context::resetDescriptorPool( size_t frame_ ){
 	// descriptors allocated from this pool must be freed in bulk, by resetting the 
 	// descriptorPool, and cannot be individually freed.
 
-	VkDescriptorPoolCreateInfo descriptorPoolInfo = {
-		VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,             // VkStructureType                sType;
-		nullptr,                                                   // const void*                    pNext;
-		0,                                                         // VkDescriptorPoolCreateFlags    flags;
-		mDescriptorPoolMaxSets,                                    // uint32_t                       maxSets;
-		uint32_t( mDescriptorPoolSizes.size() ),                   // uint32_t                       poolSizeCount;
-		mDescriptorPoolSizes.data(),                               // const VkDescriptorPoolSize*    pPoolSizes;
-	};
+	auto descriptorPoolInfo = ::vk::DescriptorPoolCreateInfo();
 
-	vkCreateDescriptorPool( mSettings.device, &descriptorPoolInfo, nullptr, &mDescriptorPool[frame_] );
+	descriptorPoolInfo
+		.setMaxSets       ( mDescriptorPoolMaxSets)
+		.setPoolSizeCount ( mDescriptorPoolSizes.size() )
+		.setPPoolSizes    ( mDescriptorPoolSizes.data() )
+		;
+
+	mDescriptorPool[frame_] = mSettings.device.createDescriptorPool( descriptorPoolInfo );
 
 	// mark this particular descriptorPool as not dirty
 	mDescriptorPoolsDirty ^= ( 1ULL << frame_ );
@@ -329,14 +328,14 @@ of::vk::Context & of::vk::Context::setShader( const std::shared_ptr<of::vk::Shad
 
 // ----------------------------------------------------------------------
 
-of::vk::Context & of::vk::Context::setRenderPass( const VkRenderPass & renderpass_ ){
+of::vk::Context & of::vk::Context::setRenderPass( const ::vk::RenderPass & renderpass_ ){
 	mCurrentGraphicsPipelineState.setRenderPass( renderpass_ );
 	return *this;
 }
 
 // ----------------------------------------------------------------------
 
-const VkBuffer & of::vk::Context::getVkBuffer() const{
+const ::vk::Buffer & of::vk::Context::getVkBuffer() const{
 	return mAlloc->getBuffer();
 }
 
@@ -364,7 +363,7 @@ of::vk::Context& of::vk::Context::popBuffer( const std::string & ubo_ ){
 
 // ----------------------------------------------------------------------
 
-of::vk::Context& of::vk::Context::draw( const VkCommandBuffer& cmd, const ofMesh & mesh_ ){
+of::vk::Context& of::vk::Context::draw( const ::vk::CommandBuffer& cmd, const ofMesh & mesh_ ){
 
 	bindPipeline( cmd );
 
@@ -377,8 +376,8 @@ of::vk::Context& of::vk::Context::draw( const VkCommandBuffer& cmd, const ofMesh
 
 	bindDescriptorSets( cmd );
 
-	std::vector<VkDeviceSize> vertexOffsets;
-	std::vector<VkDeviceSize> indexOffsets;
+	std::vector<::vk::DeviceSize> vertexOffsets;
+	std::vector<::vk::DeviceSize> indexOffsets;
 
 	// Store vertex data using Context.
 	// - this uses Allocator to store mesh data in the current frame' s dynamic memory
@@ -397,16 +396,17 @@ of::vk::Context& of::vk::Context::draw( const VkCommandBuffer& cmd, const ofMesh
 	// The vector indices into bufferRefs, vertexOffsets correspond to [binding numbers] of the currently bound pipeline.
 	// See Shader.h for an explanation of how this is mapped to shader attribute locations
 	auto buf = getVkBuffer();
-	vector<VkBuffer> bufferRefs( vertexOffsets.size(),buf);
-	vkCmdBindVertexBuffers( cmd, 0, uint32_t( bufferRefs.size() ), bufferRefs.data(), vertexOffsets.data() );
+	vector<::vk::Buffer> bufferRefs( vertexOffsets.size(), buf);
+
+	cmd.bindVertexBuffers( 0, bufferRefs, vertexOffsets );
 
 	if ( indexOffsets.empty() ){
 		// non-indexed draw
-		vkCmdDraw( cmd, uint32_t( mesh_.getNumVertices() ), 1, 0, 1 );
+		cmd.draw( uint32_t( mesh_.getNumVertices() ), 1, 0, 0 ); //last param was 1
 	} else{
 		// indexed draw
-		vkCmdBindIndexBuffer( cmd, bufferRefs[0], indexOffsets[0], VK_INDEX_TYPE_UINT32 );
-		vkCmdDrawIndexed( cmd, uint32_t( mesh_.getNumIndices() ), 1, 0, 0, 1 );
+		cmd.bindIndexBuffer( bufferRefs[0], indexOffsets[0], ::vk::IndexType::eUint32 );
+		cmd.drawIndexed( mesh_.getNumIndices(), 1, 0, 0, 0 ); // last param was 1
 	}
 	return *this;
 }
@@ -416,11 +416,11 @@ of::vk::Context& of::vk::Context::draw( const VkCommandBuffer& cmd, const ofMesh
 bool of::vk::Context::storeMesh( const ofMesh & mesh_, std::vector<VkDeviceSize>& vertexOffsets, std::vector<VkDeviceSize>& indexOffsets ){
 	// CONSIDER: add option to interleave 
 
-	uint32_t numVertices = uint32_t( mesh_.getVertices().size() );
-	uint32_t numColors = uint32_t( mesh_.getColors().size() );
-	uint32_t numNormals = uint32_t( mesh_.getNormals().size() );
+	uint32_t numVertices   = uint32_t( mesh_.getVertices().size()  );
+	uint32_t numColors     = uint32_t( mesh_.getColors().size()    );
+	uint32_t numNormals    = uint32_t( mesh_.getNormals().size()   );
 	uint32_t numTexCooords = uint32_t( mesh_.getTexCoords().size() );
-	uint32_t numIndices = uint32_t( mesh_.getIndices().size() );
+	uint32_t numIndices    = uint32_t( mesh_.getIndices().size()   );
 
 	// CONSIDER: add error checking - make sure 
 	// numVertices == numColors == numNormals == numTexCooords
@@ -529,8 +529,8 @@ void of::vk::Context::flushUniformBufferState(){
 
 				void * pDst = nullptr;
 
-				VkDeviceSize numBytes = uniformBuffer.struct_size;
-				VkDeviceSize newOffset = 0;	// device GPU memory offset for this buffer 
+				::vk::DeviceSize numBytes = uniformBuffer.struct_size;
+				::vk::DeviceSize newOffset = 0;	// device GPU memory offset for this buffer 
 				auto success = mAlloc->allocate( numBytes, pDst, newOffset, mFrameIndex );
 				currentOffsets.push_back( (uint32_t)newOffset ); // store offset into offsets list.
 				if ( !success ){
@@ -558,7 +558,7 @@ void of::vk::Context::flushUniformBufferState(){
 
 // ----------------------------------------------------------------------
 
-void of::vk::Context::bindDescriptorSets( const VkCommandBuffer & cmd ){
+void of::vk::Context::bindDescriptorSets( const ::vk::CommandBuffer & cmd ){
 
 	// Update Pipeline Layout State, i.e. which set layouts are currently bound
 	const auto & boundVkDescriptorSets = mPipelineLayoutState.vkDescriptorSets;
@@ -569,16 +569,17 @@ void of::vk::Context::bindDescriptorSets( const VkCommandBuffer & cmd ){
 	const std::vector<uint32_t> &dynamicBindingOffsets = mCurrentFrameState.bindingOffsets;
 
 	// Bind uniforms (the first set contains the matrices)
-	vkCmdBindDescriptorSets(
-		cmd,
-		VK_PIPELINE_BIND_POINT_GRAPHICS,                  // use graphics, not compute pipeline
-		*currentShader->getPipelineLayout(),              // VkPipelineLayout object used to program the bindings.
-		0, 						                          // firstset: first set index (of the above) to bind to - mDescriptorSet[0] will be bound to pipeline layout [firstset]
-		uint32_t( boundVkDescriptorSets.size() ),         // setCount: how many sets to bind
-		boundVkDescriptorSets.data(),                     // the descriptor sets to match up with our mPipelineLayout (need to be compatible)
-		uint32_t( dynamicBindingOffsets.size() ),         // dynamic offsets count how many dynamic offsets
-		dynamicBindingOffsets.data()                      // dynamic offsets for each descriptor
+
+	cmd.bindDescriptorSets(
+		::vk::PipelineBindPoint::eGraphics,	  // use graphics, not compute pipeline
+		*currentShader->getPipelineLayout(),  // VkPipelineLayout object used to program the bindings.
+		0,                                    // firstset: first set index (of the above) to bind to - mDescriptorSet[0] will be bound to pipeline layout [firstset]
+		boundVkDescriptorSets.size(),         // setCount: how many sets to bind
+		boundVkDescriptorSets.data(),         // the descriptor sets to match up with our mPipelineLayout (need to be compatible)
+		dynamicBindingOffsets.size(),         // dynamic offsets count how many dynamic offsets
+		dynamicBindingOffsets.data()          // dynamic offsets for each descriptor
 	);
+
 }
 
 // ----------------------------------------------------------------------
@@ -621,19 +622,29 @@ void of::vk::Context::updateDescriptorSetState(){
 
 		} else{
 
-			VkDescriptorSetLayout layout = mShaderManager->getVkDescriptorSetLayout( descriptorSetLayoutHash );
+			::vk::DescriptorSetLayout layout = mShaderManager->getVkDescriptorSetLayout( descriptorSetLayoutHash );
 
-			VkDescriptorSetAllocateInfo allocInfo{
-				VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,	   // VkStructureType                 sType;
-				nullptr,	                                       // const void*                     pNext;
-				mDescriptorPool[mFrameIndex],                      // VkDescriptorPool                descriptorPool;
-				1,                                                 // uint32_t                        descriptorSetCount;
-				&layout                                            // const VkDescriptorSetLayout*    pSetLayouts;
+			auto allocInfo = ::vk::DescriptorSetAllocateInfo();
+			allocInfo
+				.setDescriptorPool( mDescriptorPool[mFrameIndex] )
+				.setDescriptorSetCount( 1 )
+				.setPSetLayouts( &layout )
+				;
+
+			std::vector<::vk::DescriptorSet> descriptorSetVec;
+			
+			bool success = false;
+			try {
+				descriptorSetVec = mSettings.device.allocateDescriptorSets( allocInfo );
+				success = true;
+			}
+			catch ( std::exception e ){
+				success = false;
 			};
 
-			auto err = vkAllocateDescriptorSets( mSettings.device, &allocInfo, &mPipelineLayoutState.vkDescriptorSets[i] );
-
-			if ( err != VK_SUCCESS ){
+			if ( success ){
+				mPipelineLayoutState.vkDescriptorSets[i] = descriptorSetVec.front();
+			} else {
 
 				// Allocation failed. 
 
@@ -644,16 +655,14 @@ void of::vk::Context::updateDescriptorSetState(){
 
 				auto &poolSizes = mShaderManager->getDescriptorPoolSizesForSetLayout( descriptorSetLayoutHash );
 
-				VkDescriptorPoolCreateInfo descriptorPoolInfo = {
-					VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,  // VkStructureType                sType;
-					nullptr,                                        // const void*                    pNext;
-					0,                                              // VkDescriptorPoolCreateFlags    flags;
-					1,                                              // uint32_t                       maxSets;
-					uint32_t( poolSizes.size() ),                   // uint32_t                       poolSizeCount;
-					poolSizes.data(),                               // const VkDescriptorPoolSize*    pPoolSizes;
-				};
-				VkDescriptorPool overspillPool = nullptr;
-				vkCreateDescriptorPool( mSettings.device, &descriptorPoolInfo, nullptr, &overspillPool );
+				auto descriptorPoolInfo = ::vk::DescriptorPoolCreateInfo();
+				descriptorPoolInfo
+					.setMaxSets( 1 )
+					.setPoolSizeCount( poolSizes.size() )
+					.setPPoolSizes( poolSizes.data())
+					;
+				
+				::vk::DescriptorPool overspillPool = mSettings.device.createDescriptorPool(descriptorPoolInfo);
 
 				// Store overspill pool in per-virtual-frame vector of overspill pools.
 				//
@@ -674,10 +683,9 @@ void of::vk::Context::updateDescriptorSetState(){
 				allocInfo.descriptorPool = mDescriptorPoolOverspillPools[mFrameIndex].back();
 
 				// Allocate the descriptorset from the newly created overspill pool
-				err = vkAllocateDescriptorSets( mSettings.device, &allocInfo, &mPipelineLayoutState.vkDescriptorSets[i] );
-				assert( !err );
+				mPipelineLayoutState.vkDescriptorSets[i] = mSettings.device.allocateDescriptorSets( allocInfo ).front();
 
-			}
+			} 
 
 			// store VkDescriptorSet in state cache
 			descriptorSetCache[descriptorSetLayoutHash] = mPipelineLayoutState.vkDescriptorSets[i];
@@ -714,15 +722,15 @@ void of::vk::Context::updateDescriptorSetState(){
 // Initialise descriptors with data after they have been allocated.
 void of::vk::Context::updateDescriptorSets( const std::vector<size_t>& setIndices ){
 
-	std::vector<VkWriteDescriptorSet> writeDescriptorSets;
+	std::vector<::vk::WriteDescriptorSet> writeDescriptorSets;
 	writeDescriptorSets.reserve( setIndices.size() );
 
 	// Temporary storage for bufferInfo objects - we use this to aggregate the data
 	// for UBO bindings and keep it alive outside the loop scope so it can be submitted
 	// to the API after we accumulate inside the loop.
-	std::map < uint64_t, std::vector<VkDescriptorBufferInfo>> descriptorBufferInfoStorage;
+	std::map < uint64_t, std::vector<::vk::DescriptorBufferInfo>> descriptorBufferInfoStorage;
 
-	std::map < uint64_t, std::vector<VkDescriptorImageInfo>> descriptorImageInfoStorage;
+	std::map < uint64_t, std::vector<::vk::DescriptorImageInfo >> descriptorImageInfoStorage;
 
 	// iterate over all setLayouts (since each element corresponds to a DescriptorSet)
 	for ( const auto j : setIndices ){
@@ -760,7 +768,7 @@ void of::vk::Context::updateDescriptorSets( const std::vector<size_t>& setIndice
 			// It appears that writeDescriptorSet does not immediately consume VkDescriptorBufferInfo*
 			// so we must make sure that this is around for when we need it:
 
-			if ( VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC == descriptorInfo->type ){
+			if ( ::vk::DescriptorType::eUniformBufferDynamic == descriptorInfo->type ){
 
 				descriptorBufferInfoStorage[key].push_back( {
 					mAlloc->getBuffer(),                // VkBuffer        buffer;
@@ -777,48 +785,48 @@ void of::vk::Context::updateDescriptorSets( const std::vector<size_t>& setIndice
 
 				// Create one writeDescriptorSet per binding.
 
-				VkWriteDescriptorSet tmpDescriptorSet{
-					VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,                    // VkStructureType                  sType;
-					nullptr,                                                   // const void*                      pNext;
-					mPipelineLayoutState.vkDescriptorSets[j],                  // VkDescriptorSet                  dstSet;
-					bindingNumber,                                             // uint32_t                         dstBinding;
-					0,                                                         // uint32_t                         dstArrayElement; // starting element in array
-					descriptorInfo->count,                                     // uint32_t                         count;
-					descriptorInfo->type,                                      // VkDescriptorType                 descriptorType;
-					nullptr,                                                   // const VkDescriptorImageInfo*     pImageInfo;
-					&bufElement,                                               // const VkDescriptorBufferInfo*    pBufferInfo;
-					nullptr,                                                   // const VkBufferView*              pTexelBufferView;
-				};
+				auto tmpDescriptorSet = ::vk::WriteDescriptorSet();
+				tmpDescriptorSet
+					.setDstSet( mPipelineLayoutState.vkDescriptorSets[j] )
+					.setDstBinding( bindingNumber )
+					.setDstArrayElement( 0 )
+					.setDescriptorCount( descriptorInfo->count)
+					.setDescriptorType( descriptorInfo->type)
+					.setPImageInfo( nullptr)
+					.setPBufferInfo( &bufElement )
+					.setPTexelBufferView( nullptr )
+					
+					;
+
 
 				// store writeDescriptorSet for later, so all writes happen in bulk
 				writeDescriptorSets.push_back( std::move( tmpDescriptorSet ) );
-			} else if ( VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER == descriptorInfo->type ){
+			} else if ( ::vk::DescriptorType::eCombinedImageSampler == descriptorInfo->type ){
 
 				auto & texture = mCurrentFrameState.mUniformTextures[descriptorInfo->name];
-				
-				//!TODO: implement texture arrays, which means dstArrayElement needs to be updated, too.
-				VkDescriptorImageInfo tmpImageInfo{
-					texture->getVkSampler(),  	                               // VkSampler        sampler;
-					texture->getVkImageView(),                                 // VkImageView      imageView;
-					VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,                  // VkImageLayout    imageLayout;
-				};
 
-				descriptorImageInfoStorage[key].emplace_back( std::move( tmpImageInfo ) );
+				auto descriptorImageInfo = ::vk::DescriptorImageInfo();
+				descriptorImageInfo
+					.setSampler( texture->getVkSampler() )
+					.setImageView( texture->getVkImageView() )
+					.setImageLayout( ::vk::ImageLayout::eShaderReadOnlyOptimal )
+					;
+
+				descriptorImageInfoStorage[key].emplace_back( std::move( descriptorImageInfo ) );
 
 				const auto & imgElement = descriptorImageInfoStorage[key].back();
 
-				VkWriteDescriptorSet tmpDescriptorSet{
-					VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,                    // VkStructureType                  sType;
-					nullptr,                                                   // const void*                      pNext;
-					mPipelineLayoutState.vkDescriptorSets[j],                  // VkDescriptorSet                  dstSet;
-					bindingNumber,                                             // uint32_t                         dstBinding;
-					0,                                                         // uint32_t                         dstArrayElement; // starting element in array
-					descriptorInfo->count,                                     // uint32_t                         count;
-					descriptorInfo->type,                                      // VkDescriptorType                 descriptorType;
-					&imgElement,                                               // const VkDescriptorImageInfo*     pImageInfo;
-					nullptr,                                                   // const VkDescriptorBufferInfo*    pBufferInfo;
-					nullptr,                                                   // const VkBufferView*              pTexelBufferView;
-				};
+				auto tmpDescriptorSet = ::vk::WriteDescriptorSet();
+				tmpDescriptorSet
+					.setDstSet( mPipelineLayoutState.vkDescriptorSets[j] )
+					.setDstBinding( bindingNumber )
+					.setDstArrayElement( 0 )
+					.setDescriptorCount( descriptorInfo->count )
+					.setDescriptorType( descriptorInfo->type )
+					.setPImageInfo( &imgElement )
+					.setPBufferInfo( nullptr )
+					.setPTexelBufferView( nullptr )
+					;
 
 				writeDescriptorSets.push_back( std::move( tmpDescriptorSet ) );
 			}
@@ -828,12 +836,12 @@ void of::vk::Context::updateDescriptorSets( const std::vector<size_t>& setIndice
 		}
 	}
 
-	vkUpdateDescriptorSets( mSettings.device, uint32_t( writeDescriptorSets.size() ), writeDescriptorSets.data(), 0, nullptr );
+	mSettings.device.updateDescriptorSets( writeDescriptorSets, {} );
 
 }
 
 // ----------------------------------------------------------------------
-void of::vk::Context::bindPipeline( const VkCommandBuffer & cmd ){
+void of::vk::Context::bindPipeline( const ::vk::CommandBuffer & cmd ){
 
 	// If the current pipeline state is not dirty, no need to bind something 
 	// that is already bound. Return immediately.
@@ -877,7 +885,9 @@ void of::vk::Context::bindPipeline( const VkCommandBuffer & cmd ){
 		}
 
 		// Bind the rendering pipeline (including the shaders)
-		vkCmdBindPipeline( cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, mCurrentVkPipeline );
+
+		cmd.bindPipeline( ::vk::PipelineBindPoint::eGraphics, mCurrentVkPipeline );
+
 		mCurrentGraphicsPipelineState.mDirty = false;
 	}
 

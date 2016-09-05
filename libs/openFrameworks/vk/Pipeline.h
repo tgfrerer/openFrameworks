@@ -90,7 +90,7 @@ private:	// default state for pipeline
 	std::array<::vk::DynamicState, 2>          mDefaultDynamicStates;
 	::vk::PipelineDynamicStateCreateInfo       mDynamicState;
 	
-	::vk::RenderPass      mRenderPass         = nullptr;
+	::vk::RenderPass  mRenderPass         = nullptr;
 	uint32_t          mSubpass            = 0;
 	int32_t           mBasePipelineIndex  = -1;
 

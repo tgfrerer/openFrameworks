@@ -1,6 +1,6 @@
 #pragma once
 
-#include "vulkan/vulkan.h"
+#include "vulkan/vulkan.hpp"
 #include "vk/Shader.h"
 #include "ofLog.h"
 
@@ -22,7 +22,7 @@ class ShaderManager
 public:
 	struct Settings
 	{
-		VkDevice device = nullptr;
+		::vk::Device device = nullptr;
 	} const mSettings;
 
 	ShaderManager(Settings settings)
@@ -85,13 +85,13 @@ public:
 private:
 
 	// central store of VkDescriptorSetLayouts, indexed by corresponding SetLayoutInfo hash
-	std::map<uint64_t, std::shared_ptr<VkDescriptorSetLayout>> mDescriptorSetLayoutStore;
+	std::map<uint64_t, std::shared_ptr<::vk::DescriptorSetLayout>> mDescriptorSetLayoutStore;
 
 	// central store of bindings per descriptor set layout, indexed by descriptor set layout hash
 	std::map<uint64_t, std::map<uint32_t, std::shared_ptr<of::vk::Shader::DescriptorInfo>>> mBindingsPerSetStore;
 
 	// Map from descriptorSetLayout hash to descriptor pool sizes needed to allocate descriptors for this set
-	std::map<uint64_t, std::vector<VkDescriptorPoolSize>> mPoolSizesPerDescriptorSetCache;
+	std::map<uint64_t, std::vector<::vk::DescriptorPoolSize>> mPoolSizesPerDescriptorSetCache;
 
 	// populates mPoolSizesPerDescriptorSetCache based on all known DescriptorSetLayouts 
 	void updatePoolSizesPerDescriptorSetCache();
@@ -101,12 +101,12 @@ public:
 	// create VkDescriptorSetLayouts for all descriptors currently held in mSetLayoutStore
 	bool createVkDescriptorSetLayouts();
 
-	const VkDescriptorSetLayout& getVkDescriptorSetLayout( uint64_t descriptorSetLayoutKey );
+	const ::vk::DescriptorSetLayout& getVkDescriptorSetLayout( uint64_t descriptorSetLayoutKey );
 
 	// get minimum number of descriptors of each type needed to fill all distinct DescriptorSetLayouts
-	std::vector<VkDescriptorPoolSize> getVkDescriptorPoolSizes();
+	std::vector<::vk::DescriptorPoolSize> getVkDescriptorPoolSizes();
 
-	const std::vector<VkDescriptorPoolSize> & getDescriptorPoolSizesForSetLayout( uint64_t descriptorSetLayoutHash_ ){
+	const std::vector<::vk::DescriptorPoolSize> & getDescriptorPoolSizesForSetLayout( uint64_t descriptorSetLayoutHash_ ){
 		return mPoolSizesPerDescriptorSetCache.at( descriptorSetLayoutHash_ );
 	}
 
