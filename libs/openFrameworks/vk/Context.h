@@ -1,6 +1,6 @@
 #pragma once
 
-#include <vulkan/vulkan.h>
+#include <vulkan/vulkan.hpp>
 #include "vk/Shader.h"
 #include "vk/ShaderManager.h"
 #include "vk/Pipeline.h"
@@ -231,6 +231,10 @@ private:
 
 	// Number of descriptors per type, one (or more) vector entries per descriptor type
 	std::vector<::vk::DescriptorPoolSize> mDescriptorPoolSizes;
+
+	// Number of descriptors available for allocation from the main descriptor pool
+	// that's mDescriptorPool.
+	std::array<uint32_t, VK_DESCRIPTOR_TYPE_RANGE_SIZE> mAvailableDescriptorCounts;
 
 	// Max number of sets which can be allocated from the main per-frame descriptor pool
 	uint32_t mDescriptorPoolMaxSets = 0;

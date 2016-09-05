@@ -264,6 +264,17 @@ void of::vk::Context::resetDescriptorPool( size_t frame_ ){
 		.setPPoolSizes    ( mDescriptorPoolSizes.data() )
 		;
 
+	{
+		// reset availalbe descriptor counts
+		memset( mAvailableDescriptorCounts.data(), 0, VK_DESCRIPTOR_TYPE_RANGE_SIZE * sizeof( uint32_t ) );
+
+		// Count descriptors, by-type, available for allocation from
+		// main descriptor pool held by this frame.
+		for ( const auto &dS : mDescriptorPoolSizes ){
+			mAvailableDescriptorCounts[size_t( dS.type )] += dS.descriptorCount;
+		}
+	}
+
 	mDescriptorPool[frame_] = mSettings.device.createDescriptorPool( descriptorPoolInfo );
 
 	// mark this particular descriptorPool as not dirty
@@ -623,6 +634,7 @@ void of::vk::Context::updateDescriptorSetState(){
 		} else{
 
 			::vk::DescriptorSetLayout layout = mShaderManager->getVkDescriptorSetLayout( descriptorSetLayoutHash );
+			auto &poolSizes = mShaderManager->getDescriptorPoolSizesForSetLayout( descriptorSetLayoutHash );
 
 			auto allocInfo = ::vk::DescriptorSetAllocateInfo();
 			allocInfo
@@ -633,17 +645,24 @@ void of::vk::Context::updateDescriptorSetState(){
 
 			std::vector<::vk::DescriptorSet> descriptorSetVec;
 			
-			bool success = false;
-			try {
-				descriptorSetVec = mSettings.device.allocateDescriptorSets( allocInfo );
-				success = true;
-			}
-			catch ( std::exception e ){
-				success = false;
-			};
+			bool canAlloc = true;
 
-			if ( success ){
-				mPipelineLayoutState.vkDescriptorSets[i] = descriptorSetVec.front();
+			for (const auto & ps : poolSizes ){
+				if ( mAvailableDescriptorCounts[size_t( ps.type )] < ps.descriptorCount ){
+					canAlloc = false;
+					break;
+				}
+			}
+		
+			if ( canAlloc ){
+				
+				mPipelineLayoutState.vkDescriptorSets[i] = mSettings.device.allocateDescriptorSets( allocInfo ).front();
+
+				// decrease number of available descriptor sets
+				for ( const auto & ps : poolSizes ){
+					mAvailableDescriptorCounts[size_t( ps.type )] -= ps.descriptorCount;
+				}
+
 			} else {
 
 				// Allocation failed. 
@@ -652,8 +671,6 @@ void of::vk::Context::updateDescriptorSetState(){
 
 				// To still be able to allocate, we need to create a new pool, 
 				// and allocate descriptors from the new pool:
-
-				auto &poolSizes = mShaderManager->getDescriptorPoolSizesForSetLayout( descriptorSetLayoutHash );
 
 				auto descriptorPoolInfo = ::vk::DescriptorPoolCreateInfo();
 				descriptorPoolInfo
