@@ -64,6 +64,7 @@ class Shader;
 
 class GraphicsPipelineState
 {
+
 	// The idea is to have the context hold a pipeline in memory, 
 	// and with each draw command store the current pipeline's 
 	// hash into the command batch. 
@@ -77,7 +78,7 @@ class GraphicsPipelineState
 	// if it is, we bind that pipeline.
 
 
-private:	// default state for pipeline
+public:	// default state for pipeline
 
 	::vk::PipelineInputAssemblyStateCreateInfo mInputAssemblyState;
 	::vk::PipelineTessellationStateCreateInfo  mTessellationState;
@@ -89,7 +90,9 @@ private:	// default state for pipeline
 	::vk::PipelineColorBlendStateCreateInfo    mColorBlendState;
 	std::array<::vk::DynamicState, 2>          mDefaultDynamicStates;
 	::vk::PipelineDynamicStateCreateInfo       mDynamicState;
-	
+
+private:
+
 	::vk::RenderPass  mRenderPass         = nullptr;
 	uint32_t          mSubpass            = 0;
 	int32_t           mBasePipelineIndex  = -1;
@@ -125,7 +128,7 @@ public:
 		}
 	}
 
-	void setPolyMode( ::vk::PolygonMode & polyMode){
+	void setPolyMode( const ::vk::PolygonMode & polyMode){
 		if ( mRasterizationState.polygonMode != polyMode ){
 			mRasterizationState.polygonMode = polyMode;
 			mDirty = true;
