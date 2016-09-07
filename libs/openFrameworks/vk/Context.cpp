@@ -872,8 +872,6 @@ void of::vk::Context::bindPipeline( const ::vk::CommandBuffer & cmd ){
 		return;
 	} else{
 
-		const std::vector<uint64_t>& layouts = mCurrentGraphicsPipelineState.getShader()->getSetLayoutKeys();
-
 		uint64_t pipelineHash = mCurrentGraphicsPipelineState.calculateHash();
 
 		auto p = mVkPipelines.find( pipelineHash );
@@ -882,6 +880,8 @@ void of::vk::Context::bindPipeline( const ::vk::CommandBuffer & cmd ){
 			mVkPipelines[pipelineHash] = mCurrentGraphicsPipelineState.createPipeline( mSettings.device, mPipelineCache );
 		}
 		mCurrentVkPipeline = mVkPipelines[pipelineHash];
+		
+		const std::vector<uint64_t>& layouts = mCurrentGraphicsPipelineState.getShader()->getSetLayoutKeys();
 
 		mPipelineLayoutState.setLayoutKeys.resize( layouts.size(), 0 );
 		mPipelineLayoutState.bindingState.resize( layouts.size() );
