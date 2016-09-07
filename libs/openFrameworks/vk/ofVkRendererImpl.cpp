@@ -251,25 +251,6 @@ bool  ofVkRenderer::getMemoryAllocationInfo( const ::vk::MemoryRequirements& mem
 
 void ofVkRenderer::setupDepthStencil(){
 	
-	//VkImageCreateInfo imageCreateInfo {
-	//	VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,          // VkStructureType          sType;
-	//	nullptr,                                      // const void*              pNext;
-	//	0,                                            // VkImageCreateFlags       flags;
-	//	VK_IMAGE_TYPE_2D,                             // VkImageType              imageType;
-	//	mDepthFormat(),                                 // VkFormat                 format;
-	//	{ mWindowWidth, mWindowHeight, 1 },           // VkExtent3D               extent;
-	//	1,                                            // uint32_t                 mipLevels;
-	//	1,                                            // uint32_t                 arrayLayers;
-	//	VK_SAMPLE_COUNT_1_BIT,                        // VkSampleCountFlagBits    samples;
-	//	VK_IMAGE_TILING_OPTIMAL,                      // VkImageTiling            tiling;
-	//	VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT 
-	//	| VK_IMAGE_USAGE_TRANSFER_SRC_BIT,            // VkImageUsageFlags        usage;
-	//	VK_SHARING_MODE_EXCLUSIVE,                    // VkSharingMode            sharingMode;
-	//	0,                                            // uint32_t                 queueFamilyIndexCount;
-	//	nullptr,                                      // const uint32_t*          pQueueFamilyIndices;
-	//	VK_IMAGE_LAYOUT_UNDEFINED,                    // VkImageLayout            initialLayout;
-	//};
-
 
 	vk::ImageCreateInfo imgCreateInfo;
 
@@ -285,25 +266,6 @@ void ofVkRenderer::setupDepthStencil(){
 		.setSharingMode( vk::SharingMode::eExclusive )
 		.setQueueFamilyIndexCount( 0 )
 		.setInitialLayout( vk::ImageLayout::eUndefined );
-
-
-	//VkImageViewCreateInfo imageViewCreateInfo {
-	//	VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO, // VkStructureType            sType;
-	//	nullptr,                                  // const void*                pNext;
-	//	0,                                        // VkImageViewCreateFlags     flags;
-	//	nullptr,                                  // VkImage                    image;
-	//	VK_IMAGE_VIEW_TYPE_2D,                    // VkImageViewType            viewType;
-	//	mDepthFormat,                             // VkFormat                   format;
-	//	{},                                       // VkComponentMapping         components;
-	//	{
-	//		VK_IMAGE_ASPECT_DEPTH_BIT 
-	//		| VK_IMAGE_ASPECT_STENCIL_BIT, // VkImageAspectFlags    aspectMask;
-	//		0,                             // uint32_t              baseMipLevel;
-	//		1,                             // uint32_t              levelCount;
-	//		0,                             // uint32_t              baseArrayLayer;
-	//		1,                             // uint32_t              layerCount;
-	//	}                                         // VkImageSubresourceRange    subresourceRange;
-	//};
 
 	vk::ImageViewCreateInfo imgViewCreateInfo;
 
