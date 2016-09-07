@@ -15,14 +15,12 @@ void of::vk::GraphicsPipelineState::reset()
 {
 	mInputAssemblyState = ::vk::PipelineInputAssemblyStateCreateInfo();
 	mInputAssemblyState
-		.setFlags( ::vk::PipelineInputAssemblyStateCreateFlags() )
 		.setTopology( ::vk::PrimitiveTopology::eTriangleList )
 		.setPrimitiveRestartEnable( VK_FALSE )
 		;
 
 	mTessellationState = ::vk::PipelineTessellationStateCreateInfo();
 	mTessellationState
-		.setFlags( ::vk::PipelineTessellationStateCreateFlags() )
 		.setPatchControlPoints( 0 )
 		;
 
@@ -38,7 +36,6 @@ void of::vk::GraphicsPipelineState::reset()
 
 	mRasterizationState = ::vk::PipelineRasterizationStateCreateInfo();
 	mRasterizationState
-		.setFlags( ::vk::PipelineRasterizationStateCreateFlags() )
 		.setDepthClampEnable( VK_FALSE )
 		.setRasterizerDiscardEnable( VK_FALSE )
 		.setPolygonMode( ::vk::PolygonMode::eFill )
@@ -53,7 +50,6 @@ void of::vk::GraphicsPipelineState::reset()
 
 	mMultisampleState = ::vk::PipelineMultisampleStateCreateInfo();
 	mMultisampleState
-		.setFlags( ::vk::PipelineMultisampleStateCreateFlags() )
 		.setRasterizationSamples( ::vk::SampleCountFlagBits::e1 )
 		.setSampleShadingEnable( VK_FALSE )
 		.setMinSampleShading( 0.f )
@@ -75,7 +71,6 @@ void of::vk::GraphicsPipelineState::reset()
 
 	mDepthStencilState = ::vk::PipelineDepthStencilStateCreateInfo();
 	mDepthStencilState
-		.setFlags(::vk::PipelineDepthStencilStateCreateFlags())
 		.setDepthTestEnable( VK_TRUE )
 		.setDepthWriteEnable( VK_TRUE)
 		.setDepthCompareOp( ::vk::CompareOp::eLessOrEqual )
@@ -106,7 +101,6 @@ void of::vk::GraphicsPipelineState::reset()
 
 	mColorBlendState = ::vk::PipelineColorBlendStateCreateInfo();
 	mColorBlendState
-		.setFlags( ::vk::PipelineColorBlendStateCreateFlags() )
 		.setLogicOpEnable( VK_FALSE )
 		.setLogicOp( ::vk::LogicOp::eClear )
 		.setAttachmentCount( 1 )
@@ -121,7 +115,6 @@ void of::vk::GraphicsPipelineState::reset()
 
 	mDynamicState = ::vk::PipelineDynamicStateCreateInfo();
 	mDynamicState
-		.setFlags( ::vk::PipelineDynamicStateCreateFlags() )
 		.setDynamicStateCount( mDefaultDynamicStates.size() )
 		.setPDynamicStates( mDefaultDynamicStates.data() )
 		;
