@@ -86,9 +86,11 @@ public:	// default state for pipeline
 	::vk::PipelineRasterizationStateCreateInfo mRasterizationState;
 	::vk::PipelineMultisampleStateCreateInfo   mMultisampleState;
 	::vk::PipelineDepthStencilStateCreateInfo  mDepthStencilState;
-	::vk::PipelineColorBlendAttachmentState    mDefaultBlendAttachmentState;
+	
+	std::vector<::vk::PipelineColorBlendAttachmentState>    mBlendAttachmentStates;
 	::vk::PipelineColorBlendStateCreateInfo    mColorBlendState;
-	std::array<::vk::DynamicState, 2>          mDefaultDynamicStates;
+	
+	std::array<::vk::DynamicState, 2>          mDynamicStates;
 	::vk::PipelineDynamicStateCreateInfo       mDynamicState;
 
 private:

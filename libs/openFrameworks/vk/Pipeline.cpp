@@ -82,8 +82,8 @@ void of::vk::GraphicsPipelineState::reset()
 		.setMaxDepthBounds( 0.f )
 		;
 
-	mDefaultBlendAttachmentState = ::vk::PipelineColorBlendAttachmentState();
-	mDefaultBlendAttachmentState
+	mBlendAttachmentStates.resize(1,::vk::PipelineColorBlendAttachmentState());
+	mBlendAttachmentStates[0]
 		.setBlendEnable( VK_FALSE )
 		.setSrcColorBlendFactor( ::vk::BlendFactor::eZero )
 		.setDstColorBlendFactor( ::vk::BlendFactor::eZero )
@@ -103,20 +103,20 @@ void of::vk::GraphicsPipelineState::reset()
 	mColorBlendState
 		.setLogicOpEnable( VK_FALSE )
 		.setLogicOp( ::vk::LogicOp::eClear )
-		.setAttachmentCount( 1 )
-		.setPAttachments( &mDefaultBlendAttachmentState )
+		.setAttachmentCount( mBlendAttachmentStates.size() )
+		.setPAttachments( mBlendAttachmentStates.data() )
 		.setBlendConstants( {0.f,0.f,0.f,0.f} )
 		;
 
-	mDefaultDynamicStates = {
+	mDynamicStates = {
 		::vk::DynamicState::eScissor,
 		::vk::DynamicState::eViewport,
 	};
 
 	mDynamicState = ::vk::PipelineDynamicStateCreateInfo();
 	mDynamicState
-		.setDynamicStateCount( mDefaultDynamicStates.size() )
-		.setPDynamicStates( mDefaultDynamicStates.data() )
+		.setDynamicStateCount( mDynamicStates.size() )
+		.setPDynamicStates( mDynamicStates.data() )
 		;
 	
 	mRenderPass        = nullptr;
