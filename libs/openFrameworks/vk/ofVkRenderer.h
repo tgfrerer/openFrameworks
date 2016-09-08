@@ -253,6 +253,8 @@ public:
 
 	const ::vk::PhysicalDeviceProperties& getVkPhysicalDeviceProperties() const;
 
+	const ::vk::PhysicalDeviceMemoryProperties& getVkPhysicalDeviceMemoryProperties() const;
+
 	// get memory allocation info for best matching memory type that matches any of the type bits and flags
 	bool  getMemoryAllocationInfo( const ::vk::MemoryRequirements& memReqs, ::vk::MemoryPropertyFlags memProps, ::vk::MemoryAllocateInfo& memInfo ) const;
 
@@ -368,6 +370,10 @@ inline const ::vk::Device& ofVkRenderer::getVkDevice() const{
 
 inline const ::vk::PhysicalDeviceProperties& ofVkRenderer::getVkPhysicalDeviceProperties() const{
 	return mPhysicalDeviceProperties;
+}
+
+inline const::vk::PhysicalDeviceMemoryProperties & ofVkRenderer::getVkPhysicalDeviceMemoryProperties() const{
+	return mPhysicalDeviceMemoryProperties;
 }
 
 inline const shared_ptr<of::vk::Context>& ofVkRenderer::getDefaultContext(){

@@ -17,23 +17,20 @@ class RenderContext
 public:
 	struct Settings
 	{
-		::vk::Device device;
-		::vk::PhysicalDeviceProperties deviceProperties;
-		size_t numVirtualFrames;
-		size_t transientMemSizeInBytesPerFrame;
+		of::vk::Allocator::Settings transientMemoryAllocatorSettings;
 	};
 private:
 	friend class RenderBatch;
 
 	const Settings mSettings;
 
-	::vk::Device                      mDevice;
-	std::vector<::vk::CommandPool>    mCommandPool;
-	std::vector<::vk::DescriptorPool> mDescriptorPool;
-	std::vector<::vk::QueryPool>      mQueryPool;
-	of::vk::Allocator	              mTransientMemory;
+	::vk::Device                       mDevice;
+	std::vector<::vk::CommandPool>     mCommandPool;
+	std::vector<::vk::DescriptorPool>  mDescriptorPool;
+	std::vector<::vk::QueryPool>       mQueryPool;
+	std::unique_ptr<of::vk::Allocator> mTransientMemory;
 
-	size_t                            mCurrentVirtualFrame = 0;
+	size_t                             mCurrentVirtualFrame = 0;
 
 	::vk::CommandPool& commandPool(){
 		return mCommandPool[mCurrentVirtualFrame];
@@ -148,7 +145,7 @@ inline void of::RenderBatch::beginRenderPass(const ::vk::RenderPass vkRenderPass
 	renderPassBeginInfo
 		.setRenderPass( mVkRenderPass )
 		.setFramebuffer( mVkFramebuffer )
-		.setRenderArea( renderArea_ )
+		//!TODO .setRenderArea( {} )
 		.setClearValueCount( 0 )
 		.setPClearValues( nullptr )
 		;

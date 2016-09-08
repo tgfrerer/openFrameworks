@@ -44,13 +44,13 @@ void Teapot::draw(of::RenderPassContext& rp){
 	// update uniforms 
 	// update attribute buffer bindings
 
-	rp.storeUniforms( dc );
+	//rp.storeUniforms( dc );
 	
 	// optional - otherwise, indices will be read from 
 	// device local memory.
 
-	rp.storeAttributes( dc );
-	rp.storeIndices( dc );
+	// rp.storeAttributes( dc );
+	// rp.storeIndices( dc );
 	
 	rp.draw( dc );
 
@@ -65,12 +65,15 @@ void ofApp::setup(){
 
 	of::RenderContext::Settings renderContextSettings;
 	
-	renderContextSettings.device = renderer->getVkDevice();
-	renderContextSettings.deviceProperties = renderer->getVkPhysicalDeviceProperties();
-	renderContextSettings.numVirtualFrames = 2;
-	renderContextSettings.transientMemSizeInBytesPerFrame = 1024 * 16000;
+	renderContextSettings.transientMemoryAllocatorSettings
+		.setPhysicalDeviceMemoryProperties ( renderer->getVkPhysicalDeviceMemoryProperties() )
+		.setPhysicalDeviceProperties       ( renderer->getVkPhysicalDeviceProperties() )
+		.setFrameCount                     ( 2 )
+		.setDevice                         ( renderer->getVkDevice() )
+		.setSize                           ( ( 2UL << 24 ) * 2)  // (16 MB * number of frames))
+		;
 
-	mRenderContext = std::make_unique<of::RenderContext>();
+	mRenderContext = std::make_unique<of::RenderContext>(renderContextSettings);
 
 	mTeapot.setup();
 }

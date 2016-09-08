@@ -59,7 +59,7 @@ void of::RenderBatch::draw( const std::unique_ptr<of::DrawCommand>& dc ){
 		currentPipelineState = std::make_unique<of::vk::GraphicsPipelineState>(info.getPipelineC());
 		// pipelines are stored inside draw command
 		// as shared_ptr, so that use_count of pointer may be used for garbage collection.
-		mCurrentPipeline = dc->getPipeline(mVkRenderPass, mVkSubPassId, currentPipelineState );
+		// !TODO: mCurrentPipeline = dc->getPipeline(mVkRenderPass, mVkSubPassId, currentPipelineState );
 
 		mVkCmd.bindPipeline( ::vk::PipelineBindPoint::eGraphics, *mCurrentPipeline );
 	}

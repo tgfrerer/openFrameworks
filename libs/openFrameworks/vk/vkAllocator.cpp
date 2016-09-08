@@ -6,31 +6,20 @@
 
 void of::vk::Allocator::setup(){
 	
-	if ( mSettings.renderer == nullptr ){
-		ofLogFatalError() << "Allocator: No renderer specified.";
-		ofExit();
-	}
 
-	if ( mSettings.frames < 1 ){
+	if ( mSettings.frameCount < 1 ){
 		ofLogWarning() << "Allocator: Must have a minimum of 1 frame. Setting frames to 1.";
-		const_cast<uint32_t&>( mSettings.frames ) = 1;
-	}
-
-	if ( mSettings.device != mSettings.renderer->getVkDevice() ){
-
-		ofLogWarning() << "of::vk::Allocator::setup : Settings.device must match Settings.renderer->getVkDevice()";
-		// error checking: make sure mSettings.device == mSettings.renderer->getVkDevice()
-		const_cast<::vk::Device&>( mSettings.device ) = mSettings.renderer->getVkDevice();
+		const_cast<uint32_t&>( mSettings.frameCount ) = 1;
 	}
 
 	// we need to find out the min buffer uniform alignment from the 
 	// physical device.
 
 	// make this dependent on the type of buffer this allocator stands for 
-	const_cast<::vk::DeviceSize&>( mAlignment )     = mSettings.renderer->getVkPhysicalDeviceProperties().limits.minUniformBufferOffsetAlignment;
+	const_cast<::vk::DeviceSize&>( mAlignment )     = mSettings.physicalDeviceProperties.limits.minUniformBufferOffsetAlignment;
 
 	// make sure reserved memory is multiple of alignment, and that we can fit in the number of requested frames.	
-	const_cast<::vk::DeviceSize&>( mSettings.size ) = mSettings.frames * mAlignment * ( ( mSettings.size / mSettings.frames + mAlignment - 1 ) / mAlignment );
+	const_cast<::vk::DeviceSize&>( mSettings.size ) = mSettings.frameCount * mAlignment * ( ( mSettings.size / mSettings.frameCount + mAlignment - 1 ) / mAlignment );
 
 	::vk::BufferCreateInfo bufferCreateInfo;
 
@@ -57,7 +46,7 @@ void of::vk::Allocator::setup(){
 	// Vulkan 1.0 guarantees the presence of at least one host-visible+coherent memory heap.
 	::vk::MemoryAllocateInfo allocateInfo;
 	
-	bool result = mSettings.renderer->getMemoryAllocationInfo(
+	bool result = getMemoryAllocationInfo(
 		memReqs,
 		::vk::MemoryPropertyFlagBits::eHostVisible | ::vk::MemoryPropertyFlagBits::eHostCoherent,
 		allocateInfo
@@ -72,10 +61,10 @@ void of::vk::Allocator::setup(){
 	
 
 	mOffsetEnd.clear();
-	mOffsetEnd.resize( mSettings.frames, 0 );
+	mOffsetEnd.resize( mSettings.frameCount, 0 );
 
 	mBaseAddress.clear();
-	mBaseAddress.resize( mSettings.frames, 0 );
+	mBaseAddress.resize( mSettings.frameCount, 0 );
 
 	// Map full memory range for CPU write access
 	mBaseAddress[0] = (uint8_t*)mSettings.device.mapMemory( mDeviceMemory, 0, VK_WHOLE_SIZE );
@@ -83,7 +72,7 @@ void of::vk::Allocator::setup(){
 	for ( uint32_t i = 1; i != mBaseAddress.size(); ++i ){
 		// offset the pointer by full frame sizes
 		// for base addresses above frame 0
-		mBaseAddress[i] = mBaseAddress[0] + i * ( mSettings.size / mSettings.frames );
+		mBaseAddress[i] = mBaseAddress[0] + i * ( mSettings.size / mSettings.frameCount );
 	}
 
 }
@@ -116,11 +105,11 @@ void of::vk::Allocator::reset(){
 bool of::vk::Allocator::allocate( ::vk::DeviceSize byteCount_, void*& pAddr, ::vk::DeviceSize& offset, size_t swapIdx ){
 	uint32_t alignedByteCount = mAlignment * ( ( byteCount_ + mAlignment - 1 ) / mAlignment );
 
-	if ( mOffsetEnd[swapIdx] + alignedByteCount <= (mSettings.size / mSettings.frames) ){
+	if ( mOffsetEnd[swapIdx] + alignedByteCount <= (mSettings.size / mSettings.frameCount) ){
 		// write out memory address
 		pAddr = mBaseAddress[swapIdx] + mOffsetEnd[swapIdx];
 		// write out offset 
-		offset = mOffsetEnd[swapIdx] + swapIdx * ( mSettings.size / mSettings.frames );
+		offset = mOffsetEnd[swapIdx] + swapIdx * ( mSettings.size / mSettings.frameCount );
 		mOffsetEnd[swapIdx] += alignedByteCount;
 		// TODO: if you use non-coherent memory you need to invalidate the 
 		// cache for the memory that has been written to.

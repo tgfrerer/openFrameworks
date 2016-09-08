@@ -50,9 +50,10 @@ void of::vk::Context::setup( ofVkRenderer* renderer_ ){
 
 	of::vk::Allocator::Settings settings{};
 	settings.device = mSettings.device;
-	settings.renderer = renderer_;
-	settings.frames = uint32_t( mSettings.numVirtualFrames );
-	settings.size = ( 2UL << 24 ) * settings.frames;  // (16 MB * number of swapchain images)
+	settings.physicalDeviceProperties = renderer_->getVkPhysicalDeviceProperties();
+	settings.physicalDeviceMemoryProperties = renderer_->mPhysicalDeviceMemoryProperties;
+	settings.frameCount = uint32_t( mSettings.numVirtualFrames );
+	settings.size = ( 2UL << 24 ) * settings.frameCount;  // (16 MB * number of swapchain images)
 
 	mAlloc = std::make_unique<of::vk::Allocator>( settings );
 	mAlloc->setup();

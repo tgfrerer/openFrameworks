@@ -15,10 +15,33 @@ class Allocator
 public:
 	struct Settings
 	{
-		::vk::DeviceSize                 size       = 0; // how much memory to reserve on hardware for this allocator
-		ofVkRenderer                    *renderer   = nullptr;
-		::vk::Device                     device     = nullptr;
-		uint32_t                         frames     = 1; // number of frames to reserve within this allocator
+		::vk::PhysicalDeviceProperties       physicalDeviceProperties;
+		::vk::PhysicalDeviceMemoryProperties physicalDeviceMemoryProperties;
+		::vk::Device                         device     = nullptr;
+		::vk::DeviceSize                     size       = 0; // how much memory to reserve on hardware for this allocator
+		uint32_t                             frameCount     = 1; // number of frames to reserve within this allocator
+
+		Settings& setPhysicalDeviceProperties( ::vk::PhysicalDeviceProperties physicalDeviceProperties_ ){
+			physicalDeviceProperties = physicalDeviceProperties_;
+			return *this;
+		}
+		Settings& setPhysicalDeviceMemoryProperties( ::vk::PhysicalDeviceMemoryProperties physicalDeviceMemoryProperties_ ){
+			physicalDeviceMemoryProperties = physicalDeviceMemoryProperties_;
+			return *this;
+		}
+		Settings& setDevice( ::vk::Device device_ ){
+			device = device_; 
+			return *this;
+		}
+		Settings& setSize( ::vk::DeviceSize size_ ){
+			size = size_;
+			return *this;
+		}
+		Settings& setFrameCount( uint32_t frameCount_ ){
+			frameCount = frameCount_;
+			return *this;
+		}
+
 	};
 
 	Allocator( const Settings& settings )
@@ -47,6 +70,32 @@ public:
 	const ::vk::Buffer& getBuffer(){
 		return mBuffer;
 	};
+
+	bool  getMemoryAllocationInfo( const ::vk::MemoryRequirements& memReqs, ::vk::MemoryPropertyFlags memProps, ::vk::MemoryAllocateInfo& memInfo ) const{
+		if ( !memReqs.size ){
+			memInfo.allocationSize = 0;
+			memInfo.memoryTypeIndex = ~0;
+			return true;
+		}
+
+		// Find an available memory type that satifies the requested properties.
+		uint32_t memoryTypeIndex;
+		for ( memoryTypeIndex = 0; memoryTypeIndex < mSettings.physicalDeviceMemoryProperties.memoryTypeCount; ++memoryTypeIndex ){
+			if ( ( memReqs.memoryTypeBits & ( 1 << memoryTypeIndex ) ) &&
+				( mSettings.physicalDeviceMemoryProperties.memoryTypes[memoryTypeIndex].propertyFlags & memProps ) == memProps ){
+				break;
+			}
+		}
+		if ( memoryTypeIndex >= mSettings.physicalDeviceMemoryProperties.memoryTypeCount ){
+			assert( 0 && "memorytypeindex not found" );
+			return false;
+		}
+
+		memInfo.allocationSize = memReqs.size;
+		memInfo.memoryTypeIndex = memoryTypeIndex;
+
+		return true;
+	}
 
 private:
 	const Settings                 mSettings;
