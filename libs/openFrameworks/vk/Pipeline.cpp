@@ -5,6 +5,7 @@
 
 // ----------------------------------------------------------------------
 
+
 void of::vk::GraphicsPipelineState::setup(){
 	reset();
 }
@@ -13,29 +14,29 @@ void of::vk::GraphicsPipelineState::setup(){
 
 void of::vk::GraphicsPipelineState::reset()
 {
-	mInputAssemblyState = ::vk::PipelineInputAssemblyStateCreateInfo();
-	mInputAssemblyState
+	inputAssemblyState = ::vk::PipelineInputAssemblyStateCreateInfo();
+	inputAssemblyState
 		.setTopology( ::vk::PrimitiveTopology::eTriangleList )
 		.setPrimitiveRestartEnable( VK_FALSE )
 		;
 
-	mTessellationState = ::vk::PipelineTessellationStateCreateInfo();
-	mTessellationState
+	tessellationState = ::vk::PipelineTessellationStateCreateInfo();
+	tessellationState
 		.setPatchControlPoints( 0 )
 		;
 
 	// viewport and scissor are tracked as dynamic states, so this object
 	// will not get used.
-	mViewportState = ::vk::PipelineViewportStateCreateInfo();
-	mViewportState
+	viewportState = ::vk::PipelineViewportStateCreateInfo();
+	viewportState
 		.setViewportCount( 1 )
 		.setPViewports( nullptr )
 		.setScissorCount( 1 )
 		.setPScissors( nullptr )
 		;
 
-	mRasterizationState = ::vk::PipelineRasterizationStateCreateInfo();
-	mRasterizationState
+	rasterizationState = ::vk::PipelineRasterizationStateCreateInfo();
+	rasterizationState
 		.setDepthClampEnable( VK_FALSE )
 		.setRasterizerDiscardEnable( VK_FALSE )
 		.setPolygonMode( ::vk::PolygonMode::eFill )
@@ -48,8 +49,8 @@ void of::vk::GraphicsPipelineState::reset()
 		.setLineWidth( 1.f )
 		;
 
-	mMultisampleState = ::vk::PipelineMultisampleStateCreateInfo();
-	mMultisampleState
+	multisampleState = ::vk::PipelineMultisampleStateCreateInfo();
+	multisampleState
 		.setRasterizationSamples( ::vk::SampleCountFlagBits::e1 )
 		.setSampleShadingEnable( VK_FALSE )
 		.setMinSampleShading( 0.f )
@@ -69,8 +70,8 @@ void of::vk::GraphicsPipelineState::reset()
 		.setReference( 0 )
 		;
 
-	mDepthStencilState = ::vk::PipelineDepthStencilStateCreateInfo();
-	mDepthStencilState
+	depthStencilState = ::vk::PipelineDepthStencilStateCreateInfo();
+	depthStencilState
 		.setDepthTestEnable( VK_TRUE )
 		.setDepthWriteEnable( VK_TRUE)
 		.setDepthCompareOp( ::vk::CompareOp::eLessOrEqual )
@@ -82,8 +83,9 @@ void of::vk::GraphicsPipelineState::reset()
 		.setMaxDepthBounds( 0.f )
 		;
 
-	mBlendAttachmentStates.resize(1,::vk::PipelineColorBlendAttachmentState());
-	mBlendAttachmentStates[0]
+	blendAttachmentStates.fill( ::vk::PipelineColorBlendAttachmentState() );
+
+	blendAttachmentStates[0]
 		.setBlendEnable( VK_FALSE )
 		.setSrcColorBlendFactor( ::vk::BlendFactor::eZero )
 		.setDstColorBlendFactor( ::vk::BlendFactor::eZero )
@@ -99,24 +101,24 @@ void of::vk::GraphicsPipelineState::reset()
 		)
 		;
 
-	mColorBlendState = ::vk::PipelineColorBlendStateCreateInfo();
-	mColorBlendState
+	colorBlendState = ::vk::PipelineColorBlendStateCreateInfo();
+	colorBlendState
 		.setLogicOpEnable( VK_FALSE )
 		.setLogicOp( ::vk::LogicOp::eClear )
-		.setAttachmentCount( mBlendAttachmentStates.size() )
-		.setPAttachments( mBlendAttachmentStates.data() )
+		.setAttachmentCount( 1 )
+		.setPAttachments   ( nullptr )
 		.setBlendConstants( {0.f,0.f,0.f,0.f} )
 		;
 
-	mDynamicStates = {
+	dynamicStates = {
 		::vk::DynamicState::eScissor,
 		::vk::DynamicState::eViewport,
 	};
 
-	mDynamicState = ::vk::PipelineDynamicStateCreateInfo();
-	mDynamicState
-		.setDynamicStateCount( mDynamicStates.size() )
-		.setPDynamicStates( mDynamicStates.data() )
+	dynamicState = ::vk::PipelineDynamicStateCreateInfo();
+	dynamicState
+		.setDynamicStateCount( dynamicStates.size() )
+		.setPDynamicStates( nullptr )
 		;
 	
 	mRenderPass        = nullptr;
@@ -157,6 +159,19 @@ void of::vk::GraphicsPipelineState::reset()
 			createFlags |= ::vk::PipelineCreateFlagBits::eAllowDerivatives;
 		}
 
+
+		// make sure pointers to internal vectors and arrays are valid:
+
+		colorBlendState
+			.setPAttachments        ( blendAttachmentStates.data() )
+			;
+
+		dynamicState
+			.setPDynamicStates      ( dynamicStates.data() )
+			;
+
+		// create pipeline info object based on current pipeline object state
+
 		::vk::GraphicsPipelineCreateInfo pipelineCreateInfo;
 		
 		pipelineCreateInfo
@@ -164,14 +179,14 @@ void of::vk::GraphicsPipelineState::reset()
 			.setStageCount          ( stageCreateInfo.size() )
 			.setPStages             ( stageCreateInfo.data() )
 			.setPVertexInputState   ( &mShader->getVertexInputState() )
-			.setPInputAssemblyState ( &mInputAssemblyState )
-			.setPTessellationState  ( &mTessellationState )
-			.setPViewportState      ( &mViewportState )
-			.setPRasterizationState ( &mRasterizationState )
-			.setPMultisampleState   ( &mMultisampleState )
-			.setPDepthStencilState  ( &mDepthStencilState )
-			.setPColorBlendState    ( &mColorBlendState )
-			.setPDynamicState       ( &mDynamicState )
+			.setPInputAssemblyState ( &inputAssemblyState )
+			.setPTessellationState  ( &tessellationState )
+			.setPViewportState      ( &viewportState )
+			.setPRasterizationState ( &rasterizationState )
+			.setPMultisampleState   ( &multisampleState )
+			.setPDepthStencilState  ( &depthStencilState )
+			.setPColorBlendState    ( &colorBlendState )
+			.setPDynamicState       ( &dynamicState )
 			.setLayout              ( *mShader->getPipelineLayout() )
 			.setRenderPass          ( mRenderPass )
 			.setSubpass             ( mSubpass )
@@ -181,6 +196,16 @@ void of::vk::GraphicsPipelineState::reset()
 
 		pipeline = device.createGraphicsPipeline( pipelineCache, pipelineCreateInfo );
 
+		// reset internal pointers, so hashing works again
+
+		colorBlendState
+			.setPAttachments( nullptr )
+			;
+
+		dynamicState
+			.setPDynamicStates( nullptr )
+			;
+
 		mDirty = false;
 		
 		return pipeline;
@@ -188,22 +213,61 @@ void of::vk::GraphicsPipelineState::reset()
 
 // ----------------------------------------------------------------------
 
-uint64_t of::vk::GraphicsPipelineState::calculateHash(){
+bool of::vk::GraphicsPipelineState::operator==( GraphicsPipelineState const & rhs ){
+	return mRenderPass == rhs.mRenderPass
+		&& mSubpass == rhs.mSubpass
+		&& mShader->getShaderCodeHash() == rhs.mShader->getShaderCodeHash()
+		&& inputAssemblyState == rhs.inputAssemblyState
+		&& tessellationState == rhs.tessellationState
+		&& viewportState == rhs.viewportState
+		&& rasterizationState == rhs.rasterizationState
+		&& multisampleState == rhs.multisampleState
+		&& depthStencilState == rhs.depthStencilState
+		&& colorBlendState == rhs.colorBlendState
+		&& dynamicState == rhs.dynamicState
+		;
+}
+	   	   
+// ----------------------------------------------------------------------
+
+uint64_t of::vk::GraphicsPipelineState::calculateHash() const {
+
+	// TODO: this method is broken -- the reason for this is that 
+	// some vk::.. objects are not laid out tightly in memory - this
+	// means we cannot look at pipeline state as a POD, but must 
+	// find a way to quickly hash all member objects separately, 
+	// if necessary even their member elements. 
+	//
+	// You need to be super careful about this if you are on 
+	// an architecture that is 8 byte aligned, as pointers are 8 byte, 
+	// but types like VKBool32 are 4 bytes.
 
 	std::vector<uint64_t> setLayoutKeys = mShader->getSetLayoutKeys();
 
-	std::array<uint64_t, 5> hashTable;
+	uint64_t hash = mShader->getShaderCodeHash();
 
-	hashTable[0] = SpookyHash::Hash64( setLayoutKeys.data(), sizeof( uint64_t ) * setLayoutKeys.size(), 0 );
-	hashTable[1] = SpookyHash::Hash64( &mRasterizationState, sizeof( mRasterizationState ), 0 );
-	hashTable[2] = mShader->getShaderCodeHash();
-	hashTable[3] = SpookyHash::Hash64( &mRenderPass, sizeof( mRenderPass ), 0 );
-	hashTable[4] = SpookyHash::Hash64( &mSubpass, sizeof( mSubpass ), 0 );
+	hash = SpookyHash::Hash64( setLayoutKeys.data(), sizeof( uint64_t ) * setLayoutKeys.size(), hash );
 
+	//static_assert( sizeof( inputAssemblyState ) == alignof( inputAssemblyState ), "memory not laid out packed." );
 
-	uint64_t hashOfHashes = SpookyHash::Hash64( hashTable.data(), hashTable.size() * sizeof( uint64_t ), 0 );
+	static const size_t dataSize
+		= sizeof( inputAssemblyState )
+		//+ sizeof( tessellationState )
+		//+ sizeof( viewportState )
+		//+ sizeof( rasterizationState )
+		//+ sizeof( multisampleState )
+		//+ sizeof( depthStencilState )
+		//+ sizeof( dynamicStates )
+		//+ sizeof( blendAttachmentStates )
+		//+ sizeof( colorBlendState )
+		//+ sizeof( dynamicState )
+		//+ sizeof( mRenderPass )
+		//+ sizeof( mSubpass )
+		;
 
-	return hashOfHashes;
+	hash = SpookyHash::Hash64( (void*)&inputAssemblyState, dataSize, 0 );
+	ofLog() << "pipeline hash:" << std::hex << hash;
+	return hash;
 }
 
 // ----------------------------------------------------------------------

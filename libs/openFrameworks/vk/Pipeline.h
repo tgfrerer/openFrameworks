@@ -65,10 +65,6 @@ class Shader;
 class GraphicsPipelineState
 {
 
-	// The idea is to have the context hold a pipeline in memory, 
-	// and with each draw command store the current pipeline's 
-	// hash into the command batch. 
-
 	// when we build the command buffer, we need to check 
 	// if the current context state is matched by an already 
 	// available pipeline. 
@@ -78,28 +74,31 @@ class GraphicsPipelineState
 	// if it is, we bind that pipeline.
 
 
-public:	// default state for pipeline
+public:	// these states can be set upfront
 
-	::vk::PipelineInputAssemblyStateCreateInfo mInputAssemblyState;
-	::vk::PipelineTessellationStateCreateInfo  mTessellationState;
-	::vk::PipelineViewportStateCreateInfo      mViewportState;
-	::vk::PipelineRasterizationStateCreateInfo mRasterizationState;
-	::vk::PipelineMultisampleStateCreateInfo   mMultisampleState;
-	::vk::PipelineDepthStencilStateCreateInfo  mDepthStencilState;
+	::vk::PipelineInputAssemblyStateCreateInfo              inputAssemblyState;
+	::vk::PipelineTessellationStateCreateInfo               tessellationState;
+	::vk::PipelineViewportStateCreateInfo                   viewportState;
+	::vk::PipelineRasterizationStateCreateInfo              rasterizationState;
+	::vk::PipelineMultisampleStateCreateInfo                multisampleState;
+	::vk::PipelineDepthStencilStateCreateInfo               depthStencilState;
 	
-	std::vector<::vk::PipelineColorBlendAttachmentState>    mBlendAttachmentStates;
-	::vk::PipelineColorBlendStateCreateInfo    mColorBlendState;
+	std::array<::vk::DynamicState, 2>                       dynamicStates;
+	std::array<::vk::PipelineColorBlendAttachmentState,8>   blendAttachmentStates; // 8 == max color attachments.
 	
-	std::array<::vk::DynamicState, 2>          mDynamicStates;
-	::vk::PipelineDynamicStateCreateInfo       mDynamicState;
+	::vk::PipelineColorBlendStateCreateInfo                 colorBlendState;
+
+	::vk::PipelineDynamicStateCreateInfo                    dynamicState;
+
+private: // these states must be received through context
+
+	::vk::RenderPass  mRenderPass         = 0;
+	uint64_t          mSubpass            = 0;
 
 private:
-
-	::vk::RenderPass  mRenderPass         = nullptr;
-	uint32_t          mSubpass            = 0;
 	int32_t           mBasePipelineIndex  = -1;
 
-	// shader allows us to derive pipeline layout
+	// shader allows us to derive pipeline layout, has public getters and setters.
 	std::shared_ptr<of::vk::Shader>        mShader;
 
 public:
@@ -107,7 +106,7 @@ public:
 	void setup();
 	void reset();
 
-	uint64_t calculateHash();
+	uint64_t calculateHash() const;
 
 	// whether this pipeline state is dirty.
 	VkBool32          mDirty              = true;
@@ -130,14 +129,26 @@ public:
 		}
 	}
 
+	void setSubPass( uint32_t subpassId ){
+		if ( subpassId != mSubpass ){
+			mSubpass = subpassId;
+			mDirty = true;
+		}
+	}
+
 	void setPolyMode( const ::vk::PolygonMode & polyMode){
-		if ( mRasterizationState.polygonMode != polyMode ){
-			mRasterizationState.polygonMode = polyMode;
+		if ( rasterizationState.polygonMode != polyMode ){
+			rasterizationState.polygonMode = polyMode;
 			mDirty = true;
 		}
 	}
 
 	::vk::Pipeline createPipeline( const ::vk::Device& device, const ::vk::PipelineCache& pipelineCache, ::vk::Pipeline basePipelineHandle = nullptr );
+
+	bool  operator== ( GraphicsPipelineState const & rhs );
+	bool  operator!= ( GraphicsPipelineState const & rhs ){
+		return !operator==( rhs );
+	};
 
 };
 

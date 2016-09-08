@@ -333,6 +333,12 @@
     <ClInclude Include="..\..\..\openFrameworks\vk\Texture.h">
       <Filter>libs\openFrameworks\vk</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\..\openFrameworks\vk\DrawCommand.h">
+      <Filter>libs\openFrameworks\vk</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\openFrameworks\vk\RenderBatch.h">
+      <Filter>libs\openFrameworks\vk</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\openFrameworks\app\ofAppGlutWindow.cpp">
@@ -567,6 +573,12 @@
       <Filter>libs\openFrameworks\vk</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\openFrameworks\vk\Texture.cpp">
+      <Filter>libs\openFrameworks\vk</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\openFrameworks\vk\DrawCommand.cpp">
+      <Filter>libs\openFrameworks\vk</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\openFrameworks\vk\RenderBatch.cpp">
       <Filter>libs\openFrameworks\vk</Filter>
     </ClCompile>
   </ItemGroup>

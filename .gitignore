@@ -129,3 +129,4 @@ Desktop.ini
 .mailmap
 /apps*/
 
+libs/openFrameworksCompiled/project/vs/openframeworksLib.vcxproj.user
