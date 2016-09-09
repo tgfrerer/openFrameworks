@@ -104,7 +104,10 @@ void ofApp::draw(){
 	// of::RenderBatch batch( renderContext, frameBuffer);
 	
 	::vk::RenderPass mRenderPass;   // needs to be created upfront
-	::vk::Framebuffer mFramebuffer;	// needs to be re-created each frame
+	::vk::Framebuffer mFramebuffer;	// needs to be re-created each frame based on current viewport width.
+
+	// the framebuffer contains the link from renderpass -> where image memory will be stored (which image views will receive image output)
+	// ::vk::Framebuffer mFramebuffer = renderer::swapchain::getDefaultFramebuffer(mRenderPass);
 	
 	of::RenderBatch batch(*mRenderContext);
 	{
@@ -113,6 +116,7 @@ void ofApp::draw(){
 			of::CommandBufferContext cmdCtx( batch );
 			// begin command buffer
 			{
+				// this should create a framebuffer, inside the rendercontext, kept alife until rendercontext[frame] fence has signalled.
 				of::RenderPassContext renderPassCtx( cmdCtx, mRenderPass, mFramebuffer );
 				// begin renderpass	 (this should also include the renderpass: ::vk::RenderPass)
 				mTeapot.draw( renderPassCtx );
@@ -129,6 +133,7 @@ void ofApp::draw(){
 			// end command buffer 
 		}
 	}
+
 
 }
 
