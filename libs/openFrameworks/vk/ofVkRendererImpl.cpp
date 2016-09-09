@@ -376,8 +376,8 @@ void ofVkRenderer::setupRenderPass(){
 		.setSrcSubpass      ( VK_SUBPASS_EXTERNAL )
 		.setDstSubpass      ( 0 )
 		.setSrcStageMask    ( vk::PipelineStageFlagBits::eBottomOfPipe )
-		.setDstStageMask    ( vk::PipelineStageFlagBits::eColorAttachmentOutput )
 		.setSrcAccessMask   ( vk::AccessFlagBits::eMemoryRead )
+		.setDstStageMask    ( vk::PipelineStageFlagBits::eColorAttachmentOutput )
 		.setDstAccessMask   ( vk::AccessFlagBits::eColorAttachmentWrite )
 		.setDependencyFlags ( vk::DependencyFlagBits::eByRegion )
 		;
@@ -385,14 +385,14 @@ void ofVkRenderer::setupRenderPass(){
 		.setSrcSubpass      ( VK_SUBPASS_EXTERNAL )
 		.setDstSubpass      ( 0 )
 		.setSrcStageMask    ( vk::PipelineStageFlagBits::eColorAttachmentOutput )
-		.setDstStageMask    ( vk::PipelineStageFlagBits::eBottomOfPipe )
 		.setSrcAccessMask   ( vk::AccessFlagBits::eColorAttachmentWrite )
+		.setDstStageMask    ( vk::PipelineStageFlagBits::eBottomOfPipe )
 		.setDstAccessMask   ( vk::AccessFlagBits::eMemoryRead )
 		.setDependencyFlags ( vk::DependencyFlagBits::eByRegion )
 		;
 	
-	vk::RenderPassCreateInfo renderPassInfo;
-	renderPassInfo
+	vk::RenderPassCreateInfo renderPassCreateInfo;
+	renderPassCreateInfo
 		.setAttachmentCount ( attachments.size() )
 		.setPAttachments    ( attachments.data() )
 		.setSubpassCount    ( 1 )
@@ -406,7 +406,7 @@ void ofVkRenderer::setupRenderPass(){
 		mRenderPass = nullptr;
 	}
 
-	mRenderPass = mDevice.createRenderPass( renderPassInfo );
+	mRenderPass = mDevice.createRenderPass( renderPassCreateInfo );
 }
 
 
