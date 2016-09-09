@@ -18,6 +18,7 @@ class DrawCommandInfo {
 	
 	friend class DrawCommand;
 	friend class RenderBatch;
+	friend class RenderContext;
 	
 	struct DescriptorSetData
 	{

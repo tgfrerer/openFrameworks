@@ -5,7 +5,8 @@
 #include "vk/Pipeline.h"
 #include "vk/vkAllocator.h"
 
-namespace of{
+namespace of {
+
 class RenderBatch;
 class DrawCommand;
 
@@ -25,19 +26,56 @@ private:
 	const Settings mSettings;
 
 	::vk::Device                       mDevice;
-	std::vector<::vk::CommandPool>     mCommandPool;
-	std::vector<::vk::DescriptorPool>  mDescriptorPool;
-	std::vector<::vk::QueryPool>       mQueryPool;
-	std::unique_ptr<of::vk::Allocator> mTransientMemory;
 
+	struct VirtualFrame
+	{
+		::vk::CommandPool              commandPool;
+		::vk::QueryPool                queryPool;
+		::vk::DescriptorPool           descriptorPool;
+
+		/* 
+		
+		we need facilities to overspill if there are not 
+		enough descriptors available to allocate from our
+		current pool.
+
+		On next frame, the overspill pools get consolidated
+		into the main descriptor pool for the frame, so that
+		allocations can happen more freely.
+
+		This only happens if descriptor pools are marked as dirty.
+		
+		*/
+
+		// Cache for descriptor sets seen by the current virtual frame
+		// Needs to be reset when descriptorPool changes.
+		// lifetime of DescriptorSets controlled by descriptorPool - 
+		// if DescriptorPool resets, cache resets.
+		std::map<uint64_t, ::vk::DescriptorSet> descriptorSetCache;
+		std::vector<::vk::DescriptorPool> overSpillPools;
+	};
+
+	// Bitfield indicating whether the descriptor pool for a virtual frame is dirty 
+	// Each bit represents a virtual frame index. 
+	// We're not expecting more than 64 virtual frames (more than 3 seldom make sense)
+	
+	uint64_t mDescriptorPoolsDirty = -1; // -1 == all bits '1' == all dirty
+
+	std::vector<VirtualFrame>          mVirtualFrames;
+	std::unique_ptr<of::vk::Allocator> mTransientMemory;
 	size_t                             mCurrentVirtualFrame = 0;
 
+	//! TODO: implement
+	// Fetches descriptor either from cache - or allocates and initialises a descriptor pool based on DescriptorSetData.
+	const ::vk::DescriptorSet getDescriptorSet( uint64_t descriptorSetHash, const DrawCommandInfo::DescriptorSetData& descriptorSetData );
+
 	::vk::CommandPool& commandPool(){
-		return mCommandPool[mCurrentVirtualFrame];
+		return mVirtualFrames[mCurrentVirtualFrame].commandPool;
 	}
 
 public:
 	
+	//!TODO: implement.
 	RenderContext( const Settings& settings ){};
 
 };

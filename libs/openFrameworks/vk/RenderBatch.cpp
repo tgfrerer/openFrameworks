@@ -89,7 +89,6 @@ void of::RenderBatch::draw( const std::unique_ptr<of::DrawCommand>& dc ){
 	{
 		const std::vector<uint64_t> & drawCommandDescriptorSetLayouts = info.getPipelineC().getShader()->getSetLayoutKeys();
 
-
 		for ( size_t i = 0; i != drawCommandDescriptorSetLayouts.size(); ++i ){
 
 			uint64_t descriptorSetLayoutHash = drawCommandDescriptorSetLayouts[i];
@@ -103,7 +102,7 @@ void of::RenderBatch::draw( const std::unique_ptr<of::DrawCommand>& dc ){
 
 			// Receive a descriptorSet from the renderContext's cache.
 			// The renderContext will allocate and initialise a DescriptorSet if none has been found.
-			const ::vk::DescriptorSet& descriptorSet = mRenderContext->getDescriptorSet( descriptorSetHash, info.descriptorSetState );
+			const ::vk::DescriptorSet& descriptorSet = mRenderContext->getDescriptorSet( descriptorSetHash, info.descriptorSetState[i] );
 
 			boundVkDescriptorSets.emplace_back( descriptorSet );
 			// look up descriptor in descriptor cache -- 
