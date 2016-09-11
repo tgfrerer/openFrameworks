@@ -2,6 +2,81 @@
 #include "vk/DrawCommand.h"
 #include "vk/spooky/SpookyV2.h"
 
+
+
+// ------------------------------------------------------------
+of::RenderContext::RenderContext( const Settings & settings ){
+
+}
+
+// ------------------------------------------------------------
+
+void of::RenderContext::begin(){
+	
+	// re-create descriptor pool for current virtual frame if necessary
+	updateDescriptorPool();
+
+}
+
+// ------------------------------------------------------------
+
+void of::RenderContext::end(){
+	mCurrentVirtualFrame = ( mCurrentVirtualFrame + 1 ) % mSettings.transientMemoryAllocatorSettings.frameCount;
+}
+
+// ------------------------------------------------------------
+
+void of::RenderContext::updateDescriptorPool(){
+
+	// if current virtual frame descriptorpool is dirty,
+	// re-allocate frame descriptorpool based on total number
+	// of descriptorsets enumerated in mDescriptorPoolSizes
+	// and mDescriptorPoolMaxsets.
+
+	if ( (1ULL << mCurrentVirtualFrame) & mDescriptorPoolsDirty ){
+		// pool is dirty.
+
+		// destroy all cached descriptorSets for the current virtual frame, if any
+		mVirtualFrames[mCurrentVirtualFrame].descriptorSetCache.clear();
+
+		// destroy all overspill pools for the current virtual frame, if any.
+		// This will free any descriptorSets allocated from these pools.
+		for ( const auto& d : mVirtualFrames[mCurrentVirtualFrame].overSpillPools ){
+			mDevice.destroyDescriptorPool( d );
+		}
+		mVirtualFrames[mCurrentVirtualFrame].overSpillPools.clear();
+
+		// destroy main descriptor pool for current virtual frame.
+		mDevice.destroyDescriptorPool( mVirtualFrames[mCurrentVirtualFrame].descriptorPool );
+
+		// re-create descriptor pool for current virtual frame
+		// based on number of max descriptor pool count
+
+		::vk::DescriptorPoolCreateInfo descriptorPoolCreateInfo;
+		descriptorPoolCreateInfo
+			.setMaxSets( mDescriptorPoolMaxSets )
+			.setPoolSizeCount( mDescriptorPoolSizes.size() )
+			.setPPoolSizes( mDescriptorPoolSizes.data() )
+			;
+
+		mVirtualFrames[mCurrentVirtualFrame].descriptorPool = mDevice.createDescriptorPool( descriptorPoolCreateInfo );
+	
+		// Update number of descriptors available for allocation from the main descriptor pool
+		mAvailableDescriptorCounts.fill( 0 );
+		for ( const auto ps : mDescriptorPoolSizes ){
+			mAvailableDescriptorCounts[reinterpret_cast<const uint32_t&>(ps.type)] += ps.descriptorCount;
+		}
+
+		// mark this descriptor pool as not dirty
+		mDescriptorPoolsDirty ^= (1ULL << mCurrentVirtualFrame);
+	} else{
+		// pool is not dirty
+	}
+
+}
+
+// ------------------------------------------------------------
+
 of::CommandBufferContext::CommandBufferContext( of::RenderBatch & batch_ )
 	:batch( &batch_ ){
 	batch->beginCommandBuffer();
@@ -161,3 +236,4 @@ void of::RenderBatch::draw( const std::unique_ptr<of::DrawCommand>& dc ){
 
 
 }
+

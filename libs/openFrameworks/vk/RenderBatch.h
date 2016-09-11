@@ -55,21 +55,21 @@ private:
 		std::vector<::vk::DescriptorPool> overSpillPools;
 	};
 
-	//// Number of descriptors per type, one (or more) vector entries per descriptor type
-	//std::vector<::vk::DescriptorPoolSize> mDescriptorPoolSizes;
+	// Number of descriptors per type, one (or more) vector entries per descriptor type
+	std::vector<::vk::DescriptorPoolSize> mDescriptorPoolSizes;
 
-	//// Number of descriptors available for allocation from the main descriptor pool
-	//// that's mDescriptorPool.
-	//std::array<uint32_t, VK_DESCRIPTOR_TYPE_RANGE_SIZE> mAvailableDescriptorCounts;
+	// Number of descriptors left available for allocation from main descriptor pool
+	// that's mDescriptorPool.
+	std::array<uint32_t, VK_DESCRIPTOR_TYPE_RANGE_SIZE> mAvailableDescriptorCounts;
 
-	//// Max number of sets which can be allocated from the main per-frame descriptor pool
-	//uint32_t mDescriptorPoolMaxSets = 0;
+	// Max number of sets which can be allocated from the main per-frame descriptor pool
+	uint32_t mDescriptorPoolMaxSets = 0;
 
-	//// Bitfield indicating whether the descriptor pool for a virtual frame is dirty 
-	//// Each bit represents a virtual frame index. 
-	//// We're not expecting more than 64 virtual frames (more than 3 seldom make sense)
-	//
-	//uint64_t mDescriptorPoolsDirty = -1; // -1 == all bits '1' == all dirty
+	// Bitfield indicating whether the descriptor pool for a virtual frame is dirty 
+	// Each bit represents a virtual frame index. 
+	// We're not expecting more than 64 virtual frames (more than 3 seldom make sense)
+	
+	uint64_t mDescriptorPoolsDirty = -1; // -1 == all bits '1' == all dirty
 
 	std::vector<VirtualFrame>          mVirtualFrames;
 	std::unique_ptr<of::vk::Allocator> mTransientMemory;
@@ -77,16 +77,18 @@ private:
 
 	//! TODO: implement
 	// Fetches descriptor either from cache - or allocates and initialises a descriptor pool based on DescriptorSetData.
-	const ::vk::DescriptorSet getDescriptorSet( uint64_t descriptorSetHash, const DrawCommandInfo::DescriptorSetData& descriptorSetData );
+	const ::vk::DescriptorSet getDescriptorSet( uint64_t descriptorSetHash, const of::DrawCommandInfo::DescriptorSetData& descriptorSetData );
 
-	::vk::CommandPool& commandPool(){
-		return mVirtualFrames[mCurrentVirtualFrame].commandPool;
-	}
+	void updateDescriptorPool( );
 
 public:
 	
 	//!TODO: implement.
-	RenderContext( const Settings& settings ){};
+	RenderContext( const Settings& settings );
+
+	// starts context, and initialises descriptorpools if necessary.
+	void begin();
+	void end();
 
 };
 
