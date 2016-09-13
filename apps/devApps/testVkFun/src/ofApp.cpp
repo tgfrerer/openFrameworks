@@ -5,53 +5,48 @@
 #include "vk/RenderBatch.h"
 
 void Teapot::setup(){
-	const auto & renderer = dynamic_pointer_cast<ofVkRenderer>( ofGetCurrentRenderer() );
-
-	of::vk::Shader::Settings shaderSettings{
-		renderer->getShaderManager(),
-		{
-			{ ::vk::ShaderStageFlagBits::eVertex  , "default.vert" },
-			{ ::vk::ShaderStageFlagBits::eFragment, "default.frag" },
-		}
-	};
+	auto & renderer = dynamic_pointer_cast<ofVkRenderer>( ofGetCurrentRenderer() );
 
 	// shader creation makes shader reflect. 
-	auto mShaderDefault = std::make_shared<of::vk::Shader>( shaderSettings );
+	auto mShaderDefault = std::shared_ptr<of::vk::Shader>(new of::vk::Shader( renderer->getVkDevice(),
+	{
+		{ ::vk::ShaderStageFlagBits::eVertex  , "default.vert" },
+		{ ::vk::ShaderStageFlagBits::eFragment, "default.frag" },
+	}));
 
 	of::DrawCommandInfo dcs;
 
-	dcs.getPipeline().depthStencilState
+	//!TODO: this is far from ideal - a pipeline should start out fully setup.
+	dcs.modifyPipeline().setup();
+
+	dcs.modifyPipeline().depthStencilState
 		.setDepthTestEnable( VK_TRUE )
 		.setDepthWriteEnable( VK_TRUE )
 		;
-	dcs.getPipeline().inputAssemblyState.setTopology( ::vk::PrimitiveTopology::eTriangleList );
+	dcs.modifyPipeline().inputAssemblyState.setTopology( ::vk::PrimitiveTopology::eTriangleList );
+	dcs.modifyPipeline().setShader( mShaderDefault );
 
-	dcs.getPipeline().setShader( mShaderDefault );
-
-	dc = std::make_unique<of::DrawCommand>( dcs );
+	dc = std::move(std::make_unique<of::DrawCommand>( dcs ));
 
 }
 //--------------------------------------------------------------
 
 void Teapot::update(){
-
+	
 }
 
 //--------------------------------------------------------------
 
 void Teapot::draw(of::RenderPassContext& rp){
 
-	// update uniforms 
+	// update uniforms inside the draw command 
+	
+	//dc.setDefaultMatrices(mCamera); // camera will do view and projection
+	//dc.setUniform( "ModelViewMatrix", ofMatrix4x4() );
+	//dc.setUniform( "globalColor", ofColor::white );
+	//dc.setUniformTexture( "texName", tex, 0 );
+
 	// update attribute buffer bindings
-
-	//rp.storeUniforms( dc );
-	
-	// optional - otherwise, indices will be read from 
-	// device local memory.
-
-	// rp.storeAttributes( dc );
-	// rp.storeIndices( dc );
-	
 	rp.draw( dc );
 
 }
@@ -63,17 +58,19 @@ void ofApp::setup(){
 	
 	const auto & renderer = dynamic_pointer_cast<ofVkRenderer>( ofGetCurrentRenderer() );
 
-	of::RenderContext::Settings renderContextSettings;
-	
-	renderContextSettings.transientMemoryAllocatorSettings
-		.setPhysicalDeviceMemoryProperties ( renderer->getVkPhysicalDeviceMemoryProperties() )
-		.setPhysicalDeviceProperties       ( renderer->getVkPhysicalDeviceProperties() )
-		.setFrameCount                     ( 2 )
-		.setDevice                         ( renderer->getVkDevice() )
-		.setSize                           ( ( 2UL << 24 ) * 2)  // (16 MB * number of frames))
-		;
+	//of::RenderContext::Settings renderContextSettings;
+	//
+	//renderContextSettings.transientMemoryAllocatorSettings
+	//	.setPhysicalDeviceMemoryProperties ( renderer->getVkPhysicalDeviceMemoryProperties() )
+	//	.setPhysicalDeviceProperties       ( renderer->getVkPhysicalDeviceProperties() )
+	//	.setFrameCount                     ( 2 )
+	//	.setDevice                         ( renderer->getVkDevice() )
+	//	.setSize                           ( ( 1UL << 24 ) * 2)  // (16 MB * number of frames))
+	//	;
 
-	mRenderContext = std::make_unique<of::RenderContext>(renderContextSettings);
+	//mRenderContext = std::make_unique<of::RenderContext>(renderContextSettings);
+
+	//mRenderContext = renderer->getDefaultContext();
 
 	mTeapot.setup();
 }
@@ -85,7 +82,8 @@ void ofApp::update(){
 
 //--------------------------------------------------------------
 void ofApp::draw(){
-
+	const auto & renderer = dynamic_pointer_cast<ofVkRenderer>( ofGetCurrentRenderer() );
+	
 	/*
 	
 	drawing should be about laying out the different render passes
@@ -100,17 +98,18 @@ void ofApp::draw(){
 	// 						  renderContext holds all transient memory and pools 
 	//							|
 	// 							|		  framebuffer is backing image memory - where results are stored
-	//							|		      |       if framebuffer is ommitted, we assume the back buffer
+	//							|		      |       if framebuffer is omitted, we assume the back buffer
 	// of::RenderBatch batch( renderContext, frameBuffer);
 	
-	::vk::RenderPass mRenderPass;   // needs to be created upfront
-	::vk::Framebuffer mFramebuffer;	// needs to be re-created each frame based on current viewport width.
+	::vk::RenderPass  mRenderPass = *renderer->getDefaultRenderPass();  // needs to be created upfront
+	::vk::Framebuffer mFramebuffer = renderer->getDefaultContext()->getFramebuffer();	// needs to be re-created each frame based on current viewport width.
 
 	// the framebuffer contains the link from renderpass -> where image memory will be stored (which image views will receive image output)
 	// ::vk::Framebuffer mFramebuffer = renderer::swapchain::getDefaultFramebuffer(mRenderPass);
 	
-	of::RenderBatch batch(*mRenderContext);
 	{
+		of::RenderBatch batch( *renderer->getDefaultContext() );
+		//batch.begin();
 		// per render thread:
 		{
 			of::CommandBufferContext cmdCtx( batch );
@@ -119,6 +118,7 @@ void ofApp::draw(){
 				// this should create a framebuffer, inside the rendercontext, kept alife until rendercontext[frame] fence has signalled.
 				of::RenderPassContext renderPassCtx( cmdCtx, mRenderPass, mFramebuffer );
 				// begin renderpass	 (this should also include the renderpass: ::vk::RenderPass)
+				
 				mTeapot.draw( renderPassCtx );
 				mTeapot.draw( renderPassCtx );
 				auto subpassId = renderPassCtx.nextSubpass();
@@ -132,6 +132,8 @@ void ofApp::draw(){
 			}
 			// end command buffer 
 		}
+		
+		// queue.submit( batch );
 	}
 
 

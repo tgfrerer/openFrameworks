@@ -167,6 +167,7 @@ void of::vk::GraphicsPipelineState::reset()
 			;
 
 		dynamicState
+			.setDynamicStateCount(dynamicStates.size())
 			.setPDynamicStates      ( dynamicStates.data() )
 			;
 
@@ -242,30 +243,25 @@ uint64_t of::vk::GraphicsPipelineState::calculateHash() const {
 	// an architecture that is 8 byte aligned, as pointers are 8 byte, 
 	// but types like VKBool32 are 4 bytes.
 
-	std::vector<uint64_t> setLayoutKeys = mShader->getSetLayoutKeys();
+	std::vector<uint64_t> setLayoutKeys = mShader->getDescriptorSetLayoutKeys();
 
 	uint64_t hash = mShader->getShaderCodeHash();
 
 	hash = SpookyHash::Hash64( setLayoutKeys.data(), sizeof( uint64_t ) * setLayoutKeys.size(), hash );
 
-	//static_assert( sizeof( inputAssemblyState ) == alignof( inputAssemblyState ), "memory not laid out packed." );
-
-	static const size_t dataSize
-		= sizeof( inputAssemblyState )
-		//+ sizeof( tessellationState )
-		//+ sizeof( viewportState )
-		//+ sizeof( rasterizationState )
-		//+ sizeof( multisampleState )
-		//+ sizeof( depthStencilState )
-		//+ sizeof( dynamicStates )
-		//+ sizeof( blendAttachmentStates )
-		//+ sizeof( colorBlendState )
-		//+ sizeof( dynamicState )
-		//+ sizeof( mRenderPass )
-		//+ sizeof( mSubpass )
-		;
-
-	hash = SpookyHash::Hash64( (void*)&inputAssemblyState, dataSize, 0 );
+	hash = SpookyHash::Hash64( (void*) &inputAssemblyState,    sizeof( inputAssemblyState    ), hash );
+	hash = SpookyHash::Hash64( (void*) &tessellationState,     sizeof( tessellationState     ), hash );
+	hash = SpookyHash::Hash64( (void*) &viewportState,         sizeof( viewportState         ), hash );
+	hash = SpookyHash::Hash64( (void*) &rasterizationState,    sizeof( rasterizationState    ), hash );
+	hash = SpookyHash::Hash64( (void*) &multisampleState,      sizeof( multisampleState      ), hash );
+	hash = SpookyHash::Hash64( (void*) &depthStencilState,     sizeof( depthStencilState     ), hash );
+	hash = SpookyHash::Hash64( (void*) &dynamicStates,         sizeof( dynamicStates         ), hash );
+	hash = SpookyHash::Hash64( (void*) &blendAttachmentStates, sizeof( blendAttachmentStates ), hash );
+	hash = SpookyHash::Hash64( (void*) &colorBlendState,       sizeof( colorBlendState       ), hash );
+	hash = SpookyHash::Hash64( (void*) &dynamicState,          sizeof( dynamicState          ), hash );
+	hash = SpookyHash::Hash64( (void*) &mRenderPass,           sizeof( mRenderPass           ), hash );
+	hash = SpookyHash::Hash64( (void*) &mSubpass,              sizeof( mSubpass              ), hash );
+	
 	ofLog() << "pipeline hash:" << std::hex << hash;
 	return hash;
 }

@@ -81,6 +81,7 @@ vk::SurfaceKHR& ofVkRenderer::getWindowSurface() {
 	return mWindowSurface;
 }
 
+
 // ----------------------------------------------------------------------
 
 ofVkRenderer::~ofVkRenderer()
@@ -95,19 +96,7 @@ ofVkRenderer::~ofVkRenderer()
 	auto err= vkDeviceWaitIdle(mDevice);
 	assert( !err );
 
-
 	mDefaultContext.reset();
-	mShaderManager.reset();
-
-	for ( auto & frame : mFrameResources ){
-		vkDestroyFramebuffer( mDevice, frame.framebuffer, nullptr );
-		vkDestroySemaphore( mDevice, frame.semaphoreImageAcquired , nullptr );
-		vkDestroySemaphore( mDevice, frame.semaphoreRenderComplete, nullptr );
-		vkDestroyFence( mDevice, frame.fence, nullptr );
-	}
-	mFrameResources.clear();
-
-	vkDestroyRenderPass( mDevice, mRenderPass, nullptr );
 
 	for ( auto & depthStencilResource : mDepthStencil ){
 		vkDestroyImageView( mDevice, depthStencilResource.view, nullptr );
@@ -117,9 +106,9 @@ ofVkRenderer::~ofVkRenderer()
 	mDepthStencil.clear();
 
 	// reset command pool and all associated command buffers.
-	err = vkResetCommandPool( mDevice, mDrawCommandPool, VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT );
+	err = vkResetCommandPool( mDevice, mSetupCommandPool, VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT );
 	assert( !err );
-	vkDestroyCommandPool( mDevice, mDrawCommandPool, VK_NULL_HANDLE );
+	vkDestroyCommandPool( mDevice, mSetupCommandPool, VK_NULL_HANDLE );
 
 	mSwapchain.reset();
 
@@ -463,102 +452,20 @@ ofHandednessType ofVkRenderer::getCoordHandedness() const
 	return ofHandednessType();
 }
 
-// ----------------------------------------------------------------------
-
-glm::mat4x4 ofVkRenderer::getCurrentMatrix(ofMatrixMode matrixMode_) const
-{
-	return ofMatrix4x4();
+inline glm::mat4x4 ofVkRenderer::getCurrentMatrix( ofMatrixMode matrixMode_ ) const{
+	return glm::mat4x4();
 }
 
-// ----------------------------------------------------------------------
-
-glm::mat4x4 ofVkRenderer::getCurrentOrientationMatrix() const
-{
-	return ofMatrix4x4();
-}
-
-// ----------------------------------------------------------------------
-
-void ofVkRenderer::pushMatrix(){
-	if(mDefaultContext)
-		mDefaultContext->pushMatrix();
-}
-
-// ----------------------------------------------------------------------
-
-void ofVkRenderer::popMatrix(){
-	if ( mDefaultContext )
-		mDefaultContext->popMatrix();
-}
-
-// ----------------------------------------------------------------------
-
-void ofVkRenderer::translate( const glm::vec3 & p ){
-	if ( mDefaultContext )
-		mDefaultContext->translate( p );
-}
-
-// ----------------------------------------------------------------------
-
-void ofVkRenderer::rotateRad( float radians, float axisX, float axisY, float axisZ ){
-	if ( mDefaultContext )
-		mDefaultContext->rotateRad( radians, { axisX, axisY, axisZ } );
-}
-
-// ----------------------------------------------------------------------
-
-void ofVkRenderer::rotateYRad( float radians ){
-	rotateRad( radians,  0, 1, 0 );
-}
-
-void ofVkRenderer::rotateZRad( float radians ){
-	rotateRad( radians, 0, 0, 1 );
-}
-
-// ----------------------------------------------------------------------
-
-void ofVkRenderer::rotateXRad(float radians ) {
-	rotateRad( radians, 1, 0, 0 );
-};
-
-// ----------------------------------------------------------------------
-
-void ofVkRenderer::rotateRad( float radians ){
-	rotateZRad( radians );
-}
-
-// ----------------------------------------------------------------------
-
-glm::mat4x4 ofVkRenderer::getCurrentViewMatrix() const
-{
-	if ( mDefaultContext )
-		return mDefaultContext->getViewMatrix();
+inline glm::mat4x4 ofVkRenderer::getCurrentOrientationMatrix() const{
 	return glm::mat4x4();
 }
 
 // ----------------------------------------------------------------------
 
-glm::mat4x4 ofVkRenderer::getCurrentNormalMatrix() const
-{
-	if ( mDefaultContext )
-		return glm::inverse(glm::transpose(mDefaultContext->getViewMatrix()));
-	return glm::mat4x4();
-}
-
-// ----------------------------------------------------------------------
 
 ofRectMode ofVkRenderer::getRectMode()
 {
 	return ofRectMode();
-}
-
-
-// ----------------------------------------------------------------------
-
-void ofVkRenderer::setFillMode( ofFillFlag fill ){
-	if ( mDefaultContext ){
-		fill == OF_FILLED ? mDefaultContext->setPolyMode( ::vk::PolygonMode::eFill ) : mDefaultContext->setPolyMode( ::vk::PolygonMode::eLine );
-	}
 }
 
 // ----------------------------------------------------------------------
@@ -570,13 +477,9 @@ ofFillFlag ofVkRenderer::getFillMode()
 
 // ----------------------------------------------------------------------
 
-
-ofColor ofVkRenderer::getBackgroundColor()
-{
+inline ofColor ofVkRenderer::getBackgroundColor(){
 	return ofColor();
 }
-
-// ----------------------------------------------------------------------
 
 bool ofVkRenderer::getBackgroundAuto()
 {
@@ -590,10 +493,7 @@ ofPath & ofVkRenderer::getPath()
 	return mPath;
 }
 
-// ----------------------------------------------------------------------
-
-ofStyle ofVkRenderer::getStyle() const
-{
+inline ofStyle ofVkRenderer::getStyle() const{
 	return ofStyle();
 }
 
@@ -613,31 +513,42 @@ of3dGraphics & ofVkRenderer::get3dGraphics()
 
 // ----------------------------------------------------------------------
 
-void ofVkRenderer::bind( const ofCamera & camera, const ofRectangle & viewport ){
-	
-	if ( mDefaultContext ){
-		mDefaultContext->pushMatrix();
-		mDefaultContext->setViewMatrix( camera.getModelViewMatrix() );
+glm::mat4x4 ofVkRenderer::getCurrentViewMatrix() const{
+	return glm::mat4x4();
+}
 
-		// Clip space transform:
-
-		// Vulkan has inverted y 
-		// and half-width z.
-
-		static const glm::mat4x4 clip( 1.0f, 0.0f, 0.0f, 0.0f,
-			0.0f, -1.0f, 0.0f, 0.0f,
-			0.0f, 0.0f, 0.5f, 0.0f,
-			0.0f, 0.0f, 0.5f, 1.0f );
-
-		mDefaultContext->setProjectionMatrix( clip * camera.getProjectionMatrix( viewport ) );
-	}
+// ----------------------------------------------------------------------
+glm::mat4x4 ofVkRenderer::getCurrentNormalMatrix() const{
+	return glm::mat4x4();
 }
 
 // ----------------------------------------------------------------------
 
-void ofVkRenderer::unbind( const ofCamera& camera ){
-	if ( mDefaultContext )
-		mDefaultContext->popMatrix();
-}
+//void ofVkRenderer::bind( const ofCamera & camera, const ofRectangle & viewport ){
+//	
+//	if ( mDefaultContext ){
+//		mDefaultContext->pushMatrix();
+//		mDefaultContext->setViewMatrix( camera.getModelViewMatrix() );
+//
+//		// Clip space transform:
+//
+//		// Vulkan has inverted y 
+//		// and half-width z.
+//
+//		static const glm::mat4x4 clip( 1.0f, 0.0f, 0.0f, 0.0f,
+//			0.0f, -1.0f, 0.0f, 0.0f,
+//			0.0f, 0.0f, 0.5f, 0.0f,
+//			0.0f, 0.0f, 0.5f, 1.0f );
+//
+//		mDefaultContext->setProjectionMatrix( clip * camera.getProjectionMatrix( viewport ) );
+//	}
+//}
+
+// ----------------------------------------------------------------------
+
+//void ofVkRenderer::unbind( const ofCamera& camera ){
+//	if ( mDefaultContext )
+//		mDefaultContext->popMatrix();
+//}
 
 

@@ -8,7 +8,7 @@ void of::vk::Texture::load( const ofPixels & pix_ ){
 	mDevice = renderer->getVkDevice();
 
 	// get command pool
-	auto& cmdPool = renderer->getCommandPool();
+	const auto& cmdPool = renderer->getSetupCommandPool();
 
 	// get queue
 	auto& queue = renderer->getQueue();

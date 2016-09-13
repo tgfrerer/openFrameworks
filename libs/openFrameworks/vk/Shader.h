@@ -79,78 +79,50 @@
 namespace of{
 namespace vk{
 
-class ShaderManager;
-
 class Shader
 {
 public:
 
 	const struct Settings
 	{
-		std::shared_ptr<of::vk::ShaderManager> shaderManager;
+		::vk::Device device;
 		std::map<::vk::ShaderStageFlagBits, std::string> sources;
 	} mSettings;
 
-	// we need a table of uniforms
-	struct UboMemberRange
-	{
-		size_t offset;
-		size_t range;
-	};
-
-	// Metadata for descriptor 
-	// - descriptor can be of type dynamic_uniform or combined_image_sampler
-	struct DescriptorInfo
-	{
-		using MemberMap = std::map< std::string, of::vk::Shader::UboMemberRange>;
-		
-		::vk::DescriptorType    type;                                /* used for hash */
-		uint32_t                count = 0;                           /* used for hash */
-		size_t                  storageSize = 0;                     /* used for hash */
-		std::string             name;                                /* used for hash */
-		
-		::vk::ShaderStageFlags  stageFlags;
-		MemberMap               memberRanges; // optional: memory offsets for members within UBO, indexed by name
-		
-		uint64_t                hash = 0;                            /* hash of type, count, name, storageSize */
-		
-		void calculateHash();
-		
-		bool checkMemberRangesOverlap( const MemberMap& lhs, const MemberMap & rhs, std::ostringstream & errorMsg) const;
-	};
-
-	struct UniformBindingInfo
-	{
-		uint32_t setNumber     = 0;
-		uint32_t bindingNumber = 0;
-	};
-
-	// (set id and binding number of uniform) indexed by DescriptorInfo hash
-	std::map<uint64_t, UniformBindingInfo> mBindingsTable;
-
-	struct SetLayoutInfo
-	{
-		// binding number to DescriptorInfo hash - binding numbers may be sparse.
-		std::map<uint32_t, uint64_t> bindingTable;
-
-		uint64_t hash = 0;
-		void calculateHash();
-	};
-
-
-private:
-	
-	// table of SetLayoutInfo pointers to keep track of use for Set Layout
-	std::vector<std::shared_ptr<SetLayoutInfo>> mPipelineLayoutPtrsMeta;
-	
-	// table of setlayouts describing pipeline layout
-	std::vector<uint64_t> mPipelineLayoutMeta;
-
-	// alias into mSettings
-	const std::shared_ptr<ShaderManager>& mShaderManager = mSettings.shaderManager;
-
 
 public: 
+
+	struct UboMemberSubrange{
+		uint32_t setNumber;
+		uint32_t bindingNumber;
+		uint32_t offset;
+		uint32_t range;
+	};
+
+	struct UboRange
+	{
+		uint32_t storageSize = 0;
+		std::map<std::string, UboMemberSubrange> subranges;
+	};
+
+	// map from binding number to member range
+	std::map<uint32_t, UboRange> uboMemberRanges;
+
+	struct Uniform_t
+	{
+		uint32_t                         setNumber         = 0;
+		::vk::DescriptorSetLayoutBinding setLayoutBinding;
+		UboRange                         uboRange;
+	};
+
+	// map from uniform name to uniform data
+	std::map<std::string, Uniform_t> mUniforms;
+	
+	struct DesciptorSetLayoutInfo
+	{
+		uint64_t hash;	// hash for this descriptor set layout.
+		std::vector<::vk::DescriptorSetLayoutBinding> bindings;
+	};
 
 	struct VertexInfo
 	{
@@ -159,11 +131,19 @@ public:
 		::vk::PipelineVertexInputStateCreateInfo vi;
 	} mVertexInfo;
 
-	
-
 private:
 
-	mutable std::shared_ptr<::vk::PipelineLayout> mPipelineLayout;
+	// vector of descriptor set binding information (index is descriptor set number)
+	std::vector<DesciptorSetLayoutInfo> mDescriptorSetsInfo;
+	
+	// vector of just the descriptor set layout keys - this needs to be kept in sync 
+	// with mDescriptorSetsInfo
+	std::vector<uint64_t>               mDescriptorSetLayoutKeys;
+
+	std::vector<std::shared_ptr<::vk::DescriptorSetLayout>> mDescriptorSetLayouts;
+
+	std::shared_ptr<::vk::PipelineLayout> mPipelineLayout;
+
 	uint64_t mShaderHash = 0;
 	bool     mShaderHashDirty = true;
 
@@ -173,16 +153,11 @@ private:
 	};
 
 	std::map<::vk::ShaderStageFlagBits, std::shared_ptr<ShaderStage>> mShaderStages;
-
 	std::map<::vk::ShaderStageFlagBits, std::shared_ptr<spirv_cross::Compiler>> mSpvCrossCompilers;
 	
 	// hashes for pre-compiled spirv
 	// we use this to find out if shader code has changed.
 	std::map<::vk::ShaderStageFlagBits, uint64_t> mSpvHash;
-
-	// Sequence of hashes of SetLayouts - which reference vkDescriptorSetLayouts in Context.
-	// This describes the sequence for the pipeline layout for this shader.
-	// std::vector<uint64_t>  mDescriptorSetLayoutKeys;  
 
 	// ----------------------------------------------------------------------
 	// Derive bindings from shader reflection using SPIR-V Cross.
@@ -191,16 +166,13 @@ private:
 	// for our pipelines.
 	void reflect( const std::map<::vk::ShaderStageFlagBits, std::shared_ptr<spirv_cross::Compiler>>& compilers, VertexInfo& vertexInfo );
 	//static void reflectUniformBuffers( const spirv_cross::Compiler & compiler, const VkShaderStageFlagBits & shaderStage, std::map<std::string, BindingInfo>& uniformInfo );
-	
+	static void reflectVertexInputs( const spirv_cross::Compiler & compiler, of::vk::Shader::VertexInfo& vertexInfo );
+
 	bool reflectUBOs( const spirv_cross::Compiler & compiler, const ::vk::ShaderStageFlagBits & shaderStage );
 	bool reflectSamplers( const spirv_cross::Compiler & compiler, const ::vk::ShaderStageFlagBits & shaderStage);
-	bool addResourceToBindingsTable( const spirv_cross::Compiler & compiler, const spirv_cross::Resource & ubo, std::shared_ptr<of::vk::Shader::DescriptorInfo> & uniform );
+	
 	bool createSetLayouts();
 	void createVkPipelineLayout();
-
-	static void getSetAndBindingNumber( const spirv_cross::Compiler & compiler, const spirv_cross::Resource & ubo, uint32_t &descriptor_set, uint32_t &bindingNumber );
-	static void reflectVertexInputs(const spirv_cross::Compiler & compiler, VertexInfo& vertexInfo );
-
 
 	// based on file name ending, read either spirv or glsl file and fill vector of spirV words
 	bool getSpirV( const ::vk::ShaderStageFlagBits shaderType, const std::string & fileName, std::vector<uint32_t> &spirCode );
@@ -211,14 +183,20 @@ private:
 	// create vkShader module from binary spirv code
 	void createVkShaderModule( const ::vk::ShaderStageFlagBits shaderType, const std::vector<uint32_t> &spirCode);
 
+	static bool checkMemberRangesOverlap(
+		const std::map<std::string, of::vk::Shader::UboMemberSubrange>& lhs,
+		const std::map<std::string, of::vk::Shader::UboMemberSubrange>& rhs,
+		std::ostringstream & errorMsg );
 
+	static void getSetAndBindingNumber( const spirv_cross::Compiler & compiler, const spirv_cross::Resource & resource, uint32_t &descriptor_set, uint32_t &bindingNumber );
+	
 public:
 
 
 	// ----------------------------------------------------------------------
 
 	// shader object needs to be initialised based on spir-v sources to be useful
-	Shader( const Settings& settings_ );
+	Shader(const ::vk::Device& device_, const std::map<::vk::ShaderStageFlagBits, std::string>& sources );
 
 	// ----------------------------------------------------------------------
 
@@ -231,46 +209,76 @@ public:
 	// re-compile shader - this invalidates hashes only when shader has changed.
 	void compile();
 
+	// return shader stage information for pipeline creation
+	const std::vector<::vk::PipelineShaderStageCreateInfo> getShaderStageCreateInfo();
 
-	// ----------------------------------------------------------------------
+	const std::vector<DesciptorSetLayoutInfo> & getDescriptorSetsInfo();
 
-	const std::vector<uint64_t>& getSetLayoutKeys() const{
-		return mPipelineLayoutMeta;
-	}
-
-	// ----------------------------------------------------------------------
-
-	// return vector create info for all shader modules which compiled successfully
-	const std::vector<::vk::PipelineShaderStageCreateInfo> getShaderStageCreateInfo(){
-		
-		std::vector<::vk::PipelineShaderStageCreateInfo> stageInfo;
-		stageInfo.reserve( mShaderStages.size() );
-		
-		for ( const auto& s : mShaderStages ){
-			stageInfo.push_back( s.second->createInfo );
-		}
-
-		return stageInfo;
-	}
-
-	// ----------------------------------------------------------------------
 	// return vertex input state create info
 	// this hold the layout and wiring of attribute inputs to vertex bindings
-	const ::vk::PipelineVertexInputStateCreateInfo& getVertexInputState(){
-		return mVertexInfo.vi;
-	}
+	const ::vk::PipelineVertexInputStateCreateInfo& getVertexInputState();
 	
-	// ----------------------------------------------------------------------
-	const std::shared_ptr<::vk::PipelineLayout>& getPipelineLayout() {
-		if ( mPipelineLayout.get() == nullptr )
-			createVkPipelineLayout();
-		return mPipelineLayout;
-	}
+	// return pipeline layout reflected from this shader
+	const std::shared_ptr<::vk::PipelineLayout>& getPipelineLayout();
 
-	// ----------------------------------------------------------------------
+	const std::vector<uint64_t> & getDescriptorSetLayoutKeys() const;
+
+	// get setLayout at set index
+	const std::shared_ptr<::vk::DescriptorSetLayout>& getDescriptorSetLayout( size_t setId ) const;
+
+	// get all set layouts 
+	const std::vector<std::shared_ptr<::vk::DescriptorSetLayout>>& of::vk::Shader::getDescriptorSetLayouts() const;
+	
 	// returns hash of spirv code over all shader shader stages
 	const uint64_t getShaderCodeHash();
 };
+
+// ----------------------------------------------------------------------
+
+inline const std::vector<::vk::PipelineShaderStageCreateInfo> of::vk::Shader::getShaderStageCreateInfo(){
+
+	std::vector<::vk::PipelineShaderStageCreateInfo> stageInfo;
+	stageInfo.reserve( mShaderStages.size() );
+
+	for ( const auto& s : mShaderStages ){
+		stageInfo.push_back( s.second->createInfo );
+	}
+
+	return stageInfo;
+}
+
+inline const std::vector<of::vk::Shader::DesciptorSetLayoutInfo>& of::vk::Shader::getDescriptorSetsInfo(){
+	return mDescriptorSetsInfo;
+}
+
+// ----------------------------------------------------------------------
+
+inline const::vk::PipelineVertexInputStateCreateInfo & Shader::getVertexInputState(){
+	return mVertexInfo.vi;
+}
+
+// ----------------------------------------------------------------------
+
+inline const std::shared_ptr<::vk::PipelineLayout>& Shader::getPipelineLayout() {
+	if ( mPipelineLayout.get() == nullptr )
+		createVkPipelineLayout();
+	return mPipelineLayout;
+}
+
+inline const std::vector<uint64_t>& Shader::getDescriptorSetLayoutKeys() const{
+	return mDescriptorSetLayoutKeys;
+}
+
+// ----------------------------------------------------------------------
+inline const std::vector<std::shared_ptr<::vk::DescriptorSetLayout>>& of::vk::Shader::getDescriptorSetLayouts() const{
+	return mDescriptorSetLayouts;
+}
+
+// ----------------------------------------------------------------------
+
+inline const std::shared_ptr<::vk::DescriptorSetLayout>& of::vk::Shader::getDescriptorSetLayout( size_t setId ) const{
+	return mDescriptorSetLayouts.at( setId );
+}
 
 } // namespace vk
 } // namespace of

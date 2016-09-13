@@ -24,7 +24,7 @@ class ofApp : public ofBaseApp{
 
 
 	Teapot mTeapot;
-	std::unique_ptr<of::RenderContext> mRenderContext;
+	//std::shared_ptr<of::RenderContext> mRenderContext;
 
 	public:
 		void setup();

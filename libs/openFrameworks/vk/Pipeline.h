@@ -92,6 +92,7 @@ public:	// these states can be set upfront
 
 private: // these states must be received through context
 
+	// non-owning
 	::vk::RenderPass  mRenderPass         = 0;
 	uint64_t          mSubpass            = 0;
 

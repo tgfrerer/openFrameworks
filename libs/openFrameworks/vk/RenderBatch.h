@@ -19,47 +19,34 @@ public:
 	struct Settings
 	{
 		of::vk::Allocator::Settings transientMemoryAllocatorSettings;
+		::vk::PipelineCache         pipelineCache;
 	};
 private:
 	friend class RenderBatch;
 
 	const Settings mSettings;
 
-	::vk::Device                       mDevice;
+	const ::vk::Device&                         mDevice = mSettings.transientMemoryAllocatorSettings.device;
+	const ::vk::PipelineCache&                  mGlobalPipelineCache = mSettings.pipelineCache;
 
 	struct VirtualFrame
 	{
-		::vk::CommandPool              commandPool;
-		::vk::QueryPool                queryPool;
-		::vk::DescriptorPool           descriptorPool;
-
-		/* 
-		
-		we need facilities to overspill if there are not 
-		enough descriptors available to allocate from our
-		current pool.
-
-		On next frame, the overspill pools get consolidated
-		into the main descriptor pool for the frame, so that
-		allocations can happen more freely.
-
-		This only happens if descriptor pools are marked as dirty.
-		
-		*/
-
-		// Cache for descriptor sets seen by the current virtual frame
-		// Needs to be reset when descriptorPool changes.
-		// lifetime of DescriptorSets controlled by descriptorPool - 
-		// if DescriptorPool resets, cache resets.
+		::vk::CommandPool                       commandPool;
+		::vk::QueryPool                         queryPool;
+		::vk::Framebuffer                       frameBuffer;
+		std::list<::vk::DescriptorPool>         descriptorPools;
 		std::map<uint64_t, ::vk::DescriptorSet> descriptorSetCache;
-		std::vector<::vk::DescriptorPool> overSpillPools;
+		::vk::Semaphore                         semaphoreImageAcquired;
+		::vk::Semaphore                         semaphoreRenderComplete;
+		::vk::Fence                             fence;
 	};
 
-	// Number of descriptors per type, one (or more) vector entries per descriptor type
-	std::vector<::vk::DescriptorPoolSize> mDescriptorPoolSizes;
+	// Max number of descriptors per type
+	// Array index == descriptor type
+	std::array<uint32_t, VK_DESCRIPTOR_TYPE_RANGE_SIZE> mDescriptorPoolSizes;
 
-	// Number of descriptors left available for allocation from main descriptor pool
-	// that's mDescriptorPool.
+	// Number of descriptors left available for allocation from mDescriptorPool.
+	// Array index == descriptor type
 	std::array<uint32_t, VK_DESCRIPTOR_TYPE_RANGE_SIZE> mAvailableDescriptorCounts;
 
 	// Max number of sets which can be allocated from the main per-frame descriptor pool
@@ -68,29 +55,73 @@ private:
 	// Bitfield indicating whether the descriptor pool for a virtual frame is dirty 
 	// Each bit represents a virtual frame index. 
 	// We're not expecting more than 64 virtual frames (more than 3 seldom make sense)
-	
 	uint64_t mDescriptorPoolsDirty = -1; // -1 == all bits '1' == all dirty
 
 	std::vector<VirtualFrame>          mVirtualFrames;
 	std::unique_ptr<of::vk::Allocator> mTransientMemory;
+
 	size_t                             mCurrentVirtualFrame = 0;
 
-	//! TODO: implement
-	// Fetches descriptor either from cache - or allocates and initialises a descriptor pool based on DescriptorSetData.
-	const ::vk::DescriptorSet getDescriptorSet( uint64_t descriptorSetHash, const of::DrawCommandInfo::DescriptorSetData& descriptorSetData );
+	
 
+	// Fetch descriptor either from cache - or allocate and initialise a descriptor based on DescriptorSetData.
+	const ::vk::DescriptorSet getDescriptorSet( uint64_t descriptorSetHash, size_t setId, const std::unique_ptr<of::DrawCommand> & drawCommand );
+
+	// Re-consolidate descriptor pools if necessary
 	void updateDescriptorPool( );
 
 public:
 	
-	//!TODO: implement.
 	RenderContext( const Settings& settings );
+	~RenderContext(){
+			for ( auto & vf : mVirtualFrames ){
+				if ( vf.commandPool ){
+					mDevice.destroyCommandPool( vf.commandPool );
+				}
+				for ( auto & pool : vf.descriptorPools ){
+					mDevice.destroyDescriptorPool( pool );
+				}
+				if ( vf.semaphoreImageAcquired ){
+					mDevice.destroySemaphore( vf.semaphoreImageAcquired );
+				}
+				if ( vf.semaphoreRenderComplete ){
+					mDevice.destroySemaphore( vf.semaphoreRenderComplete );
+				}
+			}
+			mVirtualFrames.clear();
+	};
 
-	// starts context, and initialises descriptorpools if necessary.
+	::vk::CommandPool & getCommandPool();
+	
+	::vk::Fence & getFence();
+	::vk::Semaphore & getImageAcquiredSemaphore();
+	::vk::Semaphore & getSemaphoreRenderComplete();
+	::vk::Framebuffer & getFramebuffer();
+
+	void setup();
 	void begin();
-	void end();
-
+	void swap();
+	
 };
+
+// ------------------------------------------------------------
+
+inline ::vk::Fence & of::RenderContext::getFence(){
+	return mVirtualFrames.at( mCurrentVirtualFrame ).fence;
+}
+
+inline ::vk::Semaphore & RenderContext::getImageAcquiredSemaphore(){
+	return mVirtualFrames.at( mCurrentVirtualFrame ).semaphoreImageAcquired;
+}
+
+inline ::vk::Semaphore & RenderContext::getSemaphoreRenderComplete(){
+	return mVirtualFrames.at( mCurrentVirtualFrame ).semaphoreRenderComplete;
+}
+
+inline ::vk::Framebuffer & RenderContext::getFramebuffer(){
+	return mVirtualFrames.at( mCurrentVirtualFrame ).frameBuffer;
+}
+
 
 // ------------------------------------------------------------
 
@@ -142,16 +173,17 @@ class RenderBatch
 
 public:
 
-	RenderBatch( RenderContext& rpc )
-	:mRenderContext(&rpc){
+	RenderBatch( RenderContext& rpc );
+
+	~RenderBatch(){
+		submit();
 	}
 
 private:
 	
-
 	// current draw state
-	std::unique_ptr<of::vk::GraphicsPipelineState> currentPipelineState;
-	std::shared_ptr<::vk::Pipeline>                mCurrentPipeline;
+	std::unique_ptr<of::vk::GraphicsPipelineState>                  mCurrentPipelineState;
+	std::unordered_map<uint64_t,std::shared_ptr<::vk::Pipeline>>    mPipelineCache;
 
 	uint32_t            mVkSubPassId = 0;
 	::vk::CommandBuffer mVkCmd;
@@ -170,6 +202,8 @@ private:
 	void beginCommandBuffer();
 	void endCommandBuffer();
 
+	void submit();
+
 	uint32_t nextSubPass();
 
 	void draw( const std::unique_ptr<of::DrawCommand>& dc );
@@ -177,8 +211,11 @@ private:
 
 // ----------------------------------------------------------------------
 
+
 inline void of::RenderBatch::beginRenderPass(const ::vk::RenderPass vkRenderPass_, const ::vk::Framebuffer vkFramebuffer_ ){
+	
 	ofLog() << "begin renderpass";
+	
 	mVkSubPassId = 0;
 
 	// todo: error checking: there should not be a current renderpass
@@ -190,6 +227,10 @@ inline void of::RenderBatch::beginRenderPass(const ::vk::RenderPass vkRenderPass
 
 	mVkRenderPass = vkRenderPass_;
 	mVkFramebuffer = vkFramebuffer_;
+	
+	
+
+	//!TODO: get correct clear values, and clear value count
 
 	::vk::RenderPassBeginInfo renderPassBeginInfo;
 	renderPassBeginInfo
@@ -201,7 +242,6 @@ inline void of::RenderBatch::beginRenderPass(const ::vk::RenderPass vkRenderPass
 		;
 
 	mVkCmd.beginRenderPass(renderPassBeginInfo,::vk::SubpassContents::eInline);
-	//!TODO : begin render pass
 }
 
 // ----------------------------------------------------------------------
@@ -225,16 +265,18 @@ inline void of::RenderBatch::endRenderPass(){
 
 inline void of::RenderBatch::beginCommandBuffer(){
 	ofLog() << "begin command buffer";
-	//!TODO : begin command buffer
 	
-	::vk::CommandBufferAllocateInfo commandBufferAllocateInfo;
-	commandBufferAllocateInfo
-		.setCommandPool( mRenderContext->commandPool())
-		.setLevel( ::vk::CommandBufferLevel::ePrimary )
-		.setCommandBufferCount( 1 )
-		;
 
-	mVkCmd = (mRenderContext->mDevice.allocateCommandBuffers( commandBufferAllocateInfo )).front();
+	if ( !mVkCmd ){
+		::vk::CommandBufferAllocateInfo commandBufferAllocateInfo;
+		commandBufferAllocateInfo
+			.setCommandPool( mRenderContext->getCommandPool() )
+			.setLevel( ::vk::CommandBufferLevel::ePrimary )
+			.setCommandBufferCount( 1 )
+			;
+			mVkCmd = (mRenderContext->mDevice.allocateCommandBuffers( commandBufferAllocateInfo )).front();
+	}
+
 	mVkCmd.begin( { ::vk::CommandBufferUsageFlagBits::eOneTimeSubmit } );
 
 }
@@ -243,7 +285,10 @@ inline void of::RenderBatch::beginCommandBuffer(){
 
 inline void of::RenderBatch::endCommandBuffer(){
 	ofLog() << "end   command buffer";
+	mVkCmd.end();
 }
+
+
 
 // ----------------------------------------------------------------------
 
