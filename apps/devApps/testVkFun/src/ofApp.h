@@ -14,7 +14,7 @@ class Teapot
 public:
 	void setup();
 	void update();
-	void draw(of::RenderPassContext & rp);
+	void draw(of::RenderBatch & rp);
 
 };
 
@@ -24,7 +24,6 @@ class ofApp : public ofBaseApp{
 
 
 	Teapot mTeapot;
-	//std::shared_ptr<of::RenderContext> mRenderContext;
 
 	public:
 		void setup();

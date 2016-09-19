@@ -4,11 +4,12 @@
 #include "ofLog.h"
 #include "vk/Pipeline.h"
 #include "vk/vkAllocator.h"
+#include "vk/DrawCommand.h"
 
 namespace of {
 
 class RenderBatch;
-class DrawCommand;
+//class DrawCommand;
 
 
 // ------------------------------------------------------------
@@ -56,18 +57,17 @@ private:
 	// Bitfield indicating whether the descriptor pool for a virtual frame is dirty 
 	// Each bit represents a virtual frame index. 
 	// We're not expecting more than 64 virtual frames (more than 3 seldom make sense)
-	uint64_t mDescriptorPoolsDirty = -1; // -1 == all bits '1' == all dirty
+	uint64_t mDescriptorPoolsDirty = 0; // -1 == all bits '1' == all dirty
 
 	std::vector<VirtualFrame>          mVirtualFrames;
 	std::unique_ptr<of::vk::Allocator> mTransientMemory;
 
 	size_t                             mCurrentVirtualFrame = 0;
-
 	const ::vk::Rect2D&                mRenderArea = mSettings.renderArea;
 	
 
 	// Fetch descriptor either from cache - or allocate and initialise a descriptor based on DescriptorSetData.
-	const ::vk::DescriptorSet getDescriptorSet( uint64_t descriptorSetHash, size_t setId, const std::unique_ptr<of::DrawCommand> & drawCommand );
+	const ::vk::DescriptorSet getDescriptorSet( uint64_t descriptorSetHash, size_t setId, const of::DrawCommand & drawCommand );
 
 	// Re-consolidate descriptor pools if necessary
 	void updateDescriptorPool( );
@@ -91,6 +91,7 @@ public:
 				}
 			}
 			mVirtualFrames.clear();
+			mTransientMemory->reset();
 	};
 
 	::vk::CommandPool & getCommandPool();
@@ -100,6 +101,7 @@ public:
 	::vk::Semaphore & getSemaphoreRenderComplete();
 	::vk::Framebuffer & getFramebuffer();
 	const ::vk::Rect2D & getRenderArea() const;
+	const std::unique_ptr<of::vk::Allocator> &  of::RenderContext::getAllocator();
 
 	void setup();
 	void begin();
@@ -113,48 +115,25 @@ inline ::vk::Fence & of::RenderContext::getFence(){
 	return mVirtualFrames.at( mCurrentVirtualFrame ).fence;
 }
 
-inline ::vk::Semaphore & RenderContext::getImageAcquiredSemaphore(){
+inline ::vk::Semaphore &  of::RenderContext::getImageAcquiredSemaphore(){
 	return mVirtualFrames.at( mCurrentVirtualFrame ).semaphoreImageAcquired;
 }
 
-inline ::vk::Semaphore & RenderContext::getSemaphoreRenderComplete(){
+inline ::vk::Semaphore &  of::RenderContext::getSemaphoreRenderComplete(){
 	return mVirtualFrames.at( mCurrentVirtualFrame ).semaphoreRenderComplete;
 }
 
-inline ::vk::Framebuffer & RenderContext::getFramebuffer(){
+inline ::vk::Framebuffer &  of::RenderContext::getFramebuffer(){
 	return mVirtualFrames.at( mCurrentVirtualFrame ).frameBuffer;
 }
 
+inline const ::vk::Rect2D &  of::RenderContext::getRenderArea() const{
+	return mRenderArea;
+}
 
-// ------------------------------------------------------------
-
-class CommandBufferContext
-{
-	friend class RenderPassContext;
-	CommandBufferContext() = delete;
-	of::RenderBatch * batch;
-public:
-	
-	CommandBufferContext( of::RenderBatch & batch_ );
-	~CommandBufferContext();
-};
-
-// ------------------------------------------------------------
-
-class RenderPassContext
-{
-	RenderPassContext() = delete;
-	of::RenderBatch * batch;
-
-public:
-
-	void draw( const std::unique_ptr<of::DrawCommand>& dc );;
-
-	uint32_t nextSubpass();
-
-	RenderPassContext( of::CommandBufferContext& cmdCtx_, const ::vk::RenderPass vkRenderPass_, const ::vk::Framebuffer vkFramebuffer_ );
-	~RenderPassContext();
-};
+inline const std::unique_ptr<of::vk::Allocator> & of::RenderContext::getAllocator() {
+	return mTransientMemory;
+}
 
 
 // ------------------------------------------------------------
@@ -179,7 +158,8 @@ public:
 	RenderBatch( RenderContext& rpc );
 
 	~RenderBatch(){
-		submit();
+		// todo: check if batch was submitted already - if not, submit.
+		// submit();
 	}
 
 private:
@@ -192,46 +172,44 @@ private:
 	::vk::CommandBuffer mVkCmd;
 
 	::vk::RenderPass    mVkRenderPass;  // current renderpass
-	::vk::Framebuffer   mVkFramebuffer;  // current framebuffer
 	
+	std::list<of::DrawCommand> mDrawCommands;
 
-private:
+	void processDrawCommands();
 
-	friend class of::RenderPassContext;
-	friend class of::CommandBufferContext;
 
-	void beginRenderPass( const ::vk::RenderPass vkRenderPass_, const ::vk::Framebuffer vkFramebuffer_ );
+	void beginRenderPass( const ::vk::RenderPass& vkRenderPass_, const ::vk::Framebuffer& vkFramebuffer_, const ::vk::Rect2D& renderArea_ );
 	void endRenderPass();
 	void beginCommandBuffer();
 	void endCommandBuffer();
+
+public:
+
 
 	void submit();
 
 	uint32_t nextSubPass();
 
-	void draw( const std::unique_ptr<of::DrawCommand>& dc );
+	void draw( const of::DrawCommand& dc );
 };
 
 // ----------------------------------------------------------------------
 
 
-inline void of::RenderBatch::beginRenderPass(const ::vk::RenderPass vkRenderPass_, const ::vk::Framebuffer vkFramebuffer_ ){
+
+
+inline void of::RenderBatch::beginRenderPass(const ::vk::RenderPass& vkRenderPass_, const ::vk::Framebuffer& vkFramebuffer_, const ::vk::Rect2D& renderArea_){
 	
 	ofLog() << "begin renderpass";
 	
 	mVkSubPassId = 0;
 
-	// todo: error checking: there should not be a current renderpass
-
-	if ( mVkRenderPass || mVkFramebuffer ){
+	if ( mVkRenderPass ){
 		ofLogError() << "cannot begin renderpass whilst renderpass already open.";
 		return;
 	}
 
 	mVkRenderPass = vkRenderPass_;
-	mVkFramebuffer = vkFramebuffer_;
-	
-	
 
 	//!TODO: get correct clear values, and clear value count
 	std::array<::vk::ClearValue, 2> clearValues;
@@ -255,8 +233,6 @@ inline void of::RenderBatch::beginRenderPass(const ::vk::RenderPass vkRenderPass
 // so endRenderPass should be the point at which the commands are recorded into the command buffer
 // If the renderpass allows re-ordering.
 inline uint32_t RenderBatch::nextSubPass(){
-	// TODO: implement next subpass
-	// TODO: consolidate/re-order draw commands if buffered
 	return ++mVkSubPassId;
 }
 
@@ -265,6 +241,7 @@ inline uint32_t RenderBatch::nextSubPass(){
 inline void of::RenderBatch::endRenderPass(){
 	// TODO: consolidate/re-order draw commands if buffered
 	ofLog() << "end   renderpass";
+	mVkCmd.endRenderPass();
 }
 
 // ----------------------------------------------------------------------

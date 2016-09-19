@@ -130,6 +130,10 @@ public:
 		}
 	}
 
+	const ::vk::RenderPass & getRenderPass() const{
+		return mRenderPass;
+	}
+
 	void setSubPass( uint32_t subpassId ){
 		if ( subpassId != mSubpass ){
 			mSubpass = subpassId;

@@ -7,6 +7,8 @@
 void Teapot::setup(){
 	auto & renderer = dynamic_pointer_cast<ofVkRenderer>( ofGetCurrentRenderer() );
 
+	::vk::RenderPass & renderPass = *renderer->getDefaultRenderPass();  // needs to be created upfront
+
 	// shader creation makes shader reflect. 
 	auto mShaderDefault = std::shared_ptr<of::vk::Shader>(new of::vk::Shader( renderer->getVkDevice(),
 	{
@@ -25,6 +27,7 @@ void Teapot::setup(){
 		;
 	dcs.modifyPipeline().inputAssemblyState.setTopology( ::vk::PrimitiveTopology::eTriangleList );
 	dcs.modifyPipeline().setShader( mShaderDefault );
+	dcs.modifyPipeline().setRenderPass( renderPass );
 
 	dc = std::move(std::make_unique<of::DrawCommand>( dcs ));
 
@@ -37,17 +40,17 @@ void Teapot::update(){
 
 //--------------------------------------------------------------
 
-void Teapot::draw(of::RenderPassContext& rp){
+void Teapot::draw(of::RenderBatch& rb){
 
 	// update uniforms inside the draw command 
 	
 	//dc.setDefaultMatrices(mCamera); // camera will do view and projection
-	//dc.setUniform( "ModelViewMatrix", ofMatrix4x4() );
+	dc->setUniform("globalColor", ofFloatColor::magenta );
 	//dc.setUniform( "globalColor", ofColor::white );
 	//dc.setUniformTexture( "texName", tex, 0 );
 
 	// update attribute buffer bindings
-	rp.draw( dc );
+	rb.draw( *dc );
 
 }
 
@@ -84,58 +87,27 @@ void ofApp::update(){
 void ofApp::draw(){
 	const auto & renderer = dynamic_pointer_cast<ofVkRenderer>( ofGetCurrentRenderer() );
 	
-	/*
+	of::RenderBatch batch( *renderer->getDefaultContext() /*, reorder = true*/ );
 	
-	drawing should be about laying out the different render passes
-	and their dependencies.
+	// a renderbatch 
 	
-	*/
-	
-	// framestore is where transient data is saved in. 
-	// this data is kept alife until the batch has finished
-	// rendering and has come around.
+	// we can't specify the framebuffer upfront, as the framebuffer is 
+	// created at frame start - based on what?
 	//
-	// 						  renderContext holds all transient memory and pools 
-	//							|
-	// 							|		  framebuffer is backing image memory - where results are stored
-	//							|		      |       if framebuffer is omitted, we assume the back buffer
-	// of::RenderBatch batch( renderContext, frameBuffer);
-	
-	::vk::RenderPass  mRenderPass = *renderer->getDefaultRenderPass();  // needs to be created upfront
-	::vk::Framebuffer mFramebuffer = renderer->getDefaultContext()->getFramebuffer();	// needs to be re-created each frame based on current viewport width.
+	// the framebuffer is created to link the current renderpass with 
+	// images so that the output can be stored somewhere.
+	//
+	// the framebuffer is created inside the renderer - and it is the renderer which
+	// will connect the default rendercontext/framebuffer to the outputs of the swapchain.
+	//
 
-	// the framebuffer contains the link from renderpass -> where image memory will be stored (which image views will receive image output)
-	// ::vk::Framebuffer mFramebuffer = renderer::swapchain::getDefaultFramebuffer(mRenderPass);
-	
-	{
-		of::RenderBatch batch( *renderer->getDefaultContext() );
-		//batch.begin();
-		// per render thread:
-		{
-			of::CommandBufferContext cmdCtx( batch );
-			// begin command buffer
-			{
-				// this should create a framebuffer, inside the rendercontext, kept alife until rendercontext[frame] fence has signalled.
-				of::RenderPassContext renderPassCtx( cmdCtx, mRenderPass, mFramebuffer );
-				// begin renderpass	 (this should also include the renderpass: ::vk::RenderPass)
-				
-				mTeapot.draw( renderPassCtx );
-				mTeapot.draw( renderPassCtx );
-				auto subpassId = renderPassCtx.nextSubpass();
-				mTeapot.draw( renderPassCtx );
-				// end renderpass
-			}
 
-			{
-				// begin another renderpass
-				// end another renderpass
-			}
-			// end command buffer 
-		}
-		
-		// queue.submit( batch );
-	}
+	mTeapot.draw( batch );
+	mTeapot.draw( batch );
+	mTeapot.draw( batch );
 
+
+	batch.submit();
 
 }
 
