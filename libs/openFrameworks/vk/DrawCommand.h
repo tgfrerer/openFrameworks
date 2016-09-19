@@ -90,6 +90,13 @@ public:
 
 		std::vector<uint32_t> dynamicBindingOffsets; // dynamic binding offsets for ubo bindings within this descriptor set
 
+		// !TODO we probably need temporary byte storage in here for data to be 
+		// committed to dynamic ubos... This data will be uploaded to GPU 
+		// when the draw call gets submitted to the batch - and this is 
+		// when dynamicBindingOffsets will get set. There needs to be one
+		// vector entry for each eUniformBufferDynamic binding.
+		std::vector<std::vector<uint8_t>> dynamicUboData;
+
 	};
 
 private:
@@ -127,6 +134,7 @@ public:
 	// set data for upload to ubo - data is stored locally 
 	// until draw command is submitted
 	
+	//!TODO: implement ubo upload
 	void setUboData( const std::string uboName, const std::vector<uint8_t> data ){};
 
 };
