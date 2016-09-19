@@ -319,7 +319,7 @@ bool of::vk::Shader::reflectUBOs( const spirv_cross::Compiler & compiler, const 
 			// By merging the ranges later, we effectively also create aliases for member names which are 
 			// not consistently named the same.
 			auto memberName = compiler.get_member_name( ubo.type_id, r.index );
-			tmpUniform.uboRange.subranges[memberName] = { (uint32_t)r.offset, (uint32_t)r.range };
+			tmpUniform.uboRange.subranges[memberName] = { tmpUniform.setNumber, tmpUniform.setLayoutBinding.binding, (uint32_t)r.offset, (uint32_t)r.range };
 		}
 
 		// Let's see if an uniform buffer with this fingerprint has already been seen.

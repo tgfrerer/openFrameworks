@@ -105,13 +105,10 @@ public:
 		std::map<std::string, UboMemberSubrange> subranges;
 	};
 
-	// map from binding number to member range
-	std::map<uint32_t, UboRange> uboMemberRanges;
-
 	struct Uniform_t
 	{
 		uint32_t                         setNumber         = 0;
-		::vk::DescriptorSetLayoutBinding setLayoutBinding;
+		::vk::DescriptorSetLayoutBinding setLayoutBinding;	/* this contains binding number */
 		UboRange                         uboRange;
 	};
 
@@ -231,6 +228,8 @@ public:
 	
 	// returns hash of spirv code over all shader shader stages
 	const uint64_t getShaderCodeHash();
+
+	const std::map<std::string, Uniform_t>& getUniforms();
 };
 
 // ----------------------------------------------------------------------
@@ -279,6 +278,11 @@ inline const std::vector<std::shared_ptr<::vk::DescriptorSetLayout>>& of::vk::Sh
 inline const std::shared_ptr<::vk::DescriptorSetLayout>& of::vk::Shader::getDescriptorSetLayout( size_t setId ) const{
 	return mDescriptorSetLayouts.at( setId );
 }
+
+inline const std::map<std::string, of::vk::Shader::Uniform_t>& of::vk::Shader::getUniforms(){
+	return mUniforms;
+}
+
 
 } // namespace vk
 } // namespace of

@@ -22,13 +22,19 @@ of::DrawCommand::DrawCommand( const DrawCommandInfo & dcs )
 	// uniform variable types.
 
 	const auto & descriptorSetsInfo = mDrawCommandInfo.getPipeline().getShader()->getDescriptorSetsInfo();
+	const auto & shaderUniforms     = mDrawCommandInfo.getPipeline().getShader()->getUniforms();
 
 	mDescriptorSetData.reserve( descriptorSetsInfo.size() );
 	
+	// we need to query the shader for uniforms - 
+	// but because uniforms are independent of sets, 
+	// this is slightly more complicated.
+
+
 	for ( auto&di : descriptorSetsInfo ){
-		DescriptorSetData_t descriptorSetData;
+		DescriptorSetData_t tmpDescriptorSetData;
 		
-		auto & bindingsVec = descriptorSetData.descriptorBindings;
+		auto & bindingsVec = tmpDescriptorSetData.descriptorBindings;
 
 		bindingsVec.reserve(di.bindings.size());
 		
@@ -37,18 +43,68 @@ of::DrawCommand::DrawCommand( const DrawCommandInfo & dcs )
 		for ( auto & binding : di.bindings ){
 			if ( binding.descriptorType == ::vk::DescriptorType::eUniformBufferDynamic ){
 				++numDynamicUbos;
+				tmpDescriptorSetData.dynamicBindingOffsets.insert( { binding.binding, 0 } );
+				tmpDescriptorSetData.dynamicUboData.insert( { binding.binding,{} } );
 			}
-			for ( uint32_t aI = 0; aI != binding.descriptorCount; ++aI ){
+			for ( uint32_t arrayIndex = 0; arrayIndex != binding.descriptorCount; ++arrayIndex ){
 				DescriptorSetData_t::DescriptorData_t bindingData;
-				bindingData.arrayIndex = aI;
+				bindingData.arrayIndex = arrayIndex;
 				bindingData.type = binding.descriptorType;
 				bindingsVec.emplace_back( std::move( bindingData ) );
 			}
 		}
-
-		descriptorSetData.dynamicBindingOffsets.resize( numDynamicUbos, 0 );
-		mDescriptorSetData.emplace_back( std::move( descriptorSetData ) );
+		
+		mDescriptorSetData.emplace_back( std::move( tmpDescriptorSetData ) );
 	}
 
+	// ------| invariant: descriptor set data has been transferred from shader for all descriptor sets
+
+	// reserve storage for dynamic uniform data for each uniform entry
+	// over all sets - then build up a list of ubos.
+	for ( const auto & uniform : shaderUniforms ){
+		mDescriptorSetData[uniform.second.setNumber].dynamicUboData[uniform.second.setLayoutBinding.binding].resize( uniform.second.uboRange.storageSize, 0 );
+		for ( const auto & uniformMemberPair : uniform.second.uboRange.subranges ){
+			// add with combined name - this should always work
+			mUniformMembers.insert( {uniform.first + "." + uniformMemberPair.first ,uniformMemberPair.second } );
+			// add only with member name - this might work, but if members share the same name, we're in trouble.
+			mUniformMembers.insert( { uniformMemberPair.first ,uniformMemberPair.second } );
+		}
+		
+	}
 
 }
+
+// ------------------------------------------------------------
+
+void of::DrawCommand::commitUniforms(const std::unique_ptr<of::vk::Allocator>& alloc, size_t virtualFrame_ ){
+	for ( auto & descriptorSetData : mDescriptorSetData ){
+		for ( const auto & dataPair : descriptorSetData.dynamicUboData ){
+			
+			const auto & dataVec = dataPair.second;
+			const auto & bindingNumber = dataPair.first;
+			
+			::vk::DeviceSize offset;
+			void * dataP = nullptr;
+			
+			// allocate data on gpu
+			if ( alloc->allocate( dataVec.size(), dataP, offset, virtualFrame_ ) ){
+				
+				// copy data to gpu
+				memcpy( dataP, dataVec.data(), dataVec.size() );
+
+				// update dynamic binding offsets for this binding
+				descriptorSetData.dynamicBindingOffsets[bindingNumber] = offset;
+
+				// store the buffer 
+				descriptorSetData.descriptorBindings[bindingNumber].buffer = alloc->getBuffer();
+				descriptorSetData.descriptorBindings[bindingNumber].range = VK_WHOLE_SIZE;
+
+			} else{
+				ofLogError() << "commitUniforms: could not allocate transient memory.";
+			}
+			
+		}
+	}
+}
+
+// ------------------------------------------------------------

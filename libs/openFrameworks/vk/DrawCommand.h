@@ -10,6 +10,10 @@ namespace of {
 class DrawCommand;
 class RenderBatch;
 
+namespace vk{
+class Allocator;
+}
+
 // ----------------------------------------------------------------------
 
 class DrawCommandInfo {
@@ -62,8 +66,8 @@ public:
 			::vk::ImageLayout    imageLayout = ::vk::ImageLayout::eUndefined; // |
 			::vk::DescriptorType type = ::vk::DescriptorType::eUniformBufferDynamic;
 			::vk::Buffer         buffer = 0;								  // |
-			uint32_t             offset = 0;								  // | > keep in this order, as we can cast this to a DescriptorBufferInfo
-			uint32_t             range = 0;									  // |
+			::vk::DeviceSize     offset = 0;								  // | > keep in this order, as we can cast this to a DescriptorBufferInfo
+			::vk::DeviceSize     range = 0;									  // |
 			uint32_t             bindingNumber = 0; // <-- may be sparse, may repeat (for arrays of images bound to the same binding), but must increase be monotonically (may only repeat or up over the series inside the samplerBindings vector).
 			uint32_t             arrayIndex = 0;	// <-- must be in sequence for array elements of same binding
 		};
@@ -88,14 +92,12 @@ public:
 			+ sizeof( DescriptorData_t::arrayIndex )
 			) == sizeof( DescriptorData_t ), "DescriptorData_t is not tightly packed. It must be tightly packed for hash calculations." );
 
-		std::vector<uint32_t> dynamicBindingOffsets; // dynamic binding offsets for ubo bindings within this descriptor set
+		std::map<uint32_t, uint32_t> dynamicBindingOffsets; // dynamic binding offsets for ubo bindings within this descriptor set
 
-		// !TODO we probably need temporary byte storage in here for data to be 
-		// committed to dynamic ubos... This data will be uploaded to GPU 
-		// when the draw call gets submitted to the batch - and this is 
-		// when dynamicBindingOffsets will get set. There needs to be one
-		// vector entry for each eUniformBufferDynamic binding.
-		std::vector<std::vector<uint8_t>> dynamicUboData;
+		// One vector per binding - vector size is 
+		// determined by ubo subrange size. ubo data bindings may be sparse. 
+		// Data is uploaded to GPU upon draw.
+		std::map<uint32_t, std::vector<uint8_t>> dynamicUboData;
 
 	};
 
@@ -117,14 +119,15 @@ private:
 	// offsets into buffer for index data - this is optional
 	std::vector<::vk::DeviceSize> indexOffsets;
 
+	std::map<std::string, of::vk::Shader::UboMemberSubrange> mUniformMembers;
 
 public:
 
-	const DrawCommandInfo& getInfo(){
+	const DrawCommandInfo& getInfo() const {
 		return mDrawCommandInfo;
 	}
 
-	const DescriptorSetData_t& getDescriptorSetData(size_t setId_){
+	const DescriptorSetData_t& getDescriptorSetData(size_t setId_) const {
 		return mDescriptorSetData[setId_];
 	}
 
@@ -134,10 +137,43 @@ public:
 	// set data for upload to ubo - data is stored locally 
 	// until draw command is submitted
 	
+	void commitUniforms( const std::unique_ptr<of::vk::Allocator>& alloc_, size_t virtualFrame_ );
+
 	//!TODO: implement ubo upload
-	void setUboData( const std::string uboName, const std::vector<uint8_t> data ){};
+	template <class T> 
+	void setUniform( std::string uniformName, const T& uniformValue_ ){
+
+		/*
+
+		1. find ubo name in ranges, subranges
+		2. make sure size_of (T) == subrange size
+
+		*/
+
+		const auto foundMemberIt = mUniformMembers.find( uniformName );
+		if ( foundMemberIt != mUniformMembers.end() ){
+			const auto & memberSubrange = foundMemberIt->second;
+			if ( memberSubrange.range < sizeof( T ) ){
+				ofLogWarning() << "Could not set uniform '" << uniformName << "': Uniform data size does not match: "
+					<< " Expected: " << memberSubrange.range << ", received: " << sizeof( T ) << ".";
+				return;
+			}
+			// --------| invariant: size match, we can copy data into our vector.
+
+			auto & dataVec = mDescriptorSetData[memberSubrange.setNumber].dynamicUboData[memberSubrange.bindingNumber];
+
+			if ( memberSubrange.offset + memberSubrange.range <= dataVec.size() ){
+				memcpy( dataVec.data() + memberSubrange.offset, &uniformValue_, memberSubrange.range );
+			} else{
+				ofLogError() << "Not enough space in local uniform storage. Has this drawcommand been properly initialised?";
+			}
+		}
+
+	}
 
 };
+
+
 
 
 
