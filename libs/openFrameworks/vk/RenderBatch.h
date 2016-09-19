@@ -20,6 +20,7 @@ public:
 	{
 		of::vk::Allocator::Settings transientMemoryAllocatorSettings;
 		::vk::PipelineCache         pipelineCache;
+		::vk::Rect2D                renderArea;
 	};
 private:
 	friend class RenderBatch;
@@ -62,6 +63,7 @@ private:
 
 	size_t                             mCurrentVirtualFrame = 0;
 
+	const ::vk::Rect2D&                mRenderArea = mSettings.renderArea;
 	
 
 	// Fetch descriptor either from cache - or allocate and initialise a descriptor based on DescriptorSetData.
@@ -97,6 +99,7 @@ public:
 	::vk::Semaphore & getImageAcquiredSemaphore();
 	::vk::Semaphore & getSemaphoreRenderComplete();
 	::vk::Framebuffer & getFramebuffer();
+	const ::vk::Rect2D & getRenderArea() const;
 
 	void setup();
 	void begin();
@@ -231,17 +234,20 @@ inline void of::RenderBatch::beginRenderPass(const ::vk::RenderPass vkRenderPass
 	
 
 	//!TODO: get correct clear values, and clear value count
+	std::array<::vk::ClearValue, 2> clearValues;
+	clearValues[0].setColor(  reinterpret_cast<const ::vk::ClearColorValue&>(ofFloatColor::blueSteel) );
+	clearValues[1].setDepthStencil( { 1.f, 0 } );
 
 	::vk::RenderPassBeginInfo renderPassBeginInfo;
 	renderPassBeginInfo
-		.setRenderPass( mVkRenderPass )
-		.setFramebuffer( mVkFramebuffer )
-		//!TODO .setRenderArea( {} )
-		.setClearValueCount( 0 )
-		.setPClearValues( nullptr )
+		.setRenderPass( vkRenderPass_ )
+		.setFramebuffer( vkFramebuffer_ )
+		.setRenderArea( renderArea_ )
+		.setClearValueCount( clearValues.size() )
+		.setPClearValues( clearValues.data() )
 		;
 
-	mVkCmd.beginRenderPass(renderPassBeginInfo,::vk::SubpassContents::eInline);
+	mVkCmd.beginRenderPass( renderPassBeginInfo, ::vk::SubpassContents::eInline );
 }
 
 // ----------------------------------------------------------------------

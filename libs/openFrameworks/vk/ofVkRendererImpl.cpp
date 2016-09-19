@@ -39,7 +39,7 @@ void ofVkRenderer::setupDefaultContext(){
 		.setSize( (1ULL << 24) * mSettings.numVirtualFrames )
 		;
 	settings.pipelineCache = of::vk::createPipelineCache( mDevice, "pipelineCache.bin" );
-
+	settings.renderArea = { 0,0, mWindowWidth, mWindowHeight };
 	mDefaultContext = make_shared<of::RenderContext>(settings);
 	mDefaultContext->setup();
 }
@@ -371,6 +371,8 @@ void ofVkRenderer::setupRenderPass(){
 // ----------------------------------------------------------------------
 
 void ofVkRenderer::setupFrameBuffer( uint32_t swapchainImageIndex ){
+	
+	//!TODO: make framebuffer attachment clearer 
 
 	auto & fb = mDefaultContext->getFramebuffer();
 
@@ -399,7 +401,7 @@ void ofVkRenderer::setupFrameBuffer( uint32_t swapchainImageIndex ){
 		.setLayers( 1 )
 		;
 
-	// create a framebuffer for each swap chain frame
+	// create a framebuffer for the current virual frame, and link it to the current swapchain images.
 	fb = mDevice.createFramebuffer( frameBufferCreateInfo );
 }
 

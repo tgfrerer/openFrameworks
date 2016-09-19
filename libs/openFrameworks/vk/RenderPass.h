@@ -19,6 +19,8 @@ struct RenderPassData
 
 };
 
+// ----------------------------------------------------------------------
+
 static ::vk::RenderPass createRenderPass( const ::vk::Device device_, const RenderPassData& rpd_ ){
 	::vk::RenderPassCreateInfo renderPassCreateInfo;
 
