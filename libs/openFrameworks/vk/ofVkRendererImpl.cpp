@@ -36,7 +36,7 @@ void ofVkRenderer::setupDefaultContext(){
 		.setFrameCount( mSettings.numVirtualFrames )
 		.setPhysicalDeviceMemoryProperties( mPhysicalDeviceMemoryProperties )
 		.setPhysicalDeviceProperties( mPhysicalDeviceProperties )
-		.setSize( 1ULL << 24 * mSettings.numVirtualFrames )
+		.setSize( (1ULL << 24) * mSettings.numVirtualFrames )
 		;
 	settings.pipelineCache = of::vk::createPipelineCache( mDevice, "pipelineCache.bin" );
 
