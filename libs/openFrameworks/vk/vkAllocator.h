@@ -67,7 +67,7 @@ public:
 	/// @note   this does not free GPU memory, it just marks it as unused
 	void free(size_t frame_);
 
-	const ::vk::Buffer& getBuffer(){
+	const ::vk::Buffer& getBuffer() const{
 		return mBuffer;
 	};
 
