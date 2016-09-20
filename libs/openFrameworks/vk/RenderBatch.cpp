@@ -342,7 +342,7 @@ void of::RenderBatch::processDrawCommands(){
 				} );
 			}
 
-			*mPipelineCache[pipelineStateHash] = mCurrentPipelineState->createPipeline( mRenderContext->mDevice, mRenderContext->mGlobalPipelineCache );
+			*mPipelineCache[pipelineStateHash] = mCurrentPipelineState->createPipeline( mRenderContext->mDevice, mRenderContext->mSettings.pipelineCache);
 
 			mVkCmd.bindPipeline( ::vk::PipelineBindPoint::eGraphics, *mPipelineCache[pipelineStateHash] );
 		}

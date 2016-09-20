@@ -111,6 +111,8 @@ ofVkRenderer::~ofVkRenderer()
 	vkDestroyCommandPool( mDevice, mSetupCommandPool, VK_NULL_HANDLE );
 
 	mSwapchain.reset();
+	mRenderPass.reset();
+	mPipelineCache.reset();
 
 	destroyDevice();
 	destroySurface();

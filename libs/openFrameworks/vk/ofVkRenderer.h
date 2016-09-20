@@ -234,7 +234,7 @@ private:
 	std::vector<const char*>               mDeviceExtensions;                              // debug layer list for device
 
 	uint32_t                               mVkGraphicsFamilyIndex = 0;
-
+	std::shared_ptr<::vk::PipelineCache>   mPipelineCache;
 
 public:
 
@@ -263,6 +263,8 @@ public:
 	// Once submitted, they are re-used as soon as their respective fence signals that
 	// they have finished rendering.
 	const size_t getVirtualFramesCount();
+
+	const std::shared_ptr<::vk::PipelineCache>& getPipelineCache();
 
 private:
 

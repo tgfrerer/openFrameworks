@@ -130,7 +130,7 @@ void of::vk::GraphicsPipelineState::reset()
 
 // ----------------------------------------------------------------------
 
-::vk::Pipeline of::vk::GraphicsPipelineState::createPipeline( const ::vk::Device & device, const ::vk::PipelineCache & pipelineCache, ::vk::Pipeline basePipelineHandle_ ){
+::vk::Pipeline of::vk::GraphicsPipelineState::createPipeline( const ::vk::Device & device, const std::shared_ptr<::vk::PipelineCache> & pipelineCache, ::vk::Pipeline basePipelineHandle_ ){
 		::vk::Pipeline pipeline;
 
 		// naive: create a pipeline based on current internal state
@@ -195,7 +195,7 @@ void of::vk::GraphicsPipelineState::reset()
 			.setBasePipelineIndex   ( mBasePipelineIndex )
 			;
 
-		pipeline = device.createGraphicsPipeline( pipelineCache, pipelineCreateInfo );
+		pipeline = device.createGraphicsPipeline( *pipelineCache, pipelineCreateInfo );
 
 		// reset internal pointers, so hashing works again
 

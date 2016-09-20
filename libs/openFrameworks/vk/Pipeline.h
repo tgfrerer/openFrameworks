@@ -148,7 +148,7 @@ public:
 		}
 	}
 
-	::vk::Pipeline createPipeline( const ::vk::Device& device, const ::vk::PipelineCache& pipelineCache, ::vk::Pipeline basePipelineHandle = nullptr );
+	::vk::Pipeline createPipeline( const ::vk::Device& device, const std::shared_ptr<::vk::PipelineCache>& pipelineCache, ::vk::Pipeline basePipelineHandle = nullptr );
 
 	bool  operator== ( GraphicsPipelineState const & rhs );
 	bool  operator!= ( GraphicsPipelineState const & rhs ){
@@ -162,21 +162,28 @@ public:
 /// \brief  Create a pipeline cache object
 /// \detail Optionally load from disk, if filepath given.
 /// \note  	Ownership: passed on.
-static ::vk::PipelineCache&& createPipelineCache( const ::vk::Device& device, std::string filePath = "" ){
+static std::shared_ptr<::vk::PipelineCache> createPipelineCache( const ::vk::Device& device, std::string filePath = "" ){
 	::vk::PipelineCache cache;
-	ofBuffer cacheFileBuffer;
 
+	ofBuffer cacheFileBuffer;
 	::vk::PipelineCacheCreateInfo info;
 
 	if ( ofFile( filePath ).exists() ){
 		cacheFileBuffer = ofBufferFromFile( filePath, true );
-		info.setInitialDataSize(cacheFileBuffer.size());
-		info.setPInitialData(cacheFileBuffer.getData());
+		info.setInitialDataSize( cacheFileBuffer.size() );
+		info.setPInitialData( cacheFileBuffer.getData() );
 	}
 
-	cache = device.createPipelineCache( info );
+	auto result = std::shared_ptr<::vk::PipelineCache>(
+		new ::vk::PipelineCache( device.createPipelineCache( info ) ), [d = device]( ::vk::PipelineCache* rhs ){
+		if ( rhs ){
+			d.destroyPipelineCache( *rhs );
+			delete( rhs );
+		}
+	} );
 
-	return std::move( cache );
+	return result;
+
 };
 
 } // namespace vk

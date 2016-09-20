@@ -17,6 +17,8 @@ void ofVkRenderer::setup(){
 
 	setupSwapChain();
 	
+	mPipelineCache = of::vk::createPipelineCache( mDevice, "pipelineCache.bin" );
+
 	// sets up resources to keep track of production frames
 	//setupFrameResources();
 	setupDefaultContext();
@@ -38,7 +40,7 @@ void ofVkRenderer::setupDefaultContext(){
 		.setPhysicalDeviceProperties( mPhysicalDeviceProperties )
 		.setSize( (1ULL << 24) * mSettings.numVirtualFrames )
 		;
-	settings.pipelineCache = of::vk::createPipelineCache( mDevice, "pipelineCache.bin" );
+	settings.pipelineCache = getPipelineCache();
 	settings.renderArea = { 0,0, mWindowWidth, mWindowHeight };
 	mDefaultContext = make_shared<of::RenderContext>(settings);
 	mDefaultContext->setup();
@@ -173,6 +175,15 @@ void ofVkRenderer::createSetupCommandPool(){
 	mSetupCommandPool = mDevice.createCommandPool( poolInfo );
 }
 
+// ----------------------------------------------------------------------
+
+const std::shared_ptr<::vk::PipelineCache>& ofVkRenderer::getPipelineCache(){
+	if ( mPipelineCache.get() == nullptr ){
+		mPipelineCache = of::vk::createPipelineCache( mDevice, "pipelineCache.bin" );
+		ofLog() << "Created default pipeline cache";
+	}
+	return mPipelineCache;
+}
 
 // ----------------------------------------------------------------------
 

@@ -20,16 +20,14 @@ public:
 	struct Settings
 	{
 		of::vk::Allocator::Settings transientMemoryAllocatorSettings;
-		::vk::PipelineCache         pipelineCache;
+		std::shared_ptr<::vk::PipelineCache>         pipelineCache;
 		::vk::Rect2D                renderArea;
 	};
 private:
 	friend class RenderBatch;
 
 	const Settings mSettings;
-
 	const ::vk::Device&                         mDevice = mSettings.transientMemoryAllocatorSettings.device;
-	const ::vk::PipelineCache&                  mGlobalPipelineCache = mSettings.pipelineCache;
 
 	struct VirtualFrame
 	{
@@ -88,6 +86,12 @@ public:
 				}
 				if ( vf.semaphoreRenderComplete ){
 					mDevice.destroySemaphore( vf.semaphoreRenderComplete );
+				}
+				if ( vf.fence ){
+					mDevice.destroyFence( vf.fence );
+				}
+				if ( vf.frameBuffer ){
+					mDevice.destroyFramebuffer( vf.frameBuffer );
 				}
 			}
 			mVirtualFrames.clear();
