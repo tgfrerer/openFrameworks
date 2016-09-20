@@ -104,6 +104,8 @@ public:
 	::vk::Semaphore & getImageAcquiredSemaphore();
 	::vk::Semaphore & getSemaphoreRenderComplete();
 	::vk::Framebuffer & getFramebuffer();
+	
+	void setRenderArea( const ::vk::Rect2D& renderArea );
 	const ::vk::Rect2D & getRenderArea() const;
 	const std::unique_ptr<of::vk::Allocator> &  of::RenderContext::getAllocator();
 
@@ -129,6 +131,10 @@ inline ::vk::Semaphore &  of::RenderContext::getSemaphoreRenderComplete(){
 
 inline ::vk::Framebuffer &  of::RenderContext::getFramebuffer(){
 	return mVirtualFrames.at( mCurrentVirtualFrame ).frameBuffer;
+}
+
+inline void RenderContext::setRenderArea( const::vk::Rect2D & renderArea_ ){
+	const_cast<::vk::Rect2D&>( mSettings.renderArea ) = renderArea_;
 }
 
 inline const ::vk::Rect2D &  of::RenderContext::getRenderArea() const{

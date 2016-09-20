@@ -97,6 +97,9 @@ void ofVkRenderer::resizeScreen( int w, int h ){
 
 	mWindowWidth = w;
 	mWindowHeight = h;
+	if ( mDefaultContext ){
+		mDefaultContext->setRenderArea( { { 0 , 0 }, {mWindowWidth ,  mWindowHeight } } );
+	}
 
 	ofLogVerbose() << "Screen resize complete";
 }
