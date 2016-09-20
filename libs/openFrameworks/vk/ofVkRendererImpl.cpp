@@ -48,36 +48,6 @@ void ofVkRenderer::setupDefaultContext(){
 
 // ----------------------------------------------------------------------
 
-//void ofVkRenderer::setupFrameResources(){
-//	
-//	mFrameResources.resize( mSettings.numVirtualFrames );
-//	
-//	for ( auto & frame : mFrameResources ){
-//		// allocate a command buffer
-//
-//		vk::CommandBufferAllocateInfo commandBufferAllocInfo{ mDrawCommandPool };
-//		commandBufferAllocInfo
-//			.setCommandBufferCount( 1 );
-//		
-//		//primary command buffer for this frame
-//
-//		auto commandBuffers = mDevice.allocateCommandBuffers( commandBufferAllocInfo );
-//		
-//		if ( !commandBuffers.empty() ){
-//			frame.cmd = commandBuffers.front();
-//		}
-//
-//		frame.semaphoreImageAcquired  = mDevice.createSemaphore( {} );
-//		frame.semaphoreRenderComplete = mDevice.createSemaphore( {} );
-//
-//		frame.fence = mDevice.createFence( { vk::FenceCreateFlags( vk::FenceCreateFlagBits::eSignaled ) } );
-//		
-//	}
-//
-//}
-
-// ----------------------------------------------------------------------
-
 void ofVkRenderer::setupSwapChain(){
 
 	mDevice.resetCommandPool( mSetupCommandPool, vk::CommandPoolResetFlagBits::eReleaseResources );
@@ -214,11 +184,9 @@ bool  ofVkRenderer::getMemoryAllocationInfo( const ::vk::MemoryRequirements& mem
 	return true;
 }
 
-
 // ----------------------------------------------------------------------
 
 void ofVkRenderer::setupDepthStencil(){
-	
 
 	vk::ImageCreateInfo imgCreateInfo;
 
@@ -378,7 +346,6 @@ void ofVkRenderer::setupRenderPass(){
 	
 }
 
-
 // ----------------------------------------------------------------------
 
 void ofVkRenderer::setupFrameBuffer( uint32_t swapchainImageIndex ){
@@ -424,8 +391,6 @@ void ofVkRenderer::startRender(){
 
 	uint32_t swapIdx = 0; /*receives index of current swap chain image*/
 
-	//const auto &currentFrame = mFrameResources[mFrameIndex];
-
 	auto fenceWaitResult = mDevice.waitForFences( { mDefaultContext->getFence() }, VK_TRUE, 100'000'000 );
 
 	if ( fenceWaitResult != vk::Result::eSuccess ){
@@ -433,67 +398,13 @@ void ofVkRenderer::startRender(){
 	}
 
 	mDevice.resetFences( { mDefaultContext->getFence() } );
-	//vkResetFences( mDevice, 1, &currentFrame.fence );
 
 	// receive index for next available swapchain image
 	auto err = mSwapchain.acquireNextImage( mDefaultContext->getImageAcquiredSemaphore(), &swapIdx );
 
 	setupFrameBuffer( swapIdx ); /* connect current frame buffer with swapchain image, and depth stencil image */
 
-	//if ( mDefaultContext ){
-	//	mDefaultContext->begin( mFrameIndex );
-	//	mDefaultContext->setUniform( "modelMatrix", ofMatrix4x4() ); // initialise modelview with identity matrix.
-	//	mDefaultContext->setUniform( "globalColor", ofFloatColor( ofColor::white ) );
-	//}
-
-	// begin command buffer
-	//currentFrame.cmd.begin( { vk::CommandBufferUsageFlagBits::eOneTimeSubmit } );
-
-	//{	
-
-	//	vk::Rect2D renderArea{
-	//		{0,0},
-	//		{mWindowWidth, mWindowHeight}
-	//	};
-
-	//	std::array<vk::ClearValue, 2> clearValues;
-	//	clearValues[0].setColor(  reinterpret_cast<const vk::ClearColorValue&>(ofFloatColor::black) );
-	//	clearValues[1].setDepthStencil( { 1.f, 0 } );
-
-	//	vk::RenderPassBeginInfo renderPassBeginInfo;
-	//	
-	//	renderPassBeginInfo
-	//		.setRenderPass( mRenderPass )
-	//		.setFramebuffer( currentFrame.framebuffer )
-	//		.setRenderArea( renderArea )
-	//		.setClearValueCount( 2 )
-	//		.setPClearValues( clearValues.data() );
-	//	
-	//	// begin renderpass inside command buffer
-	//	currentFrame.cmd.beginRenderPass( renderPassBeginInfo, vk::SubpassContents::eInline );
-
-	//}
-
-	//{	
-	//	// set dynamic viewport and scissor values for renderpass
-	//	const auto & currentViewport = ofGetCurrentViewport();
-
-	//	// Update dynamic viewport state
-	//	vk::Viewport viewport{ currentViewport.x, currentViewport.y, currentViewport.width, currentViewport.height, 0.f, 1.f };
-	//	currentFrame.cmd.setViewport( 0, { viewport } );
-	//	
-	//	// Update dynamic scissor state
-	//	vk::Rect2D scissor;
-	//	scissor.extent.width = viewport.width;
-	//	scissor.extent.height = viewport.height;
-	//	scissor.offset.x = viewport.x;
-	//	scissor.offset.y = viewport.y;
-	//	currentFrame.cmd.setScissor( 0, { scissor } );
-
-	//}
-
 }
-
 
 // ----------------------------------------------------------------------
 
@@ -511,45 +422,3 @@ void ofVkRenderer::finishRender(){
 const uint32_t ofVkRenderer::getSwapChainSize(){
 	return mSwapchain.getImageCount();
 }
-
-
-// ----------------------------------------------------------------------
-
-//void ofVkRenderer::setColor( const ofColor & color ){
-//	if ( mDefaultContext ){
-//		mDefaultContext->setUniform( "globalColor", ofFloatColor( color ) );
-//	}
-//	
-//}
-//
-//// ----------------------------------------------------------------------
-//
-//void ofVkRenderer::draw( const ofMesh & mesh_, ofPolyRenderMode polyMode, bool useColors, bool useTextures, bool useNormals ) const{
-//	
-//	// TODO: implement polymode and usageBools
-//
-//	if ( mDefaultContext ){
-//		mDefaultContext->draw( mFrameResources[mFrameIndex].cmd, mesh_ );
-//	}
-//
-//}  
-//
-//// ----------------------------------------------------------------------
-//
-//void ofVkRenderer::drawRectangle(float x, float y, float z, float w, float h) const{
-//
-//	if (currentStyle.rectMode == OF_RECTMODE_CORNER){
-//		mRectMesh.getVertices()[0] = { x    , y    , z };
-//		mRectMesh.getVertices()[1] = { x + w, y    , z };
-//		mRectMesh.getVertices()[2] = { x + w, y + h, z };
-//		mRectMesh.getVertices()[3] = { x    , y + h, z };
-//	}else{
-//		mRectMesh.getVertices()[0] = { x - w / 2.0f, y - h / 2.0f, z };
-//		mRectMesh.getVertices()[1] = { x + w / 2.0f, y - h / 2.0f, z };
-//		mRectMesh.getVertices()[2] = { x + w / 2.0f, y + h / 2.0f, z };
-//		mRectMesh.getVertices()[3] = { x - w / 2.0f, y + h / 2.0f, z };
-//	}
-//
-//	draw(mRectMesh,OF_MESH_FILL,false,false,false);
-//
-//}

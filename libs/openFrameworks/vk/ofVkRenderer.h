@@ -249,12 +249,6 @@ public:
 	// get memory allocation info for best matching memory type that matches any of the type bits and flags
 	bool  getMemoryAllocationInfo( const ::vk::MemoryRequirements& memReqs, ::vk::MemoryPropertyFlags memProps, ::vk::MemoryAllocateInfo& memInfo ) const;
 
-	//// get draw command pool
-	//const ::vk::CommandPool& getCommandPool() const;
-
-	//// get draw command buffer
-	//const ::vk::CommandBuffer& getCurrentDrawCommandBuffer() const;
-
 	// get current draw queue (careful: access is not thread-safe!)
 	const ::vk::Queue& getQueue() const;
 
@@ -358,6 +352,8 @@ inline const size_t ofVkRenderer::getVirtualFramesCount(){
 	return mSettings.numVirtualFrames;
 }
 
+
+
 inline const std::shared_ptr<::vk::RenderPass>& ofVkRenderer::getDefaultRenderPass(){
 	return mRenderPass;
 }
@@ -370,19 +366,6 @@ inline const std::shared_ptr<of::RenderContext>& ofVkRenderer::getDefaultContext
 inline const::vk::CommandPool & ofVkRenderer::getSetupCommandPool() const{
 	return mSetupCommandPool;
 }
-
-
-//
-//
-//inline const ::vk::CommandBuffer& ofVkRenderer::getCurrentDrawCommandBuffer() const{
-//	if ( mFrameIndex < mFrameResources.size() ){
-//		return mFrameResources[mFrameIndex].cmd;
-//	} else{
-//		static ::vk::CommandBuffer errorCmdBuffer;
-//		ofLogError() << "No current draw command buffer";
-//		return errorCmdBuffer;
-//	}
-//}
 
 inline const ::vk::Queue& ofVkRenderer::getQueue() const{
 	return mQueue;
