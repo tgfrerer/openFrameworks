@@ -269,7 +269,7 @@ void of::RenderBatch::draw( const of::DrawCommand& dc_ ){
 
 void of::RenderBatch::submit(){
 	// submit command buffer 
-	ofLogNotice() << "submit render batch";
+	// ofLogNotice() << "submit render batch";
 
 	beginCommandBuffer();
 	processDrawCommands();

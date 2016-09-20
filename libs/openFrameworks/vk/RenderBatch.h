@@ -210,7 +210,7 @@ public:
 
 inline void of::RenderBatch::beginRenderPass(const ::vk::RenderPass& vkRenderPass_, const ::vk::Framebuffer& vkFramebuffer_, const ::vk::Rect2D& renderArea_){
 	
-	ofLog() << "begin renderpass";
+	//ofLog() << "begin renderpass";
 	
 	mVkSubPassId = 0;
 
@@ -250,14 +250,14 @@ inline uint32_t RenderBatch::nextSubPass(){
 
 inline void of::RenderBatch::endRenderPass(){
 	// TODO: consolidate/re-order draw commands if buffered
-	ofLog() << "end   renderpass";
+	//ofLog() << "end   renderpass";
 	mVkCmd.endRenderPass();
 }
 
 // ----------------------------------------------------------------------
 
 inline void of::RenderBatch::beginCommandBuffer(){
-	ofLog() << "begin command buffer";
+	//ofLog() << "begin command buffer";
 	
 
 	if ( !mVkCmd ){
@@ -277,7 +277,7 @@ inline void of::RenderBatch::beginCommandBuffer(){
 // ----------------------------------------------------------------------
 
 inline void of::RenderBatch::endCommandBuffer(){
-	ofLog() << "end   command buffer";
+	//ofLog() << "end   command buffer";
 	mVkCmd.end();
 }
 

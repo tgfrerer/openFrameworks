@@ -233,16 +233,6 @@ bool of::vk::GraphicsPipelineState::operator==( GraphicsPipelineState const & rh
 
 uint64_t of::vk::GraphicsPipelineState::calculateHash() const {
 
-	// TODO: this method is broken -- the reason for this is that 
-	// some vk::.. objects are not laid out tightly in memory - this
-	// means we cannot look at pipeline state as a POD, but must 
-	// find a way to quickly hash all member objects separately, 
-	// if necessary even their member elements. 
-	//
-	// You need to be super careful about this if you are on 
-	// an architecture that is 8 byte aligned, as pointers are 8 byte, 
-	// but types like VKBool32 are 4 bytes.
-
 	std::vector<uint64_t> setLayoutKeys = mShader->getDescriptorSetLayoutKeys();
 
 	uint64_t hash = mShader->getShaderCodeHash();
@@ -262,7 +252,7 @@ uint64_t of::vk::GraphicsPipelineState::calculateHash() const {
 	hash = SpookyHash::Hash64( (void*) &mRenderPass,           sizeof( mRenderPass           ), hash );
 	hash = SpookyHash::Hash64( (void*) &mSubpass,              sizeof( mSubpass              ), hash );
 	
-	ofLog() << "pipeline hash:" << std::hex << hash;
+	// ofLog() << "pipeline hash:" << std::hex << hash;
 	return hash;
 }
 
