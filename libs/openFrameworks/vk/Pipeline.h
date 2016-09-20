@@ -103,8 +103,9 @@ private:
 	std::shared_ptr<of::vk::Shader>        mShader;
 
 public:
+	
+	GraphicsPipelineState();
 
-	void setup();
 	void reset();
 
 	uint64_t calculateHash() const;

@@ -18,9 +18,6 @@ void Teapot::setup(){
 
 	of::DrawCommandInfo dcs;
 
-	//!TODO: this is far from ideal - a pipeline should start out fully setup.
-	dcs.modifyPipeline().setup();
-
 	dcs.modifyPipeline().depthStencilState
 		.setDepthTestEnable( VK_TRUE )
 		.setDepthWriteEnable( VK_TRUE )
@@ -30,6 +27,7 @@ void Teapot::setup(){
 	dcs.modifyPipeline().setRenderPass( renderPass );
 
 	dc = std::move(std::make_unique<of::DrawCommand>( dcs ));
+	
 
 }
 //--------------------------------------------------------------

@@ -6,7 +6,7 @@
 // ----------------------------------------------------------------------
 
 
-void of::vk::GraphicsPipelineState::setup(){
+of::vk::GraphicsPipelineState::GraphicsPipelineState(){
 	reset();
 }
 
