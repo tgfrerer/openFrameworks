@@ -27,13 +27,40 @@ void Teapot::setup(){
 	dcs.modifyPipeline().setRenderPass( renderPass );
 
 	dc = std::move(std::make_unique<of::DrawCommand>( dcs ));
-	
+	mLMesh = make_shared<ofMesh>();
+	{	// Horizontally elongated "L___" shape
 
+		vector<glm::vec3> vert{
+			{ 0.f,0.f,0.f },
+			{ 20.f,20.f,0.f },
+			{ 0.f,100.f,0.f },
+			{ 20.f,100.f,0.f },
+			{ 200.f,0.f,0.f },
+			{ 200.f,20.f,0.f }
+		};
+
+		vector<ofIndexType> idx{
+			0, 1, 2,
+			1, 3, 2,
+			0, 4, 1,
+			1, 4, 5,
+		};
+
+		vector<glm::vec3> norm( vert.size(), { 0, 0, 1.f } );
+
+		vector<ofFloatColor> col( vert.size(), ofColor::white );
+
+		mLMesh->addVertices( vert );
+		mLMesh->addNormals( norm );
+		mLMesh->addColors( col );
+		mLMesh->addIndices( idx );
+
+	};
 }
 //--------------------------------------------------------------
 
-void Teapot::update(){
-	
+void Teapot::recompile(){
+	const_cast<of::DrawCommandInfo&>(dc->getInfo()).modifyPipeline().getShader()->compile();
 }
 
 //--------------------------------------------------------------
@@ -42,10 +69,26 @@ void Teapot::draw(of::RenderBatch& rb){
 
 	// update uniforms inside the draw command 
 	
-	//dc.setDefaultMatrices(mCamera); // camera will do view and projection
-	dc->setUniform("globalColor", ofFloatColor::magenta );
-	//dc.setUniform( "globalColor", ofColor::white );
-	//dc.setUniformTexture( "texName", tex, 0 );
+	auto projectionMatrix = glm::mat4x4();
+	static ofCamera mCam;
+	
+	mCam.setPosition( { 0,0, mCam.getImagePlaneDistance() });
+	mCam.lookAt( { 0,0,0 } );
+
+	static const glm::mat4x4 clip( 1.0f, 0.0f, 0.0f, 0.0f,
+		0.0f, -1.0f, 0.0f, 0.0f,
+		0.0f, 0.0f, 0.5f, 0.0f,
+		0.0f, 0.0f, 0.5f, 1.0f );
+	
+	projectionMatrix =  clip * mCam.getProjectionMatrix( ofGetCurrentViewport() ) ;
+
+
+	dc->setUniform( "modelMatrix", glm::mat4x4() );
+	dc->setUniform( "projectionMatrix", projectionMatrix );
+	dc->setUniform( "viewMatrix", mCam.getModelViewMatrix() );
+	dc->setUniform( "globalColor", ofFloatColor::magenta );
+
+	dc->setMesh( mLMesh );
 
 	// update attribute buffer bindings
 	rb.draw( *dc );
@@ -56,7 +99,7 @@ void Teapot::draw(of::RenderBatch& rb){
 
 //--------------------------------------------------------------
 void ofApp::setup(){
-	
+	ofDisableSetupScreen();
 	const auto & renderer = dynamic_pointer_cast<ofVkRenderer>( ofGetCurrentRenderer() );
 
 	//of::RenderContext::Settings renderContextSettings;
@@ -116,7 +159,9 @@ void ofApp::keyPressed(int key){
 
 //--------------------------------------------------------------
 void ofApp::keyReleased(int key){
-
+	if ( key == ' ' ){
+		mTeapot.recompile();
+  }
 }
 
 //--------------------------------------------------------------

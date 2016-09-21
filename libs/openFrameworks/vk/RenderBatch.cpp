@@ -261,6 +261,8 @@ void of::RenderBatch::draw( const of::DrawCommand& dc_ ){
 	// and will also update the buffer 
 	// for the bindings affected.
 	dc.commitUniforms( mRenderContext->getAllocator(), mRenderContext->mCurrentVirtualFrame );
+	dc.commitMeshAttributes( mRenderContext->getAllocator(), mRenderContext->mCurrentVirtualFrame );
+	
 	mDrawCommands.emplace_back( std::move(dc) );
 
 }
@@ -272,7 +274,22 @@ void of::RenderBatch::submit(){
 	// ofLogNotice() << "submit render batch";
 
 	beginCommandBuffer();
+
+	// set dynamic viewport
+	::vk::Viewport vp;
+	vp.setX( 0 )
+		.setY( 0 )
+		.setWidth( mRenderContext->getRenderArea().extent.width )
+		.setHeight( mRenderContext->getRenderArea().extent.height )
+		.setMinDepth( 0.f )
+		.setMaxDepth( 1.f )
+		;
+	mVkCmd.setViewport( 0, { vp } );
+	mVkCmd.setScissor( 0, { mRenderContext->getRenderArea() } );
+
 	processDrawCommands();
+	
+	
 	endCommandBuffer();
 
 	::vk::PipelineStageFlags wait_dst_stage_mask = ::vk::PipelineStageFlagBits::eColorAttachmentOutput;
@@ -308,7 +325,8 @@ void of::RenderBatch::processDrawCommands(){
 	auto & renderPass = mDrawCommands.front().getInfo().pipeline.getRenderPass();
 	
 	beginRenderPass( renderPass, mRenderContext->getFramebuffer(), mRenderContext->getRenderArea() );
-	
+
+
 	for ( auto & dc : mDrawCommands ){
 
 		auto & info = const_cast<of::DrawCommandInfo&>( dc.getInfo() );
@@ -401,20 +419,43 @@ void of::RenderBatch::processDrawCommands(){
 		);
 
 
-		// match current vertex input state against dc.vertex input state
 		{
-			// bind dc.buffers to current pipeline vertex input states
+
+			const auto & vertexOffsets = dc.getVertexOffsets();
+			const auto & indexOffsets  = dc.getIndexOffsets();
+
+			const auto & vertexBuffers = dc.getVertexBuffers();
+			const auto & indexBuffer   = dc.getIndexBuffer();
+
+			//// Store vertex data using Context.
+			//// - this uses Allocator to store mesh data in the current frame' s dynamic memory
+			//// Context will return memory offsets into vertices, indices, based on current context memory buffer
+			//// 
+			// CONSIDER: check if it made sense to cache already stored meshes, 
+			////       so that meshes which have already been stored this frame 
+			////       may be re-used.
+			//storeMesh( mesh_, vertexOffsets, indexOffsets );
+
+			// CONSIDER: cull vertexOffsets which refer to empty vertex attribute data
+			//       make sure that a pipeline with the correct bindings is bound to match the 
+			//       presence or non-presence of mesh data.
+
+			// Bind vertex data buffers to current pipeline. 
+			// The vector indices into bufferRefs, vertexOffsets correspond to [binding numbers] of the currently bound pipeline.
+			// See Shader.h for an explanation of how this is mapped to shader attribute locations
+
+			mVkCmd.bindVertexBuffers( 0, vertexBuffers, vertexOffsets );
+
+			if ( indexBuffer.empty() ){
+				// non-indexed draw
+				mVkCmd.draw( uint32_t( dc.getNumVertices() ), 1, 0, 0 ); //last param was 1
+			} else{
+				// indexed draw
+				mVkCmd.bindIndexBuffer( indexBuffer[0], indexOffsets[0], ::vk::IndexType::eUint32 );
+				mVkCmd.drawIndexed( dc.getNumIndices(), 1, 0, 0, 0 ); // last param was 1
+			}
 		}
 
-
-		// record draw command 
-		{
-			// if index buffer present,
-			// use indexed draw command
-
-			// else 
-			// use non-indexed draw command
-		}
 	}
 
 	endRenderPass();

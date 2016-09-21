@@ -94,7 +94,8 @@ void ofVkRenderer::resizeScreen( int w, int h ){
 	assert( !err );
 
 	setupSwapChain();
-
+	mViewport.setWidth( w );
+	mViewport.setHeight( h );
 	mWindowWidth = w;
 	mWindowHeight = h;
 	if ( mDefaultContext ){

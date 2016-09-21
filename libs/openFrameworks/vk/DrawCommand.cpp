@@ -1,5 +1,6 @@
 #include "vk/DrawCommand.h"
 #include "vk/RenderBatch.h"
+#include "vk/Shader.h"
 
 // setup all non-transient state for this draw object
 
@@ -48,6 +49,7 @@ of::DrawCommand::DrawCommand( const DrawCommandInfo & dcs )
 			}
 			for ( uint32_t arrayIndex = 0; arrayIndex != binding.descriptorCount; ++arrayIndex ){
 				DescriptorSetData_t::DescriptorData_t bindingData;
+				bindingData.bindingNumber = binding.binding;
 				bindingData.arrayIndex = arrayIndex;
 				bindingData.type = binding.descriptorType;
 				bindingsVec.emplace_back( std::move( bindingData ) );
@@ -72,7 +74,20 @@ of::DrawCommand::DrawCommand( const DrawCommandInfo & dcs )
 		
 	}
 
+	// parse shader info to find out how many buffers to reserve for vertex attributes.
+
+	const auto & vertexInfo = mDrawCommandInfo.getPipeline().getShader()->getVertexInfo();
+
+	size_t numAttributes = vertexInfo.attribute.size();
+	
+	mVertexBuffers.resize( numAttributes, nullptr );
+	mVertexOffsets.resize( numAttributes, 0 );
+
+	for ( size_t i = 0; i != numAttributes; ++i ){
+		ofLog() << std::setw(4) << i <<  ":" << vertexInfo.attributeNames[i];
+	}
 }
+
 
 // ------------------------------------------------------------
 
@@ -105,6 +120,100 @@ void of::DrawCommand::commitUniforms(const std::unique_ptr<of::vk::Allocator>& a
 			
 		}
 	}
+}
+
+// ------------------------------------------------------------
+
+void of::DrawCommand::commitMeshAttributes( const std::unique_ptr<of::vk::Allocator>& alloc, size_t virtualFrame ){
+	// check if current draw command has a mesh - if yes, upload mesh data to buffer memory.
+	if ( mMsh ){
+		auto &mesh = *mMsh;
+
+		::vk::DeviceSize offset = 0;
+		void * dataP            = nullptr;
+
+		if ( !mesh.hasVertices() ){
+			ofLogError() << "Mesh has no vertices.";
+			return;
+		} else {
+			const auto & vertices = mesh.getVertices(); 
+			// allocate data on gpu
+			if ( alloc->allocate( vertices.size(), dataP, offset, virtualFrame ) ){
+				memcpy( dataP, vertices.data(), sizeof(vertices[0]) * vertices.size() );
+				setAttribute( "inPos", alloc->getBuffer(), offset );
+				mNumVertices = vertices.size();
+			}
+		}
+
+		if ( mesh.hasColors() && mesh.usingColors()){
+			const auto & colors = mesh.getColors();
+			// allocate data on gpu
+			if ( alloc->allocate( colors.size(), dataP, offset, virtualFrame ) ){
+				memcpy( dataP, colors.data(), sizeof( colors[0] ) * colors.size() );
+				setAttribute( "inColor", alloc->getBuffer(), offset );
+			}
+		}
+		if ( mesh.hasNormals() && mesh.usingNormals() ){
+			const auto & normals = mesh.getColors();
+			// allocate data on gpu
+			if ( alloc->allocate( normals.size(), dataP, offset, virtualFrame ) ){
+				memcpy( dataP, normals.data(), sizeof( normals[0] ) * normals.size() );
+				setAttribute( "inNormal", alloc->getBuffer(), offset );
+			}
+		}
+		if ( mesh.hasTexCoords() && mesh.usingTextures() ){
+			const auto & texCoords = mesh.getTexCoords();
+			// allocate data on gpu
+			if ( alloc->allocate( texCoords.size(), dataP, offset, virtualFrame ) ){
+				memcpy( dataP, texCoords.data(), sizeof( texCoords[0] ) * texCoords.size() );
+				setAttribute( "inTexCoord", alloc->getBuffer(), offset );
+			}
+		}
+
+		if ( mesh.hasIndices() && mesh.usingIndices() ){
+			const auto & indices = mesh.getIndices();
+			// allocate data on gpu
+			if ( alloc->allocate( indices.size(), dataP, offset, virtualFrame ) ){
+				memcpy( dataP, indices.data(), sizeof( indices[0] ) * indices.size() );
+				setIndices( alloc->getBuffer(), offset );
+				mNumIndices = indices.size();
+			}
+		}
+
+	}
+}
+
+// ------------------------------------------------------------
+
+
+void of::DrawCommand::setAttribute( std::string name_, ::vk::Buffer buffer_, ::vk::DeviceSize offset_ ){
+	
+	const auto & vertexInfo = mDrawCommandInfo.getPipeline().getShader()->getVertexInfo();
+	
+	const auto & attributeNames = vertexInfo.attributeNames;
+	auto it = std::find(attributeNames.begin(),attributeNames.end(),name_);
+	
+	if ( it != attributeNames.end() ){
+		size_t index = (it - attributeNames.begin());
+		mVertexBuffers[index] = buffer_;
+		mVertexOffsets[index] = offset_;
+	}
+}
+
+// ------------------------------------------------------------
+
+void of::DrawCommand::setIndices( ::vk::Buffer buffer_, ::vk::DeviceSize offset_ ){
+	mIndexBuffer.resize( 1, nullptr );
+	mIndexOffsets.resize( 1, 0 );
+
+	mIndexBuffer[0] = buffer_;
+	mIndexOffsets[0] = offset_;
+}
+
+// ------------------------------------------------------------
+
+void of::DrawCommand::setMesh(const shared_ptr<ofMesh> & msh_ ){
+	mMsh = msh_;
 }
 
 // ------------------------------------------------------------

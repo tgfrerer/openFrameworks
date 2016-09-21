@@ -2,16 +2,15 @@
 #include "vulkan/vulkan.hpp"
 #include "vk/Shader.h"
 #include "vk/Pipeline.h"
-
-
+#include "ofMesh.h"
 
 namespace of {
 
-class DrawCommand;
-class RenderBatch;
+class DrawCommand;	   // ffdecl.
+class RenderBatch;	   // ffdecl.
 
 namespace vk{
-class Allocator;
+class Allocator;	   // ffdecl.
 }
 
 // ----------------------------------------------------------------------
@@ -109,17 +108,33 @@ private:
 
 	DrawCommand() = delete;
 	
+	// lookup table from uniform name to storage info for dynamic ubos
+	// TODO: maybe mUniformMembers should move to shader.
+	std::map<std::string, of::vk::Shader::UboMemberSubrange> mUniformMembers;
+
+private:      /* transient data */
+
 	uint64_t mPipelineHash = 0;
 
 	// Bindings data, (vector index == set number) -- indices must not be sparse!
 	std::vector<DescriptorSetData_t> mDescriptorSetData;
 
+	// vector of buffers holding vertex attribute data
+	std::vector<::vk::Buffer> mVertexBuffers;
+	
 	// offsets into buffer for vertex attribute data
-	std::vector<::vk::DeviceSize> vertexOffsets;
-	// offsets into buffer for index data - this is optional
-	std::vector<::vk::DeviceSize> indexOffsets;
+	std::vector<::vk::DeviceSize> mVertexOffsets;
+	
+	// 1-or-0 element buffer of indices for this draw command
+	std::vector<::vk::Buffer> mIndexBuffer;
 
-	std::map<std::string, of::vk::Shader::UboMemberSubrange> mUniformMembers;
+	// offsets into buffer for index data - this is optional
+	std::vector<::vk::DeviceSize> mIndexOffsets;
+
+	uint32_t mNumIndices  = 0;
+	uint32_t mNumVertices = 0;
+
+	std::shared_ptr<ofMesh> mMsh; /* optional */
 
 public:
 
@@ -134,23 +149,42 @@ public:
 	// setup all non-transient state for this draw object
 	DrawCommand( const DrawCommandInfo& dcs );
 
+	const std::vector<::vk::DeviceSize>& getVertexOffsets(){
+		return mVertexOffsets;
+	}
+	const std::vector<::vk::DeviceSize>& getIndexOffsets(){
+		return mIndexOffsets;
+	}
+	const std::vector<::vk::Buffer>& getVertexBuffers(){
+		return mVertexBuffers;
+	}
+	const std::vector<::vk::Buffer>& getIndexBuffer(){
+		return mIndexBuffer;
+	}
+	const uint32_t getNumIndices(){
+		return mNumIndices;
+	}
+	const uint32_t getNumVertices(){
+		return mNumVertices;
+	}
+
 	// set data for upload to ubo - data is stored locally 
 	// until draw command is submitted
-	
 	void commitUniforms( const std::unique_ptr<of::vk::Allocator>& alloc_, size_t virtualFrame_ );
+	
+	void commitMeshAttributes( const std::unique_ptr<of::vk::Allocator>& alloc_, size_t virtualFrame_ );
 
-	//!TODO: implement ubo upload
+	void setMesh( const shared_ptr<ofMesh>& msh_ );
+
+	void setAttribute( std::string name_, ::vk::Buffer buffer, ::vk::DeviceSize offset );
+	void setIndices(::vk::Buffer buffer, ::vk::DeviceSize offset );
+
+	// upload uniform data to gpu memory
 	template <class T> 
 	void setUniform( std::string uniformName, const T& uniformValue_ ){
 
-		/*
-
-		1. find ubo name in ranges, subranges
-		2. make sure size_of (T) == subrange size
-
-		*/
-
 		const auto foundMemberIt = mUniformMembers.find( uniformName );
+
 		if ( foundMemberIt != mUniformMembers.end() ){
 			const auto & memberSubrange = foundMemberIt->second;
 			if ( memberSubrange.range < sizeof( T ) ){
@@ -172,10 +206,5 @@ public:
 	}
 
 };
-
-
-
-
-
 
 } // namespace of

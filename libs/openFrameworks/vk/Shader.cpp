@@ -527,6 +527,7 @@ void of::vk::Shader::reflectVertexInputs(const spirv_cross::Compiler & compiler,
 
 	vertexInfo.attribute.resize( shaderResources.stage_inputs.size() );
 	vertexInfo.bindingDescription.resize( shaderResources.stage_inputs.size() );
+	vertexInfo.attributeNames.resize( shaderResources.stage_inputs.size() );
 
 	for ( uint32_t i = 0; i != shaderResources.stage_inputs.size(); ++i ){
 
@@ -539,27 +540,28 @@ void of::vk::Shader::reflectVertexInputs(const spirv_cross::Compiler & compiler,
 			location = compiler.get_decoration( attributeInput.id, spv::DecorationLocation );
 		}
 
-		ofLog() << " " << ( i + 1 == shaderResources.stage_inputs.size() ? char( 192 ) : char( 195 ) ) << std::setw( 2 ) << location << " : " << attributeInput.name;
+		ofLog() << " + " << std::setw( 2 ) << location << " : " << attributeInput.name;
 
+		vertexInfo.attributeNames[location] = attributeInput.name;
 
 		// Binding Description: Describe how to read data from buffer based on binding number
-		vertexInfo.bindingDescription[i].binding = location;  // which binding number we are describing
-		vertexInfo.bindingDescription[i].stride = ( attributeType.width / 8 ) * attributeType.vecsize * attributeType.columns;
-		vertexInfo.bindingDescription[i].inputRate = ::vk::VertexInputRate::eVertex;
+		vertexInfo.bindingDescription[location].binding = location;  // which binding number we are describing
+		vertexInfo.bindingDescription[location].stride = ( attributeType.width / 8 ) * attributeType.vecsize * attributeType.columns;
+		vertexInfo.bindingDescription[location].inputRate = ::vk::VertexInputRate::eVertex;
 
 		// Attribute description: Map shader location to pipeline binding number
-		vertexInfo.attribute[i].location = location;   // .location == which shader attribute location
-		vertexInfo.attribute[i].binding = location;    // .binding  == pipeline binding number == where attribute takes data from
+		vertexInfo.attribute[location].location = location;   // .location == which shader attribute location
+		vertexInfo.attribute[location].binding = location;    // .binding  == pipeline binding number == where attribute takes data from
 
 		switch ( attributeType.vecsize ){
 		case 2:
-			vertexInfo.attribute[i].format = ::vk::Format::eR32G32Sfloat;        // 2-part float
+			vertexInfo.attribute[location].format = ::vk::Format::eR32G32Sfloat;        // 2-part float
 			break;
 		case 3:
-			vertexInfo.attribute[i].format = ::vk::Format::eR32G32B32Sfloat;     // 3-part float
+			vertexInfo.attribute[location].format = ::vk::Format::eR32G32B32Sfloat;     // 3-part float
 			break;
 		case 4:
-			vertexInfo.attribute[i].format = ::vk::Format::eR32G32B32A32Sfloat;	 // 4-part float
+			vertexInfo.attribute[location].format = ::vk::Format::eR32G32B32A32Sfloat;	 // 4-part float
 			break;
 		default:
 			ofLogWarning() << "Could not determine vertex attribute type for: " << attributeInput.name;

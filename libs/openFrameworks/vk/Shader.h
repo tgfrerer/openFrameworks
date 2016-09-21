@@ -123,6 +123,7 @@ public:
 
 	struct VertexInfo
 	{
+		std::vector<std::string>                           attributeNames;		  // attribute names sorted by location
 		std::vector<::vk::VertexInputBindingDescription>   bindingDescription;	  // describes data input parameters for pipeline slots
 		std::vector<::vk::VertexInputAttributeDescription> attribute;	          // mapping of attribute locations to pipeline slots
 		::vk::PipelineVertexInputStateCreateInfo vi;
@@ -230,6 +231,10 @@ public:
 	const uint64_t getShaderCodeHash();
 
 	const std::map<std::string, Uniform_t>& getUniforms();
+	
+	const std::vector<std::string> & getAttributeNames();
+	
+	const VertexInfo& getVertexInfo();
 };
 
 // ----------------------------------------------------------------------
@@ -252,8 +257,16 @@ inline const std::vector<of::vk::Shader::DesciptorSetLayoutInfo>& of::vk::Shader
 
 // ----------------------------------------------------------------------
 
-inline const::vk::PipelineVertexInputStateCreateInfo & Shader::getVertexInputState(){
+inline const ::vk::PipelineVertexInputStateCreateInfo & of::vk::Shader::getVertexInputState(){
 	return mVertexInfo.vi;
+}
+
+inline const std::vector<std::string> & of::vk::Shader::getAttributeNames(){
+	return mVertexInfo.attributeNames;
+}
+
+inline const Shader::VertexInfo & Shader::getVertexInfo(){
+	return mVertexInfo;
 }
 
 // ----------------------------------------------------------------------

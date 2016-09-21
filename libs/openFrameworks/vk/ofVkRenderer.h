@@ -262,9 +262,6 @@ public:
 
 private:
 
-	
-
-
 	ofRectangle mViewport;
 
 	::vk::CommandPool mSetupCommandPool;

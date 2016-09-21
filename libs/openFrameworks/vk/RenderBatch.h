@@ -8,8 +8,8 @@
 
 namespace of {
 
-class RenderBatch;
-//class DrawCommand;
+// class RenderBatch;
+// class DrawCommand;
 
 
 // ------------------------------------------------------------

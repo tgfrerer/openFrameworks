@@ -10,10 +10,10 @@
 class Teapot
 {
 	std::unique_ptr<of::DrawCommand> dc;
-
+	std::shared_ptr<ofMesh> mLMesh;
 public:
 	void setup();
-	void update();
+	void recompile();
 	void draw(of::RenderBatch & rp);
 
 };
