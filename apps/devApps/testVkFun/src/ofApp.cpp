@@ -54,7 +54,6 @@ void Teapot::setup(){
 		mLMesh->addNormals( norm );
 		mLMesh->addColors( col );
 		mLMesh->addIndices( idx );
-
 	};
 }
 //--------------------------------------------------------------
@@ -104,7 +103,7 @@ void ofApp::setup(){
 
 	//of::RenderContext::Settings renderContextSettings;
 	//
-	//renderContextSettings.transientMemoryAllocatorSettings
+	// renderContextSettings.transientMemoryAllocatorSettings
 	//	.setPhysicalDeviceMemoryProperties ( renderer->getVkPhysicalDeviceMemoryProperties() )
 	//	.setPhysicalDeviceProperties       ( renderer->getVkPhysicalDeviceProperties() )
 	//	.setFrameCount                     ( 2 )

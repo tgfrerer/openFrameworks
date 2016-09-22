@@ -274,22 +274,21 @@ void of::RenderBatch::submit(){
 	// ofLogNotice() << "submit render batch";
 
 	beginCommandBuffer();
+	{
+		// set dynamic viewport
+		::vk::Viewport vp;
+		vp.setX( 0 )
+			.setY( 0 )
+			.setWidth( mRenderContext->getRenderArea().extent.width )
+			.setHeight( mRenderContext->getRenderArea().extent.height )
+			.setMinDepth( 0.f )
+			.setMaxDepth( 1.f )
+			;
+		mVkCmd.setViewport( 0, { vp } );
+		mVkCmd.setScissor( 0, { mRenderContext->getRenderArea() } );
 
-	// set dynamic viewport
-	::vk::Viewport vp;
-	vp.setX( 0 )
-		.setY( 0 )
-		.setWidth( mRenderContext->getRenderArea().extent.width )
-		.setHeight( mRenderContext->getRenderArea().extent.height )
-		.setMinDepth( 0.f )
-		.setMaxDepth( 1.f )
-		;
-	mVkCmd.setViewport( 0, { vp } );
-	mVkCmd.setScissor( 0, { mRenderContext->getRenderArea() } );
-
-	processDrawCommands();
-	
-	
+		processDrawCommands();
+	}
 	endCommandBuffer();
 
 	::vk::PipelineStageFlags wait_dst_stage_mask = ::vk::PipelineStageFlagBits::eColorAttachmentOutput;

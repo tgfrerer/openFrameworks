@@ -92,7 +92,8 @@ public:	// these states can be set upfront
 
 private: // these states must be received through context
 
-	// non-owning
+	// non-owning - note that renderpass may be inherited from a 
+	// primary command buffer.
 	::vk::RenderPass  mRenderPass         = 0;
 	uint64_t          mSubpass            = 0;
 
