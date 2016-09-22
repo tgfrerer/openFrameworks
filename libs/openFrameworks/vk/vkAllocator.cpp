@@ -6,7 +6,6 @@
 
 void of::vk::Allocator::setup(){
 	
-
 	if ( mSettings.frameCount < 1 ){
 		ofLogWarning() << "Allocator: Must have a minimum of 1 frame. Setting frames to 1.";
 		const_cast<uint32_t&>( mSettings.frameCount ) = 1;
@@ -25,7 +24,13 @@ void of::vk::Allocator::setup(){
 
 	bufferCreateInfo
 		.setSize( mSettings.size)
-		.setUsage( ::vk::BufferUsageFlagBits::eIndexBuffer | ::vk::BufferUsageFlagBits::eUniformBuffer | ::vk::BufferUsageFlagBits::eVertexBuffer )
+		.setUsage( 
+			::vk::BufferUsageFlagBits::eIndexBuffer 
+			| ::vk::BufferUsageFlagBits::eUniformBuffer 
+			| ::vk::BufferUsageFlagBits::eVertexBuffer
+			| ::vk::BufferUsageFlagBits::eTransferSrc
+			| ::vk::BufferUsageFlagBits::eTransferDst
+		)
 		.setSharingMode( ::vk::SharingMode::eExclusive )
 		;
 
@@ -48,7 +53,7 @@ void of::vk::Allocator::setup(){
 	
 	bool result = getMemoryAllocationInfo(
 		memReqs,
-		::vk::MemoryPropertyFlagBits::eHostVisible | ::vk::MemoryPropertyFlagBits::eHostCoherent,
+		mSettings.memFlags,
 		allocateInfo
 	);
 
@@ -75,12 +80,13 @@ void of::vk::Allocator::setup(){
 		mBaseAddress[i] = mBaseAddress[0] + i * ( mSettings.size / mSettings.frameCount );
 	}
 
+	mCurrentMappedAddress = nullptr;
+	mCurrentVirtualFrameIdx = 0;
 }
 
 // ----------------------------------------------------------------------
 
 void of::vk::Allocator::reset(){
-
 	if ( mDeviceMemory ){
 		mSettings.device.unmapMemory( mDeviceMemory );
 		mSettings.device.freeMemory( mDeviceMemory );
@@ -94,23 +100,24 @@ void of::vk::Allocator::reset(){
 
 	mOffsetEnd.clear();
 	mBaseAddress.clear();
+	mCurrentMappedAddress = nullptr;
+	mCurrentVirtualFrameIdx = 0;
 }
 
 // ----------------------------------------------------------------------
 // brief   linear allocator
 // param   byteCount number of bytes to allocate
-// param   current swapchain image index
-// returns pAddr writeable memory address
+// param   frameIdx current virtual frame index
 // returns offset memory offset in bytes relative to start of buffer to reach address
-bool of::vk::Allocator::allocate( ::vk::DeviceSize byteCount_, void*& pAddr, ::vk::DeviceSize& offset, size_t swapIdx ){
+bool of::vk::Allocator::allocate( ::vk::DeviceSize byteCount_, ::vk::DeviceSize& offset ){
 	uint32_t alignedByteCount = mAlignment * ( ( byteCount_ + mAlignment - 1 ) / mAlignment );
 
-	if ( mOffsetEnd[swapIdx] + alignedByteCount <= (mSettings.size / mSettings.frameCount) ){
+	if ( mOffsetEnd[mCurrentVirtualFrameIdx] + alignedByteCount <= (mSettings.size / mSettings.frameCount) ){
 		// write out memory address
-		pAddr = mBaseAddress[swapIdx] + mOffsetEnd[swapIdx];
+		mCurrentMappedAddress = mBaseAddress[mCurrentVirtualFrameIdx] + mOffsetEnd[mCurrentVirtualFrameIdx];
 		// write out offset 
-		offset = mOffsetEnd[swapIdx] + swapIdx * ( mSettings.size / mSettings.frameCount );
-		mOffsetEnd[swapIdx] += alignedByteCount;
+		offset = mOffsetEnd[mCurrentVirtualFrameIdx] + mCurrentVirtualFrameIdx * ( mSettings.size / mSettings.frameCount );
+		mOffsetEnd[mCurrentVirtualFrameIdx] += alignedByteCount;
 		// TODO: if you use non-coherent memory you need to invalidate the 
 		// cache for the memory that has been written to.
 		// What we will realistically do is to flush the full memory range occpuied by a frame
@@ -126,8 +133,14 @@ bool of::vk::Allocator::allocate( ::vk::DeviceSize byteCount_, void*& pAddr, ::v
 }
 
 // ----------------------------------------------------------------------
-void of::vk::Allocator::free(size_t frame){
-	mOffsetEnd[frame] = 0;
+
+void of::vk::Allocator::free(){
+	mOffsetEnd[mCurrentVirtualFrameIdx] = 0;
+	mCurrentMappedAddress = nullptr;
 }
 
 // ----------------------------------------------------------------------
+
+void of::vk::Allocator::swap(){
+	mCurrentVirtualFrameIdx = ( mCurrentVirtualFrameIdx + 1 ) % mSettings.frameCount;
+}

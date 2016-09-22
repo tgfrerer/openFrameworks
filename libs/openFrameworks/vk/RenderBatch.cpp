@@ -24,7 +24,6 @@ of::RenderContext::RenderContext( const Settings & settings )
 // ------------------------------------------------------------
 
 void of::RenderContext::setup(){
-
 	for ( auto &f : mVirtualFrames ){
 		f.semaphoreImageAcquired = mDevice.createSemaphore( {} );
 		f.semaphoreRenderComplete = mDevice.createSemaphore( {} );
@@ -37,7 +36,7 @@ void of::RenderContext::setup(){
 // ------------------------------------------------------------
 
 void of::RenderContext::begin(){
-	mTransientMemory->free(mCurrentVirtualFrame);
+	mTransientMemory->free();
 	// re-create descriptor pool for current virtual frame if necessary
 	updateDescriptorPool();
 }
@@ -46,6 +45,7 @@ void of::RenderContext::begin(){
 
 void of::RenderContext::swap(){
 	mCurrentVirtualFrame = ( mCurrentVirtualFrame + 1 ) % mSettings.transientMemoryAllocatorSettings.frameCount;
+	mTransientMemory->swap();
 }
 
 // ------------------------------------------------------------
@@ -260,8 +260,8 @@ void of::RenderBatch::draw( const of::DrawCommand& dc_ ){
 	// this will update dynamic offsets as a side-effect, 
 	// and will also update the buffer 
 	// for the bindings affected.
-	dc.commitUniforms( mRenderContext->getAllocator(), mRenderContext->mCurrentVirtualFrame );
-	dc.commitMeshAttributes( mRenderContext->getAllocator(), mRenderContext->mCurrentVirtualFrame );
+	dc.commitUniforms( mRenderContext->getAllocator() );
+	dc.commitMeshAttributes( mRenderContext->getAllocator() );
 	
 	mDrawCommands.emplace_back( std::move(dc) );
 

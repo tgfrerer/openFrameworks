@@ -21,9 +21,8 @@ class DrawCommandInfo {
 	friend class RenderBatch;
 	friend class RenderContext;
 
-
-	// pipeline state for a draw command
-	// this also contains the shader
+	// Pipeline state for a draw command
+	// This also contains the shader.
 	vk::GraphicsPipelineState pipeline;
 
 public:
@@ -96,6 +95,9 @@ public:
 		// One vector per binding - vector size is 
 		// determined by ubo subrange size. ubo data bindings may be sparse. 
 		// Data is uploaded to GPU upon draw.
+		// TODO: change this to use vkBufferObjects
+		// If the buffer object is dynamic, use dynamic uniform, 
+		// and update dynamic binding offset, if it is static, use offset and range.
 		std::map<uint32_t, std::vector<uint8_t>> dynamicUboData;
 
 	};
@@ -170,9 +172,9 @@ public:
 
 	// set data for upload to ubo - data is stored locally 
 	// until draw command is submitted
-	void commitUniforms( const std::unique_ptr<of::vk::Allocator>& alloc_, size_t virtualFrame_ );
+	void commitUniforms( const std::unique_ptr<of::vk::Allocator>& alloc_ );
 	
-	void commitMeshAttributes( const std::unique_ptr<of::vk::Allocator>& alloc_, size_t virtualFrame_ );
+	void commitMeshAttributes( const std::unique_ptr<of::vk::Allocator>& alloc_ );
 
 	void setMesh( const shared_ptr<ofMesh>& msh_ );
 

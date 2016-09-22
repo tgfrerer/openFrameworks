@@ -91,7 +91,7 @@ of::DrawCommand::DrawCommand( const DrawCommandInfo & dcs )
 
 // ------------------------------------------------------------
 
-void of::DrawCommand::commitUniforms(const std::unique_ptr<of::vk::Allocator>& alloc, size_t virtualFrame_ ){
+void of::DrawCommand::commitUniforms(const std::unique_ptr<of::vk::Allocator>& alloc ){
 	for ( auto & descriptorSetData : mDescriptorSetData ){
 		for ( const auto & dataPair : descriptorSetData.dynamicUboData ){
 			
@@ -102,7 +102,7 @@ void of::DrawCommand::commitUniforms(const std::unique_ptr<of::vk::Allocator>& a
 			void * dataP = nullptr;
 			
 			// allocate data on gpu
-			if ( alloc->allocate( dataVec.size(), dataP, offset, virtualFrame_ ) ){
+			if ( alloc->allocate( dataVec.size(), offset ) && alloc->map( dataP ) ){
 				
 				// copy data to gpu
 				memcpy( dataP, dataVec.data(), dataVec.size() );
@@ -124,7 +124,7 @@ void of::DrawCommand::commitUniforms(const std::unique_ptr<of::vk::Allocator>& a
 
 // ------------------------------------------------------------
 
-void of::DrawCommand::commitMeshAttributes( const std::unique_ptr<of::vk::Allocator>& alloc, size_t virtualFrame ){
+void of::DrawCommand::commitMeshAttributes( const std::unique_ptr<of::vk::Allocator>& alloc ){
 	// check if current draw command has a mesh - if yes, upload mesh data to buffer memory.
 	if ( mMsh ){
 		auto &mesh = *mMsh;
@@ -138,7 +138,8 @@ void of::DrawCommand::commitMeshAttributes( const std::unique_ptr<of::vk::Alloca
 		} else {
 			const auto & vertices = mesh.getVertices(); 
 			// allocate data on gpu
-			if ( alloc->allocate( vertices.size(), dataP, offset, virtualFrame ) ){
+			if ( alloc->allocate( vertices.size(), offset ) && alloc->map( dataP )){
+				alloc->map( dataP );
 				memcpy( dataP, vertices.data(), sizeof(vertices[0]) * vertices.size() );
 				setAttribute( "inPos", alloc->getBuffer(), offset );
 				mNumVertices = vertices.size();
@@ -148,7 +149,7 @@ void of::DrawCommand::commitMeshAttributes( const std::unique_ptr<of::vk::Alloca
 		if ( mesh.hasColors() && mesh.usingColors()){
 			const auto & colors = mesh.getColors();
 			// allocate data on gpu
-			if ( alloc->allocate( colors.size(), dataP, offset, virtualFrame ) ){
+			if ( alloc->allocate( colors.size(), offset ) && alloc->map( dataP ) ){
 				memcpy( dataP, colors.data(), sizeof( colors[0] ) * colors.size() );
 				setAttribute( "inColor", alloc->getBuffer(), offset );
 			}
@@ -156,7 +157,7 @@ void of::DrawCommand::commitMeshAttributes( const std::unique_ptr<of::vk::Alloca
 		if ( mesh.hasNormals() && mesh.usingNormals() ){
 			const auto & normals = mesh.getColors();
 			// allocate data on gpu
-			if ( alloc->allocate( normals.size(), dataP, offset, virtualFrame ) ){
+			if ( alloc->allocate( normals.size(), offset ) && alloc->map( dataP ) ){
 				memcpy( dataP, normals.data(), sizeof( normals[0] ) * normals.size() );
 				setAttribute( "inNormal", alloc->getBuffer(), offset );
 			}
@@ -164,7 +165,7 @@ void of::DrawCommand::commitMeshAttributes( const std::unique_ptr<of::vk::Alloca
 		if ( mesh.hasTexCoords() && mesh.usingTextures() ){
 			const auto & texCoords = mesh.getTexCoords();
 			// allocate data on gpu
-			if ( alloc->allocate( texCoords.size(), dataP, offset, virtualFrame ) ){
+			if ( alloc->allocate( texCoords.size(), offset ) && alloc->map( dataP ) ){
 				memcpy( dataP, texCoords.data(), sizeof( texCoords[0] ) * texCoords.size() );
 				setAttribute( "inTexCoord", alloc->getBuffer(), offset );
 			}
@@ -173,7 +174,8 @@ void of::DrawCommand::commitMeshAttributes( const std::unique_ptr<of::vk::Alloca
 		if ( mesh.hasIndices() && mesh.usingIndices() ){
 			const auto & indices = mesh.getIndices();
 			// allocate data on gpu
-			if ( alloc->allocate( indices.size(), dataP, offset, virtualFrame ) ){
+			if ( alloc->allocate( indices.size(), offset ) && alloc->map( dataP ) ){
+				
 				memcpy( dataP, indices.data(), sizeof( indices[0] ) * indices.size() );
 				setIndices( alloc->getBuffer(), offset );
 				mNumIndices = indices.size();
