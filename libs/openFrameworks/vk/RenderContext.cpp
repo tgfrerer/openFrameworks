@@ -1,9 +1,12 @@
 #include "vk/RenderContext.h"
+#include "vk/TransferBatch.h"
+
+using namespace of::vk;
 
 // ------------------------------------------------------------
-of::RenderContext::RenderContext( const Settings & settings )
+RenderContext::RenderContext( const Settings & settings )
 	: mSettings( settings ){
-	mTransientMemory = std::make_unique<of::vk::Allocator>( settings.transientMemoryAllocatorSettings );
+	mTransientMemory = std::make_unique<Allocator>( settings.transientMemoryAllocatorSettings );
 	mVirtualFrames.resize( mSettings.transientMemoryAllocatorSettings.frameCount );
 	mDescriptorPoolSizes.fill( 0 );
 	mAvailableDescriptorCounts.fill( 0 );
@@ -11,26 +14,26 @@ of::RenderContext::RenderContext( const Settings & settings )
 
 // ------------------------------------------------------------
 
-::vk::CommandPool & of::RenderContext::getCommandPool(){
+::vk::CommandPool & RenderContext::getCommandPool(){
 	return mVirtualFrames.at( mCurrentVirtualFrame ).commandPool;
 }
-
-
+  
 // ------------------------------------------------------------
 
-void of::RenderContext::setup(){
+void RenderContext::setup(){
 	for ( auto &f : mVirtualFrames ){
 		f.semaphoreImageAcquired = mDevice.createSemaphore( {} );
 		f.semaphoreRenderComplete = mDevice.createSemaphore( {} );
 		f.fence = mDevice.createFence( { ::vk::FenceCreateFlagBits::eSignaled } );	/* Fence starts as "signaled" */
 		f.commandPool = mDevice.createCommandPool( { ::vk::CommandPoolCreateFlagBits::eResetCommandBuffer } );
+		f.transferBatch = std::make_unique<TransferBatch>(this);
 	}
 	mTransientMemory->setup();
 }
 
 // ------------------------------------------------------------
 
-void of::RenderContext::begin(){
+void RenderContext::begin(){
 	mTransientMemory->free();
 	// re-create descriptor pool for current virtual frame if necessary
 	updateDescriptorPool();
@@ -38,14 +41,14 @@ void of::RenderContext::begin(){
 
 // ------------------------------------------------------------
 
-void of::RenderContext::swap(){
+void RenderContext::swap(){
 	mCurrentVirtualFrame = ( mCurrentVirtualFrame + 1 ) % mSettings.transientMemoryAllocatorSettings.frameCount;
 	mTransientMemory->swap();
 }
 
 // ------------------------------------------------------------
 
-const::vk::DescriptorSet of::RenderContext::getDescriptorSet( uint64_t descriptorSetHash, size_t setId, const of::DrawCommand & drawCommand ){
+const::vk::DescriptorSet RenderContext::getDescriptorSet( uint64_t descriptorSetHash, size_t setId, const DrawCommand & drawCommand ){
 
 	auto & currentVirtualFrame = mVirtualFrames[mCurrentVirtualFrame];
 	auto & descriptorSetCache = currentVirtualFrame.descriptorSetCache;
@@ -71,7 +74,6 @@ const::vk::DescriptorSet of::RenderContext::getDescriptorSet( uint64_t descripto
 		uint32_t arrayIndex = uint32_t( d.type );
 		++requiredPoolSizes[arrayIndex];
 	}
-
 
 	// First, we have to figure out if the current descriptor pool has enough space available 
 	// over all descriptor types to allocate the desciptors needed to fill the desciptor set requested.
@@ -126,7 +128,7 @@ const::vk::DescriptorSet of::RenderContext::getDescriptorSet( uint64_t descripto
 	// ---------| invariant: currentVirtualFrame.descriptorPools.back() contains a pool large enough to allocate our descriptor set from
 
 	// we are able to allocate from the current descriptor pool
-	auto & setLayout = *( drawCommand.getInfo().pipeline.getShader()->getDescriptorSetLayout( setId ) );
+	auto & setLayout = *( drawCommand.getInfo().getPipeline().getShader()->getDescriptorSetLayout( setId ) );
 	auto allocInfo = ::vk::DescriptorSetAllocateInfo();
 	allocInfo
 		.setDescriptorPool( currentVirtualFrame.descriptorPools.back() )
@@ -180,7 +182,7 @@ const::vk::DescriptorSet of::RenderContext::getDescriptorSet( uint64_t descripto
 
 // ------------------------------------------------------------
 
-void of::RenderContext::updateDescriptorPool(){
+void RenderContext::updateDescriptorPool(){
 
 	// If current virtual frame descriptorpool is dirty,
 	// re-allocate frame descriptorpool based on total number
@@ -236,4 +238,11 @@ void of::RenderContext::updateDescriptorPool(){
 	// Mark descriptor pool for this frame as not dirty
 	mDescriptorPoolsDirty ^= ( 1ULL << mCurrentVirtualFrame );
 
+}
+// ------------------------------------------------------------
+
+void RenderContext::resetFence(){
+	mDevice.resetFences( { mVirtualFrames.at( mCurrentVirtualFrame ).fence } );
+	//! TODO: once the fence has been reset, transfers are complete.
+	mVirtualFrames.at( mCurrentVirtualFrame ).transferBatch->signalTransferComplete();
 }

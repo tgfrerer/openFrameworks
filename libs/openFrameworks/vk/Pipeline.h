@@ -114,14 +114,14 @@ public:
 	// whether this pipeline state is dirty.
 	VkBool32          mDirty              = true;
 
-	void setShader(const std::shared_ptr<of::vk::Shader> & shader ){
+	void setShader(const std::shared_ptr<Shader> & shader ){
 		if ( shader.get() != mShader.get() ){
 			mShader = shader;
 			mDirty = true;
 		}
 	}
 
-	const std::shared_ptr<of::vk::Shader> getShader() const{
+	const std::shared_ptr<Shader> getShader() const{
 		return mShader;
 	}
 

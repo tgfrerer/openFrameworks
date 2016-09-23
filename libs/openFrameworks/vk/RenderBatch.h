@@ -8,6 +8,7 @@
 #include "vk/RenderContext.h"
 
 namespace of {
+namespace vk{
 
 // ------------------------------------------------------------
 
@@ -36,16 +37,16 @@ public:
 	}
 
 private:
-	
-	// current draw state
-	std::unique_ptr<of::vk::GraphicsPipelineState>                  mCurrentPipelineState;
-	std::unordered_map<uint64_t,std::shared_ptr<::vk::Pipeline>>    mPipelineCache;
+
+	// current draw state for building command buffer
+	std::unique_ptr<GraphicsPipelineState>                           mCurrentPipelineState;
+	std::unordered_map<uint64_t, std::shared_ptr<::vk::Pipeline>>    mPipelineCache;
 
 	uint32_t            mVkSubPassId = 0;
 	::vk::CommandBuffer mVkCmd;
 
 	::vk::RenderPass    mVkRenderPass;  // current renderpass
-	
+
 	std::list<DrawCommand> mDrawCommands;
 
 	void processDrawCommands();
@@ -58,7 +59,7 @@ private:
 
 public:
 
-
+	// !TODO: submit to context - 
 	void submit();
 
 	uint32_t nextSubPass();
@@ -71,10 +72,10 @@ public:
 
 
 
-inline void of::RenderBatch::beginRenderPass(const ::vk::RenderPass& vkRenderPass_, const ::vk::Framebuffer& vkFramebuffer_, const ::vk::Rect2D& renderArea_){
-	
+inline void RenderBatch::beginRenderPass( const ::vk::RenderPass& vkRenderPass_, const ::vk::Framebuffer& vkFramebuffer_, const ::vk::Rect2D& renderArea_ ){
+
 	//ofLog() << "begin renderpass";
-	
+
 	mVkSubPassId = 0;
 
 	if ( mVkRenderPass ){
@@ -86,7 +87,7 @@ inline void of::RenderBatch::beginRenderPass(const ::vk::RenderPass& vkRenderPas
 
 	//!TODO: get correct clear values, and clear value count
 	std::array<::vk::ClearValue, 2> clearValues;
-	clearValues[0].setColor(  reinterpret_cast<const ::vk::ClearColorValue&>(ofFloatColor::blueSteel) );
+	clearValues[0].setColor( reinterpret_cast<const ::vk::ClearColorValue&>( ofFloatColor::blueSteel ) );
 	clearValues[1].setDepthStencil( { 1.f, 0 } );
 
 	::vk::RenderPassBeginInfo renderPassBeginInfo;
@@ -111,7 +112,7 @@ inline uint32_t RenderBatch::nextSubPass(){
 
 // ----------------------------------------------------------------------
 
-inline void of::RenderBatch::endRenderPass(){
+inline void RenderBatch::endRenderPass(){
 	// TODO: consolidate/re-order draw commands if buffered
 	//ofLog() << "end   renderpass";
 	mVkCmd.endRenderPass();
@@ -119,9 +120,9 @@ inline void of::RenderBatch::endRenderPass(){
 
 // ----------------------------------------------------------------------
 
-inline void of::RenderBatch::beginCommandBuffer(){
+inline void RenderBatch::beginCommandBuffer(){
 	//ofLog() << "begin command buffer";
-	
+
 
 	if ( !mVkCmd ){
 		::vk::CommandBufferAllocateInfo commandBufferAllocateInfo;
@@ -130,7 +131,7 @@ inline void of::RenderBatch::beginCommandBuffer(){
 			.setLevel( ::vk::CommandBufferLevel::ePrimary )
 			.setCommandBufferCount( 1 )
 			;
-			mVkCmd = (mRenderContext->getDevice().allocateCommandBuffers( commandBufferAllocateInfo )).front();
+		mVkCmd = ( mRenderContext->getDevice().allocateCommandBuffers( commandBufferAllocateInfo ) ).front();
 	}
 
 	mVkCmd.begin( { ::vk::CommandBufferUsageFlagBits::eOneTimeSubmit } );
@@ -139,7 +140,7 @@ inline void of::RenderBatch::beginCommandBuffer(){
 
 // ----------------------------------------------------------------------
 
-inline void of::RenderBatch::endCommandBuffer(){
+inline void RenderBatch::endCommandBuffer(){
 	//ofLog() << "end   command buffer";
 	mVkCmd.end();
 }
@@ -148,5 +149,5 @@ inline void of::RenderBatch::endCommandBuffer(){
 
 // ----------------------------------------------------------------------
 
-
+} // end namespce of::vk
 } // end namespace of

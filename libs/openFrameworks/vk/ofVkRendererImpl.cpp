@@ -20,7 +20,6 @@ void ofVkRenderer::setup(){
 	mPipelineCache = of::vk::createPipelineCache( mDevice, "pipelineCache.bin" );
 
 	// sets up resources to keep track of production frames
-	//setupFrameResources();
 	setupDefaultContext();
 
 	// create the main renderpass 
@@ -32,7 +31,7 @@ void ofVkRenderer::setup(){
 
 void ofVkRenderer::setupDefaultContext(){
 	
-	of::RenderContext::Settings settings;
+	of::vk::RenderContext::Settings settings;
 	settings.transientMemoryAllocatorSettings
 		.setDevice( mDevice )
 		.setFrameCount( mSettings.numVirtualFrames )
@@ -42,7 +41,7 @@ void ofVkRenderer::setupDefaultContext(){
 		;
 	settings.pipelineCache = getPipelineCache();
 	settings.renderArea = { 0,0, mWindowWidth, mWindowHeight };
-	mDefaultContext = make_shared<of::RenderContext>(settings);
+	mDefaultContext = make_shared<of::vk::RenderContext>(settings);
 	mDefaultContext->setup();
 }
 
@@ -401,7 +400,7 @@ void ofVkRenderer::startRender(){
 		ofLog() << "Waiting for fence takes too long: " << vk::to_string( fenceWaitResult );
 	}
 
-	mDevice.resetFences( { mDefaultContext->getFence() } );
+	mDefaultContext->resetFence();
 
 	// receive index for next available swapchain image
 	auto err = mSwapchain.acquireNextImage( mDefaultContext->getImageAcquiredSemaphore(), &swapIdx );

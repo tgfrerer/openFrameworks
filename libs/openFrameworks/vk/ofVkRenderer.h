@@ -21,8 +21,8 @@ class ofShapeTessellation;
 
 
 namespace of{
-	class RenderContext;
 namespace vk{
+	class RenderContext;
 	class Shader;
 }	// end namespace of::vk
 };  // end namespace of
@@ -315,7 +315,7 @@ private:
 	uint32_t mWindowWidth = 0;
 	uint32_t mWindowHeight = 0;
 
-	std::shared_ptr<of::RenderContext> mDefaultContext;
+	std::shared_ptr<of::vk::RenderContext> mDefaultContext;
 
 public:
 
@@ -323,7 +323,7 @@ public:
 	::vk::SurfaceKHR& getWindowSurface();
 
 	const std::shared_ptr<::vk::RenderPass> & getDefaultRenderPass();
-	const std::shared_ptr<of::RenderContext> & getDefaultContext();
+	const std::shared_ptr<of::vk::RenderContext> & getDefaultContext();
 
 	const ::vk::CommandPool& getSetupCommandPool() const;
 
@@ -355,7 +355,7 @@ inline const std::shared_ptr<::vk::RenderPass>& ofVkRenderer::getDefaultRenderPa
 	return mRenderPass;
 }
 
-inline const std::shared_ptr<of::RenderContext>& ofVkRenderer::getDefaultContext(){
+inline const std::shared_ptr<of::vk::RenderContext>& ofVkRenderer::getDefaultContext(){
 	return mDefaultContext;
 }
 

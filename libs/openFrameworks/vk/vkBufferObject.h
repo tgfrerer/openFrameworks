@@ -2,7 +2,7 @@
 
 #include <vulkan/vulkan.hpp>
 #include "vk/vkAllocator.h"
-
+//#include "vk/TransferBatch.h"
 /*
 
 A vkBufferObject is a static buffer of memory that is resident
@@ -36,11 +36,10 @@ namespace vk {
 class BufferObject
 {
 	friend class TransferBatch;
-	// buffer will point to dynamic allocator's main buffer
-	const ::vk::Buffer&                             mBuffer ;
+	
+	const ::vk::Buffer&                       mBuffer ;
 	const ::vk::DeviceSize                    mRange  = 0;
 	::vk::DeviceSize                          mOffset = 0;
-	
 	::vk::DeviceSize                          mPersistentOffset = 0;
 	bool                                      mHasPersistentMemory = false;
 
@@ -53,11 +52,10 @@ class BufferObject
 
 	const std::shared_ptr<of::vk::Allocator> mTransientAllocator;
 	const std::shared_ptr<of::vk::Allocator> mPersistentAllocator;
-	// where buffer is located in dynamic memory
 
 public:
 
-	BufferObject(::vk::DeviceSize numBytes_, std::shared_ptr<of::vk::Allocator>& transientAllocator_, const std::shared_ptr<of::vk::Allocator> persistentAllocator_ = nullptr )
+	BufferObject(::vk::DeviceSize numBytes_, std::shared_ptr<Allocator>& transientAllocator_, const std::shared_ptr<Allocator> persistentAllocator_ = nullptr )
 		: mRange( numBytes_ )
 		, mTransientAllocator(transientAllocator_)
 		, mPersistentAllocator(persistentAllocator_)
@@ -72,11 +70,11 @@ public:
 	const ::vk::DeviceSize getRange() const;;
 	const ::vk::DeviceSize getOffset() const;;
 
-	const std::shared_ptr<of::vk::Allocator>& getPersistentAllocator(){
+	const std::shared_ptr<Allocator>& getPersistentAllocator(){
 		return mPersistentAllocator;
 	}
 
-	const std::shared_ptr<of::vk::Allocator>& getTransientAllocator(){
+	const std::shared_ptr<Allocator>& getTransientAllocator(){
 		return mTransientAllocator;
 	}
 
@@ -86,16 +84,14 @@ public:
 
 // ----------------------------------------------------------------------
 
-class TransferBatch
-{
-	std::list<std::shared_ptr<BufferObject>> mBatch;
+inline const ::vk::DeviceSize BufferObject::getRange() const{
+	return mRange;
+}
 
-public:
+inline const ::vk::DeviceSize BufferObject::getOffset() const{
+	return mOffset;
+}
 
-	bool add( std::shared_ptr<BufferObject>& buffer );
-
-	void submitTransferBuffers( const ::vk::Device& device, const ::vk::CommandPool& cmdPool, const ::vk::Queue& transferQueue );
-};
 
 }  // end namespace of::vk
 }  // end namespace of
@@ -104,12 +100,5 @@ public:
    // ----------------------------------------------------------------------
 
 
-inline const::vk::DeviceSize of::vk::BufferObject::getRange() const{
-	return mRange;
-}
-
-inline const::vk::DeviceSize of::vk::BufferObject::getOffset() const{
-	return mOffset;
-}
 
   

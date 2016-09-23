@@ -342,6 +342,9 @@
     <ClInclude Include="..\..\..\openFrameworks\vk\RenderContext.h">
       <Filter>libs\openFrameworks\vk</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\..\openFrameworks\vk\TransferBatch.h">
+      <Filter>libs\openFrameworks\vk</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\openFrameworks\app\ofAppGlutWindow.cpp">
@@ -582,6 +585,9 @@
       <Filter>libs\openFrameworks\vk</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\openFrameworks\vk\RenderContext.cpp">
+      <Filter>libs\openFrameworks\vk</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\openFrameworks\vk\TransferBatch.cpp">
       <Filter>libs\openFrameworks\vk</Filter>
     </ClCompile>
   </ItemGroup>

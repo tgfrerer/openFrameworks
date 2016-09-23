@@ -2,9 +2,11 @@
 #include "vk/ofVkRenderer.h"
 #include "ofLog.h"
 
+using namespace of::vk;
+
 // ----------------------------------------------------------------------
 
-void of::vk::Allocator::setup(){
+void Allocator::setup(){
 	
 	if ( mSettings.frameCount < 1 ){
 		ofLogWarning() << "Allocator: Must have a minimum of 1 frame. Setting frames to 1.";
@@ -21,7 +23,7 @@ void of::vk::Allocator::setup(){
 	const_cast<::vk::DeviceSize&>( mSettings.size ) = mSettings.frameCount * mAlignment * ( ( mSettings.size / mSettings.frameCount + mAlignment - 1 ) / mAlignment );
 
 	::vk::BufferCreateInfo bufferCreateInfo;
-
+	
 	bufferCreateInfo
 		.setSize( mSettings.size)
 		.setUsage( 
@@ -109,7 +111,7 @@ void of::vk::Allocator::reset(){
 // param   byteCount number of bytes to allocate
 // param   frameIdx current virtual frame index
 // returns offset memory offset in bytes relative to start of buffer to reach address
-bool of::vk::Allocator::allocate( ::vk::DeviceSize byteCount_, ::vk::DeviceSize& offset ){
+bool Allocator::allocate( ::vk::DeviceSize byteCount_, ::vk::DeviceSize& offset ){
 	uint32_t alignedByteCount = mAlignment * ( ( byteCount_ + mAlignment - 1 ) / mAlignment );
 
 	if ( mOffsetEnd[mCurrentVirtualFrameIdx] + alignedByteCount <= (mSettings.size / mSettings.frameCount) ){
@@ -134,13 +136,13 @@ bool of::vk::Allocator::allocate( ::vk::DeviceSize byteCount_, ::vk::DeviceSize&
 
 // ----------------------------------------------------------------------
 
-void of::vk::Allocator::free(){
+void Allocator::free(){
 	mOffsetEnd[mCurrentVirtualFrameIdx] = 0;
 	mCurrentMappedAddress = nullptr;
 }
 
 // ----------------------------------------------------------------------
 
-void of::vk::Allocator::swap(){
+void Allocator::swap(){
 	mCurrentVirtualFrameIdx = ( mCurrentVirtualFrameIdx + 1 ) % mSettings.frameCount;
 }

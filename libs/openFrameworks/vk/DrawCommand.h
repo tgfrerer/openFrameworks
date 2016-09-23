@@ -4,37 +4,37 @@
 #include "vk/Pipeline.h"
 #include "ofMesh.h"
 
-namespace of {
+namespace of{
+namespace vk{
 
 class DrawCommand;	   // ffdecl.
 class RenderBatch;	   // ffdecl.
-
-namespace vk{
 class Allocator;	   // ffdecl.
-}
+
 
 // ----------------------------------------------------------------------
 
-class DrawCommandInfo {
+class DrawCommandInfo
+{
 
 	friend class DrawCommand;
 	friend class RenderBatch;
-	friend class RenderContext;
+	//friend class RenderContext;
 
 	// Pipeline state for a draw command
 	// This also contains the shader.
-	vk::GraphicsPipelineState pipeline;
+	GraphicsPipelineState pipeline;
 
 public:
 
 	// Get a reference to pipeline for modifying it
 	// Only friends should be allowed to do this.
-	vk::GraphicsPipelineState& modifyPipeline(){
+	GraphicsPipelineState& modifyPipeline(){
 		pipeline.mDirty = true; // invalidate hash
 		return pipeline;
 	}
 
-	const vk::GraphicsPipelineState& getPipeline() const {
+	const GraphicsPipelineState& getPipeline() const{
 		return pipeline;
 	}
 	const std::vector<uint64_t>& getSetLayoutKeys() const{
@@ -103,16 +103,16 @@ public:
 	};
 
 private:
-	
+
 	// a draw command has everything needed to draw an object
 	const DrawCommandInfo mDrawCommandInfo;
 	// map from binding number to ubo data state
 
 	DrawCommand() = delete;
-	
+
 	// lookup table from uniform name to storage info for dynamic ubos
 	// TODO: maybe mUniformMembers should move to shader.
-	std::map<std::string, of::vk::Shader::UboMemberSubrange> mUniformMembers;
+	std::map<std::string, Shader::UboMemberSubrange> mUniformMembers;
 
 private:      /* transient data */
 
@@ -123,28 +123,28 @@ private:      /* transient data */
 
 	// vector of buffers holding vertex attribute data
 	std::vector<::vk::Buffer> mVertexBuffers;
-	
+
 	// offsets into buffer for vertex attribute data
 	std::vector<::vk::DeviceSize> mVertexOffsets;
-	
+
 	// 1-or-0 element buffer of indices for this draw command
 	std::vector<::vk::Buffer> mIndexBuffer;
 
 	// offsets into buffer for index data - this is optional
 	std::vector<::vk::DeviceSize> mIndexOffsets;
 
-	uint32_t mNumIndices  = 0;
+	uint32_t mNumIndices = 0;
 	uint32_t mNumVertices = 0;
 
 	std::shared_ptr<ofMesh> mMsh; /* optional */
 
 public:
 
-	const DrawCommandInfo& getInfo() const {
+	const DrawCommandInfo& getInfo() const{
 		return mDrawCommandInfo;
 	}
 
-	const DescriptorSetData_t& getDescriptorSetData(size_t setId_) const {
+	const DescriptorSetData_t& getDescriptorSetData( size_t setId_ ) const{
 		return mDescriptorSetData[setId_];
 	}
 
@@ -172,17 +172,17 @@ public:
 
 	// set data for upload to ubo - data is stored locally 
 	// until draw command is submitted
-	void commitUniforms( const std::unique_ptr<of::vk::Allocator>& alloc_ );
-	
-	void commitMeshAttributes( const std::unique_ptr<of::vk::Allocator>& alloc_ );
+	void commitUniforms( const std::unique_ptr<Allocator>& alloc_ );
+
+	void commitMeshAttributes( const std::unique_ptr<Allocator>& alloc_ );
 
 	void setMesh( const shared_ptr<ofMesh>& msh_ );
 
 	void setAttribute( std::string name_, ::vk::Buffer buffer, ::vk::DeviceSize offset );
-	void setIndices(::vk::Buffer buffer, ::vk::DeviceSize offset );
+	void setIndices( ::vk::Buffer buffer, ::vk::DeviceSize offset );
 
 	// upload uniform data to gpu memory
-	template <class T> 
+	template <class T>
 	void setUniform( std::string uniformName, const T& uniformValue_ ){
 
 		const auto foundMemberIt = mUniformMembers.find( uniformName );
@@ -209,4 +209,5 @@ public:
 
 };
 
-} // namespace of
+} // namespace 
+} // end namespace of

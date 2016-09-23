@@ -16,7 +16,7 @@ void Teapot::setup(){
 		{ ::vk::ShaderStageFlagBits::eFragment, "default.frag" },
 	}));
 
-	of::DrawCommandInfo dcs;
+	of::vk::DrawCommandInfo dcs;
 
 	dcs.modifyPipeline().depthStencilState
 		.setDepthTestEnable( VK_TRUE )
@@ -26,7 +26,7 @@ void Teapot::setup(){
 	dcs.modifyPipeline().setShader( mShaderDefault );
 	dcs.modifyPipeline().setRenderPass( renderPass );
 
-	dc = std::move(std::make_unique<of::DrawCommand>( dcs ));
+	dc = std::move(std::make_unique<of::vk::DrawCommand>( dcs ));
 	mLMesh = make_shared<ofMesh>();
 	{	// Horizontally elongated "L___" shape
 
@@ -59,12 +59,12 @@ void Teapot::setup(){
 //--------------------------------------------------------------
 
 void Teapot::recompile(){
-	const_cast<of::DrawCommandInfo&>(dc->getInfo()).modifyPipeline().getShader()->compile();
+	const_cast<of::vk::DrawCommandInfo&>(dc->getInfo()).modifyPipeline().getShader()->compile();
 }
 
 //--------------------------------------------------------------
 
-void Teapot::draw(of::RenderBatch& rb){
+void Teapot::draw(of::vk::RenderBatch& rb){
 
 	// update uniforms inside the draw command 
 	
@@ -127,7 +127,7 @@ void ofApp::update(){
 void ofApp::draw(){
 	const auto & renderer = dynamic_pointer_cast<ofVkRenderer>( ofGetCurrentRenderer() );
 	
-	of::RenderBatch batch( *renderer->getDefaultContext() /*, reorder = true*/ );
+	of::vk::RenderBatch batch( *renderer->getDefaultContext() /*, reorder = true*/ );
 	
 	// a renderbatch 
 	

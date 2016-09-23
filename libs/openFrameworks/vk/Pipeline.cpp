@@ -3,16 +3,16 @@
 #include "spooky/SpookyV2.h"
 #include <array>
 
+using namespace of::vk;
 // ----------------------------------------------------------------------
 
-
-of::vk::GraphicsPipelineState::GraphicsPipelineState(){
+GraphicsPipelineState::GraphicsPipelineState(){
 	reset();
 }
 
 // ----------------------------------------------------------------------
 
-void of::vk::GraphicsPipelineState::reset()
+void GraphicsPipelineState::reset()
 {
 	inputAssemblyState = ::vk::PipelineInputAssemblyStateCreateInfo();
 	inputAssemblyState
@@ -130,7 +130,7 @@ void of::vk::GraphicsPipelineState::reset()
 
 // ----------------------------------------------------------------------
 
-::vk::Pipeline of::vk::GraphicsPipelineState::createPipeline( const ::vk::Device & device, const std::shared_ptr<::vk::PipelineCache> & pipelineCache, ::vk::Pipeline basePipelineHandle_ ){
+::vk::Pipeline GraphicsPipelineState::createPipeline( const ::vk::Device & device, const std::shared_ptr<::vk::PipelineCache> & pipelineCache, ::vk::Pipeline basePipelineHandle_ ){
 		::vk::Pipeline pipeline;
 
 		// naive: create a pipeline based on current internal state
@@ -214,7 +214,7 @@ void of::vk::GraphicsPipelineState::reset()
 
 // ----------------------------------------------------------------------
 
-bool of::vk::GraphicsPipelineState::operator==( GraphicsPipelineState const & rhs ){
+bool GraphicsPipelineState::operator==( GraphicsPipelineState const & rhs ){
 	return mRenderPass == rhs.mRenderPass
 		&& mSubpass == rhs.mSubpass
 		&& mShader->getShaderCodeHash() == rhs.mShader->getShaderCodeHash()
@@ -231,7 +231,7 @@ bool of::vk::GraphicsPipelineState::operator==( GraphicsPipelineState const & rh
 	   	   
 // ----------------------------------------------------------------------
 
-uint64_t of::vk::GraphicsPipelineState::calculateHash() const {
+uint64_t GraphicsPipelineState::calculateHash() const {
 
 	std::vector<uint64_t> setLayoutKeys = mShader->getDescriptorSetLayoutKeys();
 

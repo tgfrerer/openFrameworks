@@ -1,6 +1,7 @@
 #include "ofLog.h"
 #include "vk/vkBufferObject.h"
 
+using namespace of::vk;
 /*
 
 	We assume a transfer batch is issued *before* the render batch that might use the buffers for the first time, 
@@ -24,7 +25,7 @@
 
 */
 
-bool of::vk::BufferObject::setData( void *& pData, ::vk::DeviceSize numBytes ){
+bool BufferObject::setData( void *& pData, ::vk::DeviceSize numBytes ){
 
 	// Writes always go to transient memory
 	if ( numBytes > mRange ){
@@ -62,7 +63,7 @@ bool of::vk::BufferObject::setData( void *& pData, ::vk::DeviceSize numBytes ){
 
 // ----------------------------------------------------------------------
 
-const ::vk::Buffer& of::vk::BufferObject::getBuffer(){
+const ::vk::Buffer& BufferObject::getBuffer(){
 
 	auto & device = mTransientAllocator->getSettings().device;
 
@@ -79,131 +80,7 @@ const ::vk::Buffer& of::vk::BufferObject::getBuffer(){
 
 // ----------------------------------------------------------------------
 
-bool of::vk::BufferObject::needsTransfer(){
+bool BufferObject::needsTransfer(){
 	return ( mPersistentAllocator.get() != nullptr && mState == Usage::eDynamic );
 }
 
-// ----------------------------------------------------------------------
-
-bool of::vk::TransferBatch::add( std::shared_ptr<BufferObject>& buffer ){
-
-	// check if buffer can be added
-
-	if ( !buffer->needsTransfer() ){
-		ofLogVerbose() << "TransferBatch: Buffer does not need transfer.";
-		return false;
-	}
-
-	// --------| invariant: buffer needs transfer.
-
-	// find the first element in the batch that matches the transient and 
-	// persistent buffer targets of the current buffer - if nothing found,
-	// return last element.
-	auto it = std::find_if( mBatch.begin(), mBatch.end(), [buffer]( std::shared_ptr<of::vk::BufferObject> lhs ){
-		return buffer->getTransientAllocator()->getBuffer() ==  lhs->getTransientAllocator()->getBuffer()
-			&& buffer->getPersistentAllocator()->getBuffer() == lhs->getPersistentAllocator()->getBuffer();
-	} );
-
-	mBatch.insert( it, buffer );
-
-	return true;
-}
-
-// ----------------------------------------------------------------------
-
-void of::vk::TransferBatch::submitTransferBuffers( const ::vk::Device& device, const ::vk::CommandPool& cmdPool, const ::vk::Queue& transferQueue ){
-
-	if ( mBatch.empty() ){
-		return;
-	}
-
-	//auto renderer = dynamic_pointer_cast<ofVkRenderer>( ofGetCurrentRenderer() );
-
-	//// get device
-	//mDevice = renderer->getVkDevice();
-
-	//// get command pool
-	//const auto& cmdPool = renderer->getSetupCommandPool();
-
-	//// get queue
-	//auto& queue = renderer->getQueue();
-
-
-	// First, we need a command buffer where we can record a pipeline barrier command into.
-	// This command - the pipeline barrier with an image barrier - will transfer the 
-	// image resource from its original layout to a layout that the gpu can use for 
-	// sampling.
-	::vk::CommandBuffer cmd = nullptr;
-	{
-		::vk::CommandBufferAllocateInfo cmdBufAllocInfo;
-		cmdBufAllocInfo
-			.setCommandPool( cmdPool )
-			.setLevel( ::vk::CommandBufferLevel::ePrimary )
-			.setCommandBufferCount( 1 )
-			;
-		cmd = device.allocateCommandBuffers( cmdBufAllocInfo ).front();
-	}
-
-	std::vector<::vk::BufferCopy> bufferCopies;
-	bufferCopies.reserve( mBatch.size() );
-
-	::vk::Buffer srcBuf = nullptr;
-	::vk::Buffer dstBuf = nullptr;
-	
-	cmd.begin( { ::vk::CommandBufferUsageFlagBits::eOneTimeSubmit } );
-
-	for ( auto it = mBatch.cbegin(); it != mBatch.cend(); ++it ){
-		const auto & bufferObject = *it;
-
-		::vk::BufferCopy bufferCopy;
-		bufferCopy
-			.setSize     ( bufferObject->mRange            )
-			.setSrcOffset( bufferObject->mOffset           )
-			.setDstOffset( bufferObject->mPersistentOffset )
-			;
-
-		// if src or dst are different from last buffer, flush, and enqueue next one.
-		if ( bufferObject->getTransientAllocator()->getBuffer() != srcBuf
-			|| bufferObject->getPersistentAllocator()->getBuffer() != dstBuf ){
-
-			if ( bufferCopies.empty() == false ){
-				// submit buffer copies.
-				cmd.copyBuffer( srcBuf, dstBuf, bufferCopies );
-				bufferCopies.clear();
-				bufferCopies.reserve( mBatch.size() );
-			}
-			srcBuf = bufferObject->getTransientAllocator()->getBuffer();
-			dstBuf = bufferObject->getPersistentAllocator()->getBuffer();
-		} 
-		
-		bufferCopies.push_back(bufferCopy);
-
-		if ( std::next( it ) == mBatch.cend() && !bufferCopies.empty()){
-			// submit buffer copies
-			cmd.copyBuffer( srcBuf, dstBuf, bufferCopies );
-		}
-
-	}
-
-	// TODO: add transfer barrier
-
-	cmd.end();
-
-
-	// Submit the command buffer to the transfer queue
-
-	::vk::SubmitInfo submitInfo;
-	submitInfo
-		.setWaitSemaphoreCount( 0 )
-		.setPWaitSemaphores( nullptr )
-		.setPWaitDstStageMask( nullptr )
-		.setCommandBufferCount( 1 )
-		.setPCommandBuffers( &cmd )
-		.setSignalSemaphoreCount( 0 )
-		.setPSignalSemaphores( nullptr )
-		;
-
-	transferQueue.submit( {submitInfo}, nullptr );
-
-	mBatch.clear();
-}

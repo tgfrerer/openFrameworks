@@ -9,12 +9,12 @@
 
 class Teapot
 {
-	std::unique_ptr<of::DrawCommand> dc;
+	std::unique_ptr<of::vk::DrawCommand> dc;
 	std::shared_ptr<ofMesh> mLMesh;
 public:
 	void setup();
 	void recompile();
-	void draw(of::RenderBatch & rp);
+	void draw(of::vk::RenderBatch & rp);
 
 };
 

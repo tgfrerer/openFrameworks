@@ -1,23 +1,22 @@
 #include "vk/RenderBatch.h"
 #include "vk/spooky/SpookyV2.h"
 #include "vk/Shader.h"
-
 #include "vk/ofVkRenderer.h"
 
-
+using namespace of::vk;
 
 // ------------------------------------------------------------
-of::RenderBatch::RenderBatch( of::RenderContext & rpc )
+RenderBatch::RenderBatch( RenderContext & rpc )
 	:mRenderContext( &rpc ){
 	mRenderContext->begin();
 }
 
 // ------------------------------------------------------------
 
-void of::RenderBatch::draw( const of::DrawCommand& dc_ ){
+void RenderBatch::draw( const DrawCommand& dc_ ){
 
 	// local copy of draw command.
-	of::DrawCommand dc = dc_;
+	DrawCommand dc = dc_;
 
 	//!TODO: commit draw command memory to gpu-update
 	// this will update dynamic offsets as a side-effect, 
@@ -32,7 +31,7 @@ void of::RenderBatch::draw( const of::DrawCommand& dc_ ){
 
 // ----------------------------------------------------------------------
 
-void of::RenderBatch::submit(){
+void RenderBatch::submit(){
 	// submit command buffer 
 	// ofLogNotice() << "submit render batch";
 
@@ -74,7 +73,7 @@ void of::RenderBatch::submit(){
 
 // ----------------------------------------------------------------------
 
-void of::RenderBatch::processDrawCommands(){
+void RenderBatch::processDrawCommands(){
 
 	// first order draw commands
 
@@ -91,7 +90,7 @@ void of::RenderBatch::processDrawCommands(){
 
 	for ( auto & dc : mDrawCommands ){
 
-		auto & info = const_cast<of::DrawCommandInfo&>( dc.getInfo() );
+		auto & info = const_cast<DrawCommandInfo&>( dc.getInfo() );
 
 		// find out pipeline state needed for this draw command
 
@@ -102,7 +101,7 @@ void of::RenderBatch::processDrawCommands(){
 			// look up pipeline in pipeline cache
 			// otherwise, create a new pipeline, then bind pipeline.
 
-			mCurrentPipelineState = std::make_unique<of::vk::GraphicsPipelineState>( dc.getInfo().getPipeline() );
+			mCurrentPipelineState = std::make_unique<GraphicsPipelineState>( dc.getInfo().getPipeline() );
 
 			// !TODO: do we need a cleanup/destructor method for this pipeline?
 			// pipelines need to be stored inside draw command - and created upfront!

@@ -2,6 +2,8 @@
 #include "vk/RenderBatch.h"
 #include "vk/Shader.h"
 
+using namespace of::vk;
+
 // setup all non-transient state for this draw object
 
 // current ubo values are stored with draw command
@@ -12,7 +14,7 @@
 
 // ----------------------------------------------------------------------
 
-of::DrawCommand::DrawCommand( const DrawCommandInfo & dcs )
+DrawCommand::DrawCommand( const DrawCommandInfo & dcs )
 	:mDrawCommandInfo( dcs ){
 
 	// Initialise Ubo blobs with default values, based on 
@@ -91,7 +93,7 @@ of::DrawCommand::DrawCommand( const DrawCommandInfo & dcs )
 
 // ------------------------------------------------------------
 
-void of::DrawCommand::commitUniforms(const std::unique_ptr<of::vk::Allocator>& alloc ){
+void DrawCommand::commitUniforms(const std::unique_ptr<Allocator>& alloc ){
 	for ( auto & descriptorSetData : mDescriptorSetData ){
 		for ( const auto & dataPair : descriptorSetData.dynamicUboData ){
 			
@@ -124,7 +126,7 @@ void of::DrawCommand::commitUniforms(const std::unique_ptr<of::vk::Allocator>& a
 
 // ------------------------------------------------------------
 
-void of::DrawCommand::commitMeshAttributes( const std::unique_ptr<of::vk::Allocator>& alloc ){
+void DrawCommand::commitMeshAttributes( const std::unique_ptr<Allocator>& alloc ){
 	// check if current draw command has a mesh - if yes, upload mesh data to buffer memory.
 	if ( mMsh ){
 		auto &mesh = *mMsh;
@@ -188,7 +190,7 @@ void of::DrawCommand::commitMeshAttributes( const std::unique_ptr<of::vk::Alloca
 // ------------------------------------------------------------
 
 
-void of::DrawCommand::setAttribute( std::string name_, ::vk::Buffer buffer_, ::vk::DeviceSize offset_ ){
+void DrawCommand::setAttribute( std::string name_, ::vk::Buffer buffer_, ::vk::DeviceSize offset_ ){
 	
 	const auto & vertexInfo = mDrawCommandInfo.getPipeline().getShader()->getVertexInfo();
 	
@@ -204,7 +206,7 @@ void of::DrawCommand::setAttribute( std::string name_, ::vk::Buffer buffer_, ::v
 
 // ------------------------------------------------------------
 
-void of::DrawCommand::setIndices( ::vk::Buffer buffer_, ::vk::DeviceSize offset_ ){
+void DrawCommand::setIndices( ::vk::Buffer buffer_, ::vk::DeviceSize offset_ ){
 	mIndexBuffer.resize( 1, nullptr );
 	mIndexOffsets.resize( 1, 0 );
 
@@ -214,7 +216,7 @@ void of::DrawCommand::setIndices( ::vk::Buffer buffer_, ::vk::DeviceSize offset_
 
 // ------------------------------------------------------------
 
-void of::DrawCommand::setMesh(const shared_ptr<ofMesh> & msh_ ){
+void DrawCommand::setMesh(const shared_ptr<ofMesh> & msh_ ){
 	mMsh = msh_;
 }
 
