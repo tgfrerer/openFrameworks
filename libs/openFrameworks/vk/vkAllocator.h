@@ -85,6 +85,10 @@ public:
 		return mBuffer;
 	};
 
+	const Settings& getSettings() const{
+		return mSettings;
+	}
+
 	bool  getMemoryAllocationInfo( const ::vk::MemoryRequirements& memReqs, ::vk::MemoryPropertyFlags memProps, ::vk::MemoryAllocateInfo& memInfo ) const;
 
 private:
@@ -94,8 +98,8 @@ private:
 	std::vector<::vk::DeviceSize>  mOffsetEnd;        // next free location for allocations
 	std::vector<uint8_t*>          mBaseAddress;      // base address for mapped memory
 
-	::vk::Buffer                   mBuffer;			  // owning
-	::vk::DeviceMemory             mDeviceMemory;	  // owning
+	::vk::Buffer                   mBuffer       = nullptr;   // owning
+	::vk::DeviceMemory             mDeviceMemory = nullptr;	  // owning
 
 	void*                          mCurrentMappedAddress = nullptr; // current address for writing
 	size_t                         mCurrentVirtualFrameIdx = 0; // currently mapped segment
