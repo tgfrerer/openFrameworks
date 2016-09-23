@@ -17,9 +17,18 @@ class BufferObject;
 
 class TransferBatch 
 {
-	const RenderContext * mRenderContext;
+	friend RenderContext;
 
+	// These methods may only be called by RenderContext
+	void submit( const ::vk::Queue& transferQueue );
+	void signalTransferComplete();
+
+private:
+
+	const RenderContext *                    mRenderContext;
 	std::list<std::shared_ptr<BufferObject>> mBatch;
+
+	TransferBatch() = delete;
 
 public:
 	
@@ -29,12 +38,13 @@ public:
 		
 	};
 
-	~TransferBatch(){};
+	~TransferBatch(){
+		// as we don't own anything, there is nothing to destroy.
+	};
 
 	bool add( std::shared_ptr<BufferObject>& buffer );
 
-	void submit( const ::vk::Device& device, const ::vk::CommandPool& cmdPool, const ::vk::Queue& transferQueue );
-	void signalTransferComplete();
+
 };
 
 

@@ -54,16 +54,14 @@ bool of::vk::TransferBatch::add( std::shared_ptr<BufferObject>& buffer ){
 
 // ----------------------------------------------------------------------
 
-void of::vk::TransferBatch::submit( const ::vk::Device& device, const ::vk::CommandPool& cmdPool, const ::vk::Queue& transferQueue ){
+void of::vk::TransferBatch::submit(const ::vk::Queue& transferQueue ){
 
 	if ( mBatch.empty() ){
 		return;
 	}
 
-	// command pool needs to be the current contexts current command pool
-	// command needs to be allocated from the virtual frames comand pool
-
-
+	auto & device  = mRenderContext->getDevice();
+	auto & cmdPool = mRenderContext->getCommandPool();
 
 	// First, we need a command buffer where we can record a pipeline barrier command into.
 	// This command - the pipeline barrier with an image barrier - will transfer the 
@@ -122,9 +120,7 @@ void of::vk::TransferBatch::submit( const ::vk::Device& device, const ::vk::Comm
 	}
 
 	// TODO: add transfer barrier
-
 	cmd.end();
-
 
 	// Submit the command buffer to the transfer queue
 
@@ -147,6 +143,8 @@ void of::vk::TransferBatch::submit( const ::vk::Device& device, const ::vk::Comm
 
 void TransferBatch::signalTransferComplete(){
 
+	//!TODO: decrease "inflight" count for each buffer
+	// found inside the batch.
 
 	mBatch.clear();
 

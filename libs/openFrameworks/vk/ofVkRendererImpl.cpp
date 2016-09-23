@@ -39,6 +39,7 @@ void ofVkRenderer::setupDefaultContext(){
 		.setPhysicalDeviceProperties( mPhysicalDeviceProperties )
 		.setSize( (1ULL << 24) * mSettings.numVirtualFrames )
 		;
+	settings.renderer = this;
 	settings.pipelineCache = getPipelineCache();
 	settings.renderArea = { 0,0, mWindowWidth, mWindowHeight };
 	mDefaultContext = make_shared<of::vk::RenderContext>(settings);
@@ -399,8 +400,8 @@ void ofVkRenderer::startRender(){
 	if ( fenceWaitResult != vk::Result::eSuccess ){
 		ofLog() << "Waiting for fence takes too long: " << vk::to_string( fenceWaitResult );
 	}
-
-	mDefaultContext->resetFence();
+	
+	mDefaultContext->begin();
 
 	// receive index for next available swapchain image
 	auto err = mSwapchain.acquireNextImage( mDefaultContext->getImageAcquiredSemaphore(), &swapIdx );
@@ -413,6 +414,8 @@ void ofVkRenderer::startRender(){
 
 void ofVkRenderer::finishRender(){
 
+	//!TODO: mDefaultContext->submitTransfer();
+	mDefaultContext->submitDraw();
 	// present swapchain frame
 	mSwapchain.queuePresent( mQueue, mSwapchain.getCurrentImageIndex(), { mDefaultContext->getSemaphoreRenderComplete()} );
 	

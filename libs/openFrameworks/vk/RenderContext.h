@@ -5,32 +5,43 @@
 #include "vk/Pipeline.h"
 #include "vk/vkAllocator.h"
 #include "vk/DrawCommand.h"
+
 /*
 
 MISSION: 
 
-	* a RenderContext needs to be able to live within its own thread - a RenderContext needs to have its own pools, and needs to be thread-safe.
+	A RenderContext needs to be able to live within its own thread - 
+	A RenderContext needs to have its own pools, 
+	and needs to be thread-safe.
+
+	One or more batches may submit into a rendercontext - the render-
+	context will accumulate vkCommandbuffers, and will submit them 
+	on submitDraw.
 
 */
+
+class ofVkRenderer; // ffdecl.
 
 namespace of{
 namespace vk{
 
 class TransferBatch; //ffdecl.
+class RenderBatch;
 
 // ------------------------------------------------------------
 
 class RenderContext
 {
+	friend RenderBatch;
 public:
 	struct Settings
 	{
+		ofVkRenderer *                         renderer = nullptr;
 		Allocator::Settings                    transientMemoryAllocatorSettings;
 		std::shared_ptr<::vk::PipelineCache>   pipelineCache;
 		::vk::Rect2D                           renderArea;
 	};
 private:
-	friend class RenderBatch;
 
 	const Settings mSettings;
 	const ::vk::Device&                         mDevice = mSettings.transientMemoryAllocatorSettings.device;
@@ -46,6 +57,7 @@ private:
 		::vk::Semaphore                         semaphoreRenderComplete;
 		::vk::Fence                             fence;
 		std::shared_ptr<TransferBatch>          transferBatch;
+		std::vector<::vk::CommandBuffer>        commandBuffers;
 	};
 
 	// Max number of descriptors per type
@@ -76,6 +88,8 @@ private:
 
 	// Re-consolidate descriptor pools if necessary
 	void updateDescriptorPool();
+	
+	void resetFence();
 
 public:
 
@@ -105,29 +119,38 @@ public:
 		mTransientMemory->reset();
 	};
 
-	::vk::CommandPool & getCommandPool();
+	const ::vk::CommandPool & getCommandPool() const;
 
 	::vk::Fence & getFence();
 	::vk::Semaphore & getImageAcquiredSemaphore();
 	::vk::Semaphore & getSemaphoreRenderComplete();
 	::vk::Framebuffer & getFramebuffer();
 
-	const ::vk::Device & getDevice(){
+	const ::vk::Device & getDevice() const{
 		return mDevice;
 	};
 
-	void resetFence();
 	void setRenderArea( const ::vk::Rect2D& renderArea );
 	const ::vk::Rect2D & getRenderArea() const;
 	const std::unique_ptr<Allocator> & RenderContext::getAllocator();
 
+
 	void setup();
 	void begin();
+	// move command buffer to the rendercontext for batched submission
+	void submit( ::vk::CommandBuffer&& commandBuffer );
+	void submitDraw();
+	// void submitTransfer();
 	void swap();
 
 };
 
 // ------------------------------------------------------------
+
+inline void RenderContext::submit(::vk::CommandBuffer && commandBuffer){
+	mVirtualFrames.at( mCurrentVirtualFrame ).commandBuffers.emplace_back(std::move(commandBuffer));
+}
+
 
 inline ::vk::Fence & RenderContext::getFence(){
 	return mVirtualFrames.at( mCurrentVirtualFrame ).fence;

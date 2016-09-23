@@ -1,14 +1,12 @@
 #include "vk/RenderBatch.h"
 #include "vk/spooky/SpookyV2.h"
 #include "vk/Shader.h"
-#include "vk/ofVkRenderer.h"
 
 using namespace of::vk;
 
 // ------------------------------------------------------------
 RenderBatch::RenderBatch( RenderContext & rpc )
 	:mRenderContext( &rpc ){
-	mRenderContext->begin();
 }
 
 // ------------------------------------------------------------
@@ -32,8 +30,9 @@ void RenderBatch::draw( const DrawCommand& dc_ ){
 // ----------------------------------------------------------------------
 
 void RenderBatch::submit(){
-	// submit command buffer 
-	// ofLogNotice() << "submit render batch";
+	// submit command buffer to context.
+	// context will submit command buffers batched to queue 
+	// at its own pleasure, but in seqence.
 
 	beginCommandBuffer();
 	{

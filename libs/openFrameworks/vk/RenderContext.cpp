@@ -1,11 +1,16 @@
 #include "vk/RenderContext.h"
 #include "vk/TransferBatch.h"
+#include "vk/ofVkRenderer.h"
 
 using namespace of::vk;
 
 // ------------------------------------------------------------
 RenderContext::RenderContext( const Settings & settings )
 	: mSettings( settings ){
+	if ( mSettings.renderer == nullptr ){
+		ofLogFatalError() << "You must specify a renderer for a context.";
+		ofExit();
+	}
 	mTransientMemory = std::make_unique<Allocator>( settings.transientMemoryAllocatorSettings );
 	mVirtualFrames.resize( mSettings.transientMemoryAllocatorSettings.frameCount );
 	mDescriptorPoolSizes.fill( 0 );
@@ -14,7 +19,7 @@ RenderContext::RenderContext( const Settings & settings )
 
 // ------------------------------------------------------------
 
-::vk::CommandPool & RenderContext::getCommandPool(){
+const ::vk::CommandPool & RenderContext::getCommandPool() const {
 	return mVirtualFrames.at( mCurrentVirtualFrame ).commandPool;
 }
   
@@ -34,9 +39,35 @@ void RenderContext::setup(){
 // ------------------------------------------------------------
 
 void RenderContext::begin(){
+	
+	resetFence();
+	mDevice.resetCommandPool( getCommandPool(), ::vk::CommandPoolResetFlagBits::eReleaseResources );
+	// clear old command buffers - resetting the command pool just invalidated them all.
+	mVirtualFrames[mCurrentVirtualFrame].commandBuffers.clear();
 	mTransientMemory->free();
+	
 	// re-create descriptor pool for current virtual frame if necessary
 	updateDescriptorPool();
+}
+
+// ------------------------------------------------------------
+
+void RenderContext::submitDraw(){
+	::vk::PipelineStageFlags wait_dst_stage_mask = ::vk::PipelineStageFlagBits::eColorAttachmentOutput;
+	::vk::SubmitInfo submitInfo;
+
+	submitInfo
+		.setWaitSemaphoreCount( 1 )
+		.setPWaitSemaphores( &getImageAcquiredSemaphore() )
+		.setPWaitDstStageMask( &wait_dst_stage_mask )
+		.setCommandBufferCount( mVirtualFrames[mCurrentVirtualFrame].commandBuffers.size() )
+		.setPCommandBuffers( mVirtualFrames[mCurrentVirtualFrame].commandBuffers.data() )
+		.setSignalSemaphoreCount( 1 )
+		.setPSignalSemaphores( &getSemaphoreRenderComplete() )
+		;
+
+	mSettings.renderer->getQueue().submit( { submitInfo }, getFence() );
+
 }
 
 // ------------------------------------------------------------

@@ -50,27 +50,18 @@ private:
 	std::list<DrawCommand> mDrawCommands;
 
 	void processDrawCommands();
-
-
 	void beginRenderPass( const ::vk::RenderPass& vkRenderPass_, const ::vk::Framebuffer& vkFramebuffer_, const ::vk::Rect2D& renderArea_ );
 	void endRenderPass();
 	void beginCommandBuffer();
 	void endCommandBuffer();
 
 public:
-
-	// !TODO: submit to context - 
-	void submit();
-
 	uint32_t nextSubPass();
-
 	void draw( const DrawCommand& dc );
+	void submit();
 };
 
 // ----------------------------------------------------------------------
-
-
-
 
 inline void RenderBatch::beginRenderPass( const ::vk::RenderPass& vkRenderPass_, const ::vk::Framebuffer& vkFramebuffer_, const ::vk::Rect2D& renderArea_ ){
 
@@ -114,7 +105,6 @@ inline uint32_t RenderBatch::nextSubPass(){
 
 inline void RenderBatch::endRenderPass(){
 	// TODO: consolidate/re-order draw commands if buffered
-	//ofLog() << "end   renderpass";
 	mVkCmd.endRenderPass();
 }
 
