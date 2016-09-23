@@ -18,6 +18,9 @@
 	A: They could be added to a per-virtual frame list of buffers which are in transition.
 	Q: But what happens if a BufferObject is again changed whilst in transition?
 
+	Transfer batch needs to be attached to context.
+	Context can signal that virtual frame fence has been reached. 
+	Once virtual frame fence was reached, we can dispose of dynamic data.
 
 */
 
@@ -26,7 +29,7 @@ bool of::vk::BufferObject::setData( void *& pData, ::vk::DeviceSize numBytes ){
 	// Writes always go to transient memory
 	if ( numBytes > mRange ){
 		ofLogError() << "Cannot write " << numBytes << " bytes into buffer of size: " << mRange;
-		return;
+		return false;
 	}
 
 	if ( mTransientAllocator->allocate( mRange, mOffset ) ){
@@ -44,7 +47,7 @@ bool of::vk::BufferObject::setData( void *& pData, ::vk::DeviceSize numBytes ){
 			} else{
 				// Buffer has already got persistent memory - this means that 
 				// the buffer could either be in-flight - 
-				// Or it could be that we are updating a buffer.
+				// Or it could be that we are updating a buffer, which was made static some frames ago.
 			}
 			mState = Usage::eDynamic;
 		} else{
@@ -63,29 +66,11 @@ const ::vk::Buffer& of::vk::BufferObject::getBuffer(){
 
 	auto & device = mTransientAllocator->getSettings().device;
 
-	if ( mTransferFence.get() != nullptr && ::vk::Result::eSuccess == device.getFenceStatus( *mTransferFence ) ){
+	//!TODO: use check if transfer complete.
+	if ( false ){
 		
-		// buffer has been successfully transferred to static memory. 
-		
-		mTransferFence.reset();
-
-		::vk::BufferCreateInfo bufferCreateInfo;
-		bufferCreateInfo
-			.setSize( mRange )
-			.setUsage(
-				::vk::BufferUsageFlagBits::eIndexBuffer
-				| ::vk::BufferUsageFlagBits::eUniformBuffer
-				| ::vk::BufferUsageFlagBits::eVertexBuffer )
-			.setSharingMode( ::vk::SharingMode::eExclusive )
-			;
-
-		auto buffer = device.createBuffer( bufferCreateInfo );
-
-		device.bindBufferMemory( buffer, mPersistentAllocator->getDeviceMemory(), mPersistentOffset );
-		mOffset = 0;
-
-		
-
+		mOffset = mPersistentOffset;
+		const_cast<::vk::Buffer&>( mBuffer ) = mPersistentAllocator->getBuffer();
 		mState = Usage::eStatic;
 	}
 
@@ -114,9 +99,9 @@ bool of::vk::TransferBatch::add( std::shared_ptr<BufferObject>& buffer ){
 	// find the first element in the batch that matches the transient and 
 	// persistent buffer targets of the current buffer - if nothing found,
 	// return last element.
-	auto it = std::find_if( mBatch.begin(), mBatch.end(), [buffer]( std::shared_ptr<BufferObject>*lhs ){
-		return buffer->getTransientAllocator()->getBuffer() == ( *lhs )->getTransientAllocator()->getBuffer()
-			&& buffer->getPersistentAllocator()->getBuffer() == ( *lhs )->getPersistentAllocator()->getBuffer();
+	auto it = std::find_if( mBatch.begin(), mBatch.end(), [buffer]( std::shared_ptr<of::vk::BufferObject> lhs ){
+		return buffer->getTransientAllocator()->getBuffer() ==  lhs->getTransientAllocator()->getBuffer()
+			&& buffer->getPersistentAllocator()->getBuffer() == lhs->getPersistentAllocator()->getBuffer();
 	} );
 
 	mBatch.insert( it, buffer );
