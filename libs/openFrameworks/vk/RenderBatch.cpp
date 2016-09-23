@@ -52,22 +52,10 @@ void RenderBatch::submit(){
 	}
 	endCommandBuffer();
 
-	::vk::PipelineStageFlags wait_dst_stage_mask = ::vk::PipelineStageFlagBits::eColorAttachmentOutput;
-	::vk::SubmitInfo submitInfo;
-
-	submitInfo
-		.setWaitSemaphoreCount( 1 )
-		.setPWaitSemaphores( &mRenderContext->getImageAcquiredSemaphore() )
-		.setPWaitDstStageMask( &wait_dst_stage_mask )
-		.setCommandBufferCount( 1 )
-		.setPCommandBuffers( &mVkCmd )
-		.setSignalSemaphoreCount( 1 )
-		.setPSignalSemaphores( &mRenderContext->getSemaphoreRenderComplete() )
-		;
-
-	const auto & renderer = dynamic_pointer_cast<ofVkRenderer>( ofGetCurrentRenderer() );
-
-	renderer->getQueue().submit( { submitInfo }, mRenderContext->getFence() );
+	mRenderContext->submit(std::move(mVkCmd));
+	
+	mVkCmd = nullptr;
+	mDrawCommands.clear();
 }
 
 // ----------------------------------------------------------------------
@@ -107,10 +95,10 @@ void RenderBatch::processDrawCommands(){
 
 			uint64_t pipelineStateHash = mCurrentPipelineState->calculateHash();
 
-			auto pipelineIt = mPipelineCache.find( pipelineStateHash );
+			auto & currentPipeline = mRenderContext->borrowPipeline( pipelineStateHash );
 
-			if ( pipelineIt == mPipelineCache.end() ){
-				mPipelineCache[pipelineStateHash] =
+			if ( currentPipeline.get() == nullptr ){
+				currentPipeline  =
 					std::shared_ptr<::vk::Pipeline>( ( new ::vk::Pipeline ),
 						[device = mRenderContext->mDevice]( ::vk::Pipeline*rhs ){
 					if ( rhs ){
@@ -118,11 +106,12 @@ void RenderBatch::processDrawCommands(){
 					}
 					delete rhs;
 				} );
+
+				*currentPipeline = mCurrentPipelineState->createPipeline( mRenderContext->mDevice, mRenderContext->mSettings.pipelineCache);
 			}
 
-			*mPipelineCache[pipelineStateHash] = mCurrentPipelineState->createPipeline( mRenderContext->mDevice, mRenderContext->mSettings.pipelineCache);
 
-			mVkCmd.bindPipeline( ::vk::PipelineBindPoint::eGraphics, *mPipelineCache[pipelineStateHash] );
+			mVkCmd.bindPipeline( ::vk::PipelineBindPoint::eGraphics, *currentPipeline );
 		}
 
 		// ----------| invariant: correct pipeline is bound

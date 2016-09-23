@@ -82,6 +82,8 @@ private:
 	size_t                             mCurrentVirtualFrame = 0;
 	const ::vk::Rect2D&                mRenderArea = mSettings.renderArea;
 
+	// cache for all pipelines ever used within this context
+	std::unordered_map<uint64_t, std::shared_ptr<::vk::Pipeline>>    mPipelineCache;
 
 	// Fetch descriptor either from cache - or allocate and initialise a descriptor based on DescriptorSetData.
 	const ::vk::DescriptorSet getDescriptorSet( uint64_t descriptorSetHash, size_t setId, const DrawCommand & drawCommand );
@@ -125,6 +127,10 @@ public:
 	::vk::Semaphore & getImageAcquiredSemaphore();
 	::vk::Semaphore & getSemaphoreRenderComplete();
 	::vk::Framebuffer & getFramebuffer();
+
+	std::shared_ptr<::vk::Pipeline>& borrowPipeline( uint64_t pipelineHash ){
+		return mPipelineCache[pipelineHash];
+	};
 
 	const ::vk::Device & getDevice() const{
 		return mDevice;

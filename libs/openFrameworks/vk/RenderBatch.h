@@ -38,9 +38,8 @@ public:
 
 private:
 
-	// current draw state for building command buffer
+	// current draw state for building command buffer - this is based on parsing the drawCommand list
 	std::unique_ptr<GraphicsPipelineState>                           mCurrentPipelineState;
-	std::unordered_map<uint64_t, std::shared_ptr<::vk::Pipeline>>    mPipelineCache;
 
 	uint32_t            mVkSubPassId = 0;
 	::vk::CommandBuffer mVkCmd;
