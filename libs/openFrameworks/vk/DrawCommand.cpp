@@ -114,7 +114,7 @@ void DrawCommand::commitUniforms(const std::unique_ptr<Allocator>& alloc ){
 
 				// store the buffer 
 				descriptorSetData.descriptorBindings[bindingNumber].buffer = alloc->getBuffer();
-				descriptorSetData.descriptorBindings[bindingNumber].range = VK_WHOLE_SIZE;
+				descriptorSetData.descriptorBindings[bindingNumber].range = dataVec.size();
 
 			} else{
 				ofLogError() << "commitUniforms: could not allocate transient memory.";
