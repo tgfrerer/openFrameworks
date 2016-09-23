@@ -93,26 +93,25 @@ ofVkRenderer::~ofVkRenderer()
 	// only ever be used for teardown. 
 	//
 	// Which is what this method is doing.
-	auto err= vkDeviceWaitIdle(mDevice);
-	assert( !err );
+	mDevice.waitIdle();
 
 	mDefaultContext.reset();
 
 	for ( auto & depthStencilResource : mDepthStencil ){
-		vkDestroyImageView( mDevice, depthStencilResource.view, nullptr );
-		vkDestroyImage( mDevice, depthStencilResource.image, nullptr );
-		vkFreeMemory( mDevice, depthStencilResource.mem, nullptr );
+		mDevice.destroyImageView( depthStencilResource.view );
+		mDevice.destroyImage( depthStencilResource.image );
+		mDevice.freeMemory( depthStencilResource.mem );
 	}
 	mDepthStencil.clear();
 
-	// reset command pool and all associated command buffers.
-	err = vkResetCommandPool( mDevice, mSetupCommandPool, VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT );
-	assert( !err );
-	vkDestroyCommandPool( mDevice, mSetupCommandPool, VK_NULL_HANDLE );
 
 	mSwapchain.reset();
 	mRenderPass.reset();
 	mPipelineCache.reset();
+
+	// reset command pool and all associated command buffers.
+	mDevice.resetCommandPool( mSetupCommandPool, ::vk::CommandPoolResetFlagBits::eReleaseResources );
+	mDevice.destroyCommandPool( mSetupCommandPool );
 
 	destroyDevice();
 	destroySurface();
