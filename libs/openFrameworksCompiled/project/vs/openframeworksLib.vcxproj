@@ -224,6 +224,7 @@
     <ClInclude Include="..\..\..\openFrameworks\vk\Swapchain.h" />
     <ClInclude Include="..\..\..\openFrameworks\vk\vkAllocator.h" />
     <ClInclude Include="..\..\..\openFrameworks\vk\Texture.h" />
+    <ClInclude Include="..\..\..\openFrameworks\vk\vkBufferObject.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\openFrameworks\3d\of3dPrimitives.cpp" />
@@ -302,6 +303,7 @@
     <ClCompile Include="..\..\..\openFrameworks\vk\Pipeline.cpp" />
     <ClCompile Include="..\..\..\openFrameworks\vk\Swapchain.cpp" />
     <ClCompile Include="..\..\..\openFrameworks\vk\ofVkRendererImpl.cpp" />
+    <ClCompile Include="..\..\..\openFrameworks\vk\vkBufferObject.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\..\openFrameworks\3d\ofMesh.inl" />
