@@ -83,7 +83,7 @@ private:
 	const ::vk::Rect2D&                mRenderArea = mSettings.renderArea;
 
 	// cache for all pipelines ever used within this context
-	std::unordered_map<uint64_t, std::shared_ptr<::vk::Pipeline>>    mPipelineCache;
+	std::map<uint64_t, std::shared_ptr<::vk::Pipeline>>    mPipelineCache;
 
 	// Fetch descriptor either from cache - or allocate and initialise a descriptor based on DescriptorSetData.
 	const ::vk::DescriptorSet getDescriptorSet( uint64_t descriptorSetHash, size_t setId, const DrawCommand & drawCommand );
@@ -153,7 +153,7 @@ public:
 
 // ------------------------------------------------------------
 
-inline void RenderContext::submit(::vk::CommandBuffer && commandBuffer){
+inline void RenderContext::submit(::vk::CommandBuffer && commandBuffer) {
 	mVirtualFrames.at( mCurrentVirtualFrame ).commandBuffers.emplace_back(std::move(commandBuffer));
 }
 

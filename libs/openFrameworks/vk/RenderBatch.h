@@ -51,8 +51,6 @@ private:
 	void processDrawCommands();
 	void beginRenderPass( const ::vk::RenderPass& vkRenderPass_, const ::vk::Framebuffer& vkFramebuffer_, const ::vk::Rect2D& renderArea_ );
 	void endRenderPass();
-	void beginCommandBuffer();
-	void endCommandBuffer();
 
 public:
 	uint32_t nextSubPass();
@@ -106,35 +104,6 @@ inline void RenderBatch::endRenderPass(){
 	// TODO: consolidate/re-order draw commands if buffered
 	mVkCmd.endRenderPass();
 }
-
-// ----------------------------------------------------------------------
-
-inline void RenderBatch::beginCommandBuffer(){
-	//ofLog() << "begin command buffer";
-
-
-	if ( !mVkCmd ){
-		::vk::CommandBufferAllocateInfo commandBufferAllocateInfo;
-		commandBufferAllocateInfo
-			.setCommandPool( mRenderContext->getCommandPool() )
-			.setLevel( ::vk::CommandBufferLevel::ePrimary )
-			.setCommandBufferCount( 1 )
-			;
-		mVkCmd = ( mRenderContext->getDevice().allocateCommandBuffers( commandBufferAllocateInfo ) ).front();
-	}
-
-	mVkCmd.begin( { ::vk::CommandBufferUsageFlagBits::eOneTimeSubmit } );
-
-}
-
-// ----------------------------------------------------------------------
-
-inline void RenderBatch::endCommandBuffer(){
-	//ofLog() << "end   command buffer";
-	mVkCmd.end();
-}
-
-
 
 // ----------------------------------------------------------------------
 

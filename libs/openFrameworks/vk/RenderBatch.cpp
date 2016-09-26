@@ -34,7 +34,17 @@ void RenderBatch::submit(){
 	// context will submit command buffers batched to queue 
 	// at its own pleasure, but in seqence.
 
-	beginCommandBuffer();
+	if ( !mVkCmd ){
+		::vk::CommandBufferAllocateInfo commandBufferAllocateInfo;
+		commandBufferAllocateInfo
+			.setCommandPool( mRenderContext->getCommandPool() )
+			.setLevel( ::vk::CommandBufferLevel::ePrimary )
+			.setCommandBufferCount( 1 )
+			;
+		mVkCmd = ( mRenderContext->getDevice().allocateCommandBuffers( commandBufferAllocateInfo ) ).front();
+	}
+
+	mVkCmd.begin( { ::vk::CommandBufferUsageFlagBits::eOneTimeSubmit } );
 	{
 		// set dynamic viewport
 		::vk::Viewport vp;
@@ -50,7 +60,7 @@ void RenderBatch::submit(){
 
 		processDrawCommands();
 	}
-	endCommandBuffer();
+	mVkCmd.end();
 
 	mRenderContext->submit(std::move(mVkCmd));
 	
@@ -89,9 +99,6 @@ void RenderBatch::processDrawCommands(){
 			// otherwise, create a new pipeline, then bind pipeline.
 
 			mCurrentPipelineState = std::make_unique<GraphicsPipelineState>( dc.getInfo().getPipeline() );
-
-			// !TODO: do we need a cleanup/destructor method for this pipeline?
-			// pipelines need to be stored inside draw command - and created upfront!
 
 			uint64_t pipelineStateHash = mCurrentPipelineState->calculateHash();
 

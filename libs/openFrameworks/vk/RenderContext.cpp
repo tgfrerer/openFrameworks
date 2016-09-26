@@ -30,7 +30,7 @@ void RenderContext::setup(){
 		f.semaphoreImageAcquired = mDevice.createSemaphore( {} );
 		f.semaphoreRenderComplete = mDevice.createSemaphore( {} );
 		f.fence = mDevice.createFence( { ::vk::FenceCreateFlagBits::eSignaled } );	/* Fence starts as "signaled" */
-		f.commandPool = mDevice.createCommandPool( { ::vk::CommandPoolCreateFlagBits::eResetCommandBuffer } );
+		f.commandPool = mDevice.createCommandPool( { ::vk::CommandPoolCreateFlagBits::eTransient } );
 		f.transferBatch = std::make_unique<TransferBatch>(this);
 	}
 	mTransientMemory->setup();
@@ -41,11 +41,22 @@ void RenderContext::setup(){
 void RenderContext::begin(){
 	
 	resetFence();
-	mDevice.resetCommandPool( getCommandPool(), ::vk::CommandPoolResetFlagBits::eReleaseResources );
-	// clear old command buffers - resetting the command pool just invalidated them all.
+
+	// free old command buffers - this is necessary since otherwise you end up with 
+	// leaking them.
+	if ( !mVirtualFrames[mCurrentVirtualFrame].commandBuffers.empty() ){
+		mDevice.freeCommandBuffers( getCommandPool(), mVirtualFrames[mCurrentVirtualFrame].commandBuffers );
+	}
 	mVirtualFrames[mCurrentVirtualFrame].commandBuffers.clear();
-	mTransientMemory->free();
 	
+	mDevice.resetCommandPool( getCommandPool(), ::vk::CommandPoolResetFlagBits::eReleaseResources );
+
+	mTransientMemory->free();
+
+	if ( mVirtualFrames[mCurrentVirtualFrame].transferBatch ){
+		mVirtualFrames[mCurrentVirtualFrame].transferBatch->signalTransferComplete();
+	}
+
 	// re-create descriptor pool for current virtual frame if necessary
 	updateDescriptorPool();
 }
@@ -67,7 +78,6 @@ void RenderContext::submitDraw(){
 		;
 
 	mSettings.renderer->getQueue().submit( { submitInfo }, getFence() );
-
 }
 
 // ------------------------------------------------------------
