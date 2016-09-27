@@ -83,7 +83,6 @@ void Teapot::draw( of::vk::RenderBatch& rb ){
 
 	projectionMatrix = clip * mCam.getProjectionMatrix( ofGetCurrentViewport() );
 
-
 	glm::mat4x4 modelMatrix;
 	modelMatrix = glm::rotate( float(TWO_PI * ( ( ofGetFrameNum() % 360 ) / 360.f )), glm::vec3({ 0.f, 0.f, 1.f}) ) * modelMatrix;
 

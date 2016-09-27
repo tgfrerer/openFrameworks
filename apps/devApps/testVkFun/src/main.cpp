@@ -10,7 +10,7 @@ int main(){
 	settings.setVkVersion( 1, 0, 26 );
 	settings.numSwapchainImages = 3;
 	settings.numVirtualFrames = 3;
-	settings.swapchainType = ::vk::PresentModeKHR::eFifo;
+	settings.swapchainType = ::vk::PresentModeKHR::eMailbox;
 
 #ifdef NDEBUG
 	settings.useDebugLayers = false;
