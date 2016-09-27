@@ -1,8 +1,10 @@
 #include "ofApp.h"
 #include "vk/ofVkRenderer.h"
 #include "vk/DrawCommand.h"
-
 #include "vk/RenderBatch.h"
+
+#define FRAME_RATE 90
+bool isFrameLocked = true;
 
 void Teapot::setup(){
 	auto & renderer = dynamic_pointer_cast<ofVkRenderer>( ofGetCurrentRenderer() );
@@ -64,25 +66,29 @@ void Teapot::recompile(){
 
 //--------------------------------------------------------------
 
-void Teapot::draw(of::vk::RenderBatch& rb){
+void Teapot::draw( of::vk::RenderBatch& rb ){
 
 	// update uniforms inside the draw command 
-	
+
 	auto projectionMatrix = glm::mat4x4();
 	static ofCamera mCam;
-	
-	mCam.setPosition( { 0,0, mCam.getImagePlaneDistance() });
+
+	mCam.setPosition( { 0,0, mCam.getImagePlaneDistance() } );
 	mCam.lookAt( { 0,0,0 } );
 
 	static const glm::mat4x4 clip( 1.0f, 0.0f, 0.0f, 0.0f,
 		0.0f, -1.0f, 0.0f, 0.0f,
 		0.0f, 0.0f, 0.5f, 0.0f,
 		0.0f, 0.0f, 0.5f, 1.0f );
-	
-	projectionMatrix =  clip * mCam.getProjectionMatrix( ofGetCurrentViewport() ) ;
+
+	projectionMatrix = clip * mCam.getProjectionMatrix( ofGetCurrentViewport() );
 
 
-	dc->setUniform( "modelMatrix", glm::mat4x4() );
+	glm::mat4x4 modelMatrix;
+	modelMatrix = glm::rotate( float(TWO_PI * ( ( ofGetFrameNum() % 360 ) / 360.f )), glm::vec3({ 0.f, 0.f, 1.f}) ) * modelMatrix;
+
+	dc->setUniform( "modelMatrix", modelMatrix );
+
 	dc->setUniform( "projectionMatrix", projectionMatrix );
 	dc->setUniform( "viewMatrix", mCam.getModelViewMatrix() );
 	dc->setUniform( "globalColor", ofFloatColor::magenta );
@@ -116,6 +122,7 @@ void ofApp::setup(){
 	//mRenderContext = renderer->getDefaultContext();
 
 	mTeapot.setup();
+	ofSetFrameRate( FRAME_RATE );
 }
 
 //--------------------------------------------------------------
@@ -147,8 +154,10 @@ void ofApp::draw(){
 	mTeapot.draw( batch );
 
 
-	batch.submit();
+	batch.submit();	// this will build, but not yet submit Vk Commandbuffer
 
+
+	ofSetWindowTitle( ofToString( ofGetFrameRate(), 2, ' ' ) );
 }
 
 //--------------------------------------------------------------
@@ -160,7 +169,10 @@ void ofApp::keyPressed(int key){
 void ofApp::keyReleased(int key){
 	if ( key == ' ' ){
 		mTeapot.recompile();
-  }
+	} else if ( key == 'l' ){
+		isFrameLocked ^= true;
+		ofSetFrameRate( isFrameLocked ? FRAME_RATE : 0);
+	}
 }
 
 //--------------------------------------------------------------

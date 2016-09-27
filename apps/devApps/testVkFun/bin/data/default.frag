@@ -27,6 +27,6 @@ void main()
   vec4 vertexColor = inColor;
   
   // set the actual fragment color here
-  outFragColor = normalColor;
+  outFragColor = inColor;
   // outFragColor = vertexColor;
 }
