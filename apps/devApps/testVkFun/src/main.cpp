@@ -7,7 +7,7 @@ int main(){
 	//ofSetLoggerChannel( std::make_shared<ofConsoleLoggerChannel>() );
 
 	ofVkWindowSettings settings;
-	settings.setVkVersion( 1, 0, 21 );
+	settings.setVkVersion( 1, 0, 26 );
 	settings.numSwapchainImages = 3;
 	settings.numVirtualFrames = 3;
 	settings.swapchainType = ::vk::PresentModeKHR::eFifo;
