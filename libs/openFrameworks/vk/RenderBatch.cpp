@@ -178,7 +178,7 @@ void RenderBatch::processDrawCommands(){
 		{
 
 			const auto & vertexOffsets = dc.getVertexOffsets();
-			const auto & indexOffsets  = dc.getIndexOffsets();
+			const auto & indexOffset  = dc.getIndexOffsets();
 
 			const auto & vertexBuffers = dc.getVertexBuffers();
 			const auto & indexBuffer   = dc.getIndexBuffer();
@@ -202,12 +202,12 @@ void RenderBatch::processDrawCommands(){
 
 			mVkCmd.bindVertexBuffers( 0, vertexBuffers, vertexOffsets );
 
-			if ( indexBuffer.empty() ){
+			if ( !indexBuffer ){
 				// non-indexed draw
 				mVkCmd.draw( uint32_t( dc.getNumVertices() ), 1, 0, 0 ); //last param was 1
 			} else{
 				// indexed draw
-				mVkCmd.bindIndexBuffer( indexBuffer[0], indexOffsets[0], ::vk::IndexType::eUint32 );
+				mVkCmd.bindIndexBuffer( indexBuffer, indexOffset, ::vk::IndexType::eUint32 );
 				mVkCmd.drawIndexed( dc.getNumIndices(), 1, 0, 0, 0 ); // last param was 1
 			}
 		}

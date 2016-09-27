@@ -182,6 +182,9 @@ void DrawCommand::commitMeshAttributes( const std::unique_ptr<Allocator>& alloc 
 				setIndices( alloc->getBuffer(), offset );
 				mNumIndices = indices.size();
 			}
+		} else{
+			mIndexBuffer = nullptr;
+			mIndexOffsets = 0;
 		}
 
 	}
@@ -195,10 +198,10 @@ void DrawCommand::setAttribute( std::string name_, ::vk::Buffer buffer_, ::vk::D
 	const auto & vertexInfo = mDrawCommandInfo.getPipeline().getShader()->getVertexInfo();
 	
 	const auto & attributeNames = vertexInfo.attributeNames;
-	auto it = std::find(attributeNames.begin(),attributeNames.end(),name_);
+	auto it = std::find( attributeNames.begin(), attributeNames.end(), name_ );
 	
 	if ( it != attributeNames.end() ){
-		size_t index = (it - attributeNames.begin());
+		size_t index = ( it - attributeNames.begin() );
 		mVertexBuffers[index] = buffer_;
 		mVertexOffsets[index] = offset_;
 	}
@@ -207,11 +210,8 @@ void DrawCommand::setAttribute( std::string name_, ::vk::Buffer buffer_, ::vk::D
 // ------------------------------------------------------------
 
 void DrawCommand::setIndices( ::vk::Buffer buffer_, ::vk::DeviceSize offset_ ){
-	mIndexBuffer.resize( 1, nullptr );
-	mIndexOffsets.resize( 1, 0 );
-
-	mIndexBuffer[0] = buffer_;
-	mIndexOffsets[0] = offset_;
+	mIndexBuffer = buffer_;
+	mIndexOffsets = offset_;
 }
 
 // ------------------------------------------------------------

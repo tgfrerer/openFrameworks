@@ -128,10 +128,10 @@ private:      /* transient data */
 	std::vector<::vk::DeviceSize> mVertexOffsets;
 
 	// 1-or-0 element buffer of indices for this draw command
-	std::vector<::vk::Buffer> mIndexBuffer;
+	::vk::Buffer mIndexBuffer = nullptr;
 
 	// offsets into buffer for index data - this is optional
-	std::vector<::vk::DeviceSize> mIndexOffsets;
+	::vk::DeviceSize mIndexOffsets = 0;
 
 	uint32_t mNumIndices = 0;
 	uint32_t mNumVertices = 0;
@@ -154,13 +154,13 @@ public:
 	const std::vector<::vk::DeviceSize>& getVertexOffsets(){
 		return mVertexOffsets;
 	}
-	const std::vector<::vk::DeviceSize>& getIndexOffsets(){
+	const ::vk::DeviceSize& getIndexOffsets(){
 		return mIndexOffsets;
 	}
 	const std::vector<::vk::Buffer>& getVertexBuffers(){
 		return mVertexBuffers;
 	}
-	const std::vector<::vk::Buffer>& getIndexBuffer(){
+	const ::vk::Buffer& getIndexBuffer(){
 		return mIndexBuffer;
 	}
 	const uint32_t getNumIndices(){
