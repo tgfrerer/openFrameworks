@@ -52,6 +52,9 @@
     <Filter Include="libs\openFrameworks\vk\spooky">
       <UniqueIdentifier>{9d97bcdb-c7d3-4928-adce-1409e2e9fa5d}</UniqueIdentifier>
     </Filter>
+    <Filter Include="libs\openFrameworks\gl\shaders">
+      <UniqueIdentifier>{5f96bf6a-8a5d-485f-a2ec-68642528d3ce}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\openFrameworks\ofMain.h">
@@ -590,5 +593,11 @@
     <ClCompile Include="..\..\..\openFrameworks\vk\TransferBatch.cpp">
       <Filter>libs\openFrameworks\vk</Filter>
     </ClCompile>
+    <None Include="..\..\..\openFrameworks\gl\shaders\phong.frag">
+      <Filter>libs\openFrameworks\gl\shaders</Filter>
+    </None>
+    <None Include="..\..\..\openFrameworks\gl\shaders\phong.vert">
+      <Filter>libs\openFrameworks\gl\shaders</Filter>
+    </None>
   </ItemGroup>
 </Project>
