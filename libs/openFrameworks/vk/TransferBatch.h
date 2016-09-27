@@ -23,9 +23,14 @@ class TransferBatch
 	void submit( const ::vk::Queue& transferQueue );
 	void signalTransferComplete();
 
+
 private:
 
-	const RenderContext *                    mRenderContext;
+	RenderContext *                    mRenderContext;
+	
+	// batch which accumulates all submitted batches whilst the frame is in flight
+	std::list<std::shared_ptr<BufferObject>> mInflightBatch;
+	// batch which accumulates transfers until submit
 	std::list<std::shared_ptr<BufferObject>> mBatch;
 
 	TransferBatch() = delete;

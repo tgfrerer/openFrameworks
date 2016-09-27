@@ -414,7 +414,6 @@ void ofVkRenderer::startRender(){
 
 void ofVkRenderer::finishRender(){
 
-	//!TODO: mDefaultContext->submitTransfer();
 	mDefaultContext->submitDraw();
 	// present swapchain frame
 	mSwapchain.queuePresent( mQueue, mSwapchain.getCurrentImageIndex(), { mDefaultContext->getSemaphoreRenderComplete()} );

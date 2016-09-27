@@ -49,6 +49,7 @@ bool BufferObject::setData( void *& pData, ::vk::DeviceSize numBytes ){
 				// Buffer has already got persistent memory - this means that 
 				// the buffer could either be in-flight - 
 				// Or it could be that we are updating a buffer, which was made static some frames ago.
+				// 
 			}
 			mState = Usage::eDynamic;
 		} else{
@@ -64,17 +65,6 @@ bool BufferObject::setData( void *& pData, ::vk::DeviceSize numBytes ){
 // ----------------------------------------------------------------------
 
 const ::vk::Buffer& BufferObject::getBuffer(){
-
-	auto & device = mTransientAllocator->getSettings().device;
-
-	//!TODO: use check if transfer complete.
-	if ( false ){
-		
-		mOffset = mPersistentOffset;
-		const_cast<::vk::Buffer&>( mBuffer ) = mPersistentAllocator->getBuffer();
-		mState = Usage::eStatic;
-	}
-
 	return mBuffer;
 }
 

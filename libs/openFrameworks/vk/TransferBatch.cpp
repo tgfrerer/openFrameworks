@@ -119,24 +119,15 @@ void of::vk::TransferBatch::submit(const ::vk::Queue& transferQueue ){
 
 	}
 
-	// TODO: add transfer barrier
+	// CONSIDER: add transfer barrier
 	cmd.end();
 
-	// Submit the command buffer to the transfer queue
+	mRenderContext->submit( std::move( cmd ) );
 
-	::vk::SubmitInfo submitInfo;
-	submitInfo
-		.setWaitSemaphoreCount( 0 )
-		.setPWaitSemaphores( nullptr )
-		.setPWaitDstStageMask( nullptr )
-		.setCommandBufferCount( 1 )
-		.setPCommandBuffers( &cmd )
-		.setSignalSemaphoreCount( 0 )
-		.setPSignalSemaphores( nullptr )
-		;
+	cmd = nullptr;
 
-	transferQueue.submit( { submitInfo }, nullptr );
-
+	mInflightBatch.insert( mInflightBatch.end(), mBatch.begin(), mBatch.end());
+	mBatch.clear();
 }
 
 // ----------------------------------------------------------------------
@@ -146,7 +137,11 @@ void TransferBatch::signalTransferComplete(){
 	//!TODO: decrease "inflight" count for each buffer
 	// found inside the batch.
 
-	mBatch.clear();
+	for ( auto & b : mInflightBatch ){
+		b->setTransferComplete();
+	}
+
+	mInflightBatch.clear();
 
 }
 

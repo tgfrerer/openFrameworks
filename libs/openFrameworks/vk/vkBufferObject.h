@@ -42,6 +42,7 @@ class BufferObject
 	::vk::DeviceSize                          mOffset = 0;
 	::vk::DeviceSize                          mPersistentOffset = 0;
 	bool                                      mHasPersistentMemory = false;
+	
 
 	enum class Usage
 	{
@@ -70,6 +71,8 @@ public:
 	const ::vk::DeviceSize getRange() const;;
 	const ::vk::DeviceSize getOffset() const;;
 
+	void setTransferComplete();
+
 	const std::shared_ptr<Allocator>& getPersistentAllocator(){
 		return mPersistentAllocator;
 	}
@@ -92,12 +95,19 @@ inline const ::vk::DeviceSize BufferObject::getOffset() const{
 	return mOffset;
 }
 
+inline void BufferObject::setTransferComplete(){
+	if ( mState == Usage::eDynamic ){
+		mState  = Usage::eStatic;
+		mOffset = mPersistentOffset;
+		const_cast<::vk::Buffer&>( mBuffer ) = mPersistentAllocator->getBuffer();
+	}
+}
 
 }  // end namespace of::vk
 }  // end namespace of
 
 
-   // ----------------------------------------------------------------------
+// ----------------------------------------------------------------------
 
 
 
