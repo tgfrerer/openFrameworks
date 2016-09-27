@@ -6,12 +6,19 @@
 namespace of{
 namespace vk{
 
-// TODO: transfer batch needs to have virtual frames as well, 
-// And must keep transfers (and transfer command buffers!) alife until the 
-// context signals that the transfer for a part	is complete.
-// as the command buffer is allocated from the virtual frame, resetting 
-// the virtual frame command pool will take care of removing the command
-// buffer - so we don't have trouble with that.
+/*
+
+TransferBatch is owned by a rendercontext - there is one transferbatch per virtual frame 
+in each rendercontext. This is necessary so that buffers may be marked as "transferred" 
+once the virtual frame has made the round-trip across the virtual frame fence, meaning
+that all command buffers within the virtual frame have completed execution.
+
+Transfer command buffers will be sent to the queue before draw, in the queue submission 
+triggered by the rendercontext. This submission is bounded by a fence. Once that virtual 
+frame fence has been waited upon, we can assume safely that all draw commands, and all 
+transfers have completed execution.
+
+*/
 
 class BufferObject;
 
