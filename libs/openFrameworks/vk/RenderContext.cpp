@@ -31,7 +31,6 @@ void RenderContext::setup(){
 		f.semaphoreRenderComplete = mDevice.createSemaphore( {} );
 		f.fence = mDevice.createFence( { ::vk::FenceCreateFlagBits::eSignaled } );	/* Fence starts as "signaled" */
 		f.commandPool = mDevice.createCommandPool( { ::vk::CommandPoolCreateFlagBits::eTransient } );
-		f.transferBatch = std::make_unique<TransferBatch>(this);
 	}
 	mTransientMemory->setup();
 }
@@ -52,10 +51,6 @@ void RenderContext::begin(){
 	mDevice.resetCommandPool( getCommandPool(), ::vk::CommandPoolResetFlagBits::eReleaseResources );
 
 	mTransientMemory->free();
-
-	if ( mVirtualFrames[mCurrentVirtualFrame].transferBatch ){
-		mVirtualFrames[mCurrentVirtualFrame].transferBatch->signalTransferComplete();
-	}
 
 	// re-create descriptor pool for current virtual frame if necessary
 	updateDescriptorPool();
@@ -285,5 +280,4 @@ void RenderContext::updateDescriptorPool(){
 void RenderContext::resetFence(){
 	mDevice.resetFences( { mVirtualFrames.at( mCurrentVirtualFrame ).fence } );
 	//! TODO: once the fence has been reset, transfers are complete.
-	mVirtualFrames.at( mCurrentVirtualFrame ).transferBatch->signalTransferComplete();
 }

@@ -54,7 +54,7 @@ bool of::vk::TransferBatch::add( std::shared_ptr<BufferObject>& buffer ){
 
 // ----------------------------------------------------------------------
 
-void of::vk::TransferBatch::submit(const ::vk::Queue& transferQueue ){
+void of::vk::TransferBatch::submit(){
 
 	if ( mBatch.empty() ){
 		return;

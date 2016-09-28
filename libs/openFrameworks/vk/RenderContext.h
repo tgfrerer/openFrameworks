@@ -56,7 +56,6 @@ private:
 		::vk::Semaphore                         semaphoreImageAcquired;
 		::vk::Semaphore                         semaphoreRenderComplete;
 		::vk::Fence                             fence;
-		std::shared_ptr<TransferBatch>          transferBatch;
 		std::vector<::vk::CommandBuffer>        commandBuffers;
 	};
 

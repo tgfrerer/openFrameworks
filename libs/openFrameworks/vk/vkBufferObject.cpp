@@ -25,7 +25,7 @@ using namespace of::vk;
 
 */
 
-bool BufferObject::setData( void *& pData, ::vk::DeviceSize numBytes ){
+bool BufferObject::setData( void * pData, ::vk::DeviceSize numBytes ){
 
 	// Writes always go to transient memory
 	if ( numBytes > mRange ){
@@ -35,14 +35,14 @@ bool BufferObject::setData( void *& pData, ::vk::DeviceSize numBytes ){
 
 	if ( mTransientAllocator->allocate( mRange, mOffset ) ){
 		
-		const_cast<::vk::Buffer&>(mBuffer) = mTransientAllocator->getBuffer();
+		mBuffer = mTransientAllocator->getBuffer();
 
 		void* writeAddr = nullptr;
 		mTransientAllocator->map( writeAddr );
 		memcpy( writeAddr, pData, mRange );
 
 		if ( mPersistentAllocator ){
-			if ( mHasPersistentMemory = false){
+			if ( mHasPersistentMemory == false){
 				// try to allocate persistent memory
 				mHasPersistentMemory = mPersistentAllocator->allocate( mRange, mPersistentOffset );
 			} else{
@@ -71,6 +71,6 @@ const ::vk::Buffer& BufferObject::getBuffer(){
 // ----------------------------------------------------------------------
 
 bool BufferObject::needsTransfer(){
-	return ( mPersistentAllocator.get() != nullptr && mState == Usage::eDynamic );
+	return ( mPersistentAllocator != nullptr && mState == Usage::eDynamic );
 }
 

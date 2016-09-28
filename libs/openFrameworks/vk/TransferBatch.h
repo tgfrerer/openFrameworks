@@ -27,7 +27,6 @@ class TransferBatch
 	friend RenderContext;
 
 	// These methods may only be called by RenderContext
-	void submit( const ::vk::Queue& transferQueue );
 	void signalTransferComplete();
 
 
@@ -56,6 +55,7 @@ public:
 
 	bool add( std::shared_ptr<BufferObject>& buffer );
 
+	void submit();
 
 };
 

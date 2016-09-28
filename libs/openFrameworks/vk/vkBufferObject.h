@@ -37,7 +37,7 @@ class BufferObject
 {
 	friend class TransferBatch;
 	
-	const ::vk::Buffer&                       mBuffer ;
+	::vk::Buffer                              mBuffer ;
 	const ::vk::DeviceSize                    mRange  = 0;
 	::vk::DeviceSize                          mOffset = 0;
 	::vk::DeviceSize                          mPersistentOffset = 0;
@@ -51,12 +51,12 @@ class BufferObject
 		eStatic
 	} mState = Usage::eStream;
 
-	const std::shared_ptr<of::vk::Allocator> mTransientAllocator;
-	const std::shared_ptr<of::vk::Allocator> mPersistentAllocator;
+	of::vk::Allocator* mTransientAllocator  = nullptr;
+	of::vk::Allocator* mPersistentAllocator = nullptr;
 
 public:
 
-	BufferObject(::vk::DeviceSize numBytes_, std::shared_ptr<Allocator>& transientAllocator_, const std::shared_ptr<Allocator> persistentAllocator_ = nullptr )
+	BufferObject(::vk::DeviceSize numBytes_, Allocator* transientAllocator_, Allocator* persistentAllocator_ = nullptr )
 		: mRange( numBytes_ )
 		, mTransientAllocator(transientAllocator_)
 		, mPersistentAllocator(persistentAllocator_)
@@ -65,7 +65,7 @@ public:
 	};
 
 	// write number of bytes (read from &pData) to buffer memory
-	bool setData( void*&pData, ::vk::DeviceSize numBytes );
+	bool setData( void* pData, ::vk::DeviceSize numBytes );
 
 	const ::vk::Buffer& getBuffer();
 	const ::vk::DeviceSize getRange() const;;
@@ -73,11 +73,11 @@ public:
 
 	void setTransferComplete();
 
-	const std::shared_ptr<Allocator>& getPersistentAllocator(){
+	const Allocator* getPersistentAllocator(){
 		return mPersistentAllocator;
 	}
 
-	const std::shared_ptr<Allocator>& getTransientAllocator(){
+	const Allocator* getTransientAllocator(){
 		return mTransientAllocator;
 	}
 
@@ -99,7 +99,7 @@ inline void BufferObject::setTransferComplete(){
 	if ( mState == Usage::eDynamic ){
 		mState  = Usage::eStatic;
 		mOffset = mPersistentOffset;
-		const_cast<::vk::Buffer&>( mBuffer ) = mPersistentAllocator->getBuffer();
+		mBuffer = mPersistentAllocator->getBuffer();
 	}
 }
 

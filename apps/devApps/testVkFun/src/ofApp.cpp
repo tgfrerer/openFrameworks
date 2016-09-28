@@ -6,8 +6,10 @@
 #define EXAMPLE_TARGET_FRAME_RATE 90
 bool isFrameLocked = true;
 
+std::shared_ptr<ofVkRenderer> renderer = nullptr;
+
+
 void Teapot::setup(){
-	auto & renderer = dynamic_pointer_cast<ofVkRenderer>( ofGetCurrentRenderer() );
 
 	::vk::RenderPass & renderPass = *renderer->getDefaultRenderPass();  // needs to be created upfront
 
@@ -83,8 +85,7 @@ void Teapot::draw( of::vk::RenderBatch& rb ){
 
 	projectionMatrix = clip * mCam.getProjectionMatrix( ofGetCurrentViewport() );
 
-	glm::mat4x4 modelMatrix;
-	modelMatrix = glm::rotate( float(TWO_PI * ( ( ofGetFrameNum() % 360 ) / 360.f )), glm::vec3({ 0.f, 0.f, 1.f}) ) * modelMatrix;
+	glm::mat4x4 modelMatrix = glm::rotate( float(TWO_PI * ( ( ofGetFrameNum() % 360 ) / 360.f )), glm::vec3({ 0.f, 0.f, 1.f}) );
 
 	dc->setUniform( "modelMatrix", modelMatrix );
 
@@ -99,26 +100,14 @@ void Teapot::draw( of::vk::RenderBatch& rb ){
 
 }
 
-
-
 //--------------------------------------------------------------
+
 void ofApp::setup(){
 	ofDisableSetupScreen();
-	const auto & renderer = dynamic_pointer_cast<ofVkRenderer>( ofGetCurrentRenderer() );
-
-	//of::RenderContext::Settings renderContextSettings;
-	//
-	// renderContextSettings.transientMemoryAllocatorSettings
-	//	.setPhysicalDeviceMemoryProperties ( renderer->getVkPhysicalDeviceMemoryProperties() )
-	//	.setPhysicalDeviceProperties       ( renderer->getVkPhysicalDeviceProperties() )
-	//	.setFrameCount                     ( 2 )
-	//	.setDevice                         ( renderer->getVkDevice() )
-	//	.setSize                           ( ( 1UL << 24 ) * 2)  // (16 MB * number of frames))
-	//	;
+	renderer = dynamic_pointer_cast<ofVkRenderer>( ofGetCurrentRenderer() );
 
 	//mRenderContext = std::make_unique<of::RenderContext>(renderContextSettings);
 
-	//mRenderContext = renderer->getDefaultContext();
 
 	mTeapot.setup();
 	ofSetFrameRate( EXAMPLE_TARGET_FRAME_RATE );
@@ -127,16 +116,11 @@ void ofApp::setup(){
 //--------------------------------------------------------------
 
 void ofApp::update(){
-	
-
 
 }
 
 //--------------------------------------------------------------
 void ofApp::draw(){
-	const auto & renderer = dynamic_pointer_cast<ofVkRenderer>( ofGetCurrentRenderer() );
-	
-	of::vk::RenderBatch batch( *renderer->getDefaultContext() /*, reorder = true*/ );
 	
 	// a renderbatch 
 	
@@ -149,7 +133,7 @@ void ofApp::draw(){
 	// the framebuffer is created inside the renderer - and it is the renderer which
 	// will connect the default rendercontext/framebuffer to the outputs of the swapchain.
 	//
-
+	of::vk::RenderBatch batch{ *renderer->getDefaultContext() };
 
 	mTeapot.draw( batch );
 	mTeapot.draw( batch );
