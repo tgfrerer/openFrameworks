@@ -73,8 +73,12 @@ void Allocator::setup(){
 	mBaseAddress.clear();
 	mBaseAddress.resize( mSettings.frameCount, 0 );
 
-	// Map full memory range for CPU write access
-	mBaseAddress[0] = (uint8_t*)mSettings.device.mapMemory( mDeviceMemory, 0, VK_WHOLE_SIZE );
+	if ( mSettings.memFlags & ::vk::MemoryPropertyFlagBits::eHostVisible ){
+		// Map full memory range for CPU write access
+		mBaseAddress[0] = (uint8_t*)mSettings.device.mapMemory( mDeviceMemory, 0, VK_WHOLE_SIZE );
+	} else{
+		mBaseAddress[0] = 0;
+	}
 
 	for ( uint32_t i = 1; i != mBaseAddress.size(); ++i ){
 		// offset the pointer by full frame sizes
@@ -90,7 +94,9 @@ void Allocator::setup(){
 
 void of::vk::Allocator::reset(){
 	if ( mDeviceMemory ){
-		mSettings.device.unmapMemory( mDeviceMemory );
+		if ( mSettings.memFlags & ::vk::MemoryPropertyFlagBits::eHostVisible ){
+			mSettings.device.unmapMemory( mDeviceMemory );
+		}
 		mSettings.device.freeMemory( mDeviceMemory );
 		mDeviceMemory = nullptr;
 	}
