@@ -3,7 +3,7 @@
 #include "vk/DrawCommand.h"
 #include "vk/RenderBatch.h"
 
-#define FRAME_RATE 90
+#define EXAMPLE_TARGET_FRAME_RATE 90
 bool isFrameLocked = true;
 
 void Teapot::setup(){
@@ -121,11 +121,14 @@ void ofApp::setup(){
 	//mRenderContext = renderer->getDefaultContext();
 
 	mTeapot.setup();
-	ofSetFrameRate( FRAME_RATE );
+	ofSetFrameRate( EXAMPLE_TARGET_FRAME_RATE );
 }
 
 //--------------------------------------------------------------
+
 void ofApp::update(){
+	
+
 
 }
 
@@ -152,9 +155,7 @@ void ofApp::draw(){
 	mTeapot.draw( batch );
 	mTeapot.draw( batch );
 
-
 	batch.submit();	// this will build, but not yet submit Vk Commandbuffer
-
 
 	ofSetWindowTitle( ofToString( ofGetFrameRate(), 2, ' ' ) );
 }
@@ -170,7 +171,8 @@ void ofApp::keyReleased(int key){
 		mTeapot.recompile();
 	} else if ( key == 'l' ){
 		isFrameLocked ^= true;
-		ofSetFrameRate( isFrameLocked ? FRAME_RATE : 0);
+		ofSetFrameRate( isFrameLocked ? EXAMPLE_TARGET_FRAME_RATE : 0);
+		ofLog() << "Framerate " << ( isFrameLocked ? "" : "un" ) << "locked.";
 	}
 }
 
