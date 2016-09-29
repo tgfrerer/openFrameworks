@@ -401,10 +401,14 @@ void ofVkRenderer::startRender(){
 		ofLog() << "Waiting for fence takes too long: " << vk::to_string( fenceWaitResult );
 	}
 	
+	//----------| invariant: last frame has finished rendering. It may not yet be finished presenting.
+
 	mDefaultContext->begin();
 
 	// receive index for next available swapchain image
 	auto err = mSwapchain.acquireNextImage( mDefaultContext->getImageAcquiredSemaphore(), &swapIdx );
+
+	// ---------| invariant: new swap chain image has been acquired for drawing into.
 
 	setupFrameBuffer( swapIdx ); /* connect current frame buffer with swapchain image, and depth stencil image */
 
@@ -418,7 +422,7 @@ void ofVkRenderer::finishRender(){
 	// present swapchain frame
 	mSwapchain.queuePresent( mQueue, mSwapchain.getCurrentImageIndex(), { mDefaultContext->getSemaphoreRenderComplete()} );
 	
-	// swap current frame index
+	// swap current frame index inside context
 	mDefaultContext->swap();
 }
 

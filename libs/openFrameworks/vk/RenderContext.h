@@ -18,6 +18,9 @@ MISSION:
 	context will accumulate vkCommandbuffers, and will submit them 
 	on submitDraw.
 
+	A RenderContext is the OWNER of all elements used to draw within 
+	one thread.
+
 */
 
 class ofVkRenderer; // ffdecl.
@@ -59,6 +62,11 @@ private:
 		std::vector<::vk::CommandBuffer>        commandBuffers;
 	};
 
+	std::vector<VirtualFrame>                   mVirtualFrames;
+	size_t                                      mCurrentVirtualFrame = 0;
+
+	std::unique_ptr<of::vk::Allocator>          mTransientMemory;
+
 	// Max number of descriptors per type
 	// Array index == descriptor type
 	std::array<uint32_t, VK_DESCRIPTOR_TYPE_RANGE_SIZE> mDescriptorPoolSizes;
@@ -75,61 +83,42 @@ private:
 	// We're not expecting more than 64 virtual frames (more than 3 seldom make sense)
 	uint64_t mDescriptorPoolsDirty = 0; // -1 == all bits '1' == all dirty
 
-	std::vector<VirtualFrame>          mVirtualFrames;
-	std::unique_ptr<of::vk::Allocator> mTransientMemory;
-
-	size_t                             mCurrentVirtualFrame = 0;
-	const ::vk::Rect2D&                mRenderArea = mSettings.renderArea;
-
-	// cache for all pipelines ever used within this context
-	std::map<uint64_t, std::shared_ptr<::vk::Pipeline>>    mPipelineCache;
+	// Re-consolidate descriptor pools if necessary
+	void updateDescriptorPool();
 
 	// Fetch descriptor either from cache - or allocate and initialise a descriptor based on DescriptorSetData.
 	const ::vk::DescriptorSet getDescriptorSet( uint64_t descriptorSetHash, size_t setId, const DrawCommand & drawCommand );
 
-	// Re-consolidate descriptor pools if necessary
-	void updateDescriptorPool();
+	// cache for all pipelines ever used within this context
+	std::map<uint64_t, std::shared_ptr<::vk::Pipeline>>    mPipelineCache;
+	
+	const ::vk::Rect2D&                mRenderArea = mSettings.renderArea;
 	
 	void resetFence();
-
-public:
-
-	RenderContext( const Settings& settings );
-	~RenderContext(){
-		for ( auto & vf : mVirtualFrames ){
-			if ( vf.commandPool ){
-				mDevice.destroyCommandPool( vf.commandPool );
-			}
-			for ( auto & pool : vf.descriptorPools ){
-				mDevice.destroyDescriptorPool( pool );
-			}
-			if ( vf.semaphoreImageAcquired ){
-				mDevice.destroySemaphore( vf.semaphoreImageAcquired );
-			}
-			if ( vf.semaphoreRenderComplete ){
-				mDevice.destroySemaphore( vf.semaphoreRenderComplete );
-			}
-			if ( vf.fence ){
-				mDevice.destroyFence( vf.fence );
-			}
-			if ( vf.frameBuffer ){
-				mDevice.destroyFramebuffer( vf.frameBuffer );
-			}
-		}
-		mVirtualFrames.clear();
-		mTransientMemory->reset();
-	};
-
-	const ::vk::CommandPool & getCommandPool() const;
-
-	::vk::Fence & getFence();
-	::vk::Semaphore & getImageAcquiredSemaphore();
-	::vk::Semaphore & getSemaphoreRenderComplete();
-	::vk::Framebuffer & getFramebuffer();
 
 	std::shared_ptr<::vk::Pipeline>& borrowPipeline( uint64_t pipelineHash ){
 		return mPipelineCache[pipelineHash];
 	};
+	
+	const std::unique_ptr<Allocator> & RenderContext::getAllocator();
+
+	const ::vk::CommandPool & getCommandPool() const;
+
+public:
+
+	RenderContext( const Settings& settings );
+	~RenderContext();
+
+
+	const ::vk::Fence & getFence() const ;
+	const ::vk::Semaphore & getImageAcquiredSemaphore() const ;
+	const ::vk::Semaphore & getSemaphoreRenderComplete() const ;
+	::vk::Framebuffer & getFramebuffer();
+
+	// Create and return command buffer. 
+	// Lifetime is limited to current frame. 
+	// It *must* be submitted to this context within the same frame, that is, before swap().
+	::vk::CommandBuffer requestPrimaryCommandBuffer();
 
 	const ::vk::Device & getDevice() const{
 		return mDevice;
@@ -137,14 +126,14 @@ public:
 
 	void setRenderArea( const ::vk::Rect2D& renderArea );
 	const ::vk::Rect2D & getRenderArea() const;
-	const std::unique_ptr<Allocator> & RenderContext::getAllocator();
-
 
 	void setup();
 	void begin();
+	
 	// move command buffer to the rendercontext for batched submission
 	void submit( ::vk::CommandBuffer&& commandBuffer );
 	void submitDraw();
+	
 	// void submitTransfer();
 	void swap();
 
@@ -157,15 +146,15 @@ inline void RenderContext::submit(::vk::CommandBuffer && commandBuffer) {
 }
 
 
-inline ::vk::Fence & RenderContext::getFence(){
+inline const ::vk::Fence & RenderContext::getFence() const {
 	return mVirtualFrames.at( mCurrentVirtualFrame ).fence;
 }
 
-inline ::vk::Semaphore & RenderContext::getImageAcquiredSemaphore(){
+inline const ::vk::Semaphore & RenderContext::getImageAcquiredSemaphore() const {
 	return mVirtualFrames.at( mCurrentVirtualFrame ).semaphoreImageAcquired;
 }
 
-inline ::vk::Semaphore & RenderContext::getSemaphoreRenderComplete(){
+inline const ::vk::Semaphore & RenderContext::getSemaphoreRenderComplete() const {
 	return mVirtualFrames.at( mCurrentVirtualFrame ).semaphoreRenderComplete;
 }
 
@@ -184,6 +173,20 @@ inline const ::vk::Rect2D & RenderContext::getRenderArea() const{
 
 inline const std::unique_ptr<Allocator> & RenderContext::getAllocator(){
 	return mTransientMemory;
+}
+
+inline ::vk::CommandBuffer RenderContext::requestPrimaryCommandBuffer(){
+	::vk::CommandBuffer cmd;
+
+	::vk::CommandBufferAllocateInfo commandBufferAllocateInfo;
+	commandBufferAllocateInfo
+		.setCommandPool( getCommandPool() )
+		.setLevel( ::vk::CommandBufferLevel::ePrimary )
+		.setCommandBufferCount( 1 )
+		;
+
+	mDevice.allocateCommandBuffers( &commandBufferAllocateInfo, &cmd );
+	return cmd;
 }
 
 }  // end namespace of::vk

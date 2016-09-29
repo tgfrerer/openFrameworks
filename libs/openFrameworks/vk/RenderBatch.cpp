@@ -34,16 +34,7 @@ void RenderBatch::submit(){
 	// context will submit command buffers batched to queue 
 	// at its own pleasure, but in seqence.
 
-	if ( !mVkCmd ){
-		::vk::CommandBufferAllocateInfo commandBufferAllocateInfo;
-		commandBufferAllocateInfo
-			.setCommandPool( mRenderContext->getCommandPool() )
-			.setLevel( ::vk::CommandBufferLevel::ePrimary )
-			.setCommandBufferCount( 1 )
-			;
-		mVkCmd = ( mRenderContext->getDevice().allocateCommandBuffers( commandBufferAllocateInfo ) ).front();
-	}
-
+	auto mVkCmd = mRenderContext->requestPrimaryCommandBuffer();
 	mVkCmd.begin( { ::vk::CommandBufferUsageFlagBits::eOneTimeSubmit } );
 	{
 		// set dynamic viewport
@@ -58,7 +49,7 @@ void RenderBatch::submit(){
 		mVkCmd.setViewport( 0, { vp } );
 		mVkCmd.setScissor( 0, { mRenderContext->getRenderArea() } );
 
-		processDrawCommands();
+		processDrawCommands(mVkCmd);
 	}
 	mVkCmd.end();
 
@@ -70,7 +61,7 @@ void RenderBatch::submit(){
 
 // ----------------------------------------------------------------------
 
-void RenderBatch::processDrawCommands(){
+void RenderBatch::processDrawCommands(const ::vk::CommandBuffer& cmd ){
 
 	// first order draw commands
 
@@ -82,8 +73,7 @@ void RenderBatch::processDrawCommands(){
 
 	auto & renderPass = mDrawCommands.front().getInfo().pipeline.getRenderPass();
 	
-	beginRenderPass( renderPass, mRenderContext->getFramebuffer(), mRenderContext->getRenderArea() );
-
+	beginRenderPass(cmd, renderPass, mRenderContext->getFramebuffer(), mRenderContext->getRenderArea() );
 
 	for ( auto & dc : mDrawCommands ){
 
@@ -118,7 +108,7 @@ void RenderBatch::processDrawCommands(){
 			}
 
 
-			mVkCmd.bindPipeline( ::vk::PipelineBindPoint::eGraphics, *currentPipeline );
+			cmd.bindPipeline( ::vk::PipelineBindPoint::eGraphics, *currentPipeline );
 		}
 
 		// ----------| invariant: correct pipeline is bound
@@ -164,7 +154,7 @@ void RenderBatch::processDrawCommands(){
 		// bind dc descriptorsets to current pipeline descriptor sets
 		// make sure dynamic ubos have the correct offsets
 
-		mVkCmd.bindDescriptorSets(
+		cmd.bindDescriptorSets(
 			::vk::PipelineBindPoint::eGraphics,	                           // use graphics, not compute pipeline
 			*dc.getInfo().getPipeline().getShader()->getPipelineLayout(), // VkPipelineLayout object used to program the bindings.
 			0,                                                             // firstset: first set index (of the above) to bind to - mDescriptorSet[0] will be bound to pipeline layout [firstset]
@@ -200,20 +190,20 @@ void RenderBatch::processDrawCommands(){
 			// The vector indices into bufferRefs, vertexOffsets correspond to [binding numbers] of the currently bound pipeline.
 			// See Shader.h for an explanation of how this is mapped to shader attribute locations
 
-			mVkCmd.bindVertexBuffers( 0, vertexBuffers, vertexOffsets );
+			cmd.bindVertexBuffers( 0, vertexBuffers, vertexOffsets );
 
 			if ( !indexBuffer ){
 				// non-indexed draw
-				mVkCmd.draw( uint32_t( dc.getNumVertices() ), 1, 0, 0 ); //last param was 1
+				cmd.draw( uint32_t( dc.getNumVertices() ), 1, 0, 0 ); //last param was 1
 			} else{
 				// indexed draw
-				mVkCmd.bindIndexBuffer( indexBuffer, indexOffset, ::vk::IndexType::eUint32 );
-				mVkCmd.drawIndexed( dc.getNumIndices(), 1, 0, 0, 0 ); // last param was 1
+				cmd.bindIndexBuffer( indexBuffer, indexOffset, ::vk::IndexType::eUint32 );
+				cmd.drawIndexed( dc.getNumIndices(), 1, 0, 0, 0 ); // last param was 1
 			}
 		}
 
 	}
 
-	endRenderPass();
+	endRenderPass(cmd);
 
 }

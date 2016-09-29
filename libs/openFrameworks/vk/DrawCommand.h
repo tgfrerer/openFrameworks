@@ -79,7 +79,7 @@ public:
 		// Compile-time error checking to make sure DescriptorData can be
 		// successfully hashed.
 		static_assert( (
-			+sizeof( DescriptorData_t::type )
+			+ sizeof( DescriptorData_t::type )
 			+ sizeof( DescriptorData_t::sampler )
 			+ sizeof( DescriptorData_t::imageView )
 			+ sizeof( DescriptorData_t::imageLayout )
@@ -118,7 +118,7 @@ private:      /* transient data */
 
 	uint64_t mPipelineHash = 0;
 
-	// Bindings data, (vector index == set number) -- indices must not be sparse!
+	// Bindings data for descriptorSets, (vector index == set number) -- indices must not be sparse!
 	std::vector<DescriptorSetData_t> mDescriptorSetData;
 
 	// vector of buffers holding vertex attribute data
@@ -179,6 +179,7 @@ public:
 	void setMesh( const shared_ptr<ofMesh>& msh_ );
 
 	void setAttribute( std::string name_, ::vk::Buffer buffer, ::vk::DeviceSize offset );
+
 	void setIndices( ::vk::Buffer buffer, ::vk::DeviceSize offset );
 
 	// upload uniform data to gpu memory

@@ -19,6 +19,33 @@ RenderContext::RenderContext( const Settings & settings )
 
 // ------------------------------------------------------------
 
+RenderContext::~RenderContext(){
+	for ( auto & vf : mVirtualFrames ){
+		if ( vf.commandPool ){
+			mDevice.destroyCommandPool( vf.commandPool );
+		}
+		for ( auto & pool : vf.descriptorPools ){
+			mDevice.destroyDescriptorPool( pool );
+		}
+		if ( vf.semaphoreImageAcquired ){
+			mDevice.destroySemaphore( vf.semaphoreImageAcquired );
+		}
+		if ( vf.semaphoreRenderComplete ){
+			mDevice.destroySemaphore( vf.semaphoreRenderComplete );
+		}
+		if ( vf.fence ){
+			mDevice.destroyFence( vf.fence );
+		}
+		if ( vf.frameBuffer ){
+			mDevice.destroyFramebuffer( vf.frameBuffer );
+		}
+	}
+	mVirtualFrames.clear();
+	mTransientMemory->reset();
+}
+
+// ------------------------------------------------------------
+
 const ::vk::CommandPool & RenderContext::getCommandPool() const {
 	return mVirtualFrames.at( mCurrentVirtualFrame ).commandPool;
 }
@@ -45,8 +72,8 @@ void RenderContext::begin(){
 	// leaking them.
 	if ( !mVirtualFrames[mCurrentVirtualFrame].commandBuffers.empty() ){
 		mDevice.freeCommandBuffers( getCommandPool(), mVirtualFrames[mCurrentVirtualFrame].commandBuffers );
+		mVirtualFrames[mCurrentVirtualFrame].commandBuffers.clear();
 	}
-	mVirtualFrames[mCurrentVirtualFrame].commandBuffers.clear();
 	
 	mDevice.resetCommandPool( getCommandPool(), ::vk::CommandPoolResetFlagBits::eReleaseResources );
 

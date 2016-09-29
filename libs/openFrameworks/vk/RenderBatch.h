@@ -42,15 +42,14 @@ private:
 	std::unique_ptr<GraphicsPipelineState>                           mCurrentPipelineState;
 
 	uint32_t            mVkSubPassId = 0;
-	::vk::CommandBuffer mVkCmd;
 
 	::vk::RenderPass    mVkRenderPass;  // current renderpass
 
 	std::list<DrawCommand> mDrawCommands;
 
-	void processDrawCommands();
-	void beginRenderPass( const ::vk::RenderPass& vkRenderPass_, const ::vk::Framebuffer& vkFramebuffer_, const ::vk::Rect2D& renderArea_ );
-	void endRenderPass();
+	void processDrawCommands(const ::vk::CommandBuffer& cmd);
+	void beginRenderPass( const ::vk::CommandBuffer& cmd, const ::vk::RenderPass& vkRenderPass_, const ::vk::Framebuffer& vkFramebuffer_, const ::vk::Rect2D& renderArea_ );
+	void endRenderPass( const ::vk::CommandBuffer& cmd );
 
 public:
 	uint32_t nextSubPass();
@@ -60,7 +59,7 @@ public:
 
 // ----------------------------------------------------------------------
 
-inline void RenderBatch::beginRenderPass( const ::vk::RenderPass& vkRenderPass_, const ::vk::Framebuffer& vkFramebuffer_, const ::vk::Rect2D& renderArea_ ){
+inline void RenderBatch::beginRenderPass(const ::vk::CommandBuffer& cmd, const ::vk::RenderPass& vkRenderPass_, const ::vk::Framebuffer& vkFramebuffer_, const ::vk::Rect2D& renderArea_ ){
 
 	//ofLog() << "begin renderpass";
 
@@ -87,7 +86,7 @@ inline void RenderBatch::beginRenderPass( const ::vk::RenderPass& vkRenderPass_,
 		.setPClearValues( clearValues.data() )
 		;
 
-	mVkCmd.beginRenderPass( renderPassBeginInfo, ::vk::SubpassContents::eInline );
+	cmd.beginRenderPass( renderPassBeginInfo, ::vk::SubpassContents::eInline );
 }
 
 // ----------------------------------------------------------------------
@@ -100,9 +99,8 @@ inline uint32_t RenderBatch::nextSubPass(){
 
 // ----------------------------------------------------------------------
 
-inline void RenderBatch::endRenderPass(){
-	// TODO: consolidate/re-order draw commands if buffered
-	mVkCmd.endRenderPass();
+inline void RenderBatch::endRenderPass( const ::vk::CommandBuffer& cmd ){
+	cmd.endRenderPass();
 }
 
 // ----------------------------------------------------------------------
