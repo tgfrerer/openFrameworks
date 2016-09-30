@@ -266,20 +266,14 @@ private:
 
 	::vk::CommandPool mSetupCommandPool;
 
-	std::shared_ptr<::vk::RenderPass> mRenderPass; /*main renderpass*/
-
-
-	//void                     setupFrameResources();
-
 	void                     querySurfaceCapabilities();
 	void                     createSetupCommandPool();
 	
 	void                     setupSwapChain();
 	void                     setupDepthStencil();
-	void                     setupRenderPass();
 	void                     setupDefaultContext();
 	
-	void                     setupFrameBuffer(uint32_t swapchainImageIndex);
+	void                     attachSwapChainImages(uint32_t swapchainImageIndex);
 
 
 	// our main (primary) gpu queue. all commandbuffers are submitted to this queue
@@ -322,7 +316,8 @@ public:
 	const ::vk::Instance& getInstance();
 	::vk::SurfaceKHR& getWindowSurface();
 
-	const std::shared_ptr<::vk::RenderPass> & getDefaultRenderPass();
+	::vk::RenderPass&& generateDefaultRenderPass() const;
+
 	const std::shared_ptr<of::vk::RenderContext> & getDefaultContext();
 
 	const ::vk::CommandPool& getSetupCommandPool() const;
@@ -347,12 +342,6 @@ inline const::vk::PhysicalDeviceMemoryProperties & ofVkRenderer::getVkPhysicalDe
 
 inline const size_t ofVkRenderer::getVirtualFramesCount(){
 	return mSettings.numVirtualFrames;
-}
-
-
-
-inline const std::shared_ptr<::vk::RenderPass>& ofVkRenderer::getDefaultRenderPass(){
-	return mRenderPass;
 }
 
 inline const std::shared_ptr<of::vk::RenderContext>& ofVkRenderer::getDefaultContext(){

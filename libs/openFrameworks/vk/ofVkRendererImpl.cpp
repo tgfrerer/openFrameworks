@@ -22,9 +22,6 @@ void ofVkRenderer::setup(){
 	// sets up resources to keep track of production frames
 	setupDefaultContext();
 
-	// create the main renderpass 
-	setupRenderPass();
-
 }
 
 // ----------------------------------------------------------------------
@@ -42,7 +39,9 @@ void ofVkRenderer::setupDefaultContext(){
 	settings.renderer = this;
 	settings.pipelineCache = getPipelineCache();
 	settings.renderArea = { 0,0, mWindowWidth, mWindowHeight };
-	mDefaultContext = make_shared<of::vk::RenderContext>(settings);
+	settings.renderPass = generateDefaultRenderPass();
+	
+	mDefaultContext = make_shared<of::vk::RenderContext>(std::move(settings));
 	mDefaultContext->setup();
 }
 
@@ -265,8 +264,7 @@ void ofVkRenderer::setupDepthStencil(){
 
 // ----------------------------------------------------------------------
 
-void ofVkRenderer::setupRenderPass(){
-	
+::vk::RenderPass&& ofVkRenderer::generateDefaultRenderPass() const {
 
 	// Note that we keep initialLayout of the color attachment eUndefined ==
 	// `VK_IMAGE_LAYOUT_UNDEFINED` -- we do this to say we effectively don't care
@@ -340,51 +338,26 @@ void ofVkRenderer::setupRenderPass(){
 		.setDependencyCount ( dependencies.size() )
 		.setPDependencies   ( dependencies.data() );
 
-	mRenderPass = std::shared_ptr<::vk::RenderPass>( new ::vk::RenderPass( mDevice.createRenderPass( renderPassCreateInfo ) ), 
-		[device = mDevice](::vk::RenderPass* rhs){
-		if ( rhs ){
-			device.destroyRenderPass( *rhs );
-			delete rhs;
-		}
-	} );
-	
+	return mDevice.createRenderPass( renderPassCreateInfo );
 }
 
 // ----------------------------------------------------------------------
 
-void ofVkRenderer::setupFrameBuffer( uint32_t swapchainImageIndex ){
+void ofVkRenderer::attachSwapChainImages( uint32_t swapchainImageIndex ){
 	
-	//!TODO: make framebuffer attachment clearer 
-
-	auto & fb = mDefaultContext->getFramebuffer();
-
-	if ( fb ){
-	    // destroy pre-existing frame buffer
-		mDevice.destroyFramebuffer( fb );
-		fb = nullptr;
-	}
-
-	// This is where we connect the framebuffer with the presentable image buffer
+	// Connect the framebuffer with the presentable image buffer
 	// which is handled by the swapchain.
-		
-	std::array<vk::ImageView,2> attachments;
-	// attachment0 shall be the image view for the image buffer to the corresponding swapchain image view
+
+	std::vector<vk::ImageView> attachments(2, nullptr);
+	
+	// Attachment0 is the image view for the image buffer to the corresponding swapchain image view
 	attachments[0] = mSwapchain.getImage( swapchainImageIndex ).view;
-	// attachment1 shall be the image view for the depthStencil buffer
+	
+	// Attachment1 is the image view for the depthStencil buffer
 	attachments[1] = mDepthStencil[swapchainImageIndex].view;
 
-	vk::FramebufferCreateInfo frameBufferCreateInfo;
-	frameBufferCreateInfo
-		.setRenderPass( *mRenderPass )
-		.setAttachmentCount( 2 )
-		.setPAttachments( attachments.data() )
-		.setWidth( mWindowWidth )
-		.setHeight( mWindowHeight )
-		.setLayers( 1 )
-		;
+	mDefaultContext->setupFrameBufferAttachments(attachments);
 
-	// create a framebuffer for the current virual frame, and link it to the current swapchain images.
-	fb = mDevice.createFramebuffer( frameBufferCreateInfo );
 }
 
 // ----------------------------------------------------------------------
@@ -410,7 +383,7 @@ void ofVkRenderer::startRender(){
 
 	// ---------| invariant: new swap chain image has been acquired for drawing into.
 
-	setupFrameBuffer( swapIdx ); /* connect current frame buffer with swapchain image, and depth stencil image */
+	attachSwapChainImages( swapIdx ); /* connect current frame buffer with swapchain image, and depth stencil image */
 
 }
 

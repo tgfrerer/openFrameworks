@@ -167,7 +167,7 @@ void GraphicsPipelineState::reset()
 			;
 
 		dynamicState
-			.setDynamicStateCount(dynamicStates.size())
+			.setDynamicStateCount   ( dynamicStates.size() )
 			.setPDynamicStates      ( dynamicStates.data() )
 			;
 

@@ -104,9 +104,7 @@ ofVkRenderer::~ofVkRenderer()
 	}
 	mDepthStencil.clear();
 
-
 	mSwapchain.reset();
-	mRenderPass.reset();
 	mPipelineCache.reset();
 
 	// reset command pool and all associated command buffers.

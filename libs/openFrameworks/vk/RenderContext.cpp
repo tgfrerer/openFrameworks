@@ -5,7 +5,7 @@
 using namespace of::vk;
 
 // ------------------------------------------------------------
-RenderContext::RenderContext( const Settings & settings )
+RenderContext::RenderContext( const Settings && settings )
 	: mSettings( settings ){
 	if ( mSettings.renderer == nullptr ){
 		ofLogFatalError() << "You must specify a renderer for a context.";
@@ -40,6 +40,11 @@ RenderContext::~RenderContext(){
 			mDevice.destroyFramebuffer( vf.frameBuffer );
 		}
 	}
+
+	if ( mSettings.renderPass ){
+		mDevice.destroyRenderPass( mSettings.renderPass );
+	}
+
 	mVirtualFrames.clear();
 	mTransientMemory->reset();
 }
@@ -64,8 +69,32 @@ void RenderContext::setup(){
 
 // ------------------------------------------------------------
 
+void RenderContext::setupFrameBufferAttachments( const std::vector<::vk::ImageView>& attachments ){
+	auto & fb = mVirtualFrames[mCurrentVirtualFrame].frameBuffer;
+
+	if ( fb ){
+		// destroy pre-existing frame buffer
+		mDevice.destroyFramebuffer( fb );
+		fb = nullptr;
+	}
+
+	::vk::FramebufferCreateInfo frameBufferCreateInfo;
+	frameBufferCreateInfo
+		.setRenderPass( getRenderPass() )
+		.setAttachmentCount( attachments.size() )
+		.setPAttachments( attachments.data() )
+		.setWidth( mRenderArea.extent.width )
+		.setHeight( mRenderArea.extent.height )
+		.setLayers( 1 )
+		;
+
+	// create a framebuffer for the current virual frame, and link it to the current swapchain images.
+	fb = mDevice.createFramebuffer( frameBufferCreateInfo );
+}
+
+// ------------------------------------------------------------
+
 void RenderContext::begin(){
-	
 	resetFence();
 
 	// free old command buffers - this is necessary since otherwise you end up with 
@@ -81,6 +110,9 @@ void RenderContext::begin(){
 
 	// re-create descriptor pool for current virtual frame if necessary
 	updateDescriptorPool();
+	
+	// reset subpass id state
+	mSubpassId = 0;
 }
 
 // ------------------------------------------------------------

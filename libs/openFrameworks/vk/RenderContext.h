@@ -42,6 +42,7 @@ public:
 		ofVkRenderer *                         renderer = nullptr;
 		Allocator::Settings                    transientMemoryAllocatorSettings;
 		std::shared_ptr<::vk::PipelineCache>   pipelineCache;
+		::vk::RenderPass                       renderPass;  // owning
 		::vk::Rect2D                           renderArea;
 	};
 private:
@@ -64,6 +65,11 @@ private:
 
 	std::vector<VirtualFrame>                   mVirtualFrames;
 	size_t                                      mCurrentVirtualFrame = 0;
+	
+	// Renderpass with subpasses for this context. from which framebuffers are derived.
+	// each context has their own renderpass object, from which framebuffers are partly derived.
+	const ::vk::RenderPass &                    mRenderPass = mSettings.renderPass; 
+	uint32_t                                    mSubpassId  = 0;
 
 	std::unique_ptr<of::vk::Allocator>          mTransientMemory;
 
@@ -101,24 +107,29 @@ private:
 	};
 	
 	const std::unique_ptr<Allocator> & RenderContext::getAllocator();
-
+	
 	const ::vk::CommandPool & getCommandPool() const;
 
 public:
 
-	RenderContext( const Settings& settings );
+	RenderContext( const Settings&& settings );
 	~RenderContext();
 
 
-	const ::vk::Fence & getFence() const ;
-	const ::vk::Semaphore & getImageAcquiredSemaphore() const ;
-	const ::vk::Semaphore & getSemaphoreRenderComplete() const ;
-	::vk::Framebuffer & getFramebuffer();
+	const ::vk::Fence       & getFence() const ;
+	const ::vk::Semaphore   & getImageAcquiredSemaphore() const ;
+	const ::vk::Semaphore   & getSemaphoreRenderComplete() const ;
+	const ::vk::Framebuffer & getFramebuffer() const;
+	const ::vk::RenderPass  & getRenderPass() const; 
+	
+	const uint32_t            getSubpassId() const;
+
+	void setupFrameBufferAttachments( const std::vector<::vk::ImageView> &attachments);
 
 	// Create and return command buffer. 
 	// Lifetime is limited to current frame. 
 	// It *must* be submitted to this context within the same frame, that is, before swap().
-	::vk::CommandBuffer requestPrimaryCommandBuffer();
+	::vk::CommandBuffer requestAndBeginPrimaryCommandBuffer();
 
 	const ::vk::Device & getDevice() const{
 		return mDevice;
@@ -132,8 +143,8 @@ public:
 	
 	// move command buffer to the rendercontext for batched submission
 	void submit( ::vk::CommandBuffer&& commandBuffer );
-	void submitDraw();
 	
+	void submitDraw();
 	// void submitTransfer();
 	void swap();
 
@@ -158,10 +169,17 @@ inline const ::vk::Semaphore & RenderContext::getSemaphoreRenderComplete() const
 	return mVirtualFrames.at( mCurrentVirtualFrame ).semaphoreRenderComplete;
 }
 
-inline ::vk::Framebuffer & RenderContext::getFramebuffer(){
-	return mVirtualFrames.at( mCurrentVirtualFrame ).frameBuffer;
+inline const ::vk::Framebuffer & RenderContext::getFramebuffer() const{
+	return mVirtualFrames[ mCurrentVirtualFrame ].frameBuffer;
 }
 
+inline const ::vk::RenderPass & RenderContext::getRenderPass() const{
+	return mSettings.renderPass;
+}
+
+inline const uint32_t RenderContext::getSubpassId() const{
+	return mSubpassId;
+}
 
 inline void RenderContext::setRenderArea( const::vk::Rect2D & renderArea_ ){
 	const_cast<::vk::Rect2D&>( mSettings.renderArea ) = renderArea_;
@@ -175,7 +193,7 @@ inline const std::unique_ptr<Allocator> & RenderContext::getAllocator(){
 	return mTransientMemory;
 }
 
-inline ::vk::CommandBuffer RenderContext::requestPrimaryCommandBuffer(){
+inline ::vk::CommandBuffer RenderContext::requestAndBeginPrimaryCommandBuffer(){
 	::vk::CommandBuffer cmd;
 
 	::vk::CommandBufferAllocateInfo commandBufferAllocateInfo;
@@ -186,6 +204,27 @@ inline ::vk::CommandBuffer RenderContext::requestPrimaryCommandBuffer(){
 		;
 
 	mDevice.allocateCommandBuffers( &commandBufferAllocateInfo, &cmd );
+
+	cmd.begin( { ::vk::CommandBufferUsageFlagBits::eOneTimeSubmit } );
+
+	{	// begin renderpass
+		//! TODO: get correct clear values, and clear value count
+		std::array<::vk::ClearValue, 2> clearValues;
+		clearValues[0].setColor( reinterpret_cast<const ::vk::ClearColorValue&>( ofFloatColor::blueSteel ) );
+		clearValues[1].setDepthStencil( { 1.f, 0 } );
+
+		::vk::RenderPassBeginInfo renderPassBeginInfo;
+		renderPassBeginInfo
+			.setRenderPass( getRenderPass() )
+			.setFramebuffer(getFramebuffer() )
+			.setRenderArea( getRenderArea() )
+			.setClearValueCount( clearValues.size() )
+			.setPClearValues( clearValues.data() )
+			;
+
+		cmd.beginRenderPass( renderPassBeginInfo, ::vk::SubpassContents::eInline );
+	}
+
 	return cmd;
 }
 

@@ -23,6 +23,12 @@ void RenderBatch::draw( const DrawCommand& dc_ ){
 	dc.commitUniforms( mRenderContext->getAllocator() );
 	dc.commitMeshAttributes( mRenderContext->getAllocator() );
 	
+	// renderpass is constant over a context, as a context encapsulates a renderpass with all its subpasses.
+	dc.getInfo().getPipeline().setRenderPass( mRenderContext->getRenderPass() );
+	
+	// CONSIDER: subpass might change based on rendercontext state 
+	dc.getInfo().getPipeline().setSubPass( mRenderContext->getSubpassId() );
+
 	mDrawCommands.emplace_back( std::move(dc) );
 
 }
@@ -34,10 +40,13 @@ void RenderBatch::submit(){
 	// context will submit command buffers batched to queue 
 	// at its own pleasure, but in seqence.
 
-	auto mVkCmd = mRenderContext->requestPrimaryCommandBuffer();
-	mVkCmd.begin( { ::vk::CommandBufferUsageFlagBits::eOneTimeSubmit } );
+	auto mVkCmd = mRenderContext->requestAndBeginPrimaryCommandBuffer();
+
+	// TODO: if comamnd buffer is secondary, 
+	// we need to begin() it, otherwise it will have been begun.
 	{
 		// set dynamic viewport
+		// todo: these dynamics belong to the batch state.
 		::vk::Viewport vp;
 		vp.setX( 0 )
 			.setY( 0 )
@@ -51,6 +60,11 @@ void RenderBatch::submit(){
 
 		processDrawCommands(mVkCmd);
 	}
+
+	{	// end renderpass if command buffer is Primary
+		mVkCmd.endRenderPass();
+	}
+
 	mVkCmd.end();
 
 	mRenderContext->submit(std::move(mVkCmd));
@@ -61,28 +75,21 @@ void RenderBatch::submit(){
 
 // ----------------------------------------------------------------------
 
-void RenderBatch::processDrawCommands(const ::vk::CommandBuffer& cmd ){
+void RenderBatch::processDrawCommands( const ::vk::CommandBuffer& cmd ){
 
 	// first order draw commands
 
-	// order them by renderpass, 
-	// then pipeline,
-	// then descriptor set usage
+	// order them by 
+	// 1) subpass id, 
+	// 2) pipeline,
+	// 3) descriptor set usage
 
 	// then process draw commands
 
-	auto & renderPass = mDrawCommands.front().getInfo().pipeline.getRenderPass();
-	
-	beginRenderPass(cmd, renderPass, mRenderContext->getFramebuffer(), mRenderContext->getRenderArea() );
 
 	for ( auto & dc : mDrawCommands ){
 
-		auto & info = const_cast<DrawCommandInfo&>( dc.getInfo() );
-
 		// find out pipeline state needed for this draw command
-
-		//info.modifyPipeline().setRenderPass(mVkRenderPass);
-		//info.modifyPipeline().setSubPass(mVkSubPassId);
 
 		if ( !mCurrentPipelineState || *mCurrentPipelineState != dc.getInfo().getPipeline() ){
 			// look up pipeline in pipeline cache
@@ -107,7 +114,6 @@ void RenderBatch::processDrawCommands(const ::vk::CommandBuffer& cmd ){
 				*currentPipeline = mCurrentPipelineState->createPipeline( mRenderContext->mDevice, mRenderContext->mSettings.pipelineCache);
 			}
 
-
 			cmd.bindPipeline( ::vk::PipelineBindPoint::eGraphics, *currentPipeline );
 		}
 
@@ -118,7 +124,7 @@ void RenderBatch::processDrawCommands(const ::vk::CommandBuffer& cmd ){
 		std::vector<::vk::DescriptorSet> boundVkDescriptorSets;
 		std::vector<uint32_t> dynamicBindingOffsets;
 
-		const std::vector<uint64_t> & setLayoutKeys = info.getPipeline().getShader()->getDescriptorSetLayoutKeys();
+		const std::vector<uint64_t> & setLayoutKeys = dc.getInfo().getPipeline().getShader()->getDescriptorSetLayoutKeys();
 
 		for ( size_t setId = 0; setId != setLayoutKeys.size(); ++setId ){
 
@@ -204,6 +210,6 @@ void RenderBatch::processDrawCommands(const ::vk::CommandBuffer& cmd ){
 
 	}
 
-	endRenderPass(cmd);
 
 }
+

@@ -94,8 +94,8 @@ private: // these states must be received through context
 
 	// non-owning - note that renderpass may be inherited from a 
 	// primary command buffer.
-	::vk::RenderPass  mRenderPass         = 0;
-	uint64_t          mSubpass            = 0;
+	mutable ::vk::RenderPass  mRenderPass         = 0;
+	mutable uint32_t          mSubpass            = 0;
 
 private:
 	int32_t           mBasePipelineIndex  = -1;
@@ -112,7 +112,7 @@ public:
 	uint64_t calculateHash() const;
 
 	// whether this pipeline state is dirty.
-	VkBool32          mDirty              = true;
+	mutable VkBool32          mDirty              = true;
 
 	void setShader(const std::shared_ptr<Shader> & shader ){
 		if ( shader.get() != mShader.get() ){
@@ -125,7 +125,7 @@ public:
 		return mShader;
 	}
 
-	void setRenderPass( const ::vk::RenderPass& renderPass ){
+	void setRenderPass( const ::vk::RenderPass& renderPass ) const {
 		if ( renderPass != mRenderPass ){
 			mRenderPass = renderPass;
 			mDirty = true;
@@ -136,7 +136,7 @@ public:
 		return mRenderPass;
 	}
 
-	void setSubPass( uint32_t subpassId ){
+	void setSubPass( uint32_t subpassId ) const {
 		if ( subpassId != mSubpass ){
 			mSubpass = subpassId;
 			mDirty = true;

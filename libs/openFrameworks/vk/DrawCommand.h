@@ -23,26 +23,27 @@ class DrawCommandInfo
 
 	// Pipeline state for a draw command
 	// This also contains the shader.
-	GraphicsPipelineState pipeline;
+	GraphicsPipelineState mPipeline;
 
 public:
 
 	// Get a reference to pipeline for modifying it
 	// Only friends should be allowed to do this.
-	GraphicsPipelineState& modifyPipeline(){
-		pipeline.mDirty = true; // invalidate hash
-		return pipeline;
+	GraphicsPipelineState& pipeline(){
+		mPipeline.mDirty = true; // invalidate hash
+		return mPipeline;
 	}
 
-	const GraphicsPipelineState& getPipeline() const{
-		return pipeline;
-	}
-	const std::vector<uint64_t>& getSetLayoutKeys() const{
-		return pipeline.getShader()->getDescriptorSetLayoutKeys();
+	const GraphicsPipelineState& getPipeline() const {
+		return mPipeline;
 	}
 
-	const std::vector<std::shared_ptr<::vk::DescriptorSetLayout>>& getDescriptorSetLayouts() const{
-		return pipeline.getShader()->getDescriptorSetLayouts();
+	const std::vector<uint64_t>& getSetLayoutKeys() const {
+		return mPipeline.getShader()->getDescriptorSetLayoutKeys();
+	}
+
+	const std::vector<std::shared_ptr<::vk::DescriptorSetLayout>>& getDescriptorSetLayouts() const {
+		return mPipeline.getShader()->getDescriptorSetLayouts();
 	}
 };
 

@@ -11,8 +11,6 @@ std::shared_ptr<ofVkRenderer> renderer = nullptr;
 
 void Teapot::setup(){
 
-	::vk::RenderPass & renderPass = *renderer->getDefaultRenderPass();  // needs to be created upfront
-
 	// shader creation makes shader reflect. 
 	auto mShaderDefault = std::shared_ptr<of::vk::Shader>(new of::vk::Shader( renderer->getVkDevice(),
 	{
@@ -22,13 +20,12 @@ void Teapot::setup(){
 
 	of::vk::DrawCommandInfo dcs;
 
-	dcs.modifyPipeline().depthStencilState
+	dcs.pipeline().depthStencilState
 		.setDepthTestEnable( VK_TRUE )
 		.setDepthWriteEnable( VK_TRUE )
 		;
-	dcs.modifyPipeline().inputAssemblyState.setTopology( ::vk::PrimitiveTopology::eTriangleList );
-	dcs.modifyPipeline().setShader( mShaderDefault );
-	dcs.modifyPipeline().setRenderPass( renderPass );
+	dcs.pipeline().inputAssemblyState.setTopology( ::vk::PrimitiveTopology::eTriangleList );
+	dcs.pipeline().setShader( mShaderDefault );
 
 	dc = std::move(std::make_unique<of::vk::DrawCommand>( dcs ));
 	mLMesh = make_shared<ofMesh>();
@@ -63,7 +60,7 @@ void Teapot::setup(){
 //--------------------------------------------------------------
 
 void Teapot::recompile(){
-	const_cast<of::vk::DrawCommandInfo&>(dc->getInfo()).modifyPipeline().getShader()->compile();
+	const_cast<of::vk::DrawCommandInfo&>(dc->getInfo()).pipeline().getShader()->compile();
 }
 
 //--------------------------------------------------------------
@@ -106,7 +103,6 @@ void ofApp::setup(){
 	ofDisableSetupScreen();
 	renderer = dynamic_pointer_cast<ofVkRenderer>( ofGetCurrentRenderer() );
 
-	//mRenderContext = std::make_unique<of::RenderContext>(renderContextSettings);
 
 
 	mTeapot.setup();
