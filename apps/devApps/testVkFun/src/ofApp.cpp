@@ -28,7 +28,7 @@ void Teapot::setup(){
 	// pipeline.setPolyMode( ::vk::PolygonMode::eLine );
 	pipeline.setShader( mShaderDefault );
 
-	dc = std::make_unique<of::vk::DrawCommand>( pipeline );
+	dc.setup( pipeline );
 
 	mLMesh = make_shared<ofMesh>();
 	{	// Horizontally elongated "L___" shape
@@ -59,10 +59,11 @@ void Teapot::setup(){
 		mLMesh->addIndices( idx );
 	};
 }
+
 //--------------------------------------------------------------
 
 void Teapot::recompile(){
-	dc->getPipelineState().touchShader();
+	dc.getPipelineState().touchShader();
 }
 
 //--------------------------------------------------------------
@@ -83,19 +84,26 @@ void Teapot::draw( of::vk::RenderBatch& rb ){
 		0.0f, 0.0f, 0.5f, 1.0f );
 
 	projectionMatrix = clip * mCam.getProjectionMatrix( ofGetCurrentViewport() );
+	ofMatrix4x4 modelMatrix = glm::rotate( float(TWO_PI * ( ( ofGetFrameNum() % 360 ) / 360.f )), glm::vec3({ 0.f, 0.f, 1.f}) );
+	
 
-	glm::mat4x4 modelMatrix = glm::rotate( float(TWO_PI * ( ( ofGetFrameNum() % 360 ) / 360.f )), glm::vec3({ 0.f, 0.f, 1.f}) );
+	of::vk::DrawCommand ndc = dc;
 
-	dc->setUniform( "modelMatrix", modelMatrix );
-
-	dc->setUniform( "projectionMatrix", projectionMatrix );
-	dc->setUniform( "viewMatrix", mCam.getModelViewMatrix() );
-	dc->setUniform( "globalColor", ofFloatColor::magenta );
-
-	dc->setMesh( mLMesh );
+	ndc.setUniform( "projectionMatrix", projectionMatrix );     // | 
+	ndc.setUniform( "viewMatrix", mCam.getModelViewMatrix() );  // |> set camera matrices
+	ndc.setUniform( "modelMatrix", modelMatrix );
+	ndc.setUniform( "globalColor", ofFloatColor::magenta );
+	ndc.setMesh( mLMesh );
 
 	// update attribute buffer bindings
-	rb.draw( *dc );
+	rb.draw( ndc );
+
+	of::vk::DrawCommand newDraw = ndc;
+
+	modelMatrix.translate( { 100,0,0 } );
+	newDraw.setUniform( "modelMatrix", modelMatrix );
+
+	rb.draw( newDraw );
 
 }
 
@@ -104,8 +112,6 @@ void Teapot::draw( of::vk::RenderBatch& rb ){
 void ofApp::setup(){
 	ofDisableSetupScreen();
 	renderer = dynamic_pointer_cast<ofVkRenderer>( ofGetCurrentRenderer() );
-
-
 
 	mTeapot.setup();
 	ofSetFrameRate( EXAMPLE_TARGET_FRAME_RATE );
@@ -120,17 +126,6 @@ void ofApp::update(){
 //--------------------------------------------------------------
 void ofApp::draw(){
 	
-	// a renderbatch 
-	
-	// we can't specify the framebuffer upfront, as the framebuffer is 
-	// created at frame start - based on what?
-	//
-	// the framebuffer is created to link the current renderpass with 
-	// images so that the output can be stored somewhere.
-	//
-	// the framebuffer is created inside the renderer - and it is the renderer which
-	// will connect the default rendercontext/framebuffer to the outputs of the swapchain.
-	//
 	of::vk::RenderBatch batch{ *renderer->getDefaultContext() };
 
 	mTeapot.draw( batch );

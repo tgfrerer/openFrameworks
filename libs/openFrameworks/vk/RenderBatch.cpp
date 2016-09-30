@@ -174,7 +174,7 @@ void RenderBatch::processDrawCommands( const ::vk::CommandBuffer& cmd ){
 		{
 
 			const auto & vertexOffsets = dc.getVertexOffsets();
-			const auto & indexOffset  = dc.getIndexOffsets();
+			const auto & indexOffset   = dc.getIndexOffsets();
 
 			const auto & vertexBuffers = dc.getVertexBuffers();
 			const auto & indexBuffer   = dc.getIndexBuffer();

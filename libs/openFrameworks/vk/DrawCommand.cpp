@@ -14,9 +14,11 @@ using namespace of::vk;
 
 // ----------------------------------------------------------------------
 
-DrawCommand::DrawCommand( const GraphicsPipelineState & pipelineState )
-	:mPipelineState( pipelineState ){
 
+void DrawCommand::setup(const GraphicsPipelineState& pipelineState){
+	
+	mPipelineState = pipelineState;
+	
 	// Initialise Ubo blobs with default values, based on 
 	// default values received from Shader. 
 	//
@@ -25,10 +27,10 @@ DrawCommand::DrawCommand( const GraphicsPipelineState & pipelineState )
 	// uniform variable types.
 
 	const auto & descriptorSetsInfo = mPipelineState.getShader()->getDescriptorSetsInfo();
-	const auto & shaderUniforms     = mPipelineState.getShader()->getUniforms();
+	const auto & shaderUniforms = mPipelineState.getShader()->getUniforms();
 
 	mDescriptorSetData.reserve( descriptorSetsInfo.size() );
-	
+
 	// we need to query the shader for uniforms - 
 	// but because uniforms are independent of sets, 
 	// this is slightly more complicated.
@@ -36,11 +38,11 @@ DrawCommand::DrawCommand( const GraphicsPipelineState & pipelineState )
 
 	for ( auto&di : descriptorSetsInfo ){
 		DescriptorSetData_t tmpDescriptorSetData;
-		
+
 		auto & bindingsVec = tmpDescriptorSetData.descriptorBindings;
 
-		bindingsVec.reserve(di.bindings.size());
-		
+		bindingsVec.reserve( di.bindings.size() );
+
 		size_t numDynamicUbos = 0;
 
 		for ( auto & binding : di.bindings ){
@@ -57,7 +59,7 @@ DrawCommand::DrawCommand( const GraphicsPipelineState & pipelineState )
 				bindingsVec.emplace_back( std::move( bindingData ) );
 			}
 		}
-		
+
 		mDescriptorSetData.emplace_back( std::move( tmpDescriptorSetData ) );
 	}
 
@@ -69,11 +71,11 @@ DrawCommand::DrawCommand( const GraphicsPipelineState & pipelineState )
 		mDescriptorSetData[uniform.second.setNumber].dynamicUboData[uniform.second.setLayoutBinding.binding].resize( uniform.second.uboRange.storageSize, 0 );
 		for ( const auto & uniformMemberPair : uniform.second.uboRange.subranges ){
 			// add with combined name - this should always work
-			mUniformMembers.insert( {uniform.first + "." + uniformMemberPair.first ,uniformMemberPair.second } );
+			mUniformMembers.insert( { uniform.first + "." + uniformMemberPair.first ,uniformMemberPair.second } );
 			// add only with member name - this might work, but if members share the same name, we're in trouble.
 			mUniformMembers.insert( { uniformMemberPair.first ,uniformMemberPair.second } );
 		}
-		
+
 	}
 
 	// parse shader info to find out how many buffers to reserve for vertex attributes.
@@ -81,15 +83,14 @@ DrawCommand::DrawCommand( const GraphicsPipelineState & pipelineState )
 	const auto & vertexInfo = mPipelineState.getShader()->getVertexInfo();
 
 	size_t numAttributes = vertexInfo.attribute.size();
-	
+
 	mVertexBuffers.resize( numAttributes, nullptr );
 	mVertexOffsets.resize( numAttributes, 0 );
 
 	for ( size_t i = 0; i != numAttributes; ++i ){
-		ofLog() << std::setw(4) << i <<  ":" << vertexInfo.attributeNames[i];
+		ofLog() << std::setw( 4 ) << i << ":" << vertexInfo.attributeNames[i];
 	}
 }
-
 
 // ------------------------------------------------------------
 
@@ -191,7 +192,6 @@ void DrawCommand::commitMeshAttributes( const std::unique_ptr<Allocator>& alloc 
 }
 
 // ------------------------------------------------------------
-
 
 void DrawCommand::setAttribute( std::string name_, ::vk::Buffer buffer_, ::vk::DeviceSize offset_ ){
 	

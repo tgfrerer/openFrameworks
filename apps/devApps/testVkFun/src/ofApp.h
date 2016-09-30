@@ -5,23 +5,17 @@
 #include "vk/DrawCommand.h"
 #include "vk/RenderBatch.h"
 
-
-
 class Teapot
 {
-	std::unique_ptr<of::vk::DrawCommand> dc;
+	of::vk::DrawCommand dc;
 	std::shared_ptr<ofMesh> mLMesh;
 public:
 	void setup();
 	void recompile();
 	void draw(of::vk::RenderBatch & rp);
-
 };
 
-
-
 class ofApp : public ofBaseApp{
-
 
 	Teapot mTeapot;
 

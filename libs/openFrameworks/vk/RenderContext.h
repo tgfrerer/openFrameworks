@@ -218,7 +218,7 @@ inline ::vk::CommandBuffer RenderContext::requestAndBeginPrimaryCommandBuffer(){
 			.setRenderPass( getRenderPass() )
 			.setFramebuffer(getFramebuffer() )
 			.setRenderArea( getRenderArea() )
-			.setClearValueCount( clearValues.size() )
+			.setClearValueCount( uint32_t(clearValues.size()) )
 			.setPClearValues( clearValues.data() )
 			;
 

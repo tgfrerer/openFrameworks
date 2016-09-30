@@ -72,10 +72,8 @@ public:
 private:
 
 	// a draw command has everything needed to draw an object
-	const GraphicsPipelineState mPipelineState;
+	GraphicsPipelineState mPipelineState;
 	// map from binding number to ubo data state
-
-	DrawCommand() = delete;
 
 	// lookup table from uniform name to storage info for dynamic ubos
 	// TODO: maybe mUniformMembers should move to shader.
@@ -107,6 +105,8 @@ private:      /* transient data */
 
 public:
 
+	void setup(const GraphicsPipelineState& pipelineState);
+
 	const GraphicsPipelineState& getPipelineState() const{
 		return mPipelineState;
 	}
@@ -114,9 +114,6 @@ public:
 	const DescriptorSetData_t& getDescriptorSetData( size_t setId_ ) const{
 		return mDescriptorSetData[setId_];
 	}
-
-	// setup all non-transient state for this draw object
-	DrawCommand( const GraphicsPipelineState& dcs );
 
 	const std::vector<::vk::DeviceSize>& getVertexOffsets(){
 		return mVertexOffsets;
@@ -130,11 +127,20 @@ public:
 	const ::vk::Buffer& getIndexBuffer(){
 		return mIndexBuffer;
 	}
+	
 	const uint32_t getNumIndices(){
 		return mNumIndices;
 	}
 	const uint32_t getNumVertices(){
 		return mNumVertices;
+	}
+
+	void setNumVertices(uint32_t numVertices){
+		mNumVertices = numVertices;
+	}
+
+	void setNumIndices( uint32_t numIndices ){
+		mNumIndices = numIndices;
 	}
 
 	// set data for upload to ubo - data is stored locally 
