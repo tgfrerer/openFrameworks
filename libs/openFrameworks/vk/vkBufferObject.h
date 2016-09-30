@@ -1,7 +1,7 @@
 #pragma once
 
 #include <vulkan/vulkan.hpp>
-#include "vk/vkAllocator.h"
+#include "vk/RenderContext.h"
 //#include "vk/TransferBatch.h"
 /*
 
@@ -33,75 +33,28 @@ namespace vk {
 
 // ----------------------------------------------------------------------
 
-class BufferObject
+class BufferObject_base
 {
-	friend class TransferBatch;
-	
-	::vk::Buffer                              mBuffer ;
-	const ::vk::DeviceSize                    mRange  = 0;
-	::vk::DeviceSize                          mOffset = 0;
-	::vk::DeviceSize                          mPersistentOffset = 0;
-	bool                                      mHasPersistentMemory = false;
-	
+	::vk::Buffer	 mVkBufferOwnedByContext;
+	::vk::DeviceSize offset;
+	::vk::DeviceSize range;
 
-	enum class Usage
-	{
-		eStream,
-		eDynamic,
-		eStatic
-	} mState = Usage::eStream;
+	std::shared_ptr<of::vk::RenderContext> mOwningContext;
 
-	of::vk::Allocator* mTransientAllocator  = nullptr;
-	of::vk::Allocator* mPersistentAllocator = nullptr;
+	//friend // moves following method into next higher scope
+	//void copy( BufferObject_base &lhs, BufferObject_base &rhs ){
+	//	lhs.copy_to( rhs );
+	//};
 
-public:
+	//void copy_to( BufferObject_base &rhs ){
+	//	rhs.offset = offset;
+	//	rhs.range  = range;
+	//}
 
-	BufferObject(::vk::DeviceSize numBytes_, Allocator* transientAllocator_, Allocator* persistentAllocator_ = nullptr )
-		: mRange( numBytes_ )
-		, mTransientAllocator(transientAllocator_)
-		, mPersistentAllocator(persistentAllocator_)
-		, mBuffer(transientAllocator_->getBuffer())
-	{
-	};
-
-	// write number of bytes (read from &pData) to buffer memory
-	bool setData( void* pData, ::vk::DeviceSize numBytes );
-
-	const ::vk::Buffer& getBuffer();
-	const ::vk::DeviceSize getRange() const;;
-	const ::vk::DeviceSize getOffset() const;;
-
-	void setTransferComplete();
-
-	const Allocator* getPersistentAllocator(){
-		return mPersistentAllocator;
-	}
-
-	const Allocator* getTransientAllocator(){
-		return mTransientAllocator;
-	}
-
-	bool needsTransfer();
 };
 
 
-// ----------------------------------------------------------------------
 
-inline const ::vk::DeviceSize BufferObject::getRange() const{
-	return mRange;
-}
-
-inline const ::vk::DeviceSize BufferObject::getOffset() const{
-	return mOffset;
-}
-
-inline void BufferObject::setTransferComplete(){
-	if ( mState == Usage::eDynamic ){
-		mState  = Usage::eStatic;
-		mOffset = mPersistentOffset;
-		mBuffer = mPersistentAllocator->getBuffer();
-	}
-}
 
 }  // end namespace of::vk
 }  // end namespace of
