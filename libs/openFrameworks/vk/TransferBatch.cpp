@@ -30,24 +30,24 @@ Once virtual frame fence was reached, we can dispose of dynamic data.
 
 bool of::vk::TransferBatch::add( std::shared_ptr<BufferObject>& buffer ){
 
-	// check if buffer can be added
+	//// check if buffer can be added
 
-	if ( !buffer->needsTransfer() ){
-		ofLogVerbose() << "TransferBatch: Buffer does not need transfer.";
-		return false;
-	}
+	//if ( !buffer->needsTransfer() ){
+	//	ofLogVerbose() << "TransferBatch: Buffer does not need transfer.";
+	//	return false;
+	//}
 
-	// --------| invariant: buffer needs transfer.
+	//// --------| invariant: buffer needs transfer.
 
-	// find the first element in the batch that matches the transient and 
-	// persistent buffer targets of the current buffer - if nothing found,
-	// return last element.
-	auto it = std::find_if( mBatch.begin(), mBatch.end(), [buffer]( std::shared_ptr<BufferObject> lhs ){
-		return buffer->getTransientAllocator()->getBuffer() == lhs->getTransientAllocator()->getBuffer()
-			&& buffer->getPersistentAllocator()->getBuffer() == lhs->getPersistentAllocator()->getBuffer();
-	} );
+	//// find the first element in the batch that matches the transient and 
+	//// persistent buffer targets of the current buffer - if nothing found,
+	//// return last element.
+	//auto it = std::find_if( mBatch.begin(), mBatch.end(), [buffer]( std::shared_ptr<BufferObject> lhs ){
+	//	return buffer->getTransientAllocator()->getBuffer() == lhs->getTransientAllocator()->getBuffer()
+	//		&& buffer->getPersistentAllocator()->getBuffer() == lhs->getPersistentAllocator()->getBuffer();
+	//} );
 
-	mBatch.insert( it, buffer );
+	//mBatch.insert( it, buffer );
 
 	return true;
 }
@@ -56,92 +56,92 @@ bool of::vk::TransferBatch::add( std::shared_ptr<BufferObject>& buffer ){
 
 void of::vk::TransferBatch::submit(){
 
-	if ( mBatch.empty() ){
-		return;
-	}
+	//if ( mBatch.empty() ){
+	//	return;
+	//}
 
-	auto & device  = mRenderContext->getDevice();
-	auto & cmdPool = mRenderContext->getCommandPool();
+	//auto & device  = mRenderContext->getDevice();
+	//auto & cmdPool = mRenderContext->getCommandPool();
 
-	// First, we need a command buffer where we can record a pipeline barrier command into.
-	// This command - the pipeline barrier with an image barrier - will transfer the 
-	// image resource from its original layout to a layout that the gpu can use for 
-	// sampling.
-	::vk::CommandBuffer cmd = nullptr;
-	{
-		::vk::CommandBufferAllocateInfo cmdBufAllocInfo;
-		cmdBufAllocInfo
-			.setCommandPool( cmdPool )
-			.setLevel( ::vk::CommandBufferLevel::ePrimary )
-			.setCommandBufferCount( 1 )
-			;
-		cmd = device.allocateCommandBuffers( cmdBufAllocInfo ).front();
-	}
+	//// First, we need a command buffer where we can record a pipeline barrier command into.
+	//// This command - the pipeline barrier with an image barrier - will transfer the 
+	//// image resource from its original layout to a layout that the gpu can use for 
+	//// sampling.
+	//::vk::CommandBuffer cmd = nullptr;
+	//{
+	//	::vk::CommandBufferAllocateInfo cmdBufAllocInfo;
+	//	cmdBufAllocInfo
+	//		.setCommandPool( cmdPool )
+	//		.setLevel( ::vk::CommandBufferLevel::ePrimary )
+	//		.setCommandBufferCount( 1 )
+	//		;
+	//	cmd = device.allocateCommandBuffers( cmdBufAllocInfo ).front();
+	//}
 
-	std::vector<::vk::BufferCopy> bufferCopies;
-	bufferCopies.reserve( mBatch.size() );
+	//std::vector<::vk::BufferCopy> bufferCopies;
+	//bufferCopies.reserve( mBatch.size() );
 
-	::vk::Buffer srcBuf = nullptr;
-	::vk::Buffer dstBuf = nullptr;
+	//::vk::Buffer srcBuf = nullptr;
+	//::vk::Buffer dstBuf = nullptr;
 
-	cmd.begin( { ::vk::CommandBufferUsageFlagBits::eOneTimeSubmit } );
+	//cmd.begin( { ::vk::CommandBufferUsageFlagBits::eOneTimeSubmit } );
 
-	for ( auto it = mBatch.cbegin(); it != mBatch.cend(); ++it ){
-		const auto & bufferObject = *it;
+	//for ( auto it = mBatch.cbegin(); it != mBatch.cend(); ++it ){
+	//	const auto & bufferObject = *it;
 
-		::vk::BufferCopy bufferCopy;
-		bufferCopy
-			.setSize( bufferObject->mRange )
-			.setSrcOffset( bufferObject->mOffset )
-			.setDstOffset( bufferObject->mPersistentOffset )
-			;
+	//	::vk::BufferCopy bufferCopy;
+	//	bufferCopy
+	//		.setSize( bufferObject->mRange )
+	//		.setSrcOffset( bufferObject->mOffset )
+	//		.setDstOffset( bufferObject->mPersistentOffset )
+	//		;
 
-		// if src or dst are different from last buffer, flush, and enqueue next one.
-		if ( bufferObject->getTransientAllocator()->getBuffer() != srcBuf
-			|| bufferObject->getPersistentAllocator()->getBuffer() != dstBuf ){
+	//	// if src or dst are different from last buffer, flush, and enqueue next one.
+	//	if ( bufferObject->getTransientAllocator()->getBuffer() != srcBuf
+	//		|| bufferObject->getPersistentAllocator()->getBuffer() != dstBuf ){
 
-			if ( bufferCopies.empty() == false ){
-				// submit buffer copies.
-				cmd.copyBuffer( srcBuf, dstBuf, bufferCopies );
-				bufferCopies.clear();
-				bufferCopies.reserve( mBatch.size() );
-			}
-			srcBuf = bufferObject->getTransientAllocator()->getBuffer();
-			dstBuf = bufferObject->getPersistentAllocator()->getBuffer();
-		}
+	//		if ( bufferCopies.empty() == false ){
+	//			// submit buffer copies.
+	//			cmd.copyBuffer( srcBuf, dstBuf, bufferCopies );
+	//			bufferCopies.clear();
+	//			bufferCopies.reserve( mBatch.size() );
+	//		}
+	//		srcBuf = bufferObject->getTransientAllocator()->getBuffer();
+	//		dstBuf = bufferObject->getPersistentAllocator()->getBuffer();
+	//	}
 
-		bufferCopies.push_back( bufferCopy );
+	//	bufferCopies.push_back( bufferCopy );
 
-		if ( std::next( it ) == mBatch.cend() && !bufferCopies.empty() ){
-			// submit buffer copies
-			cmd.copyBuffer( srcBuf, dstBuf, bufferCopies );
-		}
+	//	if ( std::next( it ) == mBatch.cend() && !bufferCopies.empty() ){
+	//		// submit buffer copies
+	//		cmd.copyBuffer( srcBuf, dstBuf, bufferCopies );
+	//	}
 
-	}
+	//}
 
-	// CONSIDER: add transfer barrier
-	cmd.end();
+	//// CONSIDER: add transfer barrier
+	//cmd.end();
 
-	mRenderContext->submit( std::move( cmd ) );
+	//mRenderContext->submit( std::move( cmd ) );
 
-	cmd = nullptr;
+	//cmd = nullptr;
 
-	mInflightBatch.insert( mInflightBatch.end(), mBatch.begin(), mBatch.end());
-	mBatch.clear();
+	//mInflightBatch.insert( mInflightBatch.end(), mBatch.begin(), mBatch.end());
+	//mBatch.clear();
 }
 
 // ----------------------------------------------------------------------
 
 void TransferBatch::signalTransferComplete(){
 
-	//!TODO: decrease "inflight" count for each buffer
-	// found inside the batch.
+	////!TODO: decrease "inflight" count for each buffer
+	//// found inside the batch.
 
-	for ( auto & b : mInflightBatch ){
-		b->setTransferComplete();
-	}
+	//for ( auto & b : mInflightBatch ){
+	//	b->setTransferComplete();
+	//}
 
-	mInflightBatch.clear();
+	//mInflightBatch.clear();
 
 }
 
