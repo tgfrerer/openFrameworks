@@ -24,10 +24,10 @@ void RenderBatch::draw( const DrawCommand& dc_ ){
 	dc.commitMeshAttributes( mRenderContext->getAllocator() );
 	
 	// renderpass is constant over a context, as a context encapsulates a renderpass with all its subpasses.
-	dc.getInfo().getPipeline().setRenderPass( mRenderContext->getRenderPass() );
+	dc.mPipelineState.setRenderPass( mRenderContext->getRenderPass() );
 	
 	// CONSIDER: subpass might change based on rendercontext state 
-	dc.getInfo().getPipeline().setSubPass( mRenderContext->getSubpassId() );
+	dc.mPipelineState.setSubPass( mRenderContext->getSubpassId() );
 
 	mDrawCommands.emplace_back( std::move(dc) );
 
@@ -91,11 +91,11 @@ void RenderBatch::processDrawCommands( const ::vk::CommandBuffer& cmd ){
 
 		// find out pipeline state needed for this draw command
 
-		if ( !mCurrentPipelineState || *mCurrentPipelineState != dc.getInfo().getPipeline() ){
+		if ( !mCurrentPipelineState || *mCurrentPipelineState != dc.mPipelineState ){
 			// look up pipeline in pipeline cache
 			// otherwise, create a new pipeline, then bind pipeline.
 
-			mCurrentPipelineState = std::make_unique<GraphicsPipelineState>( dc.getInfo().getPipeline() );
+			mCurrentPipelineState = std::make_unique<GraphicsPipelineState>( dc.mPipelineState );
 
 			uint64_t pipelineStateHash = mCurrentPipelineState->calculateHash();
 
@@ -124,7 +124,7 @@ void RenderBatch::processDrawCommands( const ::vk::CommandBuffer& cmd ){
 		std::vector<::vk::DescriptorSet> boundVkDescriptorSets;
 		std::vector<uint32_t> dynamicBindingOffsets;
 
-		const std::vector<uint64_t> & setLayoutKeys = dc.getInfo().getPipeline().getShader()->getDescriptorSetLayoutKeys();
+		const std::vector<uint64_t> & setLayoutKeys = dc.mPipelineState.getShader()->getDescriptorSetLayoutKeys();
 
 		for ( size_t setId = 0; setId != setLayoutKeys.size(); ++setId ){
 
@@ -162,7 +162,7 @@ void RenderBatch::processDrawCommands( const ::vk::CommandBuffer& cmd ){
 
 		cmd.bindDescriptorSets(
 			::vk::PipelineBindPoint::eGraphics,	                           // use graphics, not compute pipeline
-			*dc.getInfo().getPipeline().getShader()->getPipelineLayout(), // VkPipelineLayout object used to program the bindings.
+			*dc.mPipelineState.getShader()->getPipelineLayout(), // VkPipelineLayout object used to program the bindings.
 			0,                                                             // firstset: first set index (of the above) to bind to - mDescriptorSet[0] will be bound to pipeline layout [firstset]
 			boundVkDescriptorSets.size(),                                  // setCount: how many sets to bind
 			boundVkDescriptorSets.data(),                                  // the descriptor sets to match up with our mPipelineLayout (need to be compatible)

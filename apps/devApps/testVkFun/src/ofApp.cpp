@@ -18,16 +18,18 @@ void Teapot::setup(){
 		{ ::vk::ShaderStageFlagBits::eFragment, "default.frag" },
 	}));
 
-	of::vk::DrawCommandInfo dcs;
+	of::vk::GraphicsPipelineState pipeline;
 
-	dcs.pipeline().depthStencilState
+	pipeline.depthStencilState
 		.setDepthTestEnable( VK_TRUE )
 		.setDepthWriteEnable( VK_TRUE )
 		;
-	dcs.pipeline().inputAssemblyState.setTopology( ::vk::PrimitiveTopology::eTriangleList );
-	dcs.pipeline().setShader( mShaderDefault );
+	pipeline.inputAssemblyState.setTopology( ::vk::PrimitiveTopology::eTriangleList );
+	// pipeline.setPolyMode( ::vk::PolygonMode::eLine );
+	pipeline.setShader( mShaderDefault );
 
-	dc = std::move(std::make_unique<of::vk::DrawCommand>( dcs ));
+	dc = std::make_unique<of::vk::DrawCommand>( pipeline );
+
 	mLMesh = make_shared<ofMesh>();
 	{	// Horizontally elongated "L___" shape
 
@@ -60,7 +62,7 @@ void Teapot::setup(){
 //--------------------------------------------------------------
 
 void Teapot::recompile(){
-	const_cast<of::vk::DrawCommandInfo&>(dc->getInfo()).pipeline().getShader()->compile();
+	dc->getPipelineState().touchShader();
 }
 
 //--------------------------------------------------------------

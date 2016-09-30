@@ -223,7 +223,7 @@ const::vk::DescriptorSet RenderContext::getDescriptorSet( uint64_t descriptorSet
 	// ---------| invariant: currentVirtualFrame.descriptorPools.back() contains a pool large enough to allocate our descriptor set from
 
 	// we are able to allocate from the current descriptor pool
-	auto & setLayout = *( drawCommand.getInfo().getPipeline().getShader()->getDescriptorSetLayout( setId ) );
+	auto & setLayout = *( drawCommand.getPipelineState().getShader()->getDescriptorSetLayout( setId ) );
 	auto allocInfo = ::vk::DescriptorSetAllocateInfo();
 	allocInfo
 		.setDescriptorPool( currentVirtualFrame.descriptorPools.back() )

@@ -14,44 +14,10 @@ class Allocator;	   // ffdecl.
 
 // ----------------------------------------------------------------------
 
-class DrawCommandInfo
-{
-
-	friend class DrawCommand;
-	friend class RenderBatch;
-	//friend class RenderContext;
-
-	// Pipeline state for a draw command
-	// This also contains the shader.
-	GraphicsPipelineState mPipeline;
-
-public:
-
-	// Get a reference to pipeline for modifying it
-	// Only friends should be allowed to do this.
-	GraphicsPipelineState& pipeline(){
-		mPipeline.mDirty = true; // invalidate hash
-		return mPipeline;
-	}
-
-	const GraphicsPipelineState& getPipeline() const {
-		return mPipeline;
-	}
-
-	const std::vector<uint64_t>& getSetLayoutKeys() const {
-		return mPipeline.getShader()->getDescriptorSetLayoutKeys();
-	}
-
-	const std::vector<std::shared_ptr<::vk::DescriptorSetLayout>>& getDescriptorSetLayouts() const {
-		return mPipeline.getShader()->getDescriptorSetLayouts();
-	}
-};
-
-// ----------------------------------------------------------------------
-
 class DrawCommand
 {
-
+	friend class RenderBatch;
+	
 public:
 
 	struct DescriptorSetData_t
@@ -106,7 +72,7 @@ public:
 private:
 
 	// a draw command has everything needed to draw an object
-	const DrawCommandInfo mDrawCommandInfo;
+	const GraphicsPipelineState mPipelineState;
 	// map from binding number to ubo data state
 
 	DrawCommand() = delete;
@@ -141,8 +107,8 @@ private:      /* transient data */
 
 public:
 
-	const DrawCommandInfo& getInfo() const{
-		return mDrawCommandInfo;
+	const GraphicsPipelineState& getPipelineState() const{
+		return mPipelineState;
 	}
 
 	const DescriptorSetData_t& getDescriptorSetData( size_t setId_ ) const{
@@ -150,7 +116,7 @@ public:
 	}
 
 	// setup all non-transient state for this draw object
-	DrawCommand( const DrawCommandInfo& dcs );
+	DrawCommand( const GraphicsPipelineState& dcs );
 
 	const std::vector<::vk::DeviceSize>& getVertexOffsets(){
 		return mVertexOffsets;

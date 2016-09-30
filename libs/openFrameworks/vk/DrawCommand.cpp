@@ -14,8 +14,8 @@ using namespace of::vk;
 
 // ----------------------------------------------------------------------
 
-DrawCommand::DrawCommand( const DrawCommandInfo & dcs )
-	:mDrawCommandInfo( dcs ){
+DrawCommand::DrawCommand( const GraphicsPipelineState & pipelineState )
+	:mPipelineState( pipelineState ){
 
 	// Initialise Ubo blobs with default values, based on 
 	// default values received from Shader. 
@@ -24,8 +24,8 @@ DrawCommand::DrawCommand( const DrawCommandInfo & dcs )
 	// these values depend on the shader, and the shader knows the
 	// uniform variable types.
 
-	const auto & descriptorSetsInfo = mDrawCommandInfo.getPipeline().getShader()->getDescriptorSetsInfo();
-	const auto & shaderUniforms     = mDrawCommandInfo.getPipeline().getShader()->getUniforms();
+	const auto & descriptorSetsInfo = mPipelineState.getShader()->getDescriptorSetsInfo();
+	const auto & shaderUniforms     = mPipelineState.getShader()->getUniforms();
 
 	mDescriptorSetData.reserve( descriptorSetsInfo.size() );
 	
@@ -78,7 +78,7 @@ DrawCommand::DrawCommand( const DrawCommandInfo & dcs )
 
 	// parse shader info to find out how many buffers to reserve for vertex attributes.
 
-	const auto & vertexInfo = mDrawCommandInfo.getPipeline().getShader()->getVertexInfo();
+	const auto & vertexInfo = mPipelineState.getShader()->getVertexInfo();
 
 	size_t numAttributes = vertexInfo.attribute.size();
 	
@@ -195,7 +195,7 @@ void DrawCommand::commitMeshAttributes( const std::unique_ptr<Allocator>& alloc 
 
 void DrawCommand::setAttribute( std::string name_, ::vk::Buffer buffer_, ::vk::DeviceSize offset_ ){
 	
-	const auto & vertexInfo = mDrawCommandInfo.getPipeline().getShader()->getVertexInfo();
+	const auto & vertexInfo = mPipelineState.getShader()->getVertexInfo();
 	
 	const auto & attributeNames = vertexInfo.attributeNames;
 	auto it = std::find( attributeNames.begin(), attributeNames.end(), name_ );
