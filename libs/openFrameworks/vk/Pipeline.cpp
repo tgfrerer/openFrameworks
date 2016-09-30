@@ -256,4 +256,18 @@ uint64_t GraphicsPipelineState::calculateHash() const {
 	return hash;
 }
 
+void GraphicsPipelineState::setShader( const std::shared_ptr<Shader>& shader ){
+	if ( shader.get() != mShader.get() ){
+		mShader = shader;
+		mDirty = true;
+	}
+}
+
+
+// ----------------------------------------------------------------------
+
+void GraphicsPipelineState::touchShader() const{
+	mDirty = mShader->compile();
+}
+
 // ----------------------------------------------------------------------

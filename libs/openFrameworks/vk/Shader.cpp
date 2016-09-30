@@ -57,7 +57,7 @@ const uint64_t of::vk::Shader::getShaderCodeHash(){
 
 // ----------------------------------------------------------------------
 
-void of::vk::Shader::compile(){
+bool of::vk::Shader::compile(){
 	bool shaderDirty = false;
 	
 	for ( auto & source : mSettings.sources ){
@@ -68,7 +68,7 @@ void of::vk::Shader::compile(){
 		if ( !ofFile( filename ).exists() ){
 			ofLogFatalError() << "Shader file not found: " << source.second;
 			ofExit(1);
-			return;
+			return false;
 		}
 
 		std::vector<uint32_t> spirCode;
@@ -77,7 +77,7 @@ void of::vk::Shader::compile(){
 		if ( !success){
 			if (!mShaderStages.empty()){
 				ofLogError() << "Aborting shader compile. Using previous version of shader instead";
-				return;
+				return false;
 			} else{
 				// !TODO: should we use a default shader, then?
 				ofLogFatalError() << "Shader did not compile: " << filename;
@@ -107,8 +107,10 @@ void of::vk::Shader::compile(){
 		createSetLayouts();
 		createVkPipelineLayout();
 		shaderDirty = false;
-	}
+		return true;
+	} 
 	
+	return false;
 }
 
 // return shader stage information for pipeline creation

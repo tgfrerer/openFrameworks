@@ -98,7 +98,7 @@ private: // these states must be received through context
 	mutable uint32_t          mSubpass            = 0;
 
 private:
-	int32_t           mBasePipelineIndex  = -1;
+	int32_t                   mBasePipelineIndex  = -1;
 
 	// shader allows us to derive pipeline layout, has public getters and setters.
 	std::shared_ptr<of::vk::Shader>        mShader;
@@ -114,16 +114,9 @@ public:
 	// whether this pipeline state is dirty.
 	mutable VkBool32          mDirty              = true;
 
-	void setShader(const std::shared_ptr<Shader> & shader ){
-		if ( shader.get() != mShader.get() ){
-			mShader = shader;
-			mDirty = true;
-		}
-	}
-
-	const std::shared_ptr<Shader> getShader() const{
-		return mShader;
-	}
+	const std::shared_ptr<Shader> getShader() const;
+	void                          setShader( const std::shared_ptr<Shader> & shader );
+	void                          touchShader() const;
 
 	void setRenderPass( const ::vk::RenderPass& renderPass ) const {
 		if ( renderPass != mRenderPass ){
@@ -185,8 +178,14 @@ static std::shared_ptr<::vk::PipelineCache> createPipelineCache( const ::vk::Dev
 	} );
 
 	return result;
-
 };
 
 } // namespace vk
 } // namespace of
+
+// ----------------------------------------------------------------------
+
+inline const std::shared_ptr<of::vk::Shader> of::vk::GraphicsPipelineState::getShader() const{
+	return mShader;
+}
+

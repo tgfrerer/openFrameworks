@@ -205,7 +205,8 @@ public:
 	}
 
 	// re-compile shader - this invalidates hashes only when shader has changed.
-	void compile();
+	// returns true if new shader compiled successfully, otherwise false
+	bool compile();
 
 	// return shader stage information for pipeline creation
 	const std::vector<::vk::PipelineShaderStageCreateInfo> getShaderStageCreateInfo();
