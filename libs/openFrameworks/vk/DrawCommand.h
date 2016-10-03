@@ -107,41 +107,21 @@ public:
 
 	void setup(const GraphicsPipelineState& pipelineState);
 
-	const GraphicsPipelineState& getPipelineState() const{
-		return mPipelineState;
-	}
-
-	const DescriptorSetData_t& getDescriptorSetData( size_t setId_ ) const{
-		return mDescriptorSetData[setId_];
-	}
-
-	const std::vector<::vk::DeviceSize>& getVertexOffsets(){
-		return mVertexOffsets;
-	}
-	const ::vk::DeviceSize& getIndexOffsets(){
-		return mIndexOffsets;
-	}
-	const std::vector<::vk::Buffer>& getVertexBuffers(){
-		return mVertexBuffers;
-	}
-	const ::vk::Buffer& getIndexBuffer(){
-		return mIndexBuffer;
-	}
+	const GraphicsPipelineState&         getPipelineState() const;
 	
-	const uint32_t getNumIndices(){
-		return mNumIndices;
-	}
-	const uint32_t getNumVertices(){
-		return mNumVertices;
-	}
+	const DescriptorSetData_t&           getDescriptorSetData( size_t setId_ ) const;
 
-	void setNumVertices(uint32_t numVertices){
-		mNumVertices = numVertices;
-	}
-
-	void setNumIndices( uint32_t numIndices ){
-		mNumIndices = numIndices;
-	}
+	const std::vector<::vk::DeviceSize>& getVertexOffsets();
+	const std::vector<::vk::Buffer>&     getVertexBuffers();
+	
+	const ::vk::DeviceSize&              getIndexOffsets();
+	const ::vk::Buffer&                  getIndexBuffer();
+	
+	const uint32_t                       getNumIndices();
+	void                                 setNumVertices( uint32_t numVertices );
+	
+	const uint32_t                       getNumVertices();
+	void                                 setNumIndices( uint32_t numIndices );
 
 	// set data for upload to ubo - data is stored locally 
 	// until draw command is submitted
@@ -185,3 +165,46 @@ public:
 
 } // namespace 
 } // end namespace of
+
+// ------------------------------------------------------------
+// Inline getters and setters
+
+inline const of::vk::GraphicsPipelineState & of::vk::DrawCommand::getPipelineState() const{
+	return mPipelineState;
+}
+
+inline const of::vk::DrawCommand::DescriptorSetData_t & of::vk::DrawCommand::getDescriptorSetData( size_t setId_ ) const{
+	return mDescriptorSetData[setId_];
+}
+
+inline const std::vector<::vk::DeviceSize>& of::vk::DrawCommand::getVertexOffsets(){
+	return mVertexOffsets;
+}
+
+inline const::vk::DeviceSize & of::vk::DrawCommand::getIndexOffsets(){
+	return mIndexOffsets;
+}
+
+inline const std::vector<::vk::Buffer>& of::vk::DrawCommand::getVertexBuffers(){
+	return mVertexBuffers;
+}
+
+inline const::vk::Buffer & of::vk::DrawCommand::getIndexBuffer(){
+	return mIndexBuffer;
+}
+
+inline const uint32_t of::vk::DrawCommand::getNumIndices(){
+	return mNumIndices;
+}
+
+inline const uint32_t of::vk::DrawCommand::getNumVertices(){
+	return mNumVertices;
+}
+
+inline void of::vk::DrawCommand::setNumVertices( uint32_t numVertices ){
+	mNumVertices = numVertices;
+}
+
+inline void of::vk::DrawCommand::setNumIndices( uint32_t numIndices ){
+	mNumIndices = numIndices;
+}
