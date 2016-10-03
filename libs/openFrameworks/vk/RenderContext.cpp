@@ -51,9 +51,6 @@ RenderContext::~RenderContext(){
 
 // ------------------------------------------------------------
 
-const ::vk::CommandPool & RenderContext::getCommandPool() const {
-	return mVirtualFrames.at( mCurrentVirtualFrame ).commandPool;
-}
   
 // ------------------------------------------------------------
 
@@ -100,11 +97,11 @@ void RenderContext::begin(){
 	// free old command buffers - this is necessary since otherwise you end up with 
 	// leaking them.
 	if ( !mVirtualFrames[mCurrentVirtualFrame].commandBuffers.empty() ){
-		mDevice.freeCommandBuffers( getCommandPool(), mVirtualFrames[mCurrentVirtualFrame].commandBuffers );
+		mDevice.freeCommandBuffers( mVirtualFrames[mCurrentVirtualFrame].commandPool, mVirtualFrames[mCurrentVirtualFrame].commandBuffers );
 		mVirtualFrames[mCurrentVirtualFrame].commandBuffers.clear();
 	}
 	
-	mDevice.resetCommandPool( getCommandPool(), ::vk::CommandPoolResetFlagBits::eReleaseResources );
+	mDevice.resetCommandPool( mVirtualFrames[mCurrentVirtualFrame].commandPool, ::vk::CommandPoolResetFlagBits::eReleaseResources );
 
 	mTransientMemory->free();
 

@@ -108,7 +108,6 @@ private:
 	
 	const std::unique_ptr<Allocator> & RenderContext::getAllocator();
 	
-	const ::vk::CommandPool & getCommandPool() const;
 
 public:
 
@@ -198,7 +197,7 @@ inline ::vk::CommandBuffer RenderContext::requestAndBeginPrimaryCommandBuffer(){
 
 	::vk::CommandBufferAllocateInfo commandBufferAllocateInfo;
 	commandBufferAllocateInfo
-		.setCommandPool( getCommandPool() )
+		.setCommandPool( mVirtualFrames[mCurrentVirtualFrame].commandPool )
 		.setLevel( ::vk::CommandBufferLevel::ePrimary )
 		.setCommandBufferCount( 1 )
 		;
