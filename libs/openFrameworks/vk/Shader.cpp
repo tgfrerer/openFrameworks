@@ -293,6 +293,12 @@ void of::vk::Shader::reflect(
 		
 	}  
 
+	mAttributeIndices.clear();
+
+	for ( size_t i = 0; i != mVertexInfo.attributeNames.size(); ++i ){
+		mAttributeIndices[mVertexInfo.attributeNames[i]] = mVertexInfo.bindingDescription[i].binding;
+	}
+
 }
 
 // ----------------------------------------------------------------------

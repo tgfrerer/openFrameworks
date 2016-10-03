@@ -151,7 +151,7 @@ public:
 
 	void setMesh( const shared_ptr<ofMesh>& msh_ );
 
-	void setAttribute( std::string name_, ::vk::Buffer buffer, ::vk::DeviceSize offset );
+	void setAttribute( const std::string& name_, ::vk::Buffer buffer, ::vk::DeviceSize offset );
 
 	void setIndices( ::vk::Buffer buffer, ::vk::DeviceSize offset );
 

@@ -92,6 +92,7 @@ void DrawCommand::setup(const GraphicsPipelineState& pipelineState){
 	}
 }
 
+
 // ------------------------------------------------------------
 
 void DrawCommand::commitUniforms(const std::unique_ptr<Allocator>& alloc ){
@@ -193,18 +194,14 @@ void DrawCommand::commitMeshAttributes( const std::unique_ptr<Allocator>& alloc 
 
 // ------------------------------------------------------------
 
-void DrawCommand::setAttribute( std::string name_, ::vk::Buffer buffer_, ::vk::DeviceSize offset_ ){
+void DrawCommand::setAttribute( const std::string& name_, ::vk::Buffer buffer_, ::vk::DeviceSize offset_ ){
 	
-	const auto & vertexInfo = mPipelineState.getShader()->getVertexInfo();
-	
-	const auto & attributeNames = vertexInfo.attributeNames;
-	auto it = std::find( attributeNames.begin(), attributeNames.end(), name_ );
-	
-	if ( it != attributeNames.end() ){
-		size_t index = ( it - attributeNames.begin() );
+	size_t index = 0;
+	if ( mPipelineState.getShader()->getAttributeIndex( name_, index ) ){
 		mVertexBuffers[index] = buffer_;
 		mVertexOffsets[index] = offset_;
 	}
+
 }
 
 // ------------------------------------------------------------

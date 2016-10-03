@@ -134,6 +134,9 @@ private:
 	// vector of descriptor set binding information (index is descriptor set number)
 	std::vector<DesciptorSetLayoutInfo> mDescriptorSetsInfo;
 	
+	// attribute indices, indexed by attribute name
+	std::unordered_map<std::string, size_t> mAttributeIndices;
+
 	// vector of just the descriptor set layout keys - this needs to be kept in sync 
 	// with mDescriptorSetsInfo
 	std::vector<uint64_t>               mDescriptorSetLayoutKeys;
@@ -235,6 +238,8 @@ public:
 	
 	const std::vector<std::string> & getAttributeNames();
 	
+	bool getAttributeIndex( const std::string& name, size_t& index ) const;
+
 	const VertexInfo& getVertexInfo();
 };
 
@@ -264,6 +269,17 @@ inline const ::vk::PipelineVertexInputStateCreateInfo & of::vk::Shader::getVerte
 
 inline const std::vector<std::string> & of::vk::Shader::getAttributeNames(){
 	return mVertexInfo.attributeNames;
+}
+
+inline bool of::vk::Shader::getAttributeIndex( const std::string &name, size_t &index ) const{
+	auto result = mAttributeIndices.find( name );
+	
+	if ( result == mAttributeIndices.end() ){
+		return false;
+	} else{
+		index = result->second;
+		return true;
+	};
 }
 
 inline const Shader::VertexInfo & Shader::getVertexInfo(){
