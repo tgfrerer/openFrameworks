@@ -15,18 +15,24 @@ layout (set = 0, binding = 1) uniform Style
 	vec4 globalColor;
 } style;
 
-layout (location = 0) in vec4 inColor;
-layout (location = 1) in vec3 inNormal;
+layout (location = 0) in vec4 inPosition;
+layout (location = 1) flat in vec3 inNormal;
 
 layout (location = 0) out vec4 outFragColor;
 
 void main() 
 {
 
-  vec4 normalColor = vec4((inNormal + vec3(1.0)) * vec3(0.5) , 1.0);
-  vec4 vertexColor = inColor;
+  vec4 lightPos = viewMatrix * vec4(-2000,100,2000,1);
+
+  vec3 normal = normalize(inNormal);
+
+  vec3 l = normalize(lightPos - inPosition).xyz;
+
+  float lambert = dot(l,normal);
+
+  vec3 normalColor = (inNormal + vec3(1.0)) * vec3(0.5);
+  outFragColor = vec4(normalColor,1);
   
-  // set the actual fragment color here
-  // outFragColor = normalColor;
-  outFragColor = vertexColor;
+  outFragColor = vec4(vec3(1,0,0) * lambert, 1);
 }
