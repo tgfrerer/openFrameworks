@@ -133,54 +133,32 @@ void DrawCommand::commitMeshAttributes( const std::unique_ptr<Allocator>& alloc 
 	if ( mMsh ){
 		auto &mesh = *mMsh;
 
-		::vk::DeviceSize offset = 0;
-		void * dataP            = nullptr;
-
-		if ( !mesh.hasVertices() ){
+		if ( !mesh.hasVertices() || !allocAndSetAttribute( "inPos", mesh.getVertices(), alloc ) ){
 			ofLogError() << "Mesh has no vertices.";
 			return;
 		} else {
-			const auto & vertices = mesh.getVertices(); 
-			// allocate data on gpu
-			if ( alloc->allocate( vertices.size(), offset ) && alloc->map( dataP )){
-				alloc->map( dataP );
-				memcpy( dataP, vertices.data(), sizeof(vertices[0]) * vertices.size() );
-				setAttribute( "inPos", alloc->getBuffer(), offset );
-				mNumVertices = vertices.size();
-			}
+			mNumVertices = mesh.getVertices().size();
 		}
 
 		if ( mesh.hasColors() && mesh.usingColors()){
-			const auto & colors = mesh.getColors();
-			// allocate data on gpu
-			if ( alloc->allocate( colors.size(), offset ) && alloc->map( dataP ) ){
-				memcpy( dataP, colors.data(), sizeof( colors[0] ) * colors.size() );
-				setAttribute( "inColor", alloc->getBuffer(), offset );
-			}
+			allocAndSetAttribute( "inColor", mesh.getColors(), alloc );
 		}
 		if ( mesh.hasNormals() && mesh.usingNormals() ){
-			const auto & normals = mesh.getColors();
-			// allocate data on gpu
-			if ( alloc->allocate( normals.size(), offset ) && alloc->map( dataP ) ){
-				memcpy( dataP, normals.data(), sizeof( normals[0] ) * normals.size() );
-				setAttribute( "inNormal", alloc->getBuffer(), offset );
-			}
+			allocAndSetAttribute( "inNormal", mesh.getNormals(), alloc );
 		}
 		if ( mesh.hasTexCoords() && mesh.usingTextures() ){
-			const auto & texCoords = mesh.getTexCoords();
-			// allocate data on gpu
-			if ( alloc->allocate( texCoords.size(), offset ) && alloc->map( dataP ) ){
-				memcpy( dataP, texCoords.data(), sizeof( texCoords[0] ) * texCoords.size() );
-				setAttribute( "inTexCoord", alloc->getBuffer(), offset );
-			}
+			allocAndSetAttribute( "inTexCoords", mesh.getTexCoords(), alloc );
 		}
 
 		if ( mesh.hasIndices() && mesh.usingIndices() ){
 			const auto & indices = mesh.getIndices();
-			// allocate data on gpu
-			if ( alloc->allocate( indices.size(), offset ) && alloc->map( dataP ) ){
-				
-				memcpy( dataP, indices.data(), sizeof( indices[0] ) * indices.size() );
+			const auto byteSize = sizeof( indices[0] ) * indices.size();
+
+			void * dataP = nullptr;
+			::vk::DeviceSize offset = 0;
+
+			if ( alloc->allocate( byteSize, offset ) && alloc->map( dataP ) ){
+				memcpy( dataP, indices.data(), byteSize );
 				setIndices( alloc->getBuffer(), offset );
 				mNumIndices = indices.size();
 			}
@@ -200,6 +178,9 @@ void DrawCommand::setAttribute( const std::string& name_, ::vk::Buffer buffer_, 
 	if ( mPipelineState.getShader()->getAttributeIndex( name_, index ) ){
 		mVertexBuffers[index] = buffer_;
 		mVertexOffsets[index] = offset_;
+	} else{
+		//ofLogWarning() << "Attribute '" << name_ << "' could not be found in shader: "
+		//	<< mPipelineState.getShader()->mSettings.sources.at(::vk::ShaderStageFlagBits::eVertex);
 	}
 
 }

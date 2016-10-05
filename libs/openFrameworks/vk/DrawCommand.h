@@ -137,31 +137,59 @@ public:
 
 	// upload uniform data to gpu memory
 	template <class T>
-	void setUniform( std::string uniformName, const T& uniformValue_ ){
+	void setUniform( const std::string& uniformName, const T& uniformValue_ );
 
-		const auto foundMemberIt = mUniformMembers.find( uniformName );
+	template <typename T>
+	bool allocAndSetAttribute( const std::string& attrName_, const std::vector<T> & vec, const std::unique_ptr<Allocator>& alloc );
 
-		if ( foundMemberIt != mUniformMembers.end() ){
-			const auto & memberSubrange = foundMemberIt->second;
-			if ( memberSubrange.range < sizeof( T ) ){
-				ofLogWarning() << "Could not set uniform '" << uniformName << "': Uniform data size does not match: "
-					<< " Expected: " << memberSubrange.range << ", received: " << sizeof( T ) << ".";
-				return;
-			}
-			// --------| invariant: size match, we can copy data into our vector.
-
-			auto & dataVec = mDescriptorSetData[memberSubrange.setNumber].dynamicUboData[memberSubrange.bindingNumber];
-
-			if ( memberSubrange.offset + memberSubrange.range <= dataVec.size() ){
-				memcpy( dataVec.data() + memberSubrange.offset, &uniformValue_, memberSubrange.range );
-			} else{
-				ofLogError() << "Not enough space in local uniform storage. Has this drawcommand been properly initialised?";
-			}
-		}
-
-	}
 
 };
+
+// ------------------------------------------------------------
+
+
+// upload uniform data to gpu memory
+template<class T>
+inline void DrawCommand::setUniform( const std::string & uniformName, const T & uniformValue_ ){
+
+	const auto foundMemberIt = mUniformMembers.find( uniformName );
+
+	if ( foundMemberIt != mUniformMembers.end() ){
+		const auto & memberSubrange = foundMemberIt->second;
+		if ( memberSubrange.range < sizeof( T ) ){
+			ofLogWarning() << "Could not set uniform '" << uniformName << "': Uniform data size does not match: "
+				<< " Expected: " << memberSubrange.range << ", received: " << sizeof( T ) << ".";
+			return;
+		}
+		// --------| invariant: size match, we can copy data into our vector.
+
+		auto & dataVec = mDescriptorSetData[memberSubrange.setNumber].dynamicUboData[memberSubrange.bindingNumber];
+
+		if ( memberSubrange.offset + memberSubrange.range <= dataVec.size() ){
+			memcpy( dataVec.data() + memberSubrange.offset, &uniformValue_, memberSubrange.range );
+		} else{
+			ofLogError() << "Not enough space in local uniform storage. Has this drawcommand been properly initialised?";
+		}
+	}
+
+}
+
+// upload vertex data to gpu memory
+template<typename T>
+inline bool DrawCommand::allocAndSetAttribute( const std::string & attrName_, const std::vector<T>& vec, const std::unique_ptr<Allocator>& alloc ){
+	void * dataP = nullptr;
+	::vk::DeviceSize offset = 0;
+
+	const auto byteSize = sizeof( vec[0] ) * vec.size();
+	// allocate data on gpu
+	if ( alloc->allocate( byteSize, offset ) && alloc->map( dataP ) ){
+		alloc->map( dataP );
+		memcpy( dataP, vec.data(), byteSize );
+		setAttribute( attrName_, alloc->getBuffer(), offset );
+		return true;
+	}
+	return false;
+}
 
 } // namespace 
 } // end namespace of
