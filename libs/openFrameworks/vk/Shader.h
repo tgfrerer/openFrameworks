@@ -257,6 +257,8 @@ inline const std::vector<::vk::PipelineShaderStageCreateInfo> of::vk::Shader::ge
 	return stageInfo;
 }
 
+// ----------------------------------------------------------------------
+
 inline const std::vector<of::vk::Shader::DesciptorSetLayoutInfo>& of::vk::Shader::getDescriptorSetsInfo(){
 	return mDescriptorSetsInfo;
 }
@@ -267,9 +269,13 @@ inline const ::vk::PipelineVertexInputStateCreateInfo & of::vk::Shader::getVerte
 	return mVertexInfo.vi;
 }
 
+// ----------------------------------------------------------------------
+
 inline const std::vector<std::string> & of::vk::Shader::getAttributeNames(){
 	return mVertexInfo.attributeNames;
 }
+
+// ----------------------------------------------------------------------
 
 inline bool of::vk::Shader::getAttributeIndex( const std::string &name, size_t &index ) const{
 	auto result = mAttributeIndices.find( name );
@@ -281,6 +287,8 @@ inline bool of::vk::Shader::getAttributeIndex( const std::string &name, size_t &
 		return true;
 	};
 }
+
+// ----------------------------------------------------------------------
 
 inline const Shader::VertexInfo & Shader::getVertexInfo(){
 	return mVertexInfo;
@@ -294,11 +302,14 @@ inline const std::shared_ptr<::vk::PipelineLayout>& Shader::getPipelineLayout() 
 	return mPipelineLayout;
 }
 
+// ----------------------------------------------------------------------
+
 inline const std::vector<uint64_t>& Shader::getDescriptorSetLayoutKeys() const{
 	return mDescriptorSetLayoutKeys;
 }
 
 // ----------------------------------------------------------------------
+
 inline const std::vector<std::shared_ptr<::vk::DescriptorSetLayout>>& of::vk::Shader::getDescriptorSetLayouts() const{
 	return mDescriptorSetLayouts;
 }
@@ -308,6 +319,8 @@ inline const std::vector<std::shared_ptr<::vk::DescriptorSetLayout>>& of::vk::Sh
 inline const std::shared_ptr<::vk::DescriptorSetLayout>& of::vk::Shader::getDescriptorSetLayout( size_t setId ) const{
 	return mDescriptorSetLayouts.at( setId );
 }
+
+// ----------------------------------------------------------------------
 
 inline const std::map<std::string, of::vk::Shader::Uniform_t>& of::vk::Shader::getUniforms(){
 	return mUniforms;
