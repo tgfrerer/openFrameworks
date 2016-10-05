@@ -68,7 +68,7 @@ void RenderBatch::submit(){
 	mVkCmd.end();
 
 	mRenderContext->submit(std::move(mVkCmd));
-	
+
 	mVkCmd = nullptr;
 	mDrawCommands.clear();
 }
@@ -85,19 +85,22 @@ void RenderBatch::processDrawCommands( const ::vk::CommandBuffer& cmd ){
 	// 3) descriptor set usage
 
 	// then process draw commands
+	
+	// current draw state for building command buffer - this is based on parsing the drawCommand list
+	std::unique_ptr<GraphicsPipelineState> boundPipelineState;
 
 
 	for ( auto & dc : mDrawCommands ){
 
 		// find out pipeline state needed for this draw command
 
-		if ( !mCurrentPipelineState || *mCurrentPipelineState != dc.mPipelineState ){
+		if ( !boundPipelineState || *boundPipelineState != dc.mPipelineState ){
 			// look up pipeline in pipeline cache
 			// otherwise, create a new pipeline, then bind pipeline.
 
-			mCurrentPipelineState = std::make_unique<GraphicsPipelineState>( dc.mPipelineState );
+			boundPipelineState = std::make_unique<GraphicsPipelineState>( dc.mPipelineState );
 
-			uint64_t pipelineStateHash = mCurrentPipelineState->calculateHash();
+			uint64_t pipelineStateHash = boundPipelineState->calculateHash();
 
 			auto & currentPipeline = mRenderContext->borrowPipeline( pipelineStateHash );
 
@@ -111,7 +114,7 @@ void RenderBatch::processDrawCommands( const ::vk::CommandBuffer& cmd ){
 					delete rhs;
 				} );
 
-				*currentPipeline = mCurrentPipelineState->createPipeline( mRenderContext->mDevice, mRenderContext->mSettings.pipelineCache);
+				*currentPipeline = boundPipelineState->createPipeline( mRenderContext->mDevice, mRenderContext->mSettings.pipelineCache);
 			}
 
 			cmd.bindPipeline( ::vk::PipelineBindPoint::eGraphics, *currentPipeline );
