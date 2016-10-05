@@ -3,20 +3,44 @@
 #include "vk/DrawCommand.h"
 #include "vk/RenderBatch.h"
 
-#define EXAMPLE_TARGET_FRAME_RATE 90
+#define EXAMPLE_TARGET_FRAME_RATE 60
 bool isFrameLocked = true;
 
 std::shared_ptr<ofVkRenderer> renderer = nullptr;
 
 
-void Teapot::setup(){
+//--------------------------------------------------------------
 
+void ofApp::setup(){
+	renderer = dynamic_pointer_cast<ofVkRenderer>( ofGetCurrentRenderer() );
+
+	ofDisableSetupScreen();
+	ofSetFrameRate( EXAMPLE_TARGET_FRAME_RATE );
+
+	setupDrawCommand();
+
+	setupMeshL();
+
+	mMeshTeapot = std::make_shared<ofMesh>();
+	mMeshTeapot->load( "ico-m.ply" );
+
+	mCam.setupPerspective( false, 60, 0.f, 5000 );
+	mCam.setPosition( { 0,0, mCam.getImagePlaneDistance() } );
+	mCam.lookAt( { 0,0,0 } );
+
+	//mCam.enableMouseInput();
+	//mCam.setControlArea( { 0,0,float(ofGetWidth()),float(ofGetHeight() )} );
+}
+
+//--------------------------------------------------------------
+
+void ofApp::setupDrawCommand(){
 	// shader creation makes shader reflect. 
-	auto mShaderDefault = std::shared_ptr<of::vk::Shader>(new of::vk::Shader( renderer->getVkDevice(),
+	auto mShaderDefault = std::shared_ptr<of::vk::Shader>( new of::vk::Shader( renderer->getVkDevice(),
 	{
 		{ ::vk::ShaderStageFlagBits::eVertex  , "default.vert" },
 		{ ::vk::ShaderStageFlagBits::eFragment, "default.frag" },
-	}));
+	} ) );
 
 	of::vk::GraphicsPipelineState pipeline;
 
@@ -25,116 +49,87 @@ void Teapot::setup(){
 		.setDepthWriteEnable( VK_TRUE )
 		;
 	pipeline.inputAssemblyState.setTopology( ::vk::PrimitiveTopology::eTriangleList );
-	// pipeline.setPolyMode( ::vk::PolygonMode::eLine );
+	//pipeline.setPolyMode( ::vk::PolygonMode::eLine );
 	pipeline.setShader( mShaderDefault );
 
-	dc.setup( pipeline );
+	const_cast<of::vk::DrawCommand&>(dc).setup( pipeline );
+}
 
-	mLMesh = make_shared<ofMesh>();
-	{	// Horizontally elongated "L___" shape
+//--------------------------------------------------------------
 
-		vector<glm::vec3> vert{
-			{ 0.f,0.f,0.f },
-			{ 20.f,20.f,0.f },
-			{ 0.f,100.f,0.f },
-			{ 20.f,100.f,0.f },
-			{ 200.f,0.f,0.f },
-			{ 200.f,20.f,0.f }
-		};
-
-		vector<ofIndexType> idx{
-			0, 1, 2,
-			1, 3, 2,
-			0, 4, 1,
-			1, 4, 5,
-		};
-
-		vector<glm::vec3> norm( vert.size(), { 0, 0, 1.f } );
-
-		vector<ofFloatColor> col( vert.size(), ofColor::white );
-
-		mLMesh->addVertices( vert );
-		mLMesh->addNormals( norm );
-		mLMesh->addColors( col );
-		mLMesh->addIndices( idx );
+void ofApp::setupMeshL(){
+	// Horizontally elongated "L___" shape
+	mMeshL = make_shared<ofMesh>();
+	vector<glm::vec3> vert{
+		{ 0.f,0.f,0.f },
+		{ 20.f,20.f,0.f },
+		{ 0.f,100.f,0.f },
+		{ 20.f,100.f,0.f },
+		{ 200.f,0.f,0.f },
+		{ 200.f,20.f,0.f }
 	};
-}
 
-//--------------------------------------------------------------
+	vector<ofIndexType> idx{
+		0, 1, 2,
+		1, 3, 2,
+		0, 4, 1,
+		1, 4, 5,
+	};
 
-void Teapot::recompile(){
-	dc.getPipelineState().touchShader();
-}
+	vector<glm::vec3> norm( vert.size(), { 0, 0, 1.f } );
 
-//--------------------------------------------------------------
-
-void Teapot::draw( of::vk::RenderBatch& rb ){
-
-	// update uniforms inside the draw command 
-
-	auto projectionMatrix = glm::mat4x4();
-	static ofCamera mCam;
-
-	mCam.setPosition( { 0,0, mCam.getImagePlaneDistance() } );
-	mCam.lookAt( { 0,0,0 } );
-
-	static const glm::mat4x4 clip( 1.0f, 0.0f, 0.0f, 0.0f,
-		0.0f, -1.0f, 0.0f, 0.0f,
-		0.0f, 0.0f, 0.5f, 0.0f,
-		0.0f, 0.0f, 0.5f, 1.0f );
-
-	projectionMatrix = clip * mCam.getProjectionMatrix( ofGetCurrentViewport() );
-	ofMatrix4x4 modelMatrix = glm::rotate( float(TWO_PI * ( ( ofGetFrameNum() % 360 ) / 360.f )), glm::vec3({ 0.f, 0.f, 1.f}) );
-	
-
-	of::vk::DrawCommand ndc = dc;
-
-	ndc.setUniform( "projectionMatrix", projectionMatrix );     // | 
-	ndc.setUniform( "viewMatrix", mCam.getModelViewMatrix() );  // |> set camera matrices
-	ndc.setUniform( "modelMatrix", modelMatrix );
-	ndc.setUniform( "globalColor", ofFloatColor::magenta );
-	ndc.setMesh( mLMesh );
-
-	// update attribute buffer bindings
-	rb.draw( ndc );
-
-	of::vk::DrawCommand newDraw = ndc;
-
-	modelMatrix.translate( { 100,0,0 } );
-	newDraw.setUniform( "modelMatrix", modelMatrix );
-
-	rb.draw( newDraw );
-
-}
-
-//--------------------------------------------------------------
-
-void ofApp::setup(){
-	ofDisableSetupScreen();
-	renderer = dynamic_pointer_cast<ofVkRenderer>( ofGetCurrentRenderer() );
-
-	mTeapot.setup();
-	ofSetFrameRate( EXAMPLE_TARGET_FRAME_RATE );
+	mMeshL->addVertices( vert );
+	mMeshL->addNormals( norm );
+	mMeshL->addIndices( idx );
 }
 
 //--------------------------------------------------------------
 
 void ofApp::update(){
 
+	// we need to make the camera its matrices and respond to the mouse input 
+	// somehow, that's why we use begin/end here
+	mCam.begin(); // threre should not need to be need for this!
+	mCam.end();	  // threre should not need to be need for this!
+
+	ofSetWindowTitle( ofToString( ofGetFrameRate(), 2, ' ' ) );
 }
 
 //--------------------------------------------------------------
 void ofApp::draw(){
-	
+
+	// Create temporary batch object from default context
 	of::vk::RenderBatch batch{ *renderer->getDefaultContext() };
 
-	mTeapot.draw( batch );
-	mTeapot.draw( batch );
-	mTeapot.draw( batch );
+	// Update uniforms for draw command
 
-	batch.submit();	// this will build, but not yet submit Vk Commandbuffer
+	static const glm::mat4x4 clip( 1.0f, 0.0f, 0.0f, 0.0f,
+		0.0f, -1.0f, 0.0f, 0.0f,
+		0.0f, 0.0f, 0.5f, 0.0f,
+		0.0f, 0.0f, 0.5f, 1.0f );
 
-	ofSetWindowTitle( ofToString( ofGetFrameRate(), 2, ' ' ) );
+	auto projectionMatrix = clip * mCam.getProjectionMatrix( ofGetCurrentViewport() );
+
+	ofMatrix4x4 modelMatrix = glm::rotate( float( TWO_PI * ( ( ofGetFrameNum() % 360 ) / 360.f ) ), glm::vec3( { 0.f, 0.f, 1.f } ) );
+
+	// create a copy of our const prototype draw command
+	of::vk::DrawCommand ndc = dc;
+
+	ndc.setUniform( "projectionMatrix", projectionMatrix );            // | 
+	ndc.setUniform( "viewMatrix"      , mCam.getModelViewMatrix() );   // |> set camera matrices
+	ndc.setUniform( "modelMatrix"     , modelMatrix );
+	ndc.setUniform( "globalColor"     , ofFloatColor::magenta );
+	ndc.setMesh( mMeshTeapot );
+
+	// Add draw command to batch 
+	batch.draw( ndc );
+
+	// Build vkCommandBuffer inside batch and submit CommandBuffer to 
+	// parent context of batch.
+	batch.submit();	
+
+	// At end of draw, context will submit its list of vkCommandBuffers
+	// to graphics queue in one go.
 }
 
 //--------------------------------------------------------------
@@ -145,7 +140,7 @@ void ofApp::keyPressed(int key){
 //--------------------------------------------------------------
 void ofApp::keyReleased(int key){
 	if ( key == ' ' ){
-		mTeapot.recompile();
+		const_cast<of::vk::DrawCommand&>( dc ).getPipelineState().touchShader();
 	} else if ( key == 'l' ){
 		isFrameLocked ^= true;
 		ofSetFrameRate( isFrameLocked ? EXAMPLE_TARGET_FRAME_RATE : 0);
