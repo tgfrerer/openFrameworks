@@ -121,7 +121,6 @@ void DrawCommand::commitUniforms(const std::unique_ptr<Allocator>& alloc ){
 			} else{
 				ofLogError() << "commitUniforms: could not allocate transient memory.";
 			}
-			
 		}
 	}
 }

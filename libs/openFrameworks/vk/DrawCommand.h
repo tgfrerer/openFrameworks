@@ -170,6 +170,8 @@ inline void DrawCommand::setUniform( const std::string & uniformName, const T & 
 		} else{
 			ofLogError() << "Not enough space in local uniform storage. Has this drawcommand been properly initialised?";
 		}
+	} else {
+		; // set a breakpoint here if you want to catch uniform name not found.
 	}
 
 }
