@@ -376,6 +376,10 @@ void ofVkRenderer::startRender(){
 	
 	//----------| invariant: last frame has finished rendering. It may not yet be finished presenting.
 
+	// !TODO: notify any contexts in a thread-safe way that the last frame has finished rendering.
+	// allContexts.renderComplete();
+	// This means they may dispose of any transient resources for that frame, and start building new command buffers.
+	// maybe the way to do this is through a promise and a future.
 	mDefaultContext->begin();
 
 	// receive index for next available swapchain image
@@ -383,13 +387,17 @@ void ofVkRenderer::startRender(){
 
 	// ---------| invariant: new swap chain image has been acquired for drawing into.
 
-	attachSwapChainImages( swapIdx ); /* connect current frame buffer with swapchain image, and depth stencil image */
+	/* connect default context frame buffer to swapchain image, and depth stencil image */
+	attachSwapChainImages( swapIdx ); 
 
 }
 
 // ----------------------------------------------------------------------
 
 void ofVkRenderer::finishRender(){
+
+	// TODO: if there are other Contexts flying around on other threads, ask them to finish their work for
+	// the frame.
 
 	mDefaultContext->submitDraw();
 	// present swapchain frame

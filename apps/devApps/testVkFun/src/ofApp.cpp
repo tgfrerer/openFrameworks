@@ -98,10 +98,28 @@ void ofApp::update(){
 //--------------------------------------------------------------
 void ofApp::draw(){
 
-	// Create temporary batch object from default context
-	of::vk::RenderBatch batch{ *renderer->getDefaultContext() };
+	auto & currentContext = *renderer->getDefaultContext();
 
-	// Update uniforms for draw command
+	// first thing we need to add command buffers that deal with
+	// copying data. 
+	//
+	// then issue a pipeline barrier for data copy if we wanted to use static data immediately. 
+	// this ensures the barrier is not within a renderpass,
+	// as the renderpass will only start with the command buffer that has been created through a batch.
+	//
+	// if we don't issue a barrier, the transfer will be done when the frame has finished rendering, 
+	// as the fence will guarantee that everything enqueued has finished. The challenge here is that 
+	// this will be a few frames ahead - depeding on the number of virtual frames.
+	//
+	// submit copy command buffers 
+	// 
+	// currentContext.submit( ::vk::CommandBuffer() );
+	//
+	// in the draw command we can then specify to set the 
+	// buffer ID and offset for an attribute to come from the static allocator.
+
+	// Create temporary batch object from default context
+	of::vk::RenderBatch batch{ currentContext };
 
 	static const glm::mat4x4 clip( 1.0f, 0.0f, 0.0f, 0.0f,
 		0.0f, -1.0f, 0.0f, 0.0f,
@@ -112,9 +130,10 @@ void ofApp::draw(){
 
 	ofMatrix4x4 modelMatrix = glm::rotate( float( TWO_PI * ( ( ofGetFrameNum() % 360 ) / 360.f ) ), glm::vec3( { 0.f, 0.f, 1.f } ) );
 
-	// create a copy of our const prototype draw command
+	// Create a fresh copy of our prototype const draw command
 	of::vk::DrawCommand ndc = dc;
 
+	// Update uniforms for draw command
 	ndc.setUniform( "projectionMatrix", projectionMatrix );            // | 
 	ndc.setUniform( "viewMatrix"      , mCam.getModelViewMatrix() );   // |> set camera matrices
 	ndc.setUniform( "modelMatrix"     , modelMatrix );
@@ -128,8 +147,8 @@ void ofApp::draw(){
 	// parent context of batch.
 	batch.submit();	
 
-	// At end of draw, context will submit its list of vkCommandBuffers
-	// to graphics queue in one go.
+	// At end of draw(), context will submit its list of vkCommandBuffers
+	// to the graphics queue in one API call.
 }
 
 //--------------------------------------------------------------

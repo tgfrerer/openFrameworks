@@ -16,14 +16,13 @@ void RenderBatch::draw( const DrawCommand& dc_ ){
 	// local copy of draw command.
 	DrawCommand dc = dc_;
 
-	//!TODO: commit draw command memory to gpu-update
-	// this will update dynamic offsets as a side-effect, 
-	// and will also update the buffer 
-	// for the bindings affected.
+	// Commit draw command memory to gpu
+	// This will update dynamic offsets as a side-effect, 
+	// and will also update the buffer ID for the bindings affected.
 	dc.commitUniforms( mRenderContext->getAllocator() );
 	dc.commitMeshAttributes( mRenderContext->getAllocator() );
 	
-	// renderpass is constant over a context, as a context encapsulates a renderpass with all its subpasses.
+	// Renderpass is constant over a context, as a context encapsulates a renderpass with all its subpasses.
 	dc.mPipelineState.setRenderPass( mRenderContext->getRenderPass() );
 	
 	// CONSIDER: subpass might change based on rendercontext state 
