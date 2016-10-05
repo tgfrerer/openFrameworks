@@ -162,6 +162,8 @@ void ofAppGLFWWindow::setup(const ofGLFWWindowSettings & _settings){
 		// write the window size back in our settings 
 		glfwGetWindowSize( windowP, &settings.width, &settings.height );
 
+		currentW = settings.width;
+		currentH = settings.height;
 	}
 	else{
 		ofLog() << "Vulkan not supported.";
