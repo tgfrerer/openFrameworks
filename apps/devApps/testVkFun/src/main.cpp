@@ -4,7 +4,8 @@
 //========================================================================
 int main(){
 
-	//ofSetLoggerChannel( std::make_shared<ofConsoleLoggerChannel>() );
+	auto consoleLogger = new ofConsoleLoggerChannel();
+	ofSetLoggerChannel( std::shared_ptr<ofBaseLoggerChannel>( consoleLogger, []( ofBaseLoggerChannel * lhs){} ) );
 
 	ofVkWindowSettings settings;
 	settings.setVkVersion( 1, 0, 26 );
@@ -21,4 +22,5 @@ int main(){
 	ofCreateWindow( settings );
 
 	ofRunApp( new ofApp() );
+
 }
