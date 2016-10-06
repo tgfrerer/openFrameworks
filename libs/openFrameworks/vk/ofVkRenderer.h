@@ -12,9 +12,9 @@
 #include "ofMesh.h"
 
 
-#define RENDERER_FUN_NOT_IMPLEMENTED {                  \
-	ofLog() << __FUNCTION__ << ": not implemented in VkRenderer.";\
-}                                                       \
+#define RENDERER_FUN_NOT_IMPLEMENTED {                                   \
+	ofLogVerbose() << __FUNCTION__ << ": not implemented in VkRenderer.";\
+}                                                                        \
 
 
 class ofShapeTessellation;
