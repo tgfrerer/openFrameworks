@@ -17,12 +17,15 @@ void ofApp::setup(){
 	ofDisableSetupScreen();
 	ofSetFrameRate( EXAMPLE_TARGET_FRAME_RATE );
 
+	setupStaticAllocator();
+
 	setupDrawCommand();
 
 	setupMeshL();
 
 	mMeshTeapot = std::make_shared<ofMesh>();
 	mMeshTeapot->load( "ico-m.ply" );
+	//mMeshTeapot->load( "teapot.ply" );
 
 	mCam.setupPerspective( false, 60, 0.f, 5000 );
 	mCam.setPosition( { 0,0, mCam.getImagePlaneDistance() } );
@@ -30,6 +33,20 @@ void ofApp::setup(){
 
 	//mCam.enableMouseInput();
 	//mCam.setControlArea( { 0,0,float(ofGetWidth()),float(ofGetHeight() )} );
+}
+
+//--------------------------------------------------------------
+
+void ofApp::setupStaticAllocator(){
+	of::vk::Allocator::Settings allocatorSettings;
+	allocatorSettings.device = renderer->getVkDevice();
+	allocatorSettings.size = ( 1 << 24UL ); // 16 MB
+	allocatorSettings.frameCount = 1;
+	allocatorSettings.memFlags = ::vk::MemoryPropertyFlagBits::eDeviceLocal;
+	allocatorSettings.physicalDeviceMemoryProperties = renderer->getVkPhysicalDeviceMemoryProperties();
+	allocatorSettings.physicalDeviceProperties = renderer->getVkPhysicalDeviceProperties();
+	mStaticAllocator = std::make_unique<of::vk::Allocator>( allocatorSettings );
+	mStaticAllocator->setup();
 }
 
 //--------------------------------------------------------------
@@ -96,27 +113,12 @@ void ofApp::update(){
 }
 
 //--------------------------------------------------------------
+
 void ofApp::draw(){
 
 	auto & currentContext = *renderer->getDefaultContext();
 
-	// first thing we need to add command buffers that deal with
-	// copying data. 
-	//
-	// then issue a pipeline barrier for data copy if we wanted to use static data immediately. 
-	// this ensures the barrier is not within a renderpass,
-	// as the renderpass will only start with the command buffer that has been created through a batch.
-	//
-	// if we don't issue a barrier, the transfer will be done when the frame has finished rendering, 
-	// as the fence will guarantee that everything enqueued has finished. The challenge here is that 
-	// this will be a few frames ahead - depeding on the number of virtual frames.
-	//
-	// submit copy command buffers 
-	// 
-	// currentContext.submit( ::vk::CommandBuffer() );
-	//
-	// in the draw command we can then specify to set the 
-	// buffer ID and offset for an attribute to come from the static allocator.
+	uploadStaticAttributes( currentContext );
 
 	// Create temporary batch object from default context
 	of::vk::RenderBatch batch{ currentContext };
@@ -138,8 +140,8 @@ void ofApp::draw(){
 	ndc.setUniform( "viewMatrix"      , mCam.getModelViewMatrix() );   // |> set camera matrices
 	ndc.setUniform( "modelMatrix"     , modelMatrix );
 	ndc.setUniform( "globalColor"     , ofFloatColor::magenta );
-	ndc.setMesh( mMeshTeapot );
-
+	// ndc.setMesh( mMeshTeapot );
+	
 	// Add draw command to batch 
 	batch.draw( ndc );
 
@@ -149,6 +151,106 @@ void ofApp::draw(){
 
 	// At end of draw(), context will submit its list of vkCommandBuffers
 	// to the graphics queue in one API call.
+}
+
+//--------------------------------------------------------------
+
+void ofApp::uploadStaticAttributes( of::vk::RenderContext & currentContext ){
+
+	static bool wasUploaded = false;
+
+	if ( wasUploaded ){
+		return;
+	}
+
+	// first thing we need to add command buffers that deal with
+	// copying data. 
+	//
+	// then issue a pipeline barrier for data copy if we wanted to use static data immediately. 
+	// this ensures the barrier is not within a renderpass,
+	// as the renderpass will only start with the command buffer that has been created through a batch.
+	//
+	//
+	// in the draw command we can then specify to set the 
+	// buffer ID and offset for an attribute to come from the static allocator.
+
+	// TODO: 
+	// 1. stage attribute data to transient memory and store each offset, range into 
+	//    a bufferRegion, for srcOffset, size.
+	// 2. allocate static memory from static allocator, and store offset into 
+	//    dstOffset.
+	// 3. We want to keep the offset range data for later when we update the draw command 
+	//    so that the draw comand can render from static memory using the same offsets.
+	
+
+
+	std::vector<of::vk::TransferSrcData> srcDataVec = {
+		{
+			mMeshTeapot->getIndexPointer(),
+			mMeshTeapot->getNumIndices() * sizeof( ofIndexType ),
+		},
+		{ 
+			mMeshTeapot->getVerticesPointer() ,
+			mMeshTeapot->getNumVertices() * sizeof( ofDefaultVertexType ),
+		},
+		{
+			mMeshTeapot->getNormalsPointer(),
+			mMeshTeapot->getNumNormals() * sizeof( ofDefaultNormalType ),
+		},
+	};
+
+	auto bufferRegions = currentContext.stageData( srcDataVec, mStaticAllocator );
+	
+	{
+		// Modify draw command prototype so that geometry data is read from 
+		// device only memory.
+		auto & mutableDc = const_cast<of::vk::DrawCommand&>( dc );
+		auto & staticBuffer = mStaticAllocator->getBuffer();
+		mutableDc
+			.setNumIndices( mMeshTeapot->getNumIndices() )
+			.setIndices(               staticBuffer, bufferRegions[0].dstOffset )
+			.setAttribute( "inPos",    staticBuffer, bufferRegions[1].dstOffset )
+			.setAttribute( "inNormal", staticBuffer, bufferRegions[2].dstOffset )
+			;
+	}
+
+	::vk::DeviceSize firstOffset = bufferRegions.front().dstOffset;
+	::vk::DeviceSize totalStaticRange = (bufferRegions.back().dstOffset + bufferRegions.back().size) - firstOffset;
+
+	::vk::CommandBuffer cmdCopy = currentContext.allocateTransientCommandBuffer();
+	
+	cmdCopy.begin( {::vk::CommandBufferUsageFlagBits::eOneTimeSubmit} );
+	
+	cmdCopy.copyBuffer( currentContext.getTransientAllocator()->getBuffer(), mStaticAllocator->getBuffer(), bufferRegions );
+	
+	::vk::BufferMemoryBarrier bufferTransferBarrier;
+	bufferTransferBarrier
+		.setSrcAccessMask( ::vk::AccessFlagBits::eTransferWrite )  // not sure if these are optimal.
+		.setDstAccessMask( ::vk::AccessFlagBits::eShaderRead  )    // not sure if these are optimal.
+		.setSrcQueueFamilyIndex( VK_QUEUE_FAMILY_IGNORED )
+		.setDstQueueFamilyIndex( VK_QUEUE_FAMILY_IGNORED )
+		.setBuffer( mStaticAllocator->getBuffer() )
+		.setOffset( firstOffset )
+		.setSize( totalStaticRange )
+		;
+
+	// Add pipeline barrier so that transfers must have completed 
+	// before next command buffer will start executing.
+	cmdCopy.pipelineBarrier( 
+		::vk::PipelineStageFlagBits::eTopOfPipe,
+		::vk::PipelineStageFlagBits::eTopOfPipe,
+		::vk::DependencyFlagBits(),
+		{}, /* no fence */	
+		{ bufferTransferBarrier }, /* buffer barriers */
+		{}                         /* image barriers */
+	);
+
+	cmdCopy.end();
+
+	// Submit copy command buffer to current context
+	// This needs to happen before first draw calls are submitted for the frame.
+	currentContext.submit( std::move( cmdCopy ) );
+	wasUploaded = true;
 }
 
 //--------------------------------------------------------------

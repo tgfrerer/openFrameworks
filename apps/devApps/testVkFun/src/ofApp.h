@@ -14,13 +14,17 @@ class ofApp : public ofBaseApp{
 
 	std::shared_ptr<ofMesh> mMeshL;
 	std::shared_ptr<ofMesh> mMeshTeapot;
+	std::unique_ptr<of::vk::Allocator> mStaticAllocator;
 
 	public:
 		void setup();
+		void setupStaticAllocator();
 		void setupDrawCommand();
 		void setupMeshL();
 		void update();
 		void draw();
+
+		void uploadStaticAttributes( of::vk::RenderContext & currentContext );
 
 		void keyPressed(int key);
 		void keyReleased(int key);
