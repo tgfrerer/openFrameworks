@@ -54,6 +54,7 @@ public:
 	{};
 
 	~Allocator(){
+		mSettings.device.waitIdle();
 		reset();
 	};
 
