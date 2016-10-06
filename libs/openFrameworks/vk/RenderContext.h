@@ -31,6 +31,12 @@ namespace vk{
 class TransferBatch; //ffdecl.
 class RenderBatch;
 
+struct TransferSrcData
+{
+	void * pData;
+	::vk::DeviceSize numBytes;
+};
+
 // ------------------------------------------------------------
 
 class RenderContext
@@ -45,6 +51,7 @@ public:
 		::vk::RenderPass                       renderPass;  // owning
 		::vk::Rect2D                           renderArea;
 	};
+
 private:
 
 	const Settings mSettings;
@@ -125,10 +132,22 @@ public:
 
 	void setupFrameBufferAttachments( const std::vector<::vk::ImageView> &attachments);
 
+	// stages data for copying into targetAllocator's address space
+	// allocates identical memory chunk in local transient allocator and in targetAllocator
+	// returns BufferCopy region with offsets into both allocators, src being transient allocator,
+	// dst being targetAllocator. 
+	std::vector<::vk::BufferCopy> stageData( const std::vector<TransferSrcData>& dataVec, const unique_ptr<Allocator> &targetAllocator );
+
 	// Create and return command buffer. 
 	// Lifetime is limited to current frame. 
 	// It *must* be submitted to this context within the same frame, that is, before swap().
 	::vk::CommandBuffer requestAndBeginPrimaryCommandBuffer();
+
+	::vk::CommandBuffer allocateTransientCommandBuffer( const ::vk::CommandBufferLevel & commandBufferLevel );
+
+	const std::unique_ptr<of::vk::Allocator>& getTransientAllocator(){
+		return mTransientMemory;
+	};
 
 	const ::vk::Device & getDevice() const{
 		return mDevice;
@@ -192,6 +211,31 @@ inline const std::unique_ptr<Allocator> & RenderContext::getAllocator(){
 	return mTransientMemory;
 }
 
+// ------------------------------------------------------------
+
+inline std::vector<::vk::BufferCopy> RenderContext::stageData( const std::vector<TransferSrcData>& dataVec, const unique_ptr<Allocator>& targetAllocator ){
+	std::vector<::vk::BufferCopy> regions( dataVec.size(), {0,0,0} );
+	
+	for ( size_t i = 0; i != dataVec.size(); ++i ){
+		auto & src = dataVec[i];
+		auto & region = regions[i];
+
+		region.size = src.numBytes ;
+
+		void * pData;
+		if ( targetAllocator->allocate( region.size, region.dstOffset )
+			&& mTransientMemory->allocate( region.size, region.srcOffset )
+			&& mTransientMemory->map( pData )
+			){
+			memcpy( pData, src.pData, region.size );
+		}
+	}
+
+	return regions;
+}
+
+// ------------------------------------------------------------
+
 inline ::vk::CommandBuffer RenderContext::requestAndBeginPrimaryCommandBuffer(){
 	::vk::CommandBuffer cmd;
 
@@ -223,6 +267,22 @@ inline ::vk::CommandBuffer RenderContext::requestAndBeginPrimaryCommandBuffer(){
 
 		cmd.beginRenderPass( renderPassBeginInfo, ::vk::SubpassContents::eInline );
 	}
+
+	return cmd;
+}
+
+inline ::vk::CommandBuffer RenderContext::allocateTransientCommandBuffer(
+	const ::vk::CommandBufferLevel & commandBufferLevel = ::vk::CommandBufferLevel::ePrimary  ){
+	::vk::CommandBuffer cmd;
+
+	::vk::CommandBufferAllocateInfo commandBufferAllocateInfo;
+	commandBufferAllocateInfo
+		.setCommandPool( mVirtualFrames[mCurrentVirtualFrame].commandPool )
+		.setLevel( commandBufferLevel )
+		.setCommandBufferCount( 1 )
+		;
+
+	mDevice.allocateCommandBuffers( &commandBufferAllocateInfo, &cmd );
 
 	return cmd;
 }
