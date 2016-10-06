@@ -171,28 +171,6 @@ void DrawCommand::commitMeshAttributes( const std::unique_ptr<Allocator>& alloc 
 
 // ------------------------------------------------------------
 
-void DrawCommand::setAttribute( const std::string& name_, ::vk::Buffer buffer_, ::vk::DeviceSize offset_ ){
-	
-	size_t index = 0;
-	if ( mPipelineState.getShader()->getAttributeIndex( name_, index ) ){
-		mVertexBuffers[index] = buffer_;
-		mVertexOffsets[index] = offset_;
-	} else{
-		//ofLogWarning() << "Attribute '" << name_ << "' could not be found in shader: "
-		//	<< mPipelineState.getShader()->mSettings.sources.at(::vk::ShaderStageFlagBits::eVertex);
-	}
-
-}
-
-// ------------------------------------------------------------
-
-void DrawCommand::setIndices( ::vk::Buffer buffer_, ::vk::DeviceSize offset_ ){
-	mIndexBuffer = buffer_;
-	mIndexOffsets = offset_;
-}
-
-// ------------------------------------------------------------
-
 void DrawCommand::setMesh(const shared_ptr<ofMesh> & msh_ ){
 	mMsh = msh_;
 }

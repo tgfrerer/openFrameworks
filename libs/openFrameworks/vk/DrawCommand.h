@@ -43,7 +43,7 @@ public:
 		// be tightly packed.
 		std::vector<DescriptorData_t> descriptorBindings;
 
-		// Compile-time error checking to make sure DescriptorData can be
+		// Compile-time static assert makes sure DescriptorData can be
 		// successfully hashed.
 		static_assert( (
 			+ sizeof( DescriptorData_t::type )
@@ -62,9 +62,6 @@ public:
 		// One vector per binding - vector size is 
 		// determined by ubo subrange size. ubo data bindings may be sparse. 
 		// Data is uploaded to GPU upon draw.
-		// TODO: change this to use vkBufferObjects
-		// If the buffer object is dynamic, use dynamic uniform, 
-		// and update dynamic binding offset, if it is static, use offset and range.
 		std::map<uint32_t, std::vector<uint8_t>> dynamicUboData;
 
 	};
@@ -118,10 +115,10 @@ public:
 	const ::vk::Buffer&                  getIndexBuffer();
 	
 	const uint32_t                       getNumIndices();
-	void                                 setNumVertices( uint32_t numVertices );
+	of::vk::DrawCommand &                setNumVertices( uint32_t numVertices );
 	
 	const uint32_t                       getNumVertices();
-	void                                 setNumIndices( uint32_t numIndices );
+	of::vk::DrawCommand &                setNumIndices( uint32_t numIndices );
 
 	// set data for upload to ubo - data is stored locally 
 	// until draw command is submitted
@@ -131,9 +128,9 @@ public:
 
 	void setMesh( const shared_ptr<ofMesh>& msh_ );
 
-	void setAttribute( const std::string& name_, ::vk::Buffer buffer, ::vk::DeviceSize offset );
-
-	void setIndices( ::vk::Buffer buffer, ::vk::DeviceSize offset );
+	of::vk::DrawCommand & setAttribute( const std::string& name_, ::vk::Buffer buffer_, ::vk::DeviceSize offset_ );
+	of::vk::DrawCommand & setAttribute( const size_t attribLocation_, ::vk::Buffer buffer, ::vk::DeviceSize offset );
+	of::vk::DrawCommand & setIndices( ::vk::Buffer buffer, ::vk::DeviceSize offset );
 
 	// upload uniform data to gpu memory
 	template <class T>
@@ -231,10 +228,56 @@ inline const uint32_t of::vk::DrawCommand::getNumVertices(){
 	return mNumVertices;
 }
 
-inline void of::vk::DrawCommand::setNumVertices( uint32_t numVertices ){
+inline of::vk::DrawCommand & of::vk::DrawCommand::setNumVertices( uint32_t numVertices ){
 	mNumVertices = numVertices;
+	return *this;
 }
 
-inline void of::vk::DrawCommand::setNumIndices( uint32_t numIndices ){
+inline of::vk::DrawCommand & of::vk::DrawCommand::setNumIndices( uint32_t numIndices ){
 	mNumIndices = numIndices;
+	return *this;
 }
+
+// ------------------------------------------------------------
+
+inline of::vk::DrawCommand & of::vk::DrawCommand::setAttribute( const std::string& name_, ::vk::Buffer buffer_, ::vk::DeviceSize offset_ ){
+	size_t index = 0;
+	if ( mPipelineState.getShader()->getAttributeIndex( name_, index ) ){
+		setAttribute( index, buffer_, offset_ );
+		return *this;
+	}
+
+	// --------| invariant: name was not resolved successfully.
+
+	ofLogWarning() 
+		<< "Attribute '" << name_ << "' could not be found in shader: " 
+		<< mPipelineState.getShader()->mSettings.sources.at( ::vk::ShaderStageFlagBits::eVertex );
+	return *this;
+}
+
+// ------------------------------------------------------------
+
+inline of::vk::DrawCommand & of::vk::DrawCommand::setAttribute( const size_t attribLocation_, ::vk::Buffer buffer_, ::vk::DeviceSize offset_ ){
+
+	if ( attribLocation_ >= mVertexBuffers.size() ){
+		ofLogError() << "Attribute location not available: " << attribLocation_;
+		return *this;
+	}
+
+	// ---------| invariant: attribLocation is valid
+
+	mVertexBuffers[attribLocation_] = buffer_;
+	mVertexOffsets[attribLocation_] = offset_;
+	
+	return *this;
+}
+
+// ------------------------------------------------------------
+
+inline of::vk::DrawCommand & of::vk::DrawCommand::setIndices( ::vk::Buffer buffer_, ::vk::DeviceSize offset_ ){
+	mIndexBuffer = buffer_;
+	mIndexOffsets = offset_;
+	return *this;
+}
+
+// ------------------------------------------------------------
