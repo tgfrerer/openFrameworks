@@ -31,8 +31,7 @@ void ofApp::setup(){
 	mCam.setPosition( { 0,0, mCam.getImagePlaneDistance() } );
 	mCam.lookAt( { 0,0,0 } );
 
-	//mCam.enableMouseInput();
-	//mCam.setControlArea( { 0,0,float(ofGetWidth()),float(ofGetHeight() )} );
+	mCam.setEvents( ofEvents() );
 }
 
 //--------------------------------------------------------------
@@ -74,42 +73,10 @@ void ofApp::setupDrawCommand(){
 
 //--------------------------------------------------------------
 
-void ofApp::setupMeshL(){
-	// Horizontally elongated "L___" shape
-	mMeshL = make_shared<ofMesh>();
-	vector<glm::vec3> vert{
-		{ 0.f,0.f,0.f },
-		{ 20.f,20.f,0.f },
-		{ 0.f,100.f,0.f },
-		{ 20.f,100.f,0.f },
-		{ 200.f,0.f,0.f },
-		{ 200.f,20.f,0.f }
-	};
-
-	vector<ofIndexType> idx{
-		0, 1, 2,
-		1, 3, 2,
-		0, 4, 1,
-		1, 4, 5,
-	};
-
-	vector<glm::vec3> norm( vert.size(), { 0, 0, 1.f } );
-
-	mMeshL->addVertices( vert );
-	mMeshL->addNormals( norm );
-	mMeshL->addIndices( idx );
-}
-
-//--------------------------------------------------------------
-
 void ofApp::update(){
 
-	// we need to make the camera its matrices and respond to the mouse input 
-	// somehow, that's why we use begin/end here
-	mCam.begin(); // threre should not need to be need for this!
-	mCam.end();	  // threre should not need to be need for this!
-
 	ofSetWindowTitle( ofToString( ofGetFrameRate(), 2, ' ' ) );
+	
 }
 
 //--------------------------------------------------------------
@@ -217,11 +184,11 @@ void ofApp::uploadStaticAttributes( of::vk::RenderContext & currentContext ){
 	::vk::DeviceSize firstOffset = bufferRegions.front().dstOffset;
 	::vk::DeviceSize totalStaticRange = (bufferRegions.back().dstOffset + bufferRegions.back().size) - firstOffset;
 
-	::vk::CommandBuffer cmdCopy = currentContext.allocateTransientCommandBuffer();
+	::vk::CommandBuffer cmd = currentContext.allocateTransientCommandBuffer();
 	
-	cmdCopy.begin( {::vk::CommandBufferUsageFlagBits::eOneTimeSubmit} );
+	cmd.begin( {::vk::CommandBufferUsageFlagBits::eOneTimeSubmit} );
 	
-	cmdCopy.copyBuffer( currentContext.getTransientAllocator()->getBuffer(), mStaticAllocator->getBuffer(), bufferRegions );
+	cmd.copyBuffer( currentContext.getTransientAllocator()->getBuffer(), mStaticAllocator->getBuffer(), bufferRegions );
 	
 	::vk::BufferMemoryBarrier bufferTransferBarrier;
 	bufferTransferBarrier
@@ -236,7 +203,7 @@ void ofApp::uploadStaticAttributes( of::vk::RenderContext & currentContext ){
 
 	// Add pipeline barrier so that transfers must have completed 
 	// before next command buffer will start executing.
-	cmdCopy.pipelineBarrier( 
+	cmd.pipelineBarrier( 
 		::vk::PipelineStageFlagBits::eTopOfPipe,
 		::vk::PipelineStageFlagBits::eTopOfPipe,
 		::vk::DependencyFlagBits(),
@@ -245,11 +212,11 @@ void ofApp::uploadStaticAttributes( of::vk::RenderContext & currentContext ){
 		{}                         /* image barriers */
 	);
 
-	cmdCopy.end();
+	cmd.end();
 
 	// Submit copy command buffer to current context
 	// This needs to happen before first draw calls are submitted for the frame.
-	currentContext.submit( std::move( cmdCopy ) );
+	currentContext.submit( std::move( cmd ) );
 	wasUploaded = true;
 }
 
@@ -301,7 +268,7 @@ void ofApp::mouseExited(int x, int y){
 
 //--------------------------------------------------------------
 void ofApp::windowResized(int w, int h){
-
+	mCam.setControlArea( {0,0,float(w),float(h)} );
 }
 
 //--------------------------------------------------------------
