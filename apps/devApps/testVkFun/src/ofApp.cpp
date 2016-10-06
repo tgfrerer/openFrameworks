@@ -24,8 +24,8 @@ void ofApp::setup(){
 	setupMeshL();
 
 	mMeshTeapot = std::make_shared<ofMesh>();
-	mMeshTeapot->load( "ico-m.ply" );
-	//mMeshTeapot->load( "teapot.ply" );
+	// mMeshTeapot->load( "ico-m.ply" );
+	mMeshTeapot->load( "teapot.ply" );
 
 	mCam.setupPerspective( false, 60, 0.f, 5000 );
 	mCam.setPosition( { 0,0, mCam.getImagePlaneDistance() } );
@@ -90,10 +90,12 @@ void ofApp::draw(){
 	// Create temporary batch object from default context
 	of::vk::RenderBatch batch{ currentContext };
 
-	static const glm::mat4x4 clip( 1.0f, 0.0f, 0.0f, 0.0f,
+	static const glm::mat4x4 clip( 
+		1.0f, 0.0f, 0.0f, 0.0f,
 		0.0f, -1.0f, 0.0f, 0.0f,
 		0.0f, 0.0f, 0.5f, 0.0f,
-		0.0f, 0.0f, 0.5f, 1.0f );
+		0.0f, 0.0f, 0.5f, 1.0f 
+	);
 
 	auto projectionMatrix = clip * mCam.getProjectionMatrix( ofGetCurrentViewport() );
 
@@ -130,15 +132,16 @@ void ofApp::uploadStaticAttributes( of::vk::RenderContext & currentContext ){
 		return;
 	}
 
-	// first thing we need to add command buffers that deal with
-	// copying data. 
+	// First thing we need to allocate a command buffer from the context to copy
+	// data. This command buffer needs to be queued/issued before the draw 
+	// command buffers so that it executes before we start our renderpass.
 	//
-	// then issue a pipeline barrier for data copy if we wanted to use static data immediately. 
-	// this ensures the barrier is not within a renderpass,
-	// as the renderpass will only start with the command buffer that has been created through a batch.
+	// Allocate & write the data first to host-coherent and visible mem, allocate static mem,
+	// Issue a copy command using the command buffer to copy data from host-visible to device-visible.
 	//
+	// Then issue a pipeline barrier for data copy if we wanted to use static data immediately. 
 	//
-	// in the draw command we can then specify to set the 
+	// In the draw command we can then specify to set the 
 	// buffer ID and offset for an attribute to come from the static allocator.
 
 	// TODO: 
@@ -169,10 +172,17 @@ void ofApp::uploadStaticAttributes( of::vk::RenderContext & currentContext ){
 	auto bufferRegions = currentContext.stageData( srcDataVec, mStaticAllocator );
 	
 	{
+		//TODO: create a structure to hold static mesh information 
+		// set derived draw command attibutes and indices based on static mesh
+		// in draw()
+		// upload multiple meshes.
+
+
 		// Modify draw command prototype so that geometry data is read from 
 		// device only memory.
 		auto & mutableDc = const_cast<of::vk::DrawCommand&>( dc );
 		auto & staticBuffer = mStaticAllocator->getBuffer();
+
 		mutableDc
 			.setNumIndices( mMeshTeapot->getNumIndices() )
 			.setIndices(               staticBuffer, bufferRegions[0].dstOffset )
@@ -203,6 +213,7 @@ void ofApp::uploadStaticAttributes( of::vk::RenderContext & currentContext ){
 
 	// Add pipeline barrier so that transfers must have completed 
 	// before next command buffer will start executing.
+
 	cmd.pipelineBarrier( 
 		::vk::PipelineStageFlagBits::eTopOfPipe,
 		::vk::PipelineStageFlagBits::eTopOfPipe,

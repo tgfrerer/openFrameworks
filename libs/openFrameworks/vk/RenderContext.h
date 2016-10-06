@@ -28,8 +28,7 @@ class ofVkRenderer; // ffdecl.
 namespace of{
 namespace vk{
 
-class TransferBatch; //ffdecl.
-class RenderBatch;
+class RenderBatch; // ffdecl.
 
 struct TransferSrcData
 {
