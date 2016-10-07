@@ -142,7 +142,7 @@ void ofApp::draw(){
 		;
 
 	batch.draw( drawObject );
-	// batch.draw( drawFullScreenQuad );
+	batch.draw( drawFullScreenQuad );
 
 	// Build vkCommandBuffer inside batch and submit CommandBuffer to 
 	// parent context of batch.
@@ -162,19 +162,6 @@ void ofApp::uploadStaticAttributes( of::vk::RenderContext & currentContext ){
 		return;
 	}
 
-	// First thing we need to allocate a command buffer from the context to copy
-	// data. This command buffer needs to be queued/issued before the draw 
-	// command buffers so that it executes before we start our renderpass.
-	//
-	// Allocate & write the data first to host-coherent and visible mem, allocate static mem,
-	// Issue a copy command using the command buffer to copy data from host-visible to device-visible.
-	//
-	// Then issue a pipeline barrier for data copy if we wanted to use static data immediately. 
-	//
-	// In the draw command we can then specify to set the 
-	// buffer ID and offset for an attribute to come from the static allocator.
-
-	
 	std::vector<of::vk::TransferSrcData> srcDataVec = {
 		{
 			mMeshPly->getIndexPointer(),
@@ -195,61 +182,25 @@ void ofApp::uploadStaticAttributes( of::vk::RenderContext & currentContext ){
 
 	const auto & staticBuffer = mStaticAllocator->getBuffer();
 
-	auto stageResult = currentContext.stageData( srcDataVec, mStaticAllocator );
+	std::vector<of::vk::BufferRegion> bufferRegions = currentContext.storeDataCmd( srcDataVec, mStaticAllocator );
 
-	auto & bufferCopyInstructions = std::get<0>( stageResult );
-	auto & bufferRegions          = std::get<1>( stageResult );
-
-	mStaticMesh.indexBuffer  = bufferRegions[0];
-	mStaticMesh.posBuffer    = bufferRegions[1];
-	mStaticMesh.normalBuffer = bufferRegions[2];
-
-	::vk::DeviceSize firstOffset = bufferCopyInstructions.front().dstOffset;
-	::vk::DeviceSize totalStaticRange = (bufferCopyInstructions.back().dstOffset + bufferCopyInstructions.back().size) - firstOffset;
-
-	::vk::CommandBuffer cmd = currentContext.allocateTransientCommandBuffer();
+	if ( bufferRegions.size() == 3 ) {
+		mStaticMesh.indexBuffer  = bufferRegions[0];
+		mStaticMesh.posBuffer    = bufferRegions[1];
+		mStaticMesh.normalBuffer = bufferRegions[2];
+	}
 	
-	cmd.begin( {::vk::CommandBufferUsageFlagBits::eOneTimeSubmit} );
-	
-	cmd.copyBuffer( currentContext.getTransientAllocator()->getBuffer(), mStaticAllocator->getBuffer(), bufferCopyInstructions );
-	
-	::vk::BufferMemoryBarrier bufferTransferBarrier;
-	bufferTransferBarrier
-		.setSrcAccessMask( ::vk::AccessFlagBits::eTransferWrite )  // not sure if these are optimal.
-		.setDstAccessMask( ::vk::AccessFlagBits::eShaderRead  )    // not sure if these are optimal.
-		.setSrcQueueFamilyIndex( VK_QUEUE_FAMILY_IGNORED )
-		.setDstQueueFamilyIndex( VK_QUEUE_FAMILY_IGNORED )
-		.setBuffer( mStaticAllocator->getBuffer() )
-		.setOffset( firstOffset )
-		.setSize( totalStaticRange )
-		;
-
-	// Add pipeline barrier so that transfers must have completed 
-	// before next command buffer will start executing.
-
-	cmd.pipelineBarrier( 
-		::vk::PipelineStageFlagBits::eTopOfPipe,
-		::vk::PipelineStageFlagBits::eTopOfPipe,
-		::vk::DependencyFlagBits(),
-		{}, /* no fence */	
-		{ bufferTransferBarrier }, /* buffer barriers */
-		{}                         /* image barriers */
-	);
-
-	cmd.end();
-
-	// Submit copy command buffer to current context
-	// This needs to happen before first draw calls are submitted for the frame.
-	currentContext.submit( std::move( cmd ) );
 	wasUploaded = true;
 }
 
 //--------------------------------------------------------------
+
 void ofApp::keyPressed(int key){
 
 }
 
 //--------------------------------------------------------------
+
 void ofApp::keyReleased(int key){
 	if ( key == ' ' ){
 		const_cast<of::vk::DrawCommand&>( drawPhong ).getPipelineState().touchShader();
@@ -262,11 +213,13 @@ void ofApp::keyReleased(int key){
 }
 
 //--------------------------------------------------------------
+
 void ofApp::mouseMoved(int x, int y ){
 
 }
 
 //--------------------------------------------------------------
+
 void ofApp::mouseDragged(int x, int y, int button){
 
 }
