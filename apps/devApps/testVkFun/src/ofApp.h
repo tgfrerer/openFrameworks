@@ -20,7 +20,7 @@ class ofApp : public ofBaseApp{
 	ofEasyCam mCam;
 
 	std::shared_ptr<ofMesh> mMeshL;
-	std::shared_ptr<ofMesh> mMeshTeapot;
+	std::shared_ptr<ofMesh> mMeshPly;
 	std::unique_ptr<of::vk::Allocator> mStaticAllocator;
 
 	StaticMesh mStaticMesh;

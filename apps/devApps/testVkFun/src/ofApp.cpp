@@ -23,9 +23,9 @@ void ofApp::setup(){
 
 	setupMeshL();
 
-	mMeshTeapot = std::make_shared<ofMesh>();
-	mMeshTeapot->load( "ico-m.ply" );
-	//mMeshTeapot->load( "teapot.ply" );
+	mMeshPly = std::make_shared<ofMesh>();
+	mMeshPly->load( "ico-m.ply" );
+	//mMeshPly->load( "teapot.ply" );
 
 	mCam.setupPerspective( false, 60, 0.f, 5000 );
 	mCam.setPosition( { 0,0, mCam.getImagePlaneDistance() } );
@@ -126,23 +126,23 @@ void ofApp::draw(){
 	ofMatrix4x4 modelMatrix = glm::rotate( float( TWO_PI * ( ( ofGetFrameNum() % 360 ) / 360.f ) ), glm::vec3( { 0.f, 1.f, 0.f } ) );
 
 	// Create a fresh copy of our prototype const draw command
-	of::vk::DrawCommand ndc = drawPhong;
+	of::vk::DrawCommand drawObject = drawPhong;
 
-	ndc.setUniform( "projectionMatrix", projectionMatrix );            // | 
-	ndc.setUniform( "viewMatrix"      , mCam.getModelViewMatrix() );   // |> set camera matrices
-	ndc.setUniform( "modelMatrix"     , modelMatrix );
-	ndc.setUniform( "globalColor"     , ofFloatColor::magenta );
+	drawObject.setUniform( "projectionMatrix", projectionMatrix );            // | 
+	drawObject.setUniform( "viewMatrix"      , mCam.getModelViewMatrix() );   // |> set camera matrices
+	drawObject.setUniform( "modelMatrix"     , modelMatrix );
+	drawObject.setUniform( "globalColor"     , ofFloatColor::magenta );
 	// ndc.setMesh( mMeshTeapot );
 	
-	ndc
+	drawObject
 		.setNumIndices( mStaticMesh.indexBuffer.numElements )
 		.setIndices( mStaticMesh.indexBuffer.buffer, mStaticMesh.indexBuffer.offset )
 		.setAttribute( 0, mStaticMesh.posBuffer.buffer, mStaticMesh.posBuffer.offset )
 		.setAttribute( 1, mStaticMesh.normalBuffer.buffer, mStaticMesh.normalBuffer.offset )
 		;
 
-	batch.draw( drawFullScreenQuad );
-	batch.draw( ndc );
+	batch.draw( drawObject );
+	// batch.draw( drawFullScreenQuad );
 
 	// Build vkCommandBuffer inside batch and submit CommandBuffer to 
 	// parent context of batch.
@@ -177,18 +177,18 @@ void ofApp::uploadStaticAttributes( of::vk::RenderContext & currentContext ){
 	
 	std::vector<of::vk::TransferSrcData> srcDataVec = {
 		{
-			mMeshTeapot->getIndexPointer(),
-			mMeshTeapot->getNumIndices(),
+			mMeshPly->getIndexPointer(),
+			mMeshPly->getNumIndices(),
 			sizeof( ofIndexType ),
 		},
 		{ 
-			mMeshTeapot->getVerticesPointer(),
-			mMeshTeapot->getNumVertices(),
+			mMeshPly->getVerticesPointer(),
+			mMeshPly->getNumVertices(),
 			sizeof( ofDefaultVertexType ),
 		},
 		{
-			mMeshTeapot->getNormalsPointer(),
-			mMeshTeapot->getNumNormals(),
+			mMeshPly->getNormalsPointer(),
+			mMeshPly->getNumNormals(),
 			sizeof( ofDefaultNormalType ),
 		},
 	};
