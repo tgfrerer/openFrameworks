@@ -87,12 +87,12 @@ void GraphicsPipelineState::reset()
 
 	blendAttachmentStates[0]
 		.setBlendEnable( VK_FALSE )
-		.setSrcColorBlendFactor( ::vk::BlendFactor::eZero )
-		.setDstColorBlendFactor( ::vk::BlendFactor::eZero )
 		.setColorBlendOp( ::vk::BlendOp::eAdd)
-		.setSrcAlphaBlendFactor( ::vk::BlendFactor::eZero )
-		.setDstAlphaBlendFactor( ::vk::BlendFactor::eZero )
 		.setAlphaBlendOp( ::vk::BlendOp::eAdd)
+		.setSrcColorBlendFactor( ::vk::BlendFactor::eSrcAlpha)
+		.setDstColorBlendFactor( ::vk::BlendFactor::eOneMinusSrcAlpha )
+		.setSrcAlphaBlendFactor( ::vk::BlendFactor::eOne)
+		.setDstAlphaBlendFactor( ::vk::BlendFactor::eZero )
 		.setColorWriteMask( 
 			::vk::ColorComponentFlagBits::eR | 
 			::vk::ColorComponentFlagBits::eG | 
