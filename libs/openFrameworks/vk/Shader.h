@@ -197,7 +197,7 @@ public:
 	// ----------------------------------------------------------------------
 
 	// shader object needs to be initialised based on spir-v sources to be useful
-	Shader(const ::vk::Device& device_, const std::map<::vk::ShaderStageFlagBits, std::string>& sources );
+	Shader( const of::vk::Shader::Settings& settings_ );
 
 	// ----------------------------------------------------------------------
 

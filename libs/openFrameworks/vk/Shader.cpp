@@ -34,8 +34,8 @@ void resetConsoleColor(){
 
 // ----------------------------------------------------------------------
 
-of::vk::Shader::Shader( const ::vk::Device& device_, const std::map<::vk::ShaderStageFlagBits, std::string>& sources )
-	: mSettings( { device_, sources } )
+of::vk::Shader::Shader( const of::vk::Shader::Settings& settings_ )
+	: mSettings( settings_ )
 {
 	compile();
 }
