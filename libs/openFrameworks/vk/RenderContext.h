@@ -33,7 +33,16 @@ class RenderBatch; // ffdecl.
 struct TransferSrcData
 {
 	void * pData;
-	::vk::DeviceSize numBytes;
+	::vk::DeviceSize numElements;
+	::vk::DeviceSize numBytesPerElement;
+};
+
+struct BufferRegion
+{
+	::vk::Buffer buffer = nullptr;
+	::vk::DeviceSize offset = 0;
+	::vk::DeviceSize range = VK_WHOLE_SIZE;
+	uint64_t numElements = 0;
 };
 
 // ------------------------------------------------------------
@@ -131,11 +140,12 @@ public:
 
 	void setupFrameBufferAttachments( const std::vector<::vk::ImageView> &attachments);
 
-	// stages data for copying into targetAllocator's address space
+	// Stages data for copying into targetAllocator's address space
 	// allocates identical memory chunk in local transient allocator and in targetAllocator
-	// returns BufferCopy region with offsets into both allocators, src being transient allocator,
-	// dst being targetAllocator. 
-	std::vector<::vk::BufferCopy> stageData( const std::vector<TransferSrcData>& dataVec, const unique_ptr<Allocator> &targetAllocator );
+	// returns tuple of <vec<BufferCopy>,vec<BufferRegion>>
+	// use BufferCopy vec and a vkCmdBufferCopy to execute copy instruction using a command buffer.
+	// use BufferRegion to re-use created static buffer regions once copy command has finished executing on queue.
+	std::tuple<std::vector<::vk::BufferCopy>, std::vector<BufferRegion>> stageData( const std::vector<TransferSrcData>& dataVec, const unique_ptr<Allocator> &targetAllocator );
 
 	// Create and return command buffer. 
 	// Lifetime is limited to current frame. 
@@ -212,25 +222,52 @@ inline const std::unique_ptr<Allocator> & RenderContext::getAllocator(){
 
 // ------------------------------------------------------------
 
-inline std::vector<::vk::BufferCopy> RenderContext::stageData( const std::vector<TransferSrcData>& dataVec, const unique_ptr<Allocator>& targetAllocator ){
-	std::vector<::vk::BufferCopy> regions( dataVec.size(), {0,0,0} );
+inline std::tuple<std::vector<::vk::BufferCopy>, std::vector<BufferRegion>> 
+RenderContext::stageData( 
+	const std::vector<TransferSrcData>& dataVec, 
+	const unique_ptr<Allocator>& targetAllocator 
+)
+{
+	auto stageResult = std::make_tuple( 
+		std::vector<::vk::BufferCopy>(), 
+		std::vector<BufferRegion>() 
+	);
 	
-	for ( size_t i = 0; i != dataVec.size(); ++i ){
-		auto & src = dataVec[i];
-		auto & region = regions[i];
-
-		region.size = src.numBytes ;
+	auto & copyRegions   = std::get<0>(stageResult);
+	auto & bufferRegions = std::get<1>(stageResult);
+	
+	copyRegions.reserve( dataVec.size());
+	bufferRegions.reserve( dataVec.size() );
+	
+	for ( auto & src : dataVec ){
+		::vk::BufferCopy copyRegion { 0, 0, 0 };
+		
+		copyRegion.size = src.numBytesPerElement * src.numElements;
 
 		void * pData;
-		if ( targetAllocator->allocate( region.size, region.dstOffset )
-			&& mTransientMemory->allocate( region.size, region.srcOffset )
+		if (    targetAllocator->allocate( copyRegion.size, copyRegion.dstOffset )
+			&& mTransientMemory->allocate( copyRegion.size, copyRegion.srcOffset )
 			&& mTransientMemory->map( pData )
 			){
-			memcpy( pData, src.pData, region.size );
+			
+			memcpy( pData, src.pData, copyRegion.size );
+
+			of::vk::BufferRegion bufferRegion;
+			
+			bufferRegion.buffer = targetAllocator->getBuffer();
+			bufferRegion.offset         = copyRegion.dstOffset;
+			bufferRegion.range          = copyRegion.size;
+			bufferRegion.numElements    = src.numElements;
+			
+			bufferRegions.push_back( std::move(bufferRegion));
+			copyRegions.push_back(std::move(copyRegion));
+		} else {
+			ofLogError() << "StageData: alloc error";
+			break;
 		}
 	}
 
-	return regions;
+	return stageResult;
 }
 
 // ------------------------------------------------------------
