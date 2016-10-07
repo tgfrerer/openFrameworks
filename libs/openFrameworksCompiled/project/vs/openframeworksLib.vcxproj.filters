@@ -339,9 +339,6 @@
     <ClInclude Include="..\..\..\openFrameworks\vk\RenderPass.h">
       <Filter>libs\openFrameworks\vk</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\openFrameworks\vk\vkBufferObject.h">
-      <Filter>libs\openFrameworks\vk</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\..\openFrameworks\vk\RenderContext.h">
       <Filter>libs\openFrameworks\vk</Filter>
     </ClInclude>
@@ -579,9 +576,6 @@
       <Filter>libs\openFrameworks\vk</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\openFrameworks\vk\RenderBatch.cpp">
-      <Filter>libs\openFrameworks\vk</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\openFrameworks\vk\vkBufferObject.cpp">
       <Filter>libs\openFrameworks\vk</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\openFrameworks\vk\RenderContext.cpp">
