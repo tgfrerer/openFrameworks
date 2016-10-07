@@ -19,13 +19,13 @@ void ofApp::setup(){
 
 	setupStaticAllocator();
 
-	setupDrawCommand();
+	setupDrawCommands();
 
 	setupMeshL();
 
 	mMeshPly = std::make_shared<ofMesh>();
-	mMeshPly->load( "ico-m.ply" );
-	//mMeshPly->load( "teapot.ply" );
+	//mMeshPly->load( "ico-m.ply" );
+	mMeshPly->load( "teapot.ply" );
 
 	mCam.setupPerspective( false, 60, 0.f, 5000 );
 	mCam.setPosition( { 0,0, mCam.getImagePlaneDistance() } );
@@ -51,48 +51,55 @@ void ofApp::setupStaticAllocator(){
 
 //--------------------------------------------------------------
 
-void ofApp::setupDrawCommand(){
+void ofApp::setupDrawCommands(){
 	 
-	of::vk::Shader::Settings shaderSettings;
-	shaderSettings.device = renderer->getVkDevice();
-	shaderSettings.sources[::vk::ShaderStageFlagBits::eVertex  ] = "default.vert";
-	shaderSettings.sources[::vk::ShaderStageFlagBits::eFragment] = "default.frag";
+	{
+		of::vk::Shader::Settings shaderSettings;
+		shaderSettings.device = renderer->getVkDevice();
+		shaderSettings.sources[::vk::ShaderStageFlagBits::eVertex]   = "default.vert";
+		shaderSettings.sources[::vk::ShaderStageFlagBits::eFragment] = "default.frag";
 
-	auto mShaderDefault = std::make_shared<of::vk::Shader>( shaderSettings );
+		auto mShaderDefault = std::make_shared<of::vk::Shader>( shaderSettings );
 
-	of::vk::GraphicsPipelineState pipeline;
+		of::vk::GraphicsPipelineState pipeline;
 
-	pipeline.depthStencilState
-		.setDepthTestEnable( VK_TRUE )
-		.setDepthWriteEnable( VK_TRUE )
-		;
+		pipeline.depthStencilState
+			.setDepthTestEnable( VK_TRUE )
+			.setDepthWriteEnable( VK_TRUE )
+			;
 
-	pipeline.inputAssemblyState.setTopology( ::vk::PrimitiveTopology::eTriangleList );
-	//pipeline.setPolyMode( ::vk::PolygonMode::eLine );
-	pipeline.setShader( mShaderDefault );
-	pipeline.blendAttachmentStates[0]
-		.setBlendEnable( VK_TRUE )
-		;
-		//.setSrcAlphaBlendFactor
+		pipeline.inputAssemblyState.setTopology( ::vk::PrimitiveTopology::eTriangleList );
+		//pipeline.setPolyMode( ::vk::PolygonMode::eLine );
+		pipeline.setShader( mShaderDefault );
+		pipeline.blendAttachmentStates[0]
+			.setBlendEnable( VK_TRUE )
+			;
 
-	const_cast<of::vk::DrawCommand&>(drawPhong).setup( pipeline );
+		const_cast<of::vk::DrawCommand&>( drawPhong ).setup( pipeline );
+	}
 
-	// ------ 
+	{
+		of::vk::Shader::Settings shaderSettings;
+		shaderSettings.device = renderer->getVkDevice();
 
-	shaderSettings.sources[::vk::ShaderStageFlagBits::eVertex]   = "fullScreenQuad.vert";
-	shaderSettings.sources[::vk::ShaderStageFlagBits::eFragment] = "fullScreenQuad.frag";
-	auto mShaderFullScreenQuad = std::make_shared<of::vk::Shader>( shaderSettings );
-	
-	pipeline.setShader( mShaderFullScreenQuad );
-	pipeline.rasterizationState.setCullMode( ::vk::CullModeFlagBits::eFront );
-	pipeline.rasterizationState.setFrontFace( ::vk::FrontFace::eCounterClockwise );
-	pipeline.depthStencilState
-		.setDepthTestEnable( VK_FALSE )
-		.setDepthWriteEnable( VK_FALSE )
-		;
-	pipeline.blendAttachmentStates[0].blendEnable = VK_TRUE;
-	const_cast<of::vk::DrawCommand&>( drawFullScreenQuad ).setup( pipeline );
-	const_cast<of::vk::DrawCommand&>( drawFullScreenQuad ).setNumVertices( 3 );
+		shaderSettings.sources[::vk::ShaderStageFlagBits::eVertex]   = "fullScreenQuad.vert";
+		shaderSettings.sources[::vk::ShaderStageFlagBits::eFragment] = "fullScreenQuad.frag";
+		auto mShaderFullScreenQuad = std::make_shared<of::vk::Shader>( shaderSettings );
+		
+		of::vk::GraphicsPipelineState pipeline;
+
+		pipeline.setShader( mShaderFullScreenQuad );
+		pipeline.rasterizationState.setCullMode( ::vk::CullModeFlagBits::eFront );
+		pipeline.rasterizationState.setFrontFace( ::vk::FrontFace::eCounterClockwise );
+		pipeline.depthStencilState
+			.setDepthTestEnable( VK_FALSE )
+			.setDepthWriteEnable( VK_FALSE )
+			;
+		pipeline.blendAttachmentStates[0].blendEnable = VK_TRUE;
+		
+		const_cast<of::vk::DrawCommand&>( drawFullScreenQuad ).setup( pipeline );
+		const_cast<of::vk::DrawCommand&>( drawFullScreenQuad ).setNumVertices( 3 );
+	}
 }
 
 //--------------------------------------------------------------
@@ -136,13 +143,13 @@ void ofApp::draw(){
 	
 	drawObject
 		.setNumIndices( mStaticMesh.indexBuffer.numElements )
-		.setIndices( mStaticMesh.indexBuffer.buffer, mStaticMesh.indexBuffer.offset )
-		.setAttribute( 0, mStaticMesh.posBuffer.buffer, mStaticMesh.posBuffer.offset )
-		.setAttribute( 1, mStaticMesh.normalBuffer.buffer, mStaticMesh.normalBuffer.offset )
+		.setIndices( mStaticMesh.indexBuffer )
+		.setAttribute( 0, mStaticMesh.posBuffer)
+		.setAttribute( 1, mStaticMesh.normalBuffer )
 		;
 
-	batch.draw( drawObject );
 	batch.draw( drawFullScreenQuad );
+	batch.draw( drawObject );
 
 	// Build vkCommandBuffer inside batch and submit CommandBuffer to 
 	// parent context of batch.

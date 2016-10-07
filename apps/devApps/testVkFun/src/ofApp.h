@@ -28,7 +28,7 @@ class ofApp : public ofBaseApp{
 	public:
 		void setup();
 		void setupStaticAllocator();
-		void setupDrawCommand();
+		void setupDrawCommands();
 		void setupMeshL(){
 			// Horizontally elongated "L___" shape
 			mMeshL = make_shared<ofMesh>();
