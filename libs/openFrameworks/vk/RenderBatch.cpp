@@ -161,16 +161,17 @@ void RenderBatch::processDrawCommands( const ::vk::CommandBuffer& cmd ){
 
 		// bind dc descriptorsets to current pipeline descriptor sets
 		// make sure dynamic ubos have the correct offsets
-
-		cmd.bindDescriptorSets(
-			::vk::PipelineBindPoint::eGraphics,	                           // use graphics, not compute pipeline
-			*dc.mPipelineState.getShader()->getPipelineLayout(), // VkPipelineLayout object used to program the bindings.
-			0,                                                             // firstset: first set index (of the above) to bind to - mDescriptorSet[0] will be bound to pipeline layout [firstset]
-			boundVkDescriptorSets.size(),                                  // setCount: how many sets to bind
-			boundVkDescriptorSets.data(),                                  // the descriptor sets to match up with our mPipelineLayout (need to be compatible)
-			dynamicBindingOffsets.size(),                                  // dynamic offsets count how many dynamic offsets
-			dynamicBindingOffsets.data()                                   // dynamic offsets for each descriptor
-		);
+		if ( !boundVkDescriptorSets.empty() ){
+			cmd.bindDescriptorSets(
+				::vk::PipelineBindPoint::eGraphics,	                           // use graphics, not compute pipeline
+				*dc.mPipelineState.getShader()->getPipelineLayout(), // VkPipelineLayout object used to program the bindings.
+				0,                                                             // firstset: first set index (of the above) to bind to - mDescriptorSet[0] will be bound to pipeline layout [firstset]
+				boundVkDescriptorSets.size(),                                  // setCount: how many sets to bind
+				boundVkDescriptorSets.data(),                                  // the descriptor sets to match up with our mPipelineLayout (need to be compatible)
+				dynamicBindingOffsets.size(),                                  // dynamic offsets count how many dynamic offsets
+				dynamicBindingOffsets.data()                                   // dynamic offsets for each descriptor
+			);
+		}
 
 
 		{
@@ -198,7 +199,9 @@ void RenderBatch::processDrawCommands( const ::vk::CommandBuffer& cmd ){
 			// The vector indices into bufferRefs, vertexOffsets correspond to [binding numbers] of the currently bound pipeline.
 			// See Shader.h for an explanation of how this is mapped to shader attribute locations
 
-			cmd.bindVertexBuffers( 0, vertexBuffers, vertexOffsets );
+			if ( !vertexBuffers.empty() ){
+				cmd.bindVertexBuffers( 0, vertexBuffers, vertexOffsets );
+			}
 
 			if ( !indexBuffer ){
 				// non-indexed draw
