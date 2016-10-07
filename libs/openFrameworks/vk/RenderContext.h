@@ -142,10 +142,10 @@ public:
 
 	// Stages data for copying into targetAllocator's address space
 	// allocates identical memory chunk in local transient allocator and in targetAllocator
-	// returns tuple of <vec<BufferCopy>,vec<BufferRegion>>
 	// use BufferCopy vec and a vkCmdBufferCopy to execute copy instruction using a command buffer.
-	// use BufferRegion to re-use created static buffer regions once copy command has finished executing on queue.
-	std::tuple<std::vector<::vk::BufferCopy>, std::vector<BufferRegion>> stageData( const std::vector<TransferSrcData>& dataVec, const unique_ptr<Allocator> &targetAllocator );
+	std::vector<::vk::BufferCopy> stageData( const std::vector<TransferSrcData>& dataVec, const unique_ptr<Allocator> &targetAllocator );
+
+	std::vector<BufferRegion> storeDataCmd( const std::vector<TransferSrcData>& dataVec, const unique_ptr<Allocator> &targetAllocator );
 
 	// Create and return command buffer. 
 	// Lifetime is limited to current frame. 
@@ -222,52 +222,95 @@ inline const std::unique_ptr<Allocator> & RenderContext::getAllocator(){
 
 // ------------------------------------------------------------
 
-inline std::tuple<std::vector<::vk::BufferCopy>, std::vector<BufferRegion>> 
-RenderContext::stageData( 
-	const std::vector<TransferSrcData>& dataVec, 
-	const unique_ptr<Allocator>& targetAllocator 
-)
+inline std::vector<::vk::BufferCopy> RenderContext::stageData( const std::vector<TransferSrcData>& dataVec, const unique_ptr<Allocator>& targetAllocator )
 {
-	auto stageResult = std::make_tuple( 
-		std::vector<::vk::BufferCopy>(), 
-		std::vector<BufferRegion>() 
-	);
-	
-	auto & copyRegions   = std::get<0>(stageResult);
-	auto & bufferRegions = std::get<1>(stageResult);
-	
-	copyRegions.reserve( dataVec.size());
-	bufferRegions.reserve( dataVec.size() );
+	std::vector<::vk::BufferCopy> regions;
+	regions.reserve( dataVec.size());
 	
 	for ( auto & src : dataVec ){
-		::vk::BufferCopy copyRegion { 0, 0, 0 };
+		::vk::BufferCopy region { 0, 0, 0 };
 		
-		copyRegion.size = src.numBytesPerElement * src.numElements;
+		region.size = src.numBytesPerElement * src.numElements;
 
 		void * pData;
-		if (    targetAllocator->allocate( copyRegion.size, copyRegion.dstOffset )
-			&& mTransientMemory->allocate( copyRegion.size, copyRegion.srcOffset )
+		if (    targetAllocator->allocate( region.size, region.dstOffset )
+			&& mTransientMemory->allocate( region.size, region.srcOffset )
 			&& mTransientMemory->map( pData )
 			){
 			
-			memcpy( pData, src.pData, copyRegion.size );
+			memcpy( pData, src.pData, region.size );
 
-			of::vk::BufferRegion bufferRegion;
-			
-			bufferRegion.buffer = targetAllocator->getBuffer();
-			bufferRegion.offset         = copyRegion.dstOffset;
-			bufferRegion.range          = copyRegion.size;
-			bufferRegion.numElements    = src.numElements;
-			
-			bufferRegions.push_back( std::move(bufferRegion));
-			copyRegions.push_back(std::move(copyRegion));
+			regions.push_back(std::move(region));
 		} else {
 			ofLogError() << "StageData: alloc error";
 			break;
 		}
 	}
 
-	return stageResult;
+	return regions;
+}
+
+// ------------------------------------------------------------
+
+inline std::vector<BufferRegion> RenderContext::storeDataCmd( const std::vector<TransferSrcData>& dataVec, const unique_ptr<Allocator>& targetAllocator ){
+	std::vector<BufferRegion> resultBuffers;
+
+	auto copyRegions = stageData( dataVec, targetAllocator );
+	resultBuffers.reserve( copyRegions.size() );
+
+	const auto targetBuffer = targetAllocator->getBuffer();
+
+	for ( size_t i = 0; i != copyRegions.size(); ++i ){
+		const auto &region  = copyRegions[i];
+		const auto &srcData = dataVec[i];
+		BufferRegion bufRegion;
+		bufRegion.buffer      = targetBuffer;
+		bufRegion.numElements = srcData.numElements;
+		bufRegion.offset      = region.dstOffset;
+		bufRegion.range       = region.size;
+		resultBuffers.push_back( std::move( bufRegion ) );
+	}
+
+	::vk::DeviceSize firstOffset = copyRegions.front().dstOffset;
+	::vk::DeviceSize totalStaticRange = ( copyRegions.back().dstOffset + copyRegions.back().size ) - firstOffset;
+
+	::vk::CommandBuffer cmd = allocateTransientCommandBuffer(::vk::CommandBufferLevel::ePrimary);
+
+	cmd.begin( { ::vk::CommandBufferUsageFlagBits::eOneTimeSubmit } );
+	{
+
+		cmd.copyBuffer( getTransientAllocator()->getBuffer(), targetAllocator->getBuffer(), copyRegions );
+
+		::vk::BufferMemoryBarrier bufferTransferBarrier;
+		bufferTransferBarrier
+			.setSrcAccessMask( ::vk::AccessFlagBits::eTransferWrite )  // not sure if these are optimal.
+			.setDstAccessMask( ::vk::AccessFlagBits::eShaderRead )    // not sure if these are optimal.
+			.setSrcQueueFamilyIndex( VK_QUEUE_FAMILY_IGNORED )
+			.setDstQueueFamilyIndex( VK_QUEUE_FAMILY_IGNORED )
+			.setBuffer( targetAllocator->getBuffer() )
+			.setOffset( firstOffset )
+			.setSize( totalStaticRange )
+			;
+
+		// Add pipeline barrier so that transfers must have completed 
+		// before next command buffer will start executing.
+
+		cmd.pipelineBarrier(
+			::vk::PipelineStageFlagBits::eTopOfPipe,
+			::vk::PipelineStageFlagBits::eTopOfPipe,
+			::vk::DependencyFlagBits(),
+			{}, /* no fence */
+			{ bufferTransferBarrier }, /* buffer barriers */
+			{}                         /* image barriers */
+		);
+	}
+	cmd.end();
+
+	// Submit copy command buffer to current context
+	// This needs to happen before first draw calls are submitted for the frame.
+	submit( std::move( cmd ) );
+	
+	return resultBuffers;
 }
 
 // ------------------------------------------------------------
@@ -306,6 +349,8 @@ inline ::vk::CommandBuffer RenderContext::requestAndBeginPrimaryCommandBuffer(){
 
 	return cmd;
 }
+
+// ------------------------------------------------------------
 
 inline ::vk::CommandBuffer RenderContext::allocateTransientCommandBuffer(
 	const ::vk::CommandBufferLevel & commandBufferLevel = ::vk::CommandBufferLevel::ePrimary  ){

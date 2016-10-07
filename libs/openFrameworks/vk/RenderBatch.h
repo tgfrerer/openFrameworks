@@ -38,9 +38,7 @@ public:
 
 private:
 
-
 	uint32_t            mVkSubPassId = 0;
-
 
 	std::list<DrawCommand> mDrawCommands;
 
