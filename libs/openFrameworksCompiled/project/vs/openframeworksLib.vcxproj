@@ -211,6 +211,7 @@
     <ClInclude Include="..\..\..\openFrameworks\events\ofEvents.h" />
     <ClInclude Include="..\..\..\openFrameworks\events\ofEventUtils.h" />
     <ClInclude Include="..\..\..\openFrameworks\vk\DrawCommand.h" />
+    <ClInclude Include="..\..\..\openFrameworks\vk\HelperTypes.h" />
     <ClInclude Include="..\..\..\openFrameworks\vk\ofVkRenderer.h" />
     <ClInclude Include="..\..\..\openFrameworks\vk\Pipeline.h" />
     <ClInclude Include="..\..\..\openFrameworks\vk\RenderBatch.h" />

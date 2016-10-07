@@ -1,5 +1,7 @@
 #pragma once
 #include <vulkan/vulkan.hpp>
+#include "vk/Swapchain.h"
+#include "vk/HelperTypes.h"
 #include "ofBaseTypes.h"
 #include "ofPolyline.h"
 #include "ofMatrix4x4.h"
@@ -8,7 +10,6 @@
 #include "ofBitmapFont.h"
 #include "ofPath.h"
 #include "ofMaterial.h"
-#include "vk/Swapchain.h"
 #include "ofMesh.h"
 
 

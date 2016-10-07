@@ -2,7 +2,9 @@
 #include "vulkan/vulkan.hpp"
 #include "vk/Shader.h"
 #include "vk/Pipeline.h"
+#include "vk/HelperTypes.h"
 #include "ofMesh.h"
+
 
 namespace of{
 namespace vk{
@@ -130,7 +132,10 @@ public:
 
 	of::vk::DrawCommand & setAttribute( const std::string& name_, ::vk::Buffer buffer_, ::vk::DeviceSize offset_ );
 	of::vk::DrawCommand & setAttribute( const size_t attribLocation_, ::vk::Buffer buffer, ::vk::DeviceSize offset );
+	of::vk::DrawCommand & setAttribute( const size_t attribLocation_, const of::vk::BufferRegion & bufferRegion_ );
+	
 	of::vk::DrawCommand & setIndices( ::vk::Buffer buffer, ::vk::DeviceSize offset );
+	of::vk::DrawCommand & setIndices( const of::vk::BufferRegion& bufferRegion_ );
 
 	// upload uniform data to gpu memory
 	template <class T>
@@ -240,6 +245,12 @@ inline of::vk::DrawCommand & of::vk::DrawCommand::setNumIndices( uint32_t numInd
 
 // ------------------------------------------------------------
 
+inline of::vk::DrawCommand & of::vk::DrawCommand::setAttribute( const size_t attribLocation_, const of::vk::BufferRegion & bufferRegion_ ){
+	return setAttribute( attribLocation_, bufferRegion_.buffer, bufferRegion_.offset );
+}
+
+// ------------------------------------------------------------
+
 inline of::vk::DrawCommand & of::vk::DrawCommand::setAttribute( const std::string& name_, ::vk::Buffer buffer_, ::vk::DeviceSize offset_ ){
 	size_t index = 0;
 	if ( mPipelineState.getShader()->getAttributeIndex( name_, index ) ){
@@ -270,6 +281,13 @@ inline of::vk::DrawCommand & of::vk::DrawCommand::setAttribute( const size_t att
 	mVertexOffsets[attribLocation_] = offset_;
 	
 	return *this;
+}
+
+
+// ------------------------------------------------------------
+
+inline of::vk::DrawCommand & of::vk::DrawCommand::setIndices( const of::vk::BufferRegion& bufferRegion_ ){
+	return setIndices( bufferRegion_.buffer, bufferRegion_.offset );
 }
 
 // ------------------------------------------------------------

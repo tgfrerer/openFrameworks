@@ -5,7 +5,7 @@
 #include "vk/Pipeline.h"
 #include "vk/vkAllocator.h"
 #include "vk/DrawCommand.h"
-
+#include "vk/HelperTypes.h"
 /*
 
 MISSION: 
@@ -30,20 +30,6 @@ namespace vk{
 
 class RenderBatch; // ffdecl.
 
-struct TransferSrcData
-{
-	void * pData;
-	::vk::DeviceSize numElements;
-	::vk::DeviceSize numBytesPerElement;
-};
-
-struct BufferRegion
-{
-	::vk::Buffer buffer = nullptr;
-	::vk::DeviceSize offset = 0;
-	::vk::DeviceSize range = VK_WHOLE_SIZE;
-	uint64_t numElements = 0;
-};
 
 // ------------------------------------------------------------
 
