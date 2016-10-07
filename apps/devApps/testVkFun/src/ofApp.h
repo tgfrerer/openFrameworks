@@ -5,16 +5,25 @@
 #include "vk/DrawCommand.h"
 #include "vk/RenderBatch.h"
 
+struct StaticMesh
+{
+	of::vk::BufferRegion indexBuffer;
+	of::vk::BufferRegion posBuffer;
+	of::vk::BufferRegion normalBuffer;
+};
 
 class ofApp : public ofBaseApp{
 
-	const of::vk::DrawCommand dc;
+	const of::vk::DrawCommand drawPhong;
+	const of::vk::DrawCommand drawFullScreenQuad;
 
 	ofEasyCam mCam;
 
 	std::shared_ptr<ofMesh> mMeshL;
 	std::shared_ptr<ofMesh> mMeshTeapot;
 	std::unique_ptr<of::vk::Allocator> mStaticAllocator;
+
+	StaticMesh mStaticMesh;
 
 	public:
 		void setup();

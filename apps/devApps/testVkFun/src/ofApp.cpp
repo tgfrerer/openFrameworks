@@ -24,8 +24,8 @@ void ofApp::setup(){
 	setupMeshL();
 
 	mMeshTeapot = std::make_shared<ofMesh>();
-	// mMeshTeapot->load( "ico-m.ply" );
-	mMeshTeapot->load( "teapot.ply" );
+	mMeshTeapot->load( "ico-m.ply" );
+	//mMeshTeapot->load( "teapot.ply" );
 
 	mCam.setupPerspective( false, 60, 0.f, 5000 );
 	mCam.setPosition( { 0,0, mCam.getImagePlaneDistance() } );
@@ -44,6 +44,7 @@ void ofApp::setupStaticAllocator(){
 	allocatorSettings.memFlags = ::vk::MemoryPropertyFlagBits::eDeviceLocal;
 	allocatorSettings.physicalDeviceMemoryProperties = renderer->getVkPhysicalDeviceMemoryProperties();
 	allocatorSettings.physicalDeviceProperties = renderer->getVkPhysicalDeviceProperties();
+	
 	mStaticAllocator = std::make_unique<of::vk::Allocator>( allocatorSettings );
 	mStaticAllocator->setup();
 }
@@ -51,12 +52,13 @@ void ofApp::setupStaticAllocator(){
 //--------------------------------------------------------------
 
 void ofApp::setupDrawCommand(){
-	// shader creation makes shader reflect. 
-	auto mShaderDefault = std::shared_ptr<of::vk::Shader>( new of::vk::Shader( renderer->getVkDevice(),
-	{
-		{ ::vk::ShaderStageFlagBits::eVertex  , "default.vert" },
-		{ ::vk::ShaderStageFlagBits::eFragment, "default.frag" },
-	} ) );
+	 
+	of::vk::Shader::Settings shaderSettings;
+	shaderSettings.device = renderer->getVkDevice();
+	shaderSettings.sources[::vk::ShaderStageFlagBits::eVertex  ] = "default.vert";
+	shaderSettings.sources[::vk::ShaderStageFlagBits::eFragment] = "default.frag";
+
+	auto mShaderDefault = std::make_shared<of::vk::Shader>( shaderSettings );
 
 	of::vk::GraphicsPipelineState pipeline;
 
@@ -64,11 +66,33 @@ void ofApp::setupDrawCommand(){
 		.setDepthTestEnable( VK_TRUE )
 		.setDepthWriteEnable( VK_TRUE )
 		;
+
 	pipeline.inputAssemblyState.setTopology( ::vk::PrimitiveTopology::eTriangleList );
 	//pipeline.setPolyMode( ::vk::PolygonMode::eLine );
 	pipeline.setShader( mShaderDefault );
+	pipeline.blendAttachmentStates[0]
+		.setBlendEnable( VK_TRUE )
+		;
+		//.setSrcAlphaBlendFactor
 
-	const_cast<of::vk::DrawCommand&>(dc).setup( pipeline );
+	const_cast<of::vk::DrawCommand&>(drawPhong).setup( pipeline );
+
+	// ------ 
+
+	shaderSettings.sources[::vk::ShaderStageFlagBits::eVertex]   = "fullScreenQuad.vert";
+	shaderSettings.sources[::vk::ShaderStageFlagBits::eFragment] = "fullScreenQuad.frag";
+	auto mShaderFullScreenQuad = std::make_shared<of::vk::Shader>( shaderSettings );
+	
+	pipeline.setShader( mShaderFullScreenQuad );
+	pipeline.rasterizationState.setCullMode( ::vk::CullModeFlagBits::eFront );
+	pipeline.rasterizationState.setFrontFace( ::vk::FrontFace::eCounterClockwise );
+	pipeline.depthStencilState
+		.setDepthTestEnable( VK_FALSE )
+		.setDepthWriteEnable( VK_FALSE )
+		;
+	pipeline.blendAttachmentStates[0].blendEnable = VK_TRUE;
+	const_cast<of::vk::DrawCommand&>( drawFullScreenQuad ).setup( pipeline );
+	const_cast<of::vk::DrawCommand&>( drawFullScreenQuad ).setNumVertices( 3 );
 }
 
 //--------------------------------------------------------------
@@ -99,19 +123,25 @@ void ofApp::draw(){
 
 	auto projectionMatrix = clip * mCam.getProjectionMatrix( ofGetCurrentViewport() );
 
-	ofMatrix4x4 modelMatrix = glm::rotate( float( TWO_PI * ( ( ofGetFrameNum() % 360 ) / 360.f ) ), glm::vec3( { 0.f, 0.f, 1.f } ) );
+	ofMatrix4x4 modelMatrix = glm::rotate( float( TWO_PI * ( ( ofGetFrameNum() % 360 ) / 360.f ) ), glm::vec3( { 0.f, 1.f, 0.f } ) );
 
 	// Create a fresh copy of our prototype const draw command
-	of::vk::DrawCommand ndc = dc;
+	of::vk::DrawCommand ndc = drawPhong;
 
-	// Update uniforms for draw command
 	ndc.setUniform( "projectionMatrix", projectionMatrix );            // | 
 	ndc.setUniform( "viewMatrix"      , mCam.getModelViewMatrix() );   // |> set camera matrices
 	ndc.setUniform( "modelMatrix"     , modelMatrix );
 	ndc.setUniform( "globalColor"     , ofFloatColor::magenta );
 	// ndc.setMesh( mMeshTeapot );
 	
-	// Add draw command to batch 
+	ndc
+		.setNumIndices( mStaticMesh.indexBuffer.numElements )
+		.setIndices( mStaticMesh.indexBuffer.buffer, mStaticMesh.indexBuffer.offset )
+		.setAttribute( 0, mStaticMesh.posBuffer.buffer, mStaticMesh.posBuffer.offset )
+		.setAttribute( 1, mStaticMesh.normalBuffer.buffer, mStaticMesh.normalBuffer.offset )
+		;
+
+	batch.draw( drawFullScreenQuad );
 	batch.draw( ndc );
 
 	// Build vkCommandBuffer inside batch and submit CommandBuffer to 
@@ -144,61 +174,44 @@ void ofApp::uploadStaticAttributes( of::vk::RenderContext & currentContext ){
 	// In the draw command we can then specify to set the 
 	// buffer ID and offset for an attribute to come from the static allocator.
 
-	// TODO: 
-	// 1. stage attribute data to transient memory and store each offset, range into 
-	//    a bufferRegion, for srcOffset, size.
-	// 2. allocate static memory from static allocator, and store offset into 
-	//    dstOffset.
-	// 3. We want to keep the offset range data for later when we update the draw command 
-	//    so that the draw comand can render from static memory using the same offsets.
 	
-
-
 	std::vector<of::vk::TransferSrcData> srcDataVec = {
 		{
 			mMeshTeapot->getIndexPointer(),
-			mMeshTeapot->getNumIndices() * sizeof( ofIndexType ),
+			mMeshTeapot->getNumIndices(),
+			sizeof( ofIndexType ),
 		},
 		{ 
-			mMeshTeapot->getVerticesPointer() ,
-			mMeshTeapot->getNumVertices() * sizeof( ofDefaultVertexType ),
+			mMeshTeapot->getVerticesPointer(),
+			mMeshTeapot->getNumVertices(),
+			sizeof( ofDefaultVertexType ),
 		},
 		{
 			mMeshTeapot->getNormalsPointer(),
-			mMeshTeapot->getNumNormals() * sizeof( ofDefaultNormalType ),
+			mMeshTeapot->getNumNormals(),
+			sizeof( ofDefaultNormalType ),
 		},
 	};
 
-	auto bufferRegions = currentContext.stageData( srcDataVec, mStaticAllocator );
-	
-	{
-		//TODO: create a structure to hold static mesh information 
-		// set derived draw command attibutes and indices based on static mesh
-		// in draw()
-		// upload multiple meshes.
+	const auto & staticBuffer = mStaticAllocator->getBuffer();
 
+	auto stageResult = currentContext.stageData( srcDataVec, mStaticAllocator );
 
-		// Modify draw command prototype so that geometry data is read from 
-		// device only memory.
-		auto & mutableDc = const_cast<of::vk::DrawCommand&>( dc );
-		auto & staticBuffer = mStaticAllocator->getBuffer();
+	auto & bufferCopyInstructions = std::get<0>( stageResult );
+	auto & bufferRegions          = std::get<1>( stageResult );
 
-		mutableDc
-			.setNumIndices( mMeshTeapot->getNumIndices() )
-			.setIndices(               staticBuffer, bufferRegions[0].dstOffset )
-			.setAttribute( "inPos",    staticBuffer, bufferRegions[1].dstOffset )
-			.setAttribute( "inNormal", staticBuffer, bufferRegions[2].dstOffset )
-			;
-	}
+	mStaticMesh.indexBuffer  = bufferRegions[0];
+	mStaticMesh.posBuffer    = bufferRegions[1];
+	mStaticMesh.normalBuffer = bufferRegions[2];
 
-	::vk::DeviceSize firstOffset = bufferRegions.front().dstOffset;
-	::vk::DeviceSize totalStaticRange = (bufferRegions.back().dstOffset + bufferRegions.back().size) - firstOffset;
+	::vk::DeviceSize firstOffset = bufferCopyInstructions.front().dstOffset;
+	::vk::DeviceSize totalStaticRange = (bufferCopyInstructions.back().dstOffset + bufferCopyInstructions.back().size) - firstOffset;
 
 	::vk::CommandBuffer cmd = currentContext.allocateTransientCommandBuffer();
 	
 	cmd.begin( {::vk::CommandBufferUsageFlagBits::eOneTimeSubmit} );
 	
-	cmd.copyBuffer( currentContext.getTransientAllocator()->getBuffer(), mStaticAllocator->getBuffer(), bufferRegions );
+	cmd.copyBuffer( currentContext.getTransientAllocator()->getBuffer(), mStaticAllocator->getBuffer(), bufferCopyInstructions );
 	
 	::vk::BufferMemoryBarrier bufferTransferBarrier;
 	bufferTransferBarrier
@@ -239,7 +252,8 @@ void ofApp::keyPressed(int key){
 //--------------------------------------------------------------
 void ofApp::keyReleased(int key){
 	if ( key == ' ' ){
-		const_cast<of::vk::DrawCommand&>( dc ).getPipelineState().touchShader();
+		const_cast<of::vk::DrawCommand&>( drawPhong ).getPipelineState().touchShader();
+		const_cast<of::vk::DrawCommand&>( drawFullScreenQuad ).getPipelineState().touchShader();
 	} else if ( key == 'l' ){
 		isFrameLocked ^= true;
 		ofSetFrameRate( isFrameLocked ? EXAMPLE_TARGET_FRAME_RATE : 0);
