@@ -3,7 +3,7 @@
 #include <memory>
 #include "ofLog.h"
 #include "vk/Pipeline.h"
-#include "vk/vkAllocator.h"
+#include "vk/BufferAllocator.h"
 #include "vk/DrawCommand.h"
 #include "vk/HelperTypes.h"
 /*
@@ -40,7 +40,7 @@ public:
 	struct Settings
 	{
 		ofVkRenderer *                         renderer = nullptr;
-		Allocator::Settings                    transientMemoryAllocatorSettings;
+		BufferAllocator::Settings              transientMemoryAllocatorSettings;
 		std::shared_ptr<::vk::PipelineCache>   pipelineCache;
 		::vk::RenderPass                       renderPass;  // owning
 		::vk::Rect2D                           renderArea;
@@ -72,7 +72,7 @@ private:
 	const ::vk::RenderPass &                    mRenderPass = mSettings.renderPass; 
 	uint32_t                                    mSubpassId  = 0;
 
-	std::unique_ptr<of::vk::Allocator>          mTransientMemory;
+	std::unique_ptr<of::vk::BufferAllocator>    mTransientMemory;
 
 	// Max number of descriptors per type
 	// Array index == descriptor type
@@ -107,7 +107,7 @@ private:
 		return mPipelineCache[pipelineHash];
 	};
 	
-	const std::unique_ptr<Allocator> & RenderContext::getAllocator();
+	const std::unique_ptr<BufferAllocator> & RenderContext::getAllocator();
 	
 
 public:
@@ -130,13 +130,13 @@ public:
 	// Stages data for copying into targetAllocator's address space
 	// allocates identical memory chunk in local transient allocator and in targetAllocator
 	// use BufferCopy vec and a vkCmdBufferCopy to execute copy instruction using a command buffer.
-	::vk::BufferCopy stageBufferData( const TransferSrcData& data, const unique_ptr<Allocator> &targetAllocator );
+	::vk::BufferCopy stageBufferData( const TransferSrcData& data, const unique_ptr<BufferAllocator> &targetAllocator );
 	
-	std::vector<::vk::BufferCopy> stageBufferData( const std::vector<TransferSrcData>& dataVec, const unique_ptr<Allocator> &targetAllocator );
+	std::vector<::vk::BufferCopy> stageBufferData( const std::vector<TransferSrcData>& dataVec, const unique_ptr<BufferAllocator> &targetAllocator );
 
-	std::vector<BufferRegion> storeBufferDataCmd( const std::vector<TransferSrcData>& dataVec, const unique_ptr<Allocator> &targetAllocator );
+	std::vector<BufferRegion> storeBufferDataCmd( const std::vector<TransferSrcData>& dataVec, const unique_ptr<BufferAllocator> &targetAllocator );
 
-	::vk::Image storeImageCmd( const ImageTransferSrcData& data, const unique_ptr<Allocator>& targetAllocator );
+	::vk::Image storeImageCmd( const ImageTransferSrcData& data, const unique_ptr<AbstractAllocator>& targetAllocator );
 
 	// Create and return command buffer. 
 	// Lifetime is limited to current frame. 
@@ -145,7 +145,7 @@ public:
 
 	::vk::CommandBuffer allocateTransientCommandBuffer( const ::vk::CommandBufferLevel & commandBufferLevel );
 
-	const std::unique_ptr<of::vk::Allocator>& getTransientAllocator(){
+	const std::unique_ptr<of::vk::BufferAllocator>& getTransientAllocator(){
 		return mTransientMemory;
 	};
 
@@ -207,13 +207,13 @@ inline const ::vk::Rect2D & RenderContext::getRenderArea() const{
 	return mRenderArea;
 }
 
-inline const std::unique_ptr<Allocator> & RenderContext::getAllocator(){
+inline const std::unique_ptr<BufferAllocator> & RenderContext::getAllocator(){
 	return mTransientMemory;
 }
 
 // ------------------------------------------------------------
 
-inline std::vector<::vk::BufferCopy> RenderContext::stageBufferData( const std::vector<TransferSrcData>& dataVec, const unique_ptr<Allocator>& targetAllocator )
+inline std::vector<::vk::BufferCopy> RenderContext::stageBufferData( const std::vector<TransferSrcData>& dataVec, const unique_ptr<BufferAllocator>& targetAllocator )
 {
 	std::vector<::vk::BufferCopy> regions;
 	regions.reserve( dataVec.size());
@@ -227,7 +227,7 @@ inline std::vector<::vk::BufferCopy> RenderContext::stageBufferData( const std::
 
 // ------------------------------------------------------------
 
-inline ::vk::BufferCopy RenderContext::stageBufferData( const TransferSrcData& data, const unique_ptr<Allocator>& targetAllocator ){
+inline ::vk::BufferCopy RenderContext::stageBufferData( const TransferSrcData& data, const unique_ptr<BufferAllocator>& targetAllocator ){
 	::vk::BufferCopy region{ 0, 0, 0 };
 
 	region.size = data.numBytesPerElement * data.numElements;

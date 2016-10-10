@@ -210,6 +210,7 @@
     <ClInclude Include="..\..\..\openFrameworks\communication\ofSerial.h" />
     <ClInclude Include="..\..\..\openFrameworks\events\ofEvents.h" />
     <ClInclude Include="..\..\..\openFrameworks\events\ofEventUtils.h" />
+    <ClInclude Include="..\..\..\openFrameworks\vk\BufferAllocator.h" />
     <ClInclude Include="..\..\..\openFrameworks\vk\DrawCommand.h" />
     <ClInclude Include="..\..\..\openFrameworks\vk\HelperTypes.h" />
     <ClInclude Include="..\..\..\openFrameworks\vk\ofVkRenderer.h" />
@@ -300,7 +301,7 @@
     <ClCompile Include="..\..\..\openFrameworks\vk\Texture.cpp" />
     <ClCompile Include="..\..\..\openFrameworks\vk\spirv-cross\include\spirv_cross.cpp" />
     <ClCompile Include="..\..\..\openFrameworks\vk\spooky\SpookyV2.cpp" />
-    <ClCompile Include="..\..\..\openFrameworks\vk\vkAllocator.cpp" />
+    <ClCompile Include="..\..\..\openFrameworks\vk\BufferAllocator.cpp" />
     <ClCompile Include="..\..\..\openFrameworks\vk\ofVkRenderer.cpp" />
     <ClCompile Include="..\..\..\openFrameworks\vk\Pipeline.cpp" />
     <ClCompile Include="..\..\..\openFrameworks\vk\Swapchain.cpp" />

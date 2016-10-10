@@ -95,7 +95,7 @@ void DrawCommand::setup(const GraphicsPipelineState& pipelineState){
 
 // ------------------------------------------------------------
 
-void DrawCommand::commitUniforms(const std::unique_ptr<Allocator>& alloc ){
+void DrawCommand::commitUniforms(const std::unique_ptr<BufferAllocator>& alloc ){
 	for ( auto & descriptorSetData : mDescriptorSetData ){
 		for ( const auto & dataPair : descriptorSetData.dynamicUboData ){
 			
@@ -127,7 +127,7 @@ void DrawCommand::commitUniforms(const std::unique_ptr<Allocator>& alloc ){
 
 // ------------------------------------------------------------
 
-void DrawCommand::commitMeshAttributes( const std::unique_ptr<Allocator>& alloc ){
+void DrawCommand::commitMeshAttributes( const std::unique_ptr<BufferAllocator>& alloc ){
 	// check if current draw command has a mesh - if yes, upload mesh data to buffer memory.
 	if ( mMsh ){
 		auto &mesh = *mMsh;

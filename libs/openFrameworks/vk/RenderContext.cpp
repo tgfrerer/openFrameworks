@@ -11,7 +11,7 @@ RenderContext::RenderContext( const Settings && settings )
 		ofLogFatalError() << "You must specify a renderer for a context.";
 		ofExit();
 	}
-	mTransientMemory = std::make_unique<Allocator>( settings.transientMemoryAllocatorSettings );
+	mTransientMemory = std::make_unique<BufferAllocator>( settings.transientMemoryAllocatorSettings );
 	mVirtualFrames.resize( mSettings.transientMemoryAllocatorSettings.frameCount );
 	mDescriptorPoolSizes.fill( 0 );
 	mAvailableDescriptorCounts.fill( 0 );
@@ -340,7 +340,7 @@ void RenderContext::resetFence(){
 
 // ------------------------------------------------------------
 
-std::vector<BufferRegion> RenderContext::storeBufferDataCmd( const std::vector<TransferSrcData>& dataVec, const unique_ptr<Allocator>& targetAllocator ){
+std::vector<BufferRegion> RenderContext::storeBufferDataCmd( const std::vector<TransferSrcData>& dataVec, const unique_ptr<BufferAllocator>& targetAllocator ){
 	std::vector<BufferRegion> resultBuffers;
 
 	auto copyRegions = stageBufferData( dataVec, targetAllocator );
@@ -403,7 +403,7 @@ std::vector<BufferRegion> RenderContext::storeBufferDataCmd( const std::vector<T
 
 // ------------------------------------------------------------
 
-::vk::Image of::vk::RenderContext::storeImageCmd( const ImageTransferSrcData& data, const unique_ptr<Allocator>& targetImageAllocator ){
+::vk::Image of::vk::RenderContext::storeImageCmd( const ImageTransferSrcData& data, const unique_ptr<AbstractAllocator>& targetImageAllocator ){
 	::vk::Image image;
 
 	/*

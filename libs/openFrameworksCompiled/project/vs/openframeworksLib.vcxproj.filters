@@ -345,6 +345,9 @@
     <ClInclude Include="..\..\..\openFrameworks\vk\HelperTypes.h">
       <Filter>libs\openFrameworks\vk</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\..\openFrameworks\vk\BufferAllocator.h">
+      <Filter>libs\openFrameworks\vk</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\openFrameworks\app\ofAppGlutWindow.cpp">
@@ -554,9 +557,6 @@
     <ClCompile Include="..\..\..\openFrameworks\vk\ofVkRendererImpl.cpp">
       <Filter>libs\openFrameworks\vk</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\openFrameworks\vk\vkAllocator.cpp">
-      <Filter>libs\openFrameworks\vk</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\openFrameworks\vk\spirv-cross\include\spirv_cross.cpp">
       <Filter>libs\openFrameworks\vk\spirv-cross\src</Filter>
     </ClCompile>
@@ -590,5 +590,8 @@
     <None Include="..\..\..\openFrameworks\gl\shaders\phong.vert">
       <Filter>libs\openFrameworks\gl\shaders</Filter>
     </None>
+    <ClCompile Include="..\..\..\openFrameworks\vk\BufferAllocator.cpp">
+      <Filter>libs\openFrameworks\vk</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

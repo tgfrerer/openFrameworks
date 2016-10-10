@@ -11,7 +11,7 @@ namespace vk{
 
 class DrawCommand;	   // ffdecl.
 class RenderBatch;	   // ffdecl.
-class Allocator;	   // ffdecl.
+class BufferAllocator;	   // ffdecl.
 
 
 // ----------------------------------------------------------------------
@@ -124,9 +124,9 @@ public:
 
 	// set data for upload to ubo - data is stored locally 
 	// until draw command is submitted
-	void commitUniforms( const std::unique_ptr<Allocator>& alloc_ );
+	void commitUniforms( const std::unique_ptr<BufferAllocator>& alloc_ );
 
-	void commitMeshAttributes( const std::unique_ptr<Allocator>& alloc_ );
+	void commitMeshAttributes( const std::unique_ptr<BufferAllocator>& alloc_ );
 
 	void setMesh( const shared_ptr<ofMesh>& msh_ );
 
@@ -142,7 +142,7 @@ public:
 	void setUniform( const std::string& uniformName, const T& uniformValue_ );
 
 	template <typename T>
-	bool allocAndSetAttribute( const std::string& attrName_, const std::vector<T> & vec, const std::unique_ptr<Allocator>& alloc );
+	bool allocAndSetAttribute( const std::string& attrName_, const std::vector<T> & vec, const std::unique_ptr<BufferAllocator>& alloc );
 
 
 };
@@ -180,7 +180,7 @@ inline void DrawCommand::setUniform( const std::string & uniformName, const T & 
 
 // upload vertex data to gpu memory
 template<typename T>
-inline bool DrawCommand::allocAndSetAttribute( const std::string & attrName_, const std::vector<T>& vec, const std::unique_ptr<Allocator>& alloc ){
+inline bool DrawCommand::allocAndSetAttribute( const std::string & attrName_, const std::vector<T>& vec, const std::unique_ptr<BufferAllocator>& alloc ){
 	void * dataP = nullptr;
 	::vk::DeviceSize offset = 0;
 

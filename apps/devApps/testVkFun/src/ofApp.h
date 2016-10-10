@@ -21,7 +21,7 @@ class ofApp : public ofBaseApp{
 
 	std::shared_ptr<ofMesh> mMeshL;
 	std::shared_ptr<ofMesh> mMeshPly;
-	std::unique_ptr<of::vk::Allocator> mStaticAllocator;
+	std::unique_ptr<of::vk::BufferAllocator> mStaticAllocator;
 
 	StaticMesh mStaticMesh;
 

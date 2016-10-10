@@ -29,13 +29,12 @@ void ofVkRenderer::setup(){
 void ofVkRenderer::setupDefaultContext(){
 	
 	of::vk::RenderContext::Settings settings;
-	settings.transientMemoryAllocatorSettings
-		.setDevice( mDevice )
-		.setFrameCount( mSettings.numVirtualFrames )
-		.setPhysicalDeviceMemoryProperties( mPhysicalDeviceMemoryProperties )
-		.setPhysicalDeviceProperties( mPhysicalDeviceProperties )
-		.setSize( (1ULL << 24) * mSettings.numVirtualFrames )
-		;
+	
+	settings.transientMemoryAllocatorSettings.device = mDevice;
+	settings.transientMemoryAllocatorSettings.frameCount =  mSettings.numVirtualFrames ;
+	settings.transientMemoryAllocatorSettings.physicalDeviceMemoryProperties = mPhysicalDeviceMemoryProperties ;
+	settings.transientMemoryAllocatorSettings.physicalDeviceProperties = mPhysicalDeviceProperties ;
+	settings.transientMemoryAllocatorSettings.size = ( ( 1ULL << 24 ) * mSettings.numVirtualFrames );
 	settings.renderer = this;
 	settings.pipelineCache = getPipelineCache();
 	settings.renderArea = { 0,0, mWindowWidth, mWindowHeight };

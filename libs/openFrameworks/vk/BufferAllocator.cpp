@@ -1,12 +1,11 @@
-#include "vk/vkAllocator.h"
-#include "vk/ofVkRenderer.h"
+#include "vk/BufferAllocator.h"
 #include "ofLog.h"
 
 using namespace of::vk;
 
 // ----------------------------------------------------------------------
 
-void Allocator::setup(){
+void BufferAllocator::setup(){
 	
 	if ( mSettings.frameCount < 1 ){
 		ofLogWarning() << "Allocator: Must have a minimum of 1 frame. Setting frames to 1.";
@@ -47,6 +46,7 @@ void Allocator::setup(){
 	::vk::MemoryAllocateInfo allocateInfo;
 	
 	bool result = getMemoryAllocationInfo(
+		mSettings.physicalDeviceMemoryProperties,
 		memReqs,
 		mSettings.memFlags,
 		allocateInfo
@@ -85,7 +85,7 @@ void Allocator::setup(){
 
 // ----------------------------------------------------------------------
 
-void of::vk::Allocator::reset(){
+void of::vk::BufferAllocator::reset(){
 	if ( mDeviceMemory ){
 		if ( mSettings.memFlags & ::vk::MemoryPropertyFlagBits::eHostVisible ){
 			mSettings.device.unmapMemory( mDeviceMemory );
@@ -110,7 +110,7 @@ void of::vk::Allocator::reset(){
 // param   byteCount number of bytes to allocate
 // param   frameIdx current virtual frame index
 // returns offset memory offset in bytes relative to start of buffer to reach address
-bool Allocator::allocate( ::vk::DeviceSize byteCount_, ::vk::DeviceSize& offset ){
+bool BufferAllocator::allocate( ::vk::DeviceSize byteCount_, ::vk::DeviceSize& offset ){
 	uint32_t alignedByteCount = mAlignment * ( ( byteCount_ + mAlignment - 1 ) / mAlignment );
 
 	if ( mOffsetEnd[mCurrentVirtualFrameIdx] + alignedByteCount <= (mSettings.size / mSettings.frameCount) ){
@@ -135,13 +135,13 @@ bool Allocator::allocate( ::vk::DeviceSize byteCount_, ::vk::DeviceSize& offset 
 
 // ----------------------------------------------------------------------
 
-void Allocator::free(){
+void BufferAllocator::free(){
 	mOffsetEnd[mCurrentVirtualFrameIdx] = 0;
 	mCurrentMappedAddress = nullptr;
 }
 
 // ----------------------------------------------------------------------
 
-void Allocator::swap(){
+void BufferAllocator::swap(){
 	mCurrentVirtualFrameIdx = ( mCurrentVirtualFrameIdx + 1 ) % mSettings.frameCount;
 }

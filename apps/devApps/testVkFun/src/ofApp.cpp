@@ -37,7 +37,7 @@ void ofApp::setup(){
 //--------------------------------------------------------------
 
 void ofApp::setupStaticAllocator(){
-	of::vk::Allocator::Settings allocatorSettings;
+	of::vk::BufferAllocator::Settings allocatorSettings;
 	allocatorSettings.device = renderer->getVkDevice();
 	allocatorSettings.size = ( 1 << 24UL ); // 16 MB
 	allocatorSettings.frameCount = 1;
@@ -45,7 +45,7 @@ void ofApp::setupStaticAllocator(){
 	allocatorSettings.physicalDeviceMemoryProperties = renderer->getVkPhysicalDeviceMemoryProperties();
 	allocatorSettings.physicalDeviceProperties = renderer->getVkPhysicalDeviceProperties();
 	
-	mStaticAllocator = std::make_unique<of::vk::Allocator>( allocatorSettings );
+	mStaticAllocator = std::make_unique<of::vk::BufferAllocator>( allocatorSettings );
 	mStaticAllocator->setup();
 }
 
@@ -197,17 +197,17 @@ void ofApp::uploadStaticAttributes( of::vk::RenderContext & currentContext ){
 		mStaticMesh.normalBuffer = bufferRegions[2];
 	}
 	
-	ofPixels pix;
-	ofLoadImage( pix, "brighton.png" );
+	//ofPixels pix;
+	//ofLoadImage( pix, "brighton.png" );
 
-	of::vk::ImageTransferSrcData imgData;
-	imgData.pData = pix.getData();
-	imgData.numBytesPerElement = pix.size();
-	imgData.numElements = 1;
-	imgData.extent.width = pix.getWidth();
-	imgData.extent.height = pix.getHeight();
+	//of::vk::ImageTransferSrcData imgData;
+	//imgData.pData = pix.getData();
+	//imgData.numBytesPerElement = pix.size();
+	//imgData.numElements = 1;
+	//imgData.extent.width = pix.getWidth();
+	//imgData.extent.height = pix.getHeight();
 
-	std::vector<::vk::Image> images = currentContext.storeImageCmd( {imgData}, mStaticAllocator );
+	//std::vector<::vk::Image> images = currentContext.storeImageCmd( {imgData}, mStaticAllocator );
 
 	wasUploaded = true;
 }
