@@ -403,7 +403,7 @@ std::vector<BufferRegion> RenderContext::storeBufferDataCmd( const std::vector<T
 
 // ------------------------------------------------------------
 
-::vk::Image of::vk::RenderContext::storeImageCmd( const ImageTransferSrcData& data, const unique_ptr<AbstractAllocator>& targetImageAllocator ){
+::vk::Image of::vk::RenderContext::storeImageCmd( const ImageTransferSrcData& data, const unique_ptr<ImageAllocator>& targetImageAllocator ){
 	::vk::Image image;
 
 	/*
@@ -424,30 +424,139 @@ std::vector<BufferRegion> RenderContext::storeBufferDataCmd( const std::vector<T
 		7.4 execute command buffer
 	
 	*/
+	{
 
-	//::vk::CommandBuffer cmd = allocateTransientCommandBuffer( ::vk::CommandBufferLevel::ePrimary );
-	//
-	//::vk::ImageSubresourceLayers subresourceLayers;
+		::vk::ImageCreateInfo imageCreateInfo;
+		imageCreateInfo
+			.setImageType( data.imageType )
+			.setFormat( data.format )
+			.setExtent( data.extent )
+			.setMipLevels( data.mipLevels )
+			.setArrayLayers( data.arrayLayers )
+			.setSamples( data.samples)
+			.setTiling( ::vk::ImageTiling::eOptimal )
+			.setUsage( ::vk::ImageUsageFlagBits::eSampled | ::vk::ImageUsageFlagBits::eTransferDst )
+			.setSharingMode( ::vk::SharingMode::eExclusive )
+			.setQueueFamilyIndexCount( 0 )
+			.setPQueueFamilyIndices( nullptr )
+			.setInitialLayout( ::vk::ImageLayout::ePreinitialized )
+			;
+		
+		image = mDevice.createImage( imageCreateInfo );
+		
+	}
+	
+	::vk::DeviceSize numBytes = mDevice.getImageMemoryRequirements( image ).size;
+	
+	{
+		::vk::DeviceSize dstOffset = 0;
 
-	//::vk::BufferImageCopy bufferImageCopy;
-	//bufferImageCopy
-	//	.setBufferOffset( bufferOffset_ )  /* must be a multiple of four */
-	//	.setBufferRowLength( bufferRowLength_ ) /*must be 0, or greater or equal to imageExtent.width */
-	//	.setBufferImageHeight( bufferImageHeight_ )
-	//	.setImageSubresource( subresourceLayers )
-	//	.setImageOffset( {0,0,0} )
-	//	.setImageExtent( imageExtent_ )
-	//	;
+		if ( targetImageAllocator->allocate( numBytes, dstOffset ) ){
+			mDevice.bindImageMemory( image, targetImageAllocator->getDeviceMemory(), dstOffset );
+		} else{
+			ofLogError() << "Image Allocation failed.";
+			mDevice.destroyImage( image );
+			return nullptr;
+		}
+	}
 
-	//cmd.begin( { ::vk::CommandBufferUsageFlagBits::eOneTimeSubmit } );
-	//{
-	//	cmd.copyBufferToImage( srcBuffer, image, ::vk::ImageLayout::eTransferDstOptimal, bufferImageCopies );
-	//}
-	//cmd.end();
-	//
-	//// Submit copy command buffer to current context
-	//// This needs to happen before first draw calls are submitted for the frame.
-	//submit( std::move( cmd ) );
+	// --------| invariant: target allocation successful
+
+	::vk::DeviceSize transientOffset = 0;
+	void * pData;
+	if ( mTransientMemory->allocate( data.numBytes, transientOffset )
+		&& mTransientMemory->map(pData)){
+		memcpy( pData, data.pData, data.numBytes );
+	}
+
+	::vk::CommandBuffer cmd = allocateTransientCommandBuffer( ::vk::CommandBufferLevel::ePrimary );
+	
+	::vk::ImageSubresourceLayers subresourceLayers;
+	subresourceLayers
+		.setAspectMask(::vk::ImageAspectFlagBits::eColor)
+		.setMipLevel( 0 )
+		.setBaseArrayLayer( 0)
+		.setLayerCount( 1 )
+		;
+
+	::vk::BufferImageCopy bufferImageCopy;
+	bufferImageCopy
+		.setBufferOffset( transientOffset )  /* must be a multiple of four */
+		.setBufferRowLength( data.extent.width ) /*must be 0, or greater or equal to imageExtent.width */
+		.setBufferImageHeight( data.extent.height )
+		.setImageSubresource( subresourceLayers )
+		.setImageOffset( {0,0,0} )
+		.setImageExtent( data.extent )
+		;
+
+	cmd.begin( { ::vk::CommandBufferUsageFlagBits::eOneTimeSubmit } );
+	{
+		// barrier transition to layout dst optimal 
+
+		
+		//of::vk::imageLayoutBarrier(cmd, image, ::vk::ImageLayout::eUndefined, ::vk::ImageLayout::eTransferDstOptimal );
+
+		{
+			::vk::ImageSubresourceRange subresourceRange;
+			subresourceRange
+				.setAspectMask( ::vk::ImageAspectFlagBits::eColor )
+				.setBaseMipLevel( 0 )
+				.setLevelCount( 1 )
+				.setBaseArrayLayer( 0 )
+				.setLayerCount( 1 )
+				;
+
+			::vk::ImageMemoryBarrier imageStagingBarrier;
+			imageStagingBarrier
+				.setSrcAccessMask( {} )
+				.setDstAccessMask( ::vk::AccessFlagBits::eTransferWrite)
+				.setOldLayout( ::vk::ImageLayout::eUndefined )
+				.setNewLayout( ::vk::ImageLayout::eTransferDstOptimal )
+				.setSrcQueueFamilyIndex( VK_QUEUE_FAMILY_IGNORED )
+				.setDstQueueFamilyIndex( VK_QUEUE_FAMILY_IGNORED )
+				.setImage( image )
+				.setSubresourceRange( subresourceRange )
+				;
+
+			cmd.pipelineBarrier( ::vk::PipelineStageFlagBits::eTopOfPipe, ::vk::PipelineStageFlagBits::eTopOfPipe, {}, {}, {}, { imageStagingBarrier } );
+
+		}
+
+		cmd.copyBufferToImage( mTransientMemory->getBuffer(), image, ::vk::ImageLayout::eTransferDstOptimal, bufferImageCopy );
+		
+		{
+
+			::vk::ImageSubresourceRange subresourceRange;
+			subresourceRange
+				.setAspectMask( ::vk::ImageAspectFlagBits::eColor )
+				.setBaseMipLevel( 0 )
+				.setLevelCount( 1 )
+				.setBaseArrayLayer( 0 )
+				.setLayerCount( 1 )
+				;
+
+			::vk::ImageMemoryBarrier imageStagingBarrier;
+			imageStagingBarrier
+				.setSrcAccessMask( ::vk::AccessFlagBits::eTransferWrite )
+				.setDstAccessMask( ::vk::AccessFlagBits::eShaderRead )
+				.setOldLayout( ::vk::ImageLayout::eTransferDstOptimal )
+				.setNewLayout( ::vk::ImageLayout::eShaderReadOnlyOptimal )
+				.setSrcQueueFamilyIndex( VK_QUEUE_FAMILY_IGNORED )
+				.setDstQueueFamilyIndex( VK_QUEUE_FAMILY_IGNORED )
+				.setImage( image )
+				.setSubresourceRange( subresourceRange )
+				;
+
+			cmd.pipelineBarrier( ::vk::PipelineStageFlagBits::eTopOfPipe, ::vk::PipelineStageFlagBits::eTopOfPipe, {}, {}, {}, { imageStagingBarrier } );
+		}
+
+		// barrier transition to layout shader read optimal
+	}
+	cmd.end();
+	
+	// Submit copy command buffer to current context
+	// This needs to happen before first draw calls are submitted for the frame.
+	submit( std::move( cmd ) );
 	
 	return image;
 }

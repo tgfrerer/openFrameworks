@@ -21,13 +21,15 @@ class ofApp : public ofBaseApp{
 
 	std::shared_ptr<ofMesh> mMeshL;
 	std::shared_ptr<ofMesh> mMeshPly;
+	
 	std::unique_ptr<of::vk::BufferAllocator> mStaticAllocator;
+	std::unique_ptr<of::vk::ImageAllocator>  mImageAllocator;
 
 	StaticMesh mStaticMesh;
 
 	public:
 		void setup();
-		void setupStaticAllocator();
+		void setupStaticAllocators();
 		void setupDrawCommands();
 		void setupMeshL(){
 			// Horizontally elongated "L___" shape

@@ -213,6 +213,7 @@
     <ClInclude Include="..\..\..\openFrameworks\vk\BufferAllocator.h" />
     <ClInclude Include="..\..\..\openFrameworks\vk\DrawCommand.h" />
     <ClInclude Include="..\..\..\openFrameworks\vk\HelperTypes.h" />
+    <ClInclude Include="..\..\..\openFrameworks\vk\ImageAllocator.h" />
     <ClInclude Include="..\..\..\openFrameworks\vk\ofVkRenderer.h" />
     <ClInclude Include="..\..\..\openFrameworks\vk\Pipeline.h" />
     <ClInclude Include="..\..\..\openFrameworks\vk\RenderBatch.h" />
@@ -225,7 +226,7 @@
     <ClInclude Include="..\..\..\openFrameworks\vk\spirv-cross\include\spirv_cross.hpp" />
     <ClInclude Include="..\..\..\openFrameworks\vk\spooky\SpookyV2.h" />
     <ClInclude Include="..\..\..\openFrameworks\vk\Swapchain.h" />
-    <ClInclude Include="..\..\..\openFrameworks\vk\vkAllocator.h" />
+    <ClInclude Include="..\..\..\openFrameworks\vk\Allocator.h" />
     <ClInclude Include="..\..\..\openFrameworks\vk\Texture.h" />
   </ItemGroup>
   <ItemGroup>
@@ -295,6 +296,7 @@
     <ClCompile Include="..\..\..\openFrameworks\communication\ofArduino.cpp" />
     <ClCompile Include="..\..\..\openFrameworks\communication\ofSerial.cpp" />
     <ClCompile Include="..\..\..\openFrameworks\vk\DrawCommand.cpp" />
+    <ClCompile Include="..\..\..\openFrameworks\vk\ImageAllocator.cpp" />
     <ClCompile Include="..\..\..\openFrameworks\vk\RenderBatch.cpp" />
     <ClCompile Include="..\..\..\openFrameworks\vk\RenderContext.cpp" />
     <ClCompile Include="..\..\..\openFrameworks\vk\Shader.cpp" />

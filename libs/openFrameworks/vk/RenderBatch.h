@@ -3,7 +3,7 @@
 #include <memory>
 #include "ofLog.h"
 #include "vk/Pipeline.h"
-#include "vk/vkAllocator.h"
+#include "vk/Allocator.h"
 #include "vk/DrawCommand.h"
 #include "vk/RenderContext.h"
 

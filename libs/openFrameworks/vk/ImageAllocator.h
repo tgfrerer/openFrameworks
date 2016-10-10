@@ -25,27 +25,25 @@ namespace vk{
 */
 
 
-class BufferAllocator : public AbstractAllocator
+class ImageAllocator : public AbstractAllocator
 {
 
 public:
 
 	struct Settings : public AbstractAllocator::Settings
 	{
-		uint32_t                             frameCount = 1; // number of frames to reserve within this allocator
+		::vk::ImageUsageFlags imageUsageFlags = (
+			::vk::ImageUsageFlagBits::eTransferDst
+			| ::vk::ImageUsageFlagBits::eSampled
+			);
 
-		::vk::BufferUsageFlags bufferUsageFlags = (
-			::vk::BufferUsageFlagBits::eIndexBuffer
-			| ::vk::BufferUsageFlagBits::eUniformBuffer
-			| ::vk::BufferUsageFlagBits::eVertexBuffer
-			| ::vk::BufferUsageFlagBits::eTransferSrc
-			| ::vk::BufferUsageFlagBits::eTransferDst );
+		::vk::ImageTiling imageTiling = ::vk::ImageTiling::eOptimal;
 	};
 
-	BufferAllocator( const BufferAllocator::Settings& settings )
+	ImageAllocator( const ImageAllocator::Settings& settings )
 		: mSettings( settings ){};
 
-	~BufferAllocator(){
+	~ImageAllocator(){
 		mSettings.device.waitIdle();
 		reset();
 	};
@@ -69,39 +67,25 @@ public:
 	/// @note   this does not free GPU memory, it just marks it as unused
 	void free();
 
-	// return address to writeable memory, if this allocator is ready to write.
-	bool map( void*& pAddr ){
-		pAddr = mCurrentMappedAddress;
-		return ( mCurrentMappedAddress != nullptr );
-	};
-
 	// jump to use next segment assigned to next virtual frame
 
-	const ::vk::Buffer& getBuffer() const{
-		return mBuffer;
-	};
 
 	const AbstractAllocator::Settings& getSettings() const override{
 		return mSettings;
 	}
 
 private:
-	const BufferAllocator::Settings    mSettings;
-	const ::vk::DeviceSize             mAlignment = 256;  // alignment is calculated on setup - but 256 is a sensible default as it is the largest possible according to spec
+	const ImageAllocator::Settings     mSettings;
+	const ::vk::DeviceSize             mImageGranularity = (10 << 1UL);  // granularity is calculated on setup. must be power of two.
 
-	std::vector<::vk::DeviceSize>      mOffsetEnd;        // next free location for allocations
-	std::vector<uint8_t*>              mBaseAddress;      // base address for mapped memory
-
-	::vk::Buffer                       mBuffer = nullptr;   // owning
+	::vk::DeviceSize                   mOffsetEnd;                // next free location for allocations
 	::vk::DeviceMemory                 mDeviceMemory = nullptr;	  // owning
 
-	void*                              mCurrentMappedAddress = nullptr; // current address for writing
-	size_t                             mCurrentVirtualFrameIdx = 0; // currently mapped segment
 };
 
 // ----------------------------------------------------------------------
 
-inline const ::vk::DeviceMemory & of::vk::BufferAllocator::getDeviceMemory() const{
+inline const ::vk::DeviceMemory & of::vk::ImageAllocator::getDeviceMemory() const{
 	return mDeviceMemory;
 }
 

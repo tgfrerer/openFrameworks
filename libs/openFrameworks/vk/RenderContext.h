@@ -4,6 +4,7 @@
 #include "ofLog.h"
 #include "vk/Pipeline.h"
 #include "vk/BufferAllocator.h"
+#include "vk/ImageAllocator.h"
 #include "vk/DrawCommand.h"
 #include "vk/HelperTypes.h"
 /*
@@ -136,7 +137,7 @@ public:
 
 	std::vector<BufferRegion> storeBufferDataCmd( const std::vector<TransferSrcData>& dataVec, const unique_ptr<BufferAllocator> &targetAllocator );
 
-	::vk::Image storeImageCmd( const ImageTransferSrcData& data, const unique_ptr<AbstractAllocator>& targetAllocator );
+	::vk::Image storeImageCmd( const ImageTransferSrcData& data, const unique_ptr<ImageAllocator>& targetImageAllocator );
 
 	// Create and return command buffer. 
 	// Lifetime is limited to current frame. 

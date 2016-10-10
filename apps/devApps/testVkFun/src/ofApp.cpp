@@ -17,7 +17,7 @@ void ofApp::setup(){
 	ofDisableSetupScreen();
 	ofSetFrameRate( EXAMPLE_TARGET_FRAME_RATE );
 
-	setupStaticAllocator();
+	setupStaticAllocators();
 
 	setupDrawCommands();
 
@@ -36,17 +36,31 @@ void ofApp::setup(){
 
 //--------------------------------------------------------------
 
-void ofApp::setupStaticAllocator(){
-	of::vk::BufferAllocator::Settings allocatorSettings;
-	allocatorSettings.device = renderer->getVkDevice();
-	allocatorSettings.size = ( 1 << 24UL ); // 16 MB
-	allocatorSettings.frameCount = 1;
-	allocatorSettings.memFlags = ::vk::MemoryPropertyFlagBits::eDeviceLocal;
-	allocatorSettings.physicalDeviceMemoryProperties = renderer->getVkPhysicalDeviceMemoryProperties();
-	allocatorSettings.physicalDeviceProperties = renderer->getVkPhysicalDeviceProperties();
-	
-	mStaticAllocator = std::make_unique<of::vk::BufferAllocator>( allocatorSettings );
-	mStaticAllocator->setup();
+void ofApp::setupStaticAllocators(){
+
+	{
+		of::vk::BufferAllocator::Settings allocatorSettings;
+		allocatorSettings.device = renderer->getVkDevice();
+		allocatorSettings.size = ( 1 << 24UL ); // 16 MB
+		allocatorSettings.frameCount = 1;
+		allocatorSettings.memFlags = ::vk::MemoryPropertyFlagBits::eDeviceLocal;
+		allocatorSettings.physicalDeviceMemoryProperties = renderer->getVkPhysicalDeviceMemoryProperties();
+		allocatorSettings.physicalDeviceProperties = renderer->getVkPhysicalDeviceProperties();
+
+		mStaticAllocator = std::make_unique<of::vk::BufferAllocator>( allocatorSettings );
+		mStaticAllocator->setup();
+	}
+	{
+		of::vk::ImageAllocator::Settings allocatorSettings;
+		allocatorSettings.device = renderer->getVkDevice();
+		allocatorSettings.size = ( 1 << 24UL ); // 16 MB
+		allocatorSettings.memFlags = ::vk::MemoryPropertyFlagBits::eDeviceLocal;
+		allocatorSettings.physicalDeviceMemoryProperties = renderer->getVkPhysicalDeviceMemoryProperties();
+		allocatorSettings.physicalDeviceProperties = renderer->getVkPhysicalDeviceProperties();
+
+		mImageAllocator = std::make_unique<of::vk::ImageAllocator>( allocatorSettings );
+		mImageAllocator->setup();
+	}
 }
 
 //--------------------------------------------------------------
@@ -197,17 +211,16 @@ void ofApp::uploadStaticAttributes( of::vk::RenderContext & currentContext ){
 		mStaticMesh.normalBuffer = bufferRegions[2];
 	}
 	
-	//ofPixels pix;
-	//ofLoadImage( pix, "brighton.png" );
+	ofPixels pix;
+	ofLoadImage( pix, "brighton.png" );
 
-	//of::vk::ImageTransferSrcData imgData;
-	//imgData.pData = pix.getData();
-	//imgData.numBytesPerElement = pix.size();
-	//imgData.numElements = 1;
-	//imgData.extent.width = pix.getWidth();
-	//imgData.extent.height = pix.getHeight();
+	of::vk::ImageTransferSrcData imgData;
+	imgData.pData = pix.getData();
+	imgData.numBytes = pix.size();
+	imgData.extent.width = pix.getWidth();
+	imgData.extent.height = pix.getHeight();
 
-	//std::vector<::vk::Image> images = currentContext.storeImageCmd( {imgData}, mStaticAllocator );
+	::vk::Image image = currentContext.storeImageCmd( {imgData}, mImageAllocator );
 
 	wasUploaded = true;
 }

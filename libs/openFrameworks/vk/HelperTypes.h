@@ -12,7 +12,7 @@ struct TransferSrcData
 	::vk::DeviceSize numBytesPerElement;
 };
 
-struct ImageTransferSrcData : public TransferSrcData
+struct ImageTransferSrcData 
 {
 	void * pData;
 	::vk::DeviceSize          numBytes;

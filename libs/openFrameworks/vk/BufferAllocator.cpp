@@ -124,8 +124,8 @@ bool BufferAllocator::allocate( ::vk::DeviceSize byteCount_, ::vk::DeviceSize& o
 		// What we will realistically do is to flush the full memory range occpuied by a frame
 		// instead of the list of sub-allocations.
 		return true;
-	} else{
-		ofLogError() << "Allocator: out of memory";
+	} else {
+		ofLogError() << "Buffer Allocator: out of memory";
 		// TODO: try to recover by re-allocating or something.
 		// Whatever we do here, it will be very costly and should 
 		// be avoided.
