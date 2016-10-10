@@ -424,6 +424,7 @@ std::vector<BufferRegion> RenderContext::storeBufferDataCmd( const std::vector<T
 		7.4 execute command buffer
 	
 	*/
+
 	{
 
 		::vk::ImageCreateInfo imageCreateInfo;

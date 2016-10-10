@@ -2,8 +2,6 @@
 
 #include "ofMain.h"
 #include "vk/ofVkRenderer.h"
-#include "vk/DrawCommand.h"
-#include "vk/RenderBatch.h"
 
 struct StaticMesh
 {
@@ -24,6 +22,8 @@ class ofApp : public ofBaseApp{
 	
 	std::unique_ptr<of::vk::BufferAllocator> mStaticAllocator;
 	std::unique_ptr<of::vk::ImageAllocator>  mImageAllocator;
+
+	::vk::Image mImage = nullptr;
 
 	StaticMesh mStaticMesh;
 

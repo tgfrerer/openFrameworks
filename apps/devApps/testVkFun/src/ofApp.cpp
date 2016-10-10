@@ -1,13 +1,9 @@
 #include "ofApp.h"
-#include "vk/ofVkRenderer.h"
-#include "vk/DrawCommand.h"
-#include "vk/RenderBatch.h"
 
 #define EXAMPLE_TARGET_FRAME_RATE 60
 bool isFrameLocked = true;
 
 std::shared_ptr<ofVkRenderer> renderer = nullptr;
-
 
 //--------------------------------------------------------------
 
@@ -24,8 +20,8 @@ void ofApp::setup(){
 	setupMeshL();
 
 	mMeshPly = std::make_shared<ofMesh>();
-	//mMeshPly->load( "ico-m.ply" );
-	mMeshPly->load( "teapot.ply" );
+	mMeshPly->load( "ico-m.ply" );
+	//mMeshPly->load( "teapot.ply" );
 
 	mCam.setupPerspective( false, 60, 0.f, 5000 );
 	mCam.setPosition( { 0,0, mCam.getImagePlaneDistance() } );
@@ -220,7 +216,12 @@ void ofApp::uploadStaticAttributes( of::vk::RenderContext & currentContext ){
 	imgData.extent.width = pix.getWidth();
 	imgData.extent.height = pix.getHeight();
 
-	::vk::Image image = currentContext.storeImageCmd( {imgData}, mImageAllocator );
+	// todo: we should receive a shared_ptr here, i think.
+
+	mImage = currentContext.storeImageCmd( {imgData}, mImageAllocator );
+
+	// todo: we need to destroy this image when we quit the app.
+	// todo: use the image as input for some shader.
 
 	wasUploaded = true;
 }
@@ -241,6 +242,8 @@ void ofApp::keyReleased(int key){
 		isFrameLocked ^= true;
 		ofSetFrameRate( isFrameLocked ? EXAMPLE_TARGET_FRAME_RATE : 0);
 		ofLog() << "Framerate " << ( isFrameLocked ? "" : "un" ) << "locked.";
+	} else if ( key == 'f' ){
+		ofToggleFullscreen();
 	}
 }
 

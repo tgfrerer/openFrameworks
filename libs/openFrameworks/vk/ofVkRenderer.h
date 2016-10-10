@@ -1,9 +1,14 @@
 #pragma once
+
 #include <vulkan/vulkan.hpp>
+
 #include "vk/Swapchain.h"
 #include "vk/HelperTypes.h"
 #include "vk/BufferAllocator.h"
 #include "vk/ImageAllocator.h"
+#include "vk/DrawCommand.h"
+#include "vk/RenderBatch.h"
+
 #include "ofBaseTypes.h"
 #include "ofPolyline.h"
 #include "ofMatrix4x4.h"
