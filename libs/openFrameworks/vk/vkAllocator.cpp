@@ -26,13 +26,7 @@ void Allocator::setup(){
 	
 	bufferCreateInfo
 		.setSize( mSettings.size)
-		.setUsage( 
-			::vk::BufferUsageFlagBits::eIndexBuffer 
-			| ::vk::BufferUsageFlagBits::eUniformBuffer 
-			| ::vk::BufferUsageFlagBits::eVertexBuffer
-			| ::vk::BufferUsageFlagBits::eTransferSrc
-			| ::vk::BufferUsageFlagBits::eTransferDst
-		)
+		.setUsage( mSettings.bufferUsageFlags )
 		.setSharingMode( ::vk::SharingMode::eExclusive )
 		;
 
@@ -45,8 +39,7 @@ void Allocator::setup(){
 	
 	// 2.1 Get memory requirements including size, alignment and memory type 
 	::vk::MemoryRequirements memReqs = mSettings.device.getBufferMemoryRequirements( mBuffer );
-
-
+	
 	// 2.2 Get the appropriate memory type for this type of buffer allocation
 	// Only memory types that are visible to the host and coherent (coherent means they
 	// appear to the GPU without the need of explicit range flushes)

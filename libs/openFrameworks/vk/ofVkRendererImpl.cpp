@@ -9,7 +9,7 @@
 
 void ofVkRenderer::setup(){
 
-	// the surface has been assigned by glfwwindow, through glfw,
+	// The surface has been assigned by glfwwindow, through glfw,
 	// just before this setup() method was called.
 	querySurfaceCapabilities();
 	

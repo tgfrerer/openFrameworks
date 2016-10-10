@@ -21,6 +21,18 @@ public:
 		::vk::DeviceSize                     size       = 0; // how much memory to reserve on hardware for this allocator
 		::vk::MemoryPropertyFlags            memFlags = ( ::vk::MemoryPropertyFlagBits::eHostVisible | ::vk::MemoryPropertyFlagBits::eHostCoherent );
 		uint32_t                             frameCount     = 1; // number of frames to reserve within this allocator
+		
+		::vk::BufferUsageFlags bufferUsageFlags = (
+			::vk::BufferUsageFlagBits::eIndexBuffer
+			| ::vk::BufferUsageFlagBits::eUniformBuffer
+			| ::vk::BufferUsageFlagBits::eVertexBuffer
+			| ::vk::BufferUsageFlagBits::eTransferSrc
+			| ::vk::BufferUsageFlagBits::eTransferDst );
+
+		::vk::ImageUsageFlags imageUsageFlags = (
+			::vk::ImageUsageFlagBits::eSampled
+			| ::vk::ImageUsageFlagBits::eTransferDst );
+
 
 		Settings& setPhysicalDeviceProperties( ::vk::PhysicalDeviceProperties physicalDeviceProperties_ ){
 			physicalDeviceProperties = physicalDeviceProperties_;
@@ -86,9 +98,12 @@ public:
 		return mBuffer;
 	};
 
+	const ::vk::DeviceMemory& getDeviceMemory();
+
 	const Settings& getSettings() const{
 		return mSettings;
 	}
+
 
 	bool  getMemoryAllocationInfo( const ::vk::MemoryRequirements& memReqs, ::vk::MemoryPropertyFlags memProps, ::vk::MemoryAllocateInfo& memInfo ) const;
 
@@ -109,6 +124,10 @@ private:
 } // namespace vk
 } // namespace of
 
+
+inline const::vk::DeviceMemory & of::vk::Allocator::getDeviceMemory(){
+	return mDeviceMemory;
+}
 
 inline bool of::vk::Allocator::getMemoryAllocationInfo( const::vk::MemoryRequirements & memReqs, ::vk::MemoryPropertyFlags memProps, ::vk::MemoryAllocateInfo & memInfo ) const{
 	if ( !memReqs.size ){

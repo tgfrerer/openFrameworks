@@ -51,7 +51,7 @@ void of::vk::Texture::load( const ofPixels & pix_ ){
 		.setTiling( ::vk::ImageTiling::eLinear )
 		.setUsage( ::vk::ImageUsageFlagBits::eSampled)
 		.setSharingMode( ::vk::SharingMode::eExclusive)
-		.setQueueFamilyIndexCount( 0)
+		.setQueueFamilyIndexCount( 0 )
 		.setPQueueFamilyIndices( nullptr )
 		.setInitialLayout( ::vk::ImageLayout::ePreinitialized)
 		;

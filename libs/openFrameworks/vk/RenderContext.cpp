@@ -337,3 +337,119 @@ void RenderContext::resetFence(){
 	mDevice.resetFences( { mVirtualFrames.at( mCurrentVirtualFrame ).fence } );
 	//! TODO: once the fence has been reset, transfers are complete.
 }
+
+// ------------------------------------------------------------
+
+std::vector<BufferRegion> RenderContext::storeBufferDataCmd( const std::vector<TransferSrcData>& dataVec, const unique_ptr<Allocator>& targetAllocator ){
+	std::vector<BufferRegion> resultBuffers;
+
+	auto copyRegions = stageBufferData( dataVec, targetAllocator );
+	resultBuffers.reserve( copyRegions.size() );
+
+	const auto targetBuffer = targetAllocator->getBuffer();
+
+	for ( size_t i = 0; i != copyRegions.size(); ++i ){
+		const auto &region = copyRegions[i];
+		const auto &srcData = dataVec[i];
+		BufferRegion bufRegion;
+		bufRegion.buffer = targetBuffer;
+		bufRegion.numElements = srcData.numElements;
+		bufRegion.offset = region.dstOffset;
+		bufRegion.range = region.size;
+		resultBuffers.push_back( std::move( bufRegion ) );
+	}
+
+	::vk::DeviceSize firstOffset = copyRegions.front().dstOffset;
+	::vk::DeviceSize totalStaticRange = ( copyRegions.back().dstOffset + copyRegions.back().size ) - firstOffset;
+
+	::vk::CommandBuffer cmd = allocateTransientCommandBuffer( ::vk::CommandBufferLevel::ePrimary );
+
+	cmd.begin( { ::vk::CommandBufferUsageFlagBits::eOneTimeSubmit } );
+	{
+
+		cmd.copyBuffer( getTransientAllocator()->getBuffer(), targetAllocator->getBuffer(), copyRegions );
+
+		::vk::BufferMemoryBarrier bufferTransferBarrier;
+		bufferTransferBarrier
+			.setSrcAccessMask( ::vk::AccessFlagBits::eTransferWrite )  // not sure if these are optimal.
+			.setDstAccessMask( ::vk::AccessFlagBits::eShaderRead )    // not sure if these are optimal.
+			.setSrcQueueFamilyIndex( VK_QUEUE_FAMILY_IGNORED )
+			.setDstQueueFamilyIndex( VK_QUEUE_FAMILY_IGNORED )
+			.setBuffer( targetAllocator->getBuffer() )
+			.setOffset( firstOffset )
+			.setSize( totalStaticRange )
+			;
+
+		// Add pipeline barrier so that transfers must have completed 
+		// before next command buffer will start executing.
+
+		cmd.pipelineBarrier(
+			::vk::PipelineStageFlagBits::eTopOfPipe,
+			::vk::PipelineStageFlagBits::eTopOfPipe,
+			::vk::DependencyFlagBits(),
+			{}, /* no fence */
+			{ bufferTransferBarrier }, /* buffer barriers */
+			{}                         /* image barriers */
+		);
+	}
+	cmd.end();
+
+	// Submit copy command buffer to current context
+	// This needs to happen before first draw calls are submitted for the frame.
+	submit( std::move( cmd ) );
+
+	return resultBuffers;
+}
+
+// ------------------------------------------------------------
+
+::vk::Image of::vk::RenderContext::storeImageCmd( const ImageTransferSrcData& data, const unique_ptr<Allocator>& targetImageAllocator ){
+	::vk::Image image;
+
+	/*
+	
+	These are the steps needed to upload an image:
+
+	1. load image pixels and image subresource pixels
+	2. create vkImage
+	3. create vkImageView
+	4. aggregate layers and mipmap data into structure of
+	   VkBufferImageCopy
+	5. copy layers and mipmap data into contiguous RAM memory = ImageMemBlob
+	6. copy ImageMemBlob to (transient) staging memory
+	7. use command-buffer copy to copy image
+		7.1 layout transition barrier of image for copy
+		7.2 vkCmdCopyBuffer image
+		7.3 layout transition of image for use by shader (shader read)
+		7.4 execute command buffer
+	
+	*/
+
+	//::vk::CommandBuffer cmd = allocateTransientCommandBuffer( ::vk::CommandBufferLevel::ePrimary );
+	//
+	//::vk::ImageSubresourceLayers subresourceLayers;
+
+	//::vk::BufferImageCopy bufferImageCopy;
+	//bufferImageCopy
+	//	.setBufferOffset( bufferOffset_ )  /* must be a multiple of four */
+	//	.setBufferRowLength( bufferRowLength_ ) /*must be 0, or greater or equal to imageExtent.width */
+	//	.setBufferImageHeight( bufferImageHeight_ )
+	//	.setImageSubresource( subresourceLayers )
+	//	.setImageOffset( {0,0,0} )
+	//	.setImageExtent( imageExtent_ )
+	//	;
+
+	//cmd.begin( { ::vk::CommandBufferUsageFlagBits::eOneTimeSubmit } );
+	//{
+	//	cmd.copyBufferToImage( srcBuffer, image, ::vk::ImageLayout::eTransferDstOptimal, bufferImageCopies );
+	//}
+	//cmd.end();
+	//
+	//// Submit copy command buffer to current context
+	//// This needs to happen before first draw calls are submitted for the frame.
+	//submit( std::move( cmd ) );
+	
+	return image;
+}
+
+// ------------------------------------------------------------

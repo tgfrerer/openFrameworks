@@ -118,9 +118,6 @@ void ofApp::draw(){
 
 	uploadStaticAttributes( currentContext );
 
-	// Create temporary batch object from default context
-	of::vk::RenderBatch batch{ currentContext };
-
 	static const glm::mat4x4 clip( 
 		1.0f, 0.0f, 0.0f, 0.0f,
 		0.0f, -1.0f, 0.0f, 0.0f,
@@ -128,18 +125,21 @@ void ofApp::draw(){
 		0.0f, 0.0f, 0.5f, 1.0f 
 	);
 
+	auto viewMatrix       = mCam.getModelViewMatrix();
 	auto projectionMatrix = clip * mCam.getProjectionMatrix( ofGetCurrentViewport() );
 
-	ofMatrix4x4 modelMatrix = glm::rotate( float( TWO_PI * ( ( ofGetFrameNum() % 360 ) / 360.f ) ), glm::vec3( { 0.f, 1.f, 0.f } ) );
+	// Create temporary batch object from default context
+	of::vk::RenderBatch batch{ currentContext };
 
 	// Create a fresh copy of our prototype const draw command
 	of::vk::DrawCommand drawObject = drawPhong;
+	ofMatrix4x4 modelMatrix = glm::rotate( float( TWO_PI * ( ( ofGetFrameNum() % 360 ) / 360.f ) ), glm::vec3( { 0.f, 1.f, 0.f } ) );
 
-	drawObject.setUniform( "projectionMatrix", projectionMatrix );            // | 
-	drawObject.setUniform( "viewMatrix"      , mCam.getModelViewMatrix() );   // |> set camera matrices
+	drawObject.setUniform( "projectionMatrix", projectionMatrix );
+	drawObject.setUniform( "viewMatrix"      , viewMatrix );
 	drawObject.setUniform( "modelMatrix"     , modelMatrix );
 	drawObject.setUniform( "globalColor"     , ofFloatColor::magenta );
-	// ndc.setMesh( mMeshTeapot );
+	// drawObject.setMesh( mMeshTeapot );
 	
 	drawObject
 		.setNumIndices( mStaticMesh.indexBuffer.numElements )
@@ -189,7 +189,7 @@ void ofApp::uploadStaticAttributes( of::vk::RenderContext & currentContext ){
 
 	const auto & staticBuffer = mStaticAllocator->getBuffer();
 
-	std::vector<of::vk::BufferRegion> bufferRegions = currentContext.storeDataCmd( srcDataVec, mStaticAllocator );
+	std::vector<of::vk::BufferRegion> bufferRegions = currentContext.storeBufferDataCmd( srcDataVec, mStaticAllocator );
 
 	if ( bufferRegions.size() == 3 ) {
 		mStaticMesh.indexBuffer  = bufferRegions[0];
@@ -197,6 +197,18 @@ void ofApp::uploadStaticAttributes( of::vk::RenderContext & currentContext ){
 		mStaticMesh.normalBuffer = bufferRegions[2];
 	}
 	
+	ofPixels pix;
+	ofLoadImage( pix, "brighton.png" );
+
+	of::vk::ImageTransferSrcData imgData;
+	imgData.pData = pix.getData();
+	imgData.numBytesPerElement = pix.size();
+	imgData.numElements = 1;
+	imgData.extent.width = pix.getWidth();
+	imgData.extent.height = pix.getHeight();
+
+	std::vector<::vk::Image> images = currentContext.storeImageCmd( {imgData}, mStaticAllocator );
+
 	wasUploaded = true;
 }
 
