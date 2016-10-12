@@ -112,8 +112,6 @@ public:
 		UboRange                         uboRange;
 	};
 
-	// map from uniform name to uniform data
-	std::map<std::string, Uniform_t> mUniforms;
 	
 	struct DesciptorSetLayoutInfo
 	{
@@ -130,6 +128,12 @@ public:
 	} mVertexInfo;
 
 private:
+
+	// map from uniform name to uniform data
+	std::map<std::string, Uniform_t> mUniforms;
+
+	// lookup table from uniform name to storage info for dynamic ubos
+	std::map<std::string, Shader::UboMemberSubrange> mUboMembers;
 
 	// vector of descriptor set binding information (index is descriptor set number)
 	std::vector<DesciptorSetLayoutInfo> mDescriptorSetsInfo;
@@ -190,7 +194,7 @@ private:
 		std::ostringstream & errorMsg );
 
 	static void getSetAndBindingNumber( const spirv_cross::Compiler & compiler, const spirv_cross::Resource & resource, uint32_t &descriptor_set, uint32_t &bindingNumber );
-	
+
 public:
 
 
@@ -235,6 +239,8 @@ public:
 	const uint64_t getShaderCodeHash();
 
 	const std::map<std::string, Uniform_t>& getUniforms();
+
+	const Shader::UboMemberSubrange * findUboMemberSubRange( const std::string& uboMemberName_ );;
 	
 	const std::vector<std::string> & getAttributeNames();
 	
@@ -326,6 +332,16 @@ inline const std::map<std::string, of::vk::Shader::Uniform_t>& of::vk::Shader::g
 	return mUniforms;
 }
 
+// ----------------------------------------------------------------------
+
+inline const Shader::UboMemberSubrange * Shader::findUboMemberSubRange( const std::string & uboMemberName_ ){
+	const auto findIt = mUboMembers.find( uboMemberName_ );
+	if ( findIt != mUboMembers.end() ){
+		return &( findIt->second );
+	} else{
+		return nullptr;
+	}
+}
 
 } // namespace vk
 } // namespace of

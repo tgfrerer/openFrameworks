@@ -266,6 +266,9 @@ void of::vk::Shader::reflect(
 ){
 	// storage for reflected information about UBOs
 
+	mUniforms.clear();
+	mUboMembers.clear();
+
 	// for all shader stages
 	for ( auto &c : compilers ){
 
@@ -298,6 +301,20 @@ void of::vk::Shader::reflect(
 	for ( size_t i = 0; i != mVertexInfo.attributeNames.size(); ++i ){
 		mAttributeIndices[mVertexInfo.attributeNames[i]] = mVertexInfo.bindingDescription[i].binding;
 	}
+
+	// reserve storage for dynamic uniform data for each uniform entry
+	// over all sets - then build up a list of ubos.
+	for ( const auto & uniformPair : mUniforms ){
+		const auto & uniform = uniformPair.second;
+
+		for ( const auto & uniformMemberPair : uniform.uboRange.subranges ){
+			// add with combined name - this should always work
+			mUboMembers.insert( { uniformPair.first + "." + uniformMemberPair.first ,uniformMemberPair.second } );
+			// add only with member name - this might work, but if members share the same name, we're in trouble.
+			mUboMembers.insert( { uniformMemberPair.first ,uniformMemberPair.second } );
+		}
+	}
+
 
 }
 
@@ -362,6 +379,7 @@ bool of::vk::Shader::reflectUBOs( const spirv_cross::Compiler & compiler, const 
 		}
 
 	} // end: for all uniform buffers
+
 
 	return true;
 }

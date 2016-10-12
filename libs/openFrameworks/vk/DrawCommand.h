@@ -28,21 +28,21 @@ public:
 		// Type of decriptor decides which values will be used.
 		struct DescriptorData_t
 		{
-			::vk::Sampler        sampler = 0;								  // |
-			::vk::ImageView      imageView = 0;								  // | > keep in this order, so we can pass address for sampler as descriptorImageInfo
-			::vk::ImageLayout    imageLayout = ::vk::ImageLayout::eUndefined; // |
+			::vk::Sampler        sampler = 0;                                             // |
+			::vk::ImageView      imageView = 0;                                           // | > keep in this order, so we can pass address for sampler as descriptorImageInfo
+			::vk::ImageLayout    imageLayout = ::vk::ImageLayout::eShaderReadOnlyOptimal; // |
 			::vk::DescriptorType type = ::vk::DescriptorType::eUniformBufferDynamic;
-			::vk::Buffer         buffer = 0;								  // |
-			::vk::DeviceSize     offset = 0;								  // | > keep in this order, as we can cast this to a DescriptorBufferInfo
-			::vk::DeviceSize     range = 0;									  // |
+			::vk::Buffer         buffer = 0;                                              // |
+			::vk::DeviceSize     offset = 0;                                              // | > keep in this order, as we can cast this to a DescriptorBufferInfo
+			::vk::DeviceSize     range = 0;                                               // |
 			uint32_t             bindingNumber = 0; // <-- may be sparse, may repeat (for arrays of images bound to the same binding), but must increase be monotonically (may only repeat or up over the series inside the samplerBindings vector).
-			uint32_t             arrayIndex = 0;	// <-- must be in sequence for array elements of same binding
+			uint32_t             arrayIndex = 0;    // <-- must be in sequence for array elements of same binding
 		};
 
 
 		// Sparse list of all bindings belonging to this descriptor set
 		// We use this to calculate a hash of descriptorState. This must 
-		// be tightly packed.
+		// be tightly packed - that's why we use a vector.
 		std::vector<DescriptorData_t> descriptorBindings;
 
 		// Compile-time static assert makes sure DescriptorData can be
@@ -59,13 +59,22 @@ public:
 			+ sizeof( DescriptorData_t::arrayIndex )
 			) == sizeof( DescriptorData_t ), "DescriptorData_t is not tightly packed. It must be tightly packed for hash calculations." );
 
-		std::map<uint32_t, uint32_t> dynamicBindingOffsets; // dynamic binding offsets for ubo bindings within this descriptor set
 
-		// One vector per binding - vector size is 
-		// determined by ubo subrange size. ubo data bindings may be sparse. 
-		// Data is uploaded to GPU upon draw.
+		// One data container vector per descriptorBinding - data container vector size is 
+		// determined by ubo subrange size. Ubo data bindings may be sparse. 
+		// Data is copied from here to GPU memory upon draw.
 		std::map<uint32_t, std::vector<uint8_t>> dynamicUboData;
+		
+		// Dynamic offsets for ubos, indexed by binding number - each ubo needs one dynamic offset.
+		//     We use these dynamic offsets when binding the descriptorSet when recording the command buffer 
+		//     so that we can possibly recycle the descriptorSet. If we were setting the
+		//     offsets directly in DescriptorData_t we would not be able to use dynamic Uniform Buffers,
+		//     but would be using "static" default Uniform Buffers.
+		std::map<uint32_t, uint32_t> dynamicBindingOffsets; 
 
+		// map from descriptor binding to image attachment, 
+		// indexed by index of corresponding descriptorData_t in descriptorBindings
+		std::map<size_t, ::vk::DescriptorImageInfo> imageAttachment;
 	};
 
 private:
@@ -73,10 +82,6 @@ private:
 	// a draw command has everything needed to draw an object
 	GraphicsPipelineState mPipelineState;
 	// map from binding number to ubo data state
-
-	// lookup table from uniform name to storage info for dynamic ubos
-	// TODO: maybe mUniformMembers should move to shader.
-	std::map<std::string, Shader::UboMemberSubrange> mUniformMembers;
 
 private:      /* transient data */
 
@@ -101,6 +106,9 @@ private:      /* transient data */
 	uint32_t mNumVertices = 0;
 
 	std::shared_ptr<ofMesh> mMsh; /* optional */
+
+	template <typename T>
+	bool allocAndSetAttribute( const std::string& attrName_, const std::vector<T> & vec, const std::unique_ptr<BufferAllocator>& alloc );
 
 public:
 
@@ -137,12 +145,11 @@ public:
 	of::vk::DrawCommand & setIndices( ::vk::Buffer buffer, ::vk::DeviceSize offset );
 	of::vk::DrawCommand & setIndices( const of::vk::BufferRegion& bufferRegion_ );
 
-	// upload uniform data to gpu memory
+	// store uniform values to staging cpu memory
 	template <class T>
-	void setUniform( const std::string& uniformName, const T& uniformValue_ );
+	of::vk::DrawCommand & setUniform( const std::string& uniformName, const T& uniformValue_ );
 
-	template <typename T>
-	bool allocAndSetAttribute( const std::string& attrName_, const std::vector<T> & vec, const std::unique_ptr<BufferAllocator>& alloc );
+	
 
 
 };
@@ -152,31 +159,33 @@ public:
 
 // upload uniform data to gpu memory
 template<class T>
-inline void DrawCommand::setUniform( const std::string & uniformName, const T & uniformValue_ ){
+inline DrawCommand& DrawCommand::setUniform( const std::string & uniformName, const T & uniformValue_ ){
 
-	const auto foundMemberIt = mUniformMembers.find( uniformName );
+	const auto memberSubrange = mPipelineState.getShader()->findUboMemberSubRange( uniformName );
 
-	if ( foundMemberIt != mUniformMembers.end() ){
-		const auto & memberSubrange = foundMemberIt->second;
-		if ( memberSubrange.range < sizeof( T ) ){
+	if ( memberSubrange ){
+		if ( memberSubrange->range < sizeof( T ) ){
 			ofLogWarning() << "Could not set uniform '" << uniformName << "': Uniform data size does not match: "
-				<< " Expected: " << memberSubrange.range << ", received: " << sizeof( T ) << ".";
-			return;
+				<< " Expected: " << memberSubrange->range << ", received: " << sizeof( T ) << ".";
+			return *this;
 		}
 		// --------| invariant: size match, we can copy data into our vector.
 
-		auto & dataVec = mDescriptorSetData[memberSubrange.setNumber].dynamicUboData[memberSubrange.bindingNumber];
+		auto & dataVec = mDescriptorSetData[memberSubrange->setNumber].dynamicUboData[memberSubrange->bindingNumber];
 
-		if ( memberSubrange.offset + memberSubrange.range <= dataVec.size() ){
-			memcpy( dataVec.data() + memberSubrange.offset, &uniformValue_, memberSubrange.range );
+		if ( memberSubrange->offset + memberSubrange->range <= dataVec.size() ){
+			memcpy( dataVec.data() + memberSubrange->offset, &uniformValue_, memberSubrange->range );
 		} else{
-			ofLogError() << "Not enough space in local uniform storage. Has this drawcommand been properly initialised?";
+			ofLogError() << "Not enough space in local uniform storage. Has this drawCommand been properly initialised?";
 		}
 	} else {
 		; // set a breakpoint here if you want to catch uniform name not found.
 	}
-
+	return *this;
 }
+
+
+// ------------------------------------------------------------
 
 // upload vertex data to gpu memory
 template<typename T>
@@ -289,6 +298,7 @@ inline of::vk::DrawCommand & of::vk::DrawCommand::setAttribute( const size_t att
 inline of::vk::DrawCommand & of::vk::DrawCommand::setIndices( const of::vk::BufferRegion& bufferRegion_ ){
 	return setIndices( bufferRegion_.buffer, bufferRegion_.offset );
 }
+
 
 // ------------------------------------------------------------
 

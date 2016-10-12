@@ -27,7 +27,7 @@ void DrawCommand::setup(const GraphicsPipelineState& pipelineState){
 	// uniform variable types.
 
 	const auto & descriptorSetsInfo = mPipelineState.getShader()->getDescriptorSetsInfo();
-	const auto & shaderUniforms = mPipelineState.getShader()->getUniforms();
+	
 
 	mDescriptorSetData.reserve( descriptorSetsInfo.size() );
 
@@ -56,6 +56,12 @@ void DrawCommand::setup(const GraphicsPipelineState& pipelineState){
 				bindingData.bindingNumber = binding.binding;
 				bindingData.arrayIndex = arrayIndex;
 				bindingData.type = binding.descriptorType;
+
+				if ( binding.descriptorType == ::vk::DescriptorType::eCombinedImageSampler ){
+					// store image attachment 
+					tmpDescriptorSetData.imageAttachment[bindingsVec.size()] = {};
+				}
+
 				bindingsVec.emplace_back( std::move( bindingData ) );
 			}
 		}
@@ -64,18 +70,15 @@ void DrawCommand::setup(const GraphicsPipelineState& pipelineState){
 	}
 
 	// ------| invariant: descriptor set data has been transferred from shader for all descriptor sets
+	
+	const auto & shaderUniforms = mPipelineState.getShader()->getUniforms();
 
-	// reserve storage for dynamic uniform data for each uniform entry
-	// over all sets - then build up a list of ubos.
-	for ( const auto & uniform : shaderUniforms ){
-		mDescriptorSetData[uniform.second.setNumber].dynamicUboData[uniform.second.setLayoutBinding.binding].resize( uniform.second.uboRange.storageSize, 0 );
-		for ( const auto & uniformMemberPair : uniform.second.uboRange.subranges ){
-			// add with combined name - this should always work
-			mUniformMembers.insert( { uniform.first + "." + uniformMemberPair.first ,uniformMemberPair.second } );
-			// add only with member name - this might work, but if members share the same name, we're in trouble.
-			mUniformMembers.insert( { uniformMemberPair.first ,uniformMemberPair.second } );
+	for ( const auto & uniformPair : shaderUniforms ){
+		const auto & uniformName = uniformPair.first;
+		const auto & uniform     = uniformPair.second;
+		if ( uniform.setLayoutBinding.descriptorType == ::vk::DescriptorType::eUniformBufferDynamic ){
+			mDescriptorSetData[uniform.setNumber].dynamicUboData[uniform.setLayoutBinding.binding].resize( uniform.uboRange.storageSize, 0 );
 		}
-
 	}
 
 	// parse shader info to find out how many buffers to reserve for vertex attributes.
@@ -97,17 +100,27 @@ void DrawCommand::setup(const GraphicsPipelineState& pipelineState){
 
 void DrawCommand::commitUniforms(const std::unique_ptr<BufferAllocator>& alloc ){
 	for ( auto & descriptorSetData : mDescriptorSetData ){
-		for ( const auto & dataPair : descriptorSetData.dynamicUboData ){
-			
-			const auto & dataVec = dataPair.second;
+
+		for ( const auto & dataPair : descriptorSetData.imageAttachment ){
 			const auto & bindingNumber = dataPair.first;
-			
+			const auto & imageInfo     = dataPair.second;
+
+			descriptorSetData.descriptorBindings[bindingNumber].sampler     = imageInfo.sampler;
+			descriptorSetData.descriptorBindings[bindingNumber].imageView   = imageInfo.imageView;
+			descriptorSetData.descriptorBindings[bindingNumber].imageLayout = imageInfo.imageLayout;
+		}
+
+		for ( const auto & dataPair : descriptorSetData.dynamicUboData ){
+
+			const auto & bindingNumber = dataPair.first;
+			const auto & dataVec       = dataPair.second;
+
 			::vk::DeviceSize offset;
 			void * dataP = nullptr;
 			
 			// allocate data on gpu
 			if ( alloc->allocate( dataVec.size(), offset ) && alloc->map( dataP ) ){
-				
+
 				// copy data to gpu
 				memcpy( dataP, dataVec.data(), dataVec.size() );
 
@@ -121,8 +134,8 @@ void DrawCommand::commitUniforms(const std::unique_ptr<BufferAllocator>& alloc )
 			} else{
 				ofLogError() << "commitUniforms: could not allocate transient memory.";
 			}
-		}
-	}
+		} // end foreach descriptorSetData.dynamicUboData
+	} // end foreach mDescriptorSetData
 }
 
 // ------------------------------------------------------------
