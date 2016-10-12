@@ -300,7 +300,6 @@
     <ClCompile Include="..\..\..\openFrameworks\vk\RenderBatch.cpp" />
     <ClCompile Include="..\..\..\openFrameworks\vk\RenderContext.cpp" />
     <ClCompile Include="..\..\..\openFrameworks\vk\Shader.cpp" />
-    <ClCompile Include="..\..\..\openFrameworks\vk\Texture.cpp" />
     <ClCompile Include="..\..\..\openFrameworks\vk\spirv-cross\include\spirv_cross.cpp" />
     <ClCompile Include="..\..\..\openFrameworks\vk\spooky\SpookyV2.cpp" />
     <ClCompile Include="..\..\..\openFrameworks\vk\BufferAllocator.cpp" />
@@ -308,6 +307,7 @@
     <ClCompile Include="..\..\..\openFrameworks\vk\Pipeline.cpp" />
     <ClCompile Include="..\..\..\openFrameworks\vk\Swapchain.cpp" />
     <ClCompile Include="..\..\..\openFrameworks\vk\ofVkRendererImpl.cpp" />
+    <ClCompile Include="..\..\..\openFrameworks\vk\Texture.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\..\openFrameworks\3d\ofMesh.inl" />

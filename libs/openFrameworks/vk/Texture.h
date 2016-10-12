@@ -1,6 +1,5 @@
 #pragma once
 #include "vulkan/vulkan.hpp"
-#include "ofPixels.h"
 
 namespace of{
 namespace vk{
@@ -11,72 +10,21 @@ namespace vk{
 
 class Texture
 {
-public:
-	struct TexData
-	{
-		// All data neccessary to describe a Vulkan texture 
-		// Q: how are mip levels dealt with?
-
-		::vk::Image           image       = nullptr;
-		::vk::DeviceMemory    mem         = nullptr;
-		::vk::ImageView       view        = nullptr;
-		::vk::Sampler         sampler     = nullptr;
-
-		uint32_t           tex_width   = 0;
-		uint32_t           tex_height  = 0;
-	};
-
 private:
-	TexData mTexData;
-	::vk::Device mDevice = nullptr;
+	
+	const ::vk::Sampler     mSampler     = nullptr;
+	const ::vk::ImageView   mImageView   = nullptr;
+	const ::vk::ImageLayout mImageLayout = ::vk::ImageLayout::eShaderReadOnlyOptimal;
+
+	const ::vk::Device      mDevice;
+
+	Texture() = delete;
 
 public:
 
-	Texture(){
-	};
-
-	::vk::Sampler getVkSampler(){
-		return mTexData.sampler;
-	}
-
-	::vk::ImageView getVkImageView(){
-		return mTexData.view;
-	}
-
-	void load( const ofPixels& pix_ );;
-
-	~Texture(){
-		
-		// get device
-		if ( mDevice ){
-
-			auto err = vkDeviceWaitIdle( mDevice );
-			assert( !err );
-			// let's cleanup - 
-
-			if ( mTexData.view ){
-				vkDestroyImageView( mDevice, mTexData.view, nullptr );
-				mTexData.view = nullptr;
-			}
-			if ( mTexData.image ){
-				vkDestroyImage( mDevice, mTexData.image, nullptr );
-				mTexData.image = nullptr;
-			}
-			if ( mTexData.sampler ){
-				vkDestroySampler( mDevice, mTexData.sampler, nullptr );
-				mTexData.sampler = nullptr;
-			}
-
-			if ( mTexData.mem ){
-				vkFreeMemory( mDevice, mTexData.mem, nullptr );
-				mTexData.mem = nullptr;
-			}
-		}
-		
-	};
-
-
-
+	Texture(const ::vk::Device& device_, const ::vk::Image & image_);
+	
+	~Texture();;
 };
 
 } /* namespace vk */

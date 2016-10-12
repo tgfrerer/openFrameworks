@@ -327,9 +327,6 @@
     <ClInclude Include="..\..\..\openFrameworks\vk\spirv-cross\include\spirv_common.hpp">
       <Filter>libs\openFrameworks\vk\spirv-cross\src</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\openFrameworks\vk\Texture.h">
-      <Filter>libs\openFrameworks\vk</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\..\openFrameworks\vk\DrawCommand.h">
       <Filter>libs\openFrameworks\vk</Filter>
     </ClInclude>
@@ -353,6 +350,9 @@
     </ClInclude>
     <ClInclude Include="..\..\..\openFrameworks\vk\Allocator.h">
       <Filter>libs\openFrameworks\vk\Allocators</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\openFrameworks\vk\Texture.h">
+      <Filter>libs\openFrameworks\vk</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -578,9 +578,6 @@
     <None Include="..\..\..\openFrameworks\graphics\ofPolyline.inl">
       <Filter>libs\openFrameworks\graphics</Filter>
     </None>
-    <ClCompile Include="..\..\..\openFrameworks\vk\Texture.cpp">
-      <Filter>libs\openFrameworks\vk</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\openFrameworks\vk\DrawCommand.cpp">
       <Filter>libs\openFrameworks\vk</Filter>
     </ClCompile>
@@ -601,6 +598,9 @@
     </ClCompile>
     <ClCompile Include="..\..\..\openFrameworks\vk\ImageAllocator.cpp">
       <Filter>libs\openFrameworks\vk\Allocators</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\openFrameworks\vk\Texture.cpp">
+      <Filter>libs\openFrameworks\vk</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

@@ -8,6 +8,7 @@
 #include "vk/ImageAllocator.h"
 #include "vk/DrawCommand.h"
 #include "vk/RenderBatch.h"
+#include "vk/Texture.h"
 
 #include "ofBaseTypes.h"
 #include "ofPolyline.h"
