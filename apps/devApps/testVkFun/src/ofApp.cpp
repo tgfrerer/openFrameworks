@@ -21,7 +21,6 @@ void ofApp::setup(){
 
 	mMeshPly = std::make_shared<ofMesh>();
 	mMeshPly->load( "ico-m.ply" );
-	//mMeshPly->load( "teapot.ply" );
 
 	mCam.setupPerspective( false, 60, 0.f, 5000 );
 	mCam.setPosition( { 0,0, mCam.getImagePlaneDistance() } );
@@ -91,7 +90,6 @@ void ofApp::setupDrawCommands(){
 	{
 		of::vk::Shader::Settings shaderSettings;
 		shaderSettings.device = renderer->getVkDevice();
-
 		shaderSettings.sources[::vk::ShaderStageFlagBits::eVertex]   = "fullScreenQuad.vert";
 		shaderSettings.sources[::vk::ShaderStageFlagBits::eFragment] = "fullScreenQuad.frag";
 		auto mShaderFullScreenQuad = std::make_shared<of::vk::Shader>( shaderSettings );
@@ -109,6 +107,27 @@ void ofApp::setupDrawCommands(){
 		
 		const_cast<of::vk::DrawCommand&>( drawFullScreenQuad ).setup( pipeline );
 		const_cast<of::vk::DrawCommand&>( drawFullScreenQuad ).setNumVertices( 3 );
+	}
+
+	{
+		of::vk::Shader::Settings shaderSettings;
+		shaderSettings.device = renderer->getVkDevice();
+		shaderSettings.sources[::vk::ShaderStageFlagBits::eVertex]   = "textured.vert";
+		shaderSettings.sources[::vk::ShaderStageFlagBits::eFragment] = "textured.frag";
+		auto mShaderTextured = std::make_shared<of::vk::Shader>( shaderSettings );
+
+		of::vk::GraphicsPipelineState pipeline;
+
+		pipeline.setShader( mShaderTextured );
+		pipeline.rasterizationState.setCullMode( ::vk::CullModeFlagBits::eBack );
+		pipeline.rasterizationState.setFrontFace( ::vk::FrontFace::eCounterClockwise );
+		pipeline.depthStencilState
+			.setDepthTestEnable( VK_TRUE )
+			.setDepthWriteEnable( VK_TRUE )
+			;
+		pipeline.blendAttachmentStates[0].blendEnable = VK_TRUE;
+
+		const_cast<of::vk::DrawCommand&>( drawTextured ).setup( pipeline );
 	}
 }
 
@@ -128,7 +147,7 @@ void ofApp::draw(){
 
 	uploadStaticAttributes( currentContext );
 
-	static const glm::mat4x4 clip( 
+	static const glm::mat4x4 clip ( 
 		1.0f, 0.0f, 0.0f, 0.0f,
 		0.0f, -1.0f, 0.0f, 0.0f,
 		0.0f, 0.0f, 0.5f, 0.0f,
@@ -138,31 +157,40 @@ void ofApp::draw(){
 	auto viewMatrix       = mCam.getModelViewMatrix();
 	auto projectionMatrix = clip * mCam.getProjectionMatrix( ofGetCurrentViewport() );
 
-	// Create temporary batch object from default context
-	of::vk::RenderBatch batch{ currentContext };
 
 	// Create a fresh copy of our prototype const draw command
-	of::vk::DrawCommand drawObject = drawPhong;
 	ofMatrix4x4 modelMatrix = glm::rotate( float( TWO_PI * ( ( ofGetFrameNum() % 360 ) / 360.f ) ), glm::vec3( { 0.f, 1.f, 0.f } ) );
 
-	drawObject.setUniform( "projectionMatrix", projectionMatrix );
-	drawObject.setUniform( "viewMatrix"      , viewMatrix );
-	drawObject.setUniform( "modelMatrix"     , modelMatrix );
-	drawObject.setUniform( "globalColor"     , ofFloatColor::magenta );
-	// drawObject.setMesh( mMeshTeapot );
-	
-	drawObject
+	auto hero = drawPhong;
+	hero
+		.setUniform( "projectionMatrix", projectionMatrix )
+		.setUniform( "viewMatrix", viewMatrix )
+		.setUniform( "modelMatrix", modelMatrix )
+		.setUniform( "globalColor", ofFloatColor::magenta )
 		.setNumIndices( mStaticMesh.indexBuffer.numElements )
 		.setIndices( mStaticMesh.indexBuffer )
-		.setAttribute( 0, mStaticMesh.posBuffer)
+		.setAttribute( 0, mStaticMesh.posBuffer )
 		.setAttribute( 1, mStaticMesh.normalBuffer )
 		;
 
-	batch.draw( drawFullScreenQuad );
-	batch.draw( drawObject );
+	auto texturedRect = drawTextured;
+	texturedRect
+		.setUniform( "projectionMatrix", projectionMatrix )
+		.setUniform( "viewMatrix", viewMatrix )
+		.setUniform( "modelMatrix", glm::mat4() )
+		//.setUniform( "tex", mTexture )
+		.setNumIndices( mRectangleData.indexBuffer.numElements )
+		.setIndices( mRectangleData.indexBuffer )
+		.setAttribute( 0, mRectangleData.posBuffer )
+		.setAttribute( 1, mRectangleData.texCoordBuffer )
+		;
+	
+	of::vk::RenderBatch batch{ currentContext };
 
-	// Build vkCommandBuffer inside batch and submit CommandBuffer to 
-	// parent context of batch.
+	batch.draw( drawFullScreenQuad );
+	batch.draw( hero );
+	batch.draw( texturedRect );
+
 	batch.submit();	
 
 	// At end of draw(), context will submit its list of vkCommandBuffers
@@ -179,13 +207,16 @@ void ofApp::uploadStaticAttributes( of::vk::RenderContext & currentContext ){
 		return;
 	}
 
+	ofMesh meshPlane = ofMesh::plane( 1024 / 2, 768 / 2, 2, 2, OF_PRIMITIVE_TRIANGLES );
+
 	std::vector<of::vk::TransferSrcData> srcDataVec = {
+		// data for our strange hero object
 		{
 			mMeshPly->getIndexPointer(),
 			mMeshPly->getNumIndices(),
 			sizeof( ofIndexType ),
 		},
-		{ 
+		{
 			mMeshPly->getVerticesPointer(),
 			mMeshPly->getNumVertices(),
 			sizeof( ofDefaultVertexType ),
@@ -195,33 +226,50 @@ void ofApp::uploadStaticAttributes( of::vk::RenderContext & currentContext ){
 			mMeshPly->getNumNormals(),
 			sizeof( ofDefaultNormalType ),
 		},
+		// ---- data for textured plane
+		{
+			meshPlane.getIndexPointer(),
+			meshPlane.getNumIndices(),
+			sizeof( ofIndexType ),
+		},
+		{
+			meshPlane.getVerticesPointer(),
+			meshPlane.getNumVertices(),
+			sizeof(ofDefaultVertexType),
+		},
+		{
+			meshPlane.getTexCoordsPointer(),
+			meshPlane.getNumTexCoords(),
+			sizeof(ofDefaultTexCoordType)
+		}
 	};
 
 	const auto & staticBuffer = mStaticAllocator->getBuffer();
 
 	std::vector<of::vk::BufferRegion> bufferRegions = currentContext.storeBufferDataCmd( srcDataVec, mStaticAllocator );
 
-	if ( bufferRegions.size() == 3 ) {
-		mStaticMesh.indexBuffer  = bufferRegions[0];
-		mStaticMesh.posBuffer    = bufferRegions[1];
-		mStaticMesh.normalBuffer = bufferRegions[2];
+	if ( bufferRegions.size() == 6 ) {
+		mStaticMesh.indexBuffer       = bufferRegions[0];
+		mStaticMesh.posBuffer         = bufferRegions[1];
+		mStaticMesh.normalBuffer      = bufferRegions[2];
+		//----
+		mRectangleData.indexBuffer    = bufferRegions[3];
+		mRectangleData.posBuffer      = bufferRegions[4];
+		mRectangleData.texCoordBuffer = bufferRegions[5];
 	}
 	
 	ofPixels pix;
 	ofLoadImage( pix, "brighton.png" );
 
 	of::vk::ImageTransferSrcData imgData;
-	imgData.pData = pix.getData();
-	imgData.numBytes = pix.size();
-	imgData.extent.width = pix.getWidth();
+	imgData.pData         = pix.getData();
+	imgData.numBytes      = pix.size();
+	imgData.extent.width  = pix.getWidth();
 	imgData.extent.height = pix.getHeight();
 
-	// todo: we should receive a shared_ptr here, i think.
+	mImage = currentContext.storeImageCmd( imgData, mImageAllocator );
 
-	mImage = currentContext.storeImageCmd( {imgData}, mImageAllocator );
-
-	// todo: we need to destroy this image when we quit the app.
-	// todo: use the image as input for some shader.
+	mTexture = std::make_shared<of::vk::Texture>( renderer->getVkDevice(), *mImage );
 
 	wasUploaded = true;
 }
@@ -236,8 +284,9 @@ void ofApp::keyPressed(int key){
 
 void ofApp::keyReleased(int key){
 	if ( key == ' ' ){
-		const_cast<of::vk::DrawCommand&>( drawPhong ).getPipelineState().touchShader();
-		const_cast<of::vk::DrawCommand&>( drawFullScreenQuad ).getPipelineState().touchShader();
+		//const_cast<of::vk::DrawCommand&>( drawPhong ).getPipelineState().touchShader();
+		//const_cast<of::vk::DrawCommand&>( drawFullScreenQuad ).getPipelineState().touchShader();
+		const_cast<of::vk::DrawCommand&>( drawTextured ).getPipelineState().touchShader();
 	} else if ( key == 'l' ){
 		isFrameLocked ^= true;
 		ofSetFrameRate( isFrameLocked ? EXAMPLE_TARGET_FRAME_RATE : 0);

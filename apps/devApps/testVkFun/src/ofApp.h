@@ -8,24 +8,28 @@ struct StaticMesh
 	of::vk::BufferRegion indexBuffer;
 	of::vk::BufferRegion posBuffer;
 	of::vk::BufferRegion normalBuffer;
+	of::vk::BufferRegion texCoordBuffer;
 };
 
 class ofApp : public ofBaseApp{
 
 	const of::vk::DrawCommand drawPhong;
 	const of::vk::DrawCommand drawFullScreenQuad;
+	const of::vk::DrawCommand drawTextured;
 
 	ofEasyCam mCam;
 
 	std::shared_ptr<ofMesh> mMeshL;
 	std::shared_ptr<ofMesh> mMeshPly;
-	
+
 	std::unique_ptr<of::vk::BufferAllocator> mStaticAllocator;
 	std::unique_ptr<of::vk::ImageAllocator>  mImageAllocator;
 
-	::vk::Image mImage = nullptr;
+	std::shared_ptr<::vk::Image>       mImage;
+	std::shared_ptr<of::vk::Texture>   mTexture;
 
 	StaticMesh mStaticMesh;
+	StaticMesh mRectangleData;
 
 	public:
 		void setup();
