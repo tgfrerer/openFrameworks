@@ -48,9 +48,6 @@ RenderContext::~RenderContext(){
 	mVirtualFrames.clear();
 	mTransientMemory->reset();
 }
-
-// ------------------------------------------------------------
-
   
 // ------------------------------------------------------------
 
@@ -372,7 +369,7 @@ std::vector<BufferRegion> RenderContext::storeBufferDataCmd( const std::vector<T
 		::vk::BufferMemoryBarrier bufferTransferBarrier;
 		bufferTransferBarrier
 			.setSrcAccessMask( ::vk::AccessFlagBits::eTransferWrite )  // not sure if these are optimal.
-			.setDstAccessMask( ::vk::AccessFlagBits::eShaderRead )    // not sure if these are optimal.
+			.setDstAccessMask( ::vk::AccessFlagBits::eVertexAttributeRead )    // not sure if these are optimal.
 			.setSrcQueueFamilyIndex( VK_QUEUE_FAMILY_IGNORED )
 			.setDstQueueFamilyIndex( VK_QUEUE_FAMILY_IGNORED )
 			.setBuffer( targetAllocator->getBuffer() )
@@ -384,8 +381,8 @@ std::vector<BufferRegion> RenderContext::storeBufferDataCmd( const std::vector<T
 		// before next command buffer will start executing.
 
 		cmd.pipelineBarrier(
-			::vk::PipelineStageFlagBits::eTopOfPipe,
-			::vk::PipelineStageFlagBits::eTopOfPipe,
+			::vk::PipelineStageFlagBits::eTransfer,
+			::vk::PipelineStageFlagBits::eVertexInput,
 			::vk::DependencyFlagBits(),
 			{}, /* no fence */
 			{ bufferTransferBarrier }, /* buffer barriers */
