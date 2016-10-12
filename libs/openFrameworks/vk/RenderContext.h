@@ -137,7 +137,7 @@ public:
 
 	std::vector<BufferRegion> storeBufferDataCmd( const std::vector<TransferSrcData>& dataVec, const unique_ptr<BufferAllocator> &targetAllocator );
 
-	::vk::Image storeImageCmd( const ImageTransferSrcData& data, const unique_ptr<ImageAllocator>& targetImageAllocator );
+	std::shared_ptr<::vk::Image> storeImageCmd( const ImageTransferSrcData& data, const unique_ptr<ImageAllocator>& targetImageAllocator );
 
 	// Create and return command buffer. 
 	// Lifetime is limited to current frame. 
