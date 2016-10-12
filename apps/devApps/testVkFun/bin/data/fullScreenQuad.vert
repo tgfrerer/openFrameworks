@@ -1,5 +1,6 @@
 #version 420 core
 
+// This shader built after a technique introduced in:
 // http://www.saschawillems.de/?page_id=2122
 
 #extension GL_ARB_separate_shader_objects : enable
