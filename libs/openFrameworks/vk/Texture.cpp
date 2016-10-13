@@ -48,6 +48,9 @@ Texture::Texture( const ::vk::Device & device_, const ::vk::Image & image_ )
 Texture::~Texture(){
 
 	if ( mDevice ){
+		// TODO: find other way to make sure elements are ready 
+		// for destruction (none of them must be in use or in flight.)
+		mDevice.waitIdle();
 		if ( mSampler ){
 			mDevice.destroySampler( mSampler );
 		}

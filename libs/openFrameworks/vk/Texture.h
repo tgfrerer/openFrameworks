@@ -24,6 +24,18 @@ public:
 
 	Texture(const ::vk::Device& device_, const ::vk::Image & image_);
 	
+	const ::vk::Sampler& getSampler(){
+		return mSampler;
+	}
+
+	const ::vk::ImageView& getImageView(){
+		return mImageView;
+	}
+
+	const ::vk::ImageLayout& getImageLayout(){
+		return mImageLayout;
+	}
+
 	~Texture();;
 };
 

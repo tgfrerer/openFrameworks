@@ -178,7 +178,7 @@ void ofApp::draw(){
 		.setUniform( "projectionMatrix", projectionMatrix )
 		.setUniform( "viewMatrix", viewMatrix )
 		.setUniform( "modelMatrix", glm::mat4() )
-		//.setUniform( "tex", mTexture )
+		.setUniform( "tex_0", mTexture )
 		.setNumIndices( mRectangleData.indexBuffer.numElements )
 		.setIndices( mRectangleData.indexBuffer )
 		.setAttribute( 0, mRectangleData.posBuffer )
@@ -189,7 +189,7 @@ void ofApp::draw(){
 
 	batch.draw( drawFullScreenQuad );
 	batch.draw( hero );
-	//batch.draw( texturedRect );
+	batch.draw( texturedRect );
 
 	batch.submit();	
 

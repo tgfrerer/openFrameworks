@@ -562,7 +562,6 @@ bool of::vk::Shader::createSetLayouts(){
 						if ( insertionResult.second == false ){
 							ofLogWarning() << "Uniform Ubo member name not uniqe: '" << memberName << "'.";
 						}
-
 						
 					}
 

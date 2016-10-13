@@ -3,6 +3,7 @@
 #include "vk/Shader.h"
 #include "vk/Pipeline.h"
 #include "vk/HelperTypes.h"
+#include "vk/Texture.h"
 #include "ofMesh.h"
 
 
@@ -94,6 +95,7 @@ public:
 	template <class T>
 	of::vk::DrawCommand & setUniform( const std::string& uniformName, const T& uniformValue_ );
 
+	of::vk::DrawCommand & setUniform( const std::string& uniformName, const std::shared_ptr<of::vk::Texture>& tex_ );
 
 };
 
@@ -131,6 +133,31 @@ inline DrawCommand& DrawCommand::setUniform( const std::string & uniformName, co
 		ofLogError() << "Not enough space in local uniform storage. Has this drawCommand been properly initialised?";
 	}
 
+	return *this;
+}
+
+// ------------------------------------------------------------
+
+inline of::vk::DrawCommand & of::vk::DrawCommand::setUniform( const std::string & uniformName, const std::shared_ptr<of::vk::Texture>& tex_ ){
+	
+	auto uniformInfoIt = mUniformDictionary.find( uniformName );
+
+	if ( uniformInfoIt == mUniformDictionary.end() ){
+		ofLogWarning() << "Could not set Uniform '" << uniformName << "': Uniform name not found in shader";
+		return *this;
+	}
+
+	// --------| invariant: uniform found
+	
+	const auto & uniformInfo = uniformInfoIt->second;
+
+	auto & imageAttachment = mDescriptorSetData[uniformInfo.setIndex].imageAttachment[uniformInfo.auxDataIndex];
+
+	imageAttachment.sampler     = tex_->getSampler();
+	imageAttachment.imageView   = tex_->getImageView();
+	imageAttachment.imageLayout = tex_->getImageLayout();
+
+	
 	return *this;
 }
 
@@ -248,6 +275,7 @@ inline of::vk::DrawCommand & of::vk::DrawCommand::setAttribute( const size_t att
 inline of::vk::DrawCommand & of::vk::DrawCommand::setIndices( const of::vk::BufferRegion& bufferRegion_ ){
 	return setIndices( bufferRegion_.buffer, bufferRegion_.offset );
 }
+
 
 
 // ------------------------------------------------------------
