@@ -79,6 +79,79 @@
 namespace of{
 namespace vk{
 
+struct DescriptorSetData_t
+{
+	// Everything a possible descriptor binding might contain.
+	// Type of decriptor decides which values will be used.
+	struct DescriptorData_t
+	{
+		::vk::Sampler        sampler = 0;                                             // |
+		::vk::ImageView      imageView = 0;                                           // | > keep in this order, so we can pass address for sampler as descriptorImageInfo
+		::vk::ImageLayout    imageLayout = ::vk::ImageLayout::eShaderReadOnlyOptimal; // |
+		::vk::DescriptorType type = ::vk::DescriptorType::eUniformBufferDynamic;
+		::vk::Buffer         buffer = 0;                                              // |
+		::vk::DeviceSize     offset = 0;                                              // | > keep in this order, as we can cast this to a DescriptorBufferInfo
+		::vk::DeviceSize     range = 0;                                               // |
+		uint32_t             bindingNumber = 0; // <-- may be sparse, may repeat (for arrays of images bound to the same binding), but must increase be monotonically (may only repeat or up over the series inside the samplerBindings vector).
+		uint32_t             arrayIndex = 0;    // <-- must be in sequence for array elements of same binding
+	};
+
+
+	// Ordered list of all bindings belonging to this descriptor set
+	// We use this to calculate a hash of descriptorState. This must 
+	// be tightly packed - that's why we use a vector.
+	// 
+	// !!!! index is not binding number, as arrayed bindings will be serialized.
+	std::vector<DescriptorData_t> descriptors;
+
+	// Compile-time static assert makes sure DescriptorData can be
+	// successfully hashed.
+	static_assert( (
+		+sizeof( DescriptorData_t::type )
+		+ sizeof( DescriptorData_t::sampler )
+		+ sizeof( DescriptorData_t::imageView )
+		+ sizeof( DescriptorData_t::imageLayout )
+		+ sizeof( DescriptorData_t::bindingNumber )
+		+ sizeof( DescriptorData_t::buffer )
+		+ sizeof( DescriptorData_t::offset )
+		+ sizeof( DescriptorData_t::range )
+		+ sizeof( DescriptorData_t::arrayIndex )
+		) == sizeof( DescriptorData_t ), "DescriptorData_t is not tightly packed. It must be tightly packed for hash calculations." );
+
+
+	std::vector<std::vector<uint8_t>>      dynamicUboData;
+	std::vector<uint32_t>                  dynamicBindingOffsets;
+	std::vector<::vk::DescriptorImageInfo> imageAttachment;
+};
+
+// ----------
+
+struct UniformId_t
+{
+	union
+	{
+		uint64_t id = 0;
+		struct
+		{
+			uint64_t setIndex : 3;         // 0 ..              7 (maxBoundDescriptorSets is 8)
+			uint64_t descriptorIndex : 14; // 0 ..        16'383 (index into DescriptorData_t::descriptors, per set)
+			uint64_t auxDataIndex : 14;    // 0 ..        32'768 (index into helper data vectors per descriptor type per set)
+			uint64_t dataOffset : 17;      // 0 ..        65'535
+			uint64_t dataRange : 16;       // 0 ..        65'535
+		};
+	};
+
+	friend
+		inline bool operator < ( UniformId_t const & lhs, UniformId_t const & rhs ){
+		return lhs.id < rhs.id;
+	};
+};
+
+static_assert( sizeof( UniformId_t ) == sizeof( uint64_t ), "UniformId_t is not proper size." );
+
+// ----------
+
+
 class Shader
 {
 public:
@@ -89,10 +162,8 @@ public:
 		std::map<::vk::ShaderStageFlagBits, std::string> sources;
 	} mSettings;
 
-
-public: 
-
-	struct UboMemberSubrange{
+	struct UboMemberSubrange
+	{
 		uint32_t setNumber;
 		uint32_t bindingNumber;
 		uint32_t offset;
@@ -107,13 +178,16 @@ public:
 
 	struct Uniform_t
 	{
-		uint32_t                         setNumber         = 0;
-		::vk::DescriptorSetLayoutBinding setLayoutBinding;	/* this contains binding number */
+		uint32_t                         setNumber = 0;
+		::vk::DescriptorSetLayoutBinding layoutBinding;	/* this contains binding number */
+
+		std::string                      name;
 		UboRange                         uboRange;
 	};
 
-	
-	struct DesciptorSetLayoutInfo
+public: 
+
+	struct DescriptorSetLayoutInfo
 	{
 		uint64_t hash;	// hash for this descriptor set layout.
 		std::vector<::vk::DescriptorSetLayoutBinding> bindings;
@@ -125,9 +199,16 @@ public:
 		std::vector<::vk::VertexInputBindingDescription>   bindingDescription;	  // describes data input parameters for pipeline slots
 		std::vector<::vk::VertexInputAttributeDescription> attribute;	          // mapping of attribute locations to pipeline slots
 		::vk::PipelineVertexInputStateCreateInfo vi;
-	} mVertexInfo;
+	};
 
 private:
+
+	// default template for descriptor set data
+	std::vector<DescriptorSetData_t>   mDescriptorSetData;
+	// default keys into descriptor set data.
+	std::map<std::string, UniformId_t> mUniformDictionary;
+
+	VertexInfo mVertexInfo;
 
 	// map from uniform name to uniform data
 	std::map<std::string, Uniform_t> mUniforms;
@@ -136,7 +217,7 @@ private:
 	std::map<std::string, Shader::UboMemberSubrange> mUboMembers;
 
 	// vector of descriptor set binding information (index is descriptor set number)
-	std::vector<DesciptorSetLayoutInfo> mDescriptorSetsInfo;
+	std::vector<DescriptorSetLayoutInfo> mDescriptorSetsInfo;
 	
 	// attribute indices, indexed by attribute name
 	std::unordered_map<std::string, size_t> mAttributeIndices;
@@ -218,7 +299,7 @@ public:
 	// return shader stage information for pipeline creation
 	const std::vector<::vk::PipelineShaderStageCreateInfo> getShaderStageCreateInfo();
 
-	const std::vector<DesciptorSetLayoutInfo> & getDescriptorSetsInfo();
+	const std::vector<DescriptorSetLayoutInfo> & getDescriptorSetsInfo();
 
 	// return vertex input state create info
 	// this hold the layout and wiring of attribute inputs to vertex bindings
@@ -238,15 +319,21 @@ public:
 	// returns hash of spirv code over all shader shader stages
 	const uint64_t getShaderCodeHash();
 
-	const std::map<std::string, Uniform_t>& getUniforms();
+	//const std::map<std::string, Uniform_t>& getUniforms();
 
-	const Shader::UboMemberSubrange * findUboMemberSubRange( const std::string& uboMemberName_ );;
-	
 	const std::vector<std::string> & getAttributeNames();
 	
 	bool getAttributeIndex( const std::string& name, size_t& index ) const;
 
 	const VertexInfo& getVertexInfo();
+
+	const std::vector<DescriptorSetData_t> & getDescriptorSetData() const{
+		return mDescriptorSetData;
+	};
+
+	const std::map<std::string, UniformId_t>& getUniformDictionary() const{
+		return mUniformDictionary;
+	}
 };
 
 // ----------------------------------------------------------------------
@@ -265,7 +352,7 @@ inline const std::vector<::vk::PipelineShaderStageCreateInfo> of::vk::Shader::ge
 
 // ----------------------------------------------------------------------
 
-inline const std::vector<of::vk::Shader::DesciptorSetLayoutInfo>& of::vk::Shader::getDescriptorSetsInfo(){
+inline const std::vector<of::vk::Shader::DescriptorSetLayoutInfo>& of::vk::Shader::getDescriptorSetsInfo(){
 	return mDescriptorSetsInfo;
 }
 
@@ -296,7 +383,7 @@ inline bool of::vk::Shader::getAttributeIndex( const std::string &name, size_t &
 
 // ----------------------------------------------------------------------
 
-inline const Shader::VertexInfo & Shader::getVertexInfo(){
+inline const of::vk::Shader::VertexInfo & of::vk::Shader::getVertexInfo(){
 	return mVertexInfo;
 }
 
@@ -326,22 +413,9 @@ inline const std::shared_ptr<::vk::DescriptorSetLayout>& of::vk::Shader::getDesc
 	return mDescriptorSetLayouts.at( setId );
 }
 
-// ----------------------------------------------------------------------
-
-inline const std::map<std::string, of::vk::Shader::Uniform_t>& of::vk::Shader::getUniforms(){
-	return mUniforms;
-}
 
 // ----------------------------------------------------------------------
 
-inline const Shader::UboMemberSubrange * Shader::findUboMemberSubRange( const std::string & uboMemberName_ ){
-	const auto findIt = mUboMembers.find( uboMemberName_ );
-	if ( findIt != mUboMembers.end() ){
-		return &( findIt->second );
-	} else{
-		return nullptr;
-	}
-}
 
 } // namespace vk
 } // namespace of

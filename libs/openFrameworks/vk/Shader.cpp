@@ -113,10 +113,6 @@ bool of::vk::Shader::compile(){
 	return false;
 }
 
-// return shader stage information for pipeline creation
-
-
-
 // ----------------------------------------------------------------------
 
 bool of::vk::Shader::isSpirCodeDirty( const ::vk::ShaderStageFlagBits shaderStage, uint64_t spirvHash ){
@@ -302,6 +298,7 @@ void of::vk::Shader::reflect(
 		mAttributeIndices[mVertexInfo.attributeNames[i]] = mVertexInfo.bindingDescription[i].binding;
 	}
 
+
 	// reserve storage for dynamic uniform data for each uniform entry
 	// over all sets - then build up a list of ubos.
 	for ( const auto & uniformPair : mUniforms ){
@@ -327,15 +324,18 @@ bool of::vk::Shader::reflectUBOs( const spirv_cross::Compiler & compiler, const 
 	for ( const auto & ubo : uniformBuffers ){
 
 		Uniform_t tmpUniform;
+		
+		tmpUniform.name = ubo.name;
+
 		tmpUniform.uboRange.storageSize = compiler.get_declared_struct_size( compiler.get_type( ubo.type_id ) );
 				
-		tmpUniform.setLayoutBinding
+		tmpUniform.layoutBinding
 			.setDescriptorCount( 1 )                                            /* Must be 1 for ubo bindings, as arrays of ubos are not allowed */
 			.setDescriptorType( ::vk::DescriptorType::eUniformBufferDynamic )   /* All our uniform buffer are dynamic */
 			.setStageFlags( shaderStage )
 			;
 
-		getSetAndBindingNumber( compiler, ubo, tmpUniform.setNumber, tmpUniform.setLayoutBinding.binding);
+		getSetAndBindingNumber( compiler, ubo, tmpUniform.setNumber, tmpUniform.layoutBinding.binding);
 
 		auto bufferRanges = compiler.get_active_buffer_ranges( ubo.id );
 
@@ -344,7 +344,7 @@ bool of::vk::Shader::reflectUBOs( const spirv_cross::Compiler & compiler, const 
 			// By merging the ranges later, we effectively also create aliases for member names which are 
 			// not consistently named the same.
 			auto memberName = compiler.get_member_name( ubo.type_id, r.index );
-			tmpUniform.uboRange.subranges[memberName] = { tmpUniform.setNumber, tmpUniform.setLayoutBinding.binding, (uint32_t)r.offset, (uint32_t)r.range };
+			tmpUniform.uboRange.subranges[memberName] = { tmpUniform.setNumber, tmpUniform.layoutBinding.binding, (uint32_t)r.offset, (uint32_t)r.range };
 		}
 
 		// Let's see if an uniform buffer with this fingerprint has already been seen.
@@ -362,11 +362,11 @@ bool of::vk::Shader::reflectUBOs( const spirv_cross::Compiler & compiler, const 
 				// !TODO: try to recover.
 				return false;
 			} else if ( storedUniform.setNumber != tmpUniform.setNumber
-				|| storedUniform.setLayoutBinding.binding != tmpUniform.setLayoutBinding.binding ){
+				|| storedUniform.layoutBinding.binding != tmpUniform.layoutBinding.binding ){
 				ofLogWarning() << "Ubo: '" << ubo.name << "' re-defined with inconsistent set/binding numbers.";
 			} else {
 				// Merge stage flags
-				storedUniform.setLayoutBinding.stageFlags |= tmpUniform.setLayoutBinding.stageFlags;
+				storedUniform.layoutBinding.stageFlags |= tmpUniform.layoutBinding.stageFlags;
 				// Merge memberRanges
 				ostringstream overlapMsg;
 				if ( checkMemberRangesOverlap( storedUniform.uboRange.subranges, tmpUniform.uboRange.subranges, overlapMsg ) ){
@@ -393,13 +393,14 @@ bool of::vk::Shader::reflectSamplers( const spirv_cross::Compiler & compiler, co
 	for ( const auto & sampledImage : sampledImages){
 
 		Uniform_t tmpUniform;
-		tmpUniform.setLayoutBinding
+		tmpUniform.name = sampledImage.name;
+		tmpUniform.layoutBinding
 			.setDescriptorCount( 1 ) //!TODO: find out how to query array size
 			.setDescriptorType( ::vk::DescriptorType::eCombinedImageSampler )
 			.setStageFlags( shaderStage )
 			;
 
-		getSetAndBindingNumber( compiler, sampledImage, tmpUniform.setNumber, tmpUniform.setLayoutBinding.binding );
+		getSetAndBindingNumber( compiler, sampledImage, tmpUniform.setNumber, tmpUniform.layoutBinding.binding );
 
 		// Let's see if an uniform buffer with this fingerprint has already been seen.
 		// If yes, it would already be in uniformStore.
@@ -409,7 +410,7 @@ bool of::vk::Shader::reflectSamplers( const spirv_cross::Compiler & compiler, co
 		if ( result.second == false ){
 			// uniform with this key already exists: check set and binding numbers are identical
 			// otherwise print a warning and return false.
-			if ( result.first->second.setLayoutBinding.binding != tmpUniform.setLayoutBinding.binding
+			if ( result.first->second.layoutBinding.binding != tmpUniform.layoutBinding.binding
 				|| result.first->second.setNumber != tmpUniform.setNumber ){
 				ofLogWarning() << "Uniform: '" << sampledImage.name << "' is declared multiple times, but with inconsistent binding/set number.";
 				return false;
@@ -427,53 +428,194 @@ bool of::vk::Shader::createSetLayouts(){
 	
 	// Consolidate uniforms into descriptor sets
 
-	// map from descriptorSet to map of bindings
-	map<uint32_t, map<uint32_t, ::vk::DescriptorSetLayoutBinding>> descriptorSetLayouts;
+
 
 	if ( mUniforms.empty() ){
 		// nothing to do.
 		return true;
 	}
 
-	// --------| invariant: there are uniforms to assign to descriptorsets.
+	// map from descriptorSet to map of (sparse) bindings
+	map<uint32_t, map<uint32_t, Uniform_t>> uniformSetLayouts;
 
+	// --------| invariant: there are uniforms to assign to descriptorsets.
+	
 	for ( const auto & uniform : mUniforms ){
-		
-		const std::pair<uint32_t, ::vk::DescriptorSetLayoutBinding> binding = {uniform.second.setLayoutBinding.binding, uniform.second.setLayoutBinding};
+
+		const std::pair<uint32_t, Uniform_t> uniformBinding = {
+			uniform.second.layoutBinding.binding, 
+			uniform.second,
+		};
 
 		// attempt to insert a fresh set
-		auto setInsertion = descriptorSetLayouts.insert( { uniform.second.setNumber,{ binding } } );
+		auto setInsertion = uniformSetLayouts.insert( { uniform.second.setNumber, { uniformBinding } } );
 
 		if ( setInsertion.second == false ){
 		// if there was already a set at this position, append to this set
-			auto bindingInsertion = setInsertion.first->second.insert( binding );
+			auto bindingInsertion = setInsertion.first->second.insert( uniformBinding );
 			if ( bindingInsertion.second == false ){
 				ofLogError() << "Could not insert binding - it appears that there is already a binding a this position, set: " << uniform.second.setNumber 
-					<< ", binding number: " << uniform.second.setLayoutBinding.binding;
+					<< ", binding number: " << uniform.second.layoutBinding.binding;
 				return false;
 			}
 		}
 	}
 
-	// ---------| invariant: we should have a map of sets and each set should have bindings
-	//            and both in ascending order.
-
-	// we need to make sure set numbers are not sparse.
-	if ( descriptorSetLayouts.size() != (descriptorSetLayouts.rbegin()->first + 1)){
+	
+	// assert set numbers are not sparse.
+	if ( uniformSetLayouts.size() != ( uniformSetLayouts.rbegin()->first + 1 ) ){
 		ofLogError() << "Descriptor sets may not be sparse";
 		return  false;
 	}
 
-	mDescriptorSetsInfo.clear();
-	mDescriptorSetsInfo.reserve( descriptorSetLayouts.size() );
-	mDescriptorSetLayoutKeys.clear();
-	mDescriptorSetLayoutKeys.reserve( descriptorSetLayouts.size() );
+	
+	// make sure that for each set, bindings are not sparse by adding placeholder uniforms 
+	// into empty binding slots.
+	{
+		Uniform_t placeHolderUniform;
+		placeHolderUniform.layoutBinding.descriptorCount = 0; // a count of 0 marks this descriptor as being a placeholder.
 
-	for (const auto & descriptorSet : descriptorSetLayouts ){
-		DesciptorSetLayoutInfo layoutInfo;
+		for ( auto & uniformSetLayout : uniformSetLayouts ){
+			
+			const auto & setNumber = uniformSetLayout.first;
+			auto & bindings        = uniformSetLayout.second;
+
+			placeHolderUniform.setNumber = setNumber;
+
+			if ( bindings.empty() ){
+				continue;
+			}
+
+			// Attempt to insert placeholder descriptors for each binding.
+			uint32_t last_binding_number = bindings.crbegin()->first;
+			placeHolderUniform.layoutBinding.stageFlags = bindings[last_binding_number].layoutBinding.stageFlags;
+			uint32_t bindingCount = last_binding_number + 1;
+
+			for ( uint32_t i = 0; i != bindingCount; ++i ){
+				placeHolderUniform.layoutBinding.binding = i;
+				auto insertionResult = bindings.insert( { i, placeHolderUniform } );
+				if ( insertionResult.second == true ){
+					ofLogWarning() << "Detected sparse bindings: gap at set: " << setNumber << ", binding: " << i << ". This could slow the GPU down.";
+				} 
+			}
+		}
+	}
+	
+	// ---------| invariant: we should have a map of sets and each set should have bindings
+	//            and both in ascending order.
+	
+	{
+	
+		// create temporary data storage object for uniforms
+		// and uniform dictionary 
+		
+		mDescriptorSetData.clear();
+		mUniformDictionary.clear();
+
+		size_t setLayoutIndex = 0;
+
+		for ( auto & setLayoutBindingsMapPair : uniformSetLayouts ){
+			
+			const auto & setNumber            = setLayoutBindingsMapPair.first;
+			const auto & setLayoutBindingsMap = setLayoutBindingsMapPair.second;
+
+			DescriptorSetData_t tmpDescriptorSetData;
+			UniformId_t uniformId;
+
+			auto & descriptors = tmpDescriptorSetData.descriptors;
+
+			uniformId.setIndex        = setLayoutIndex;
+			uniformId.descriptorIndex = 0;
+			uniformId.auxDataIndex    = -1;
+
+			for ( auto & bindingsPair : setLayoutBindingsMap ){
+
+				const auto & bindingNumber = bindingsPair.first;
+				const auto & uniform       = bindingsPair.second;
+				const auto & layoutBinding = uniform.layoutBinding;
+
+				uniformId.dataOffset = 0;
+				uniformId.dataRange  = 0;
+
+				if ( layoutBinding.descriptorType == ::vk::DescriptorType::eUniformBufferDynamic ){
+					
+					tmpDescriptorSetData.dynamicBindingOffsets.push_back( 0 );
+					tmpDescriptorSetData.dynamicUboData.push_back( {} );
+
+					uniformId.auxDataIndex = tmpDescriptorSetData.dynamicUboData.size() - 1;
+
+					// go through member ranges if any.
+					for ( const auto &subRangePair : uniform.uboRange.subranges ){
+						
+						auto uboMemberUniformId = uniformId;
+
+						const auto & memberName  = subRangePair.first;
+						const auto & memberRange = subRangePair.second;
+						
+						uboMemberUniformId.dataOffset = memberRange.offset;
+						uboMemberUniformId.dataRange  = memberRange.range;
+						
+						mUniformDictionary.insert( { uniform.name + '.' + memberName, uboMemberUniformId } );
+						
+						auto & insertionResult = mUniformDictionary.insert( { memberName, uboMemberUniformId } );
+
+						if ( insertionResult.second == false ){
+							ofLogWarning() << "Uniform Ubo member name not uniqe: '" << memberName << "'.";
+						}
+
+						
+					}
+
+					uniformId.dataOffset = 0;
+					uniformId.dataRange  = uniform.uboRange.storageSize;
+
+					// make space for data storage
+					tmpDescriptorSetData.dynamicUboData.back().resize( uniformId.dataRange );
+				}
+
+				for ( uint32_t arrayIndex = 0; arrayIndex != layoutBinding.descriptorCount; ++arrayIndex ){
+
+					DescriptorSetData_t::DescriptorData_t descriptorData;
+					descriptorData.bindingNumber = layoutBinding.binding;
+					descriptorData.arrayIndex = arrayIndex;
+					descriptorData.type = layoutBinding.descriptorType;
+
+					if ( layoutBinding.descriptorType == ::vk::DescriptorType::eCombinedImageSampler ){
+						// store image attachment 
+						tmpDescriptorSetData.imageAttachment.push_back( {} );
+						uniformId.auxDataIndex = tmpDescriptorSetData.imageAttachment.size() - 1;
+					}
+
+					descriptors.emplace_back( std::move( descriptorData ) );
+
+					mUniformDictionary.insert( { uniform.name, uniformId } );
+
+					uniformId.descriptorIndex++;
+				}
+			}
+
+			mDescriptorSetData.emplace_back( std::move( tmpDescriptorSetData ) );
+			++setLayoutIndex;
+		}
+
+
+	}
+
+
+	// ---------
+	
+	mDescriptorSetsInfo.clear();
+	mDescriptorSetsInfo.reserve( uniformSetLayouts.size() );
+
+	mDescriptorSetLayoutKeys.clear();
+	mDescriptorSetLayoutKeys.reserve( uniformSetLayouts.size() );
+
+	for (const auto & descriptorSet : uniformSetLayouts ){
+		DescriptorSetLayoutInfo layoutInfo;
 		layoutInfo.bindings.reserve( descriptorSet.second.size() );
+		
 		for ( const auto & binding : descriptorSet.second ){
-			layoutInfo.bindings.push_back( binding.second );
+			layoutInfo.bindings.emplace_back( std::move(binding.second.layoutBinding) );
 		}
 
 		static_assert(
@@ -506,7 +648,7 @@ bool of::vk::Shader::createSetLayouts(){
 		// Create the auto-deleter
 		std::shared_ptr<::vk::DescriptorSetLayout> vkDescriptorSetLayout =
 			std::shared_ptr<::vk::DescriptorSetLayout>( new ::vk::DescriptorSetLayout, [d = mSettings.device]( ::vk::DescriptorSetLayout* lhs ){
-			if ( lhs ){
+			if ( *lhs ){
 				d.destroyDescriptorSetLayout( *lhs );
 			}
 			delete lhs;

@@ -166,7 +166,7 @@ void ofApp::draw(){
 		.setUniform( "projectionMatrix", projectionMatrix )
 		.setUniform( "viewMatrix", viewMatrix )
 		.setUniform( "modelMatrix", modelMatrix )
-		.setUniform( "globalColor", ofFloatColor::magenta )
+		//.setUniform( "globalColor", ofFloatColor::magenta )
 		.setNumIndices( mStaticMesh.indexBuffer.numElements )
 		.setIndices( mStaticMesh.indexBuffer )
 		.setAttribute( 0, mStaticMesh.posBuffer )
@@ -189,7 +189,7 @@ void ofApp::draw(){
 
 	batch.draw( drawFullScreenQuad );
 	batch.draw( hero );
-	batch.draw( texturedRect );
+	//batch.draw( texturedRect );
 
 	batch.submit();	
 

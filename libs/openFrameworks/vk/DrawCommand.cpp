@@ -19,67 +19,8 @@ void DrawCommand::setup(const GraphicsPipelineState& pipelineState){
 	
 	mPipelineState = pipelineState;
 	
-	// Initialise Ubo blobs with default values, based on 
-	// default values received from Shader. 
-	//
-	// Shader should provide us with values to initialise, because
-	// these values depend on the shader, and the shader knows the
-	// uniform variable types.
-
-	const auto & descriptorSetsInfo = mPipelineState.getShader()->getDescriptorSetsInfo();
-	
-
-	mDescriptorSetData.reserve( descriptorSetsInfo.size() );
-
-	// we need to query the shader for uniforms - 
-	// but because uniforms are independent of sets, 
-	// this is slightly more complicated.
-
-
-	for ( auto&di : descriptorSetsInfo ){
-		DescriptorSetData_t tmpDescriptorSetData;
-
-		auto & bindingsVec = tmpDescriptorSetData.descriptorBindings;
-
-		bindingsVec.reserve( di.bindings.size() );
-
-		size_t numDynamicUbos = 0;
-
-		for ( auto & binding : di.bindings ){
-			if ( binding.descriptorType == ::vk::DescriptorType::eUniformBufferDynamic ){
-				++numDynamicUbos;
-				tmpDescriptorSetData.dynamicBindingOffsets.insert( { binding.binding, 0 } );
-				tmpDescriptorSetData.dynamicUboData.insert( { binding.binding,{} } );
-			}
-			for ( uint32_t arrayIndex = 0; arrayIndex != binding.descriptorCount; ++arrayIndex ){
-				DescriptorSetData_t::DescriptorData_t bindingData;
-				bindingData.bindingNumber = binding.binding;
-				bindingData.arrayIndex = arrayIndex;
-				bindingData.type = binding.descriptorType;
-
-				if ( binding.descriptorType == ::vk::DescriptorType::eCombinedImageSampler ){
-					// store image attachment 
-					tmpDescriptorSetData.imageAttachment[bindingsVec.size()] = {};
-				}
-
-				bindingsVec.emplace_back( std::move( bindingData ) );
-			}
-		}
-
-		mDescriptorSetData.emplace_back( std::move( tmpDescriptorSetData ) );
-	}
-
-	// ------| invariant: descriptor set data has been transferred from shader for all descriptor sets
-	
-	const auto & shaderUniforms = mPipelineState.getShader()->getUniforms();
-
-	for ( const auto & uniformPair : shaderUniforms ){
-		const auto & uniformName = uniformPair.first;
-		const auto & uniform     = uniformPair.second;
-		if ( uniform.setLayoutBinding.descriptorType == ::vk::DescriptorType::eUniformBufferDynamic ){
-			mDescriptorSetData[uniform.setNumber].dynamicUboData[uniform.setLayoutBinding.binding].resize( uniform.uboRange.storageSize, 0 );
-		}
-	}
+	mDescriptorSetData = mPipelineState.getShader()->getDescriptorSetData();
+	mUniformDictionary = mPipelineState.getShader()->getUniformDictionary();
 
 	// parse shader info to find out how many buffers to reserve for vertex attributes.
 
@@ -95,46 +36,76 @@ void DrawCommand::setup(const GraphicsPipelineState& pipelineState){
 	}
 }
 
-
 // ------------------------------------------------------------
 
 void DrawCommand::commitUniforms(const std::unique_ptr<BufferAllocator>& alloc ){
+	
 	for ( auto & descriptorSetData : mDescriptorSetData ){
 
-		for ( const auto & dataPair : descriptorSetData.imageAttachment ){
-			const auto & bindingNumber = dataPair.first;
-			const auto & imageInfo     = dataPair.second;
+		auto imgInfoIt        = descriptorSetData.imageAttachment.begin();
+		auto dynamicOffsetsIt = descriptorSetData.dynamicBindingOffsets.begin();
+		auto dataIt           = descriptorSetData.dynamicUboData.begin();
 
-			descriptorSetData.descriptorBindings[bindingNumber].sampler     = imageInfo.sampler;
-			descriptorSetData.descriptorBindings[bindingNumber].imageView   = imageInfo.imageView;
-			descriptorSetData.descriptorBindings[bindingNumber].imageLayout = imageInfo.imageLayout;
-		}
+		for ( auto & descriptor : descriptorSetData.descriptors ){
 
-		for ( const auto & dataPair : descriptorSetData.dynamicUboData ){
+			switch ( descriptor.type ){
+			case ::vk::DescriptorType::eSampler:
+				break;
+			case ::vk::DescriptorType::eCombinedImageSampler:
+				{
+					descriptor.imageView   = imgInfoIt->imageView;
+					descriptor.sampler     = imgInfoIt->sampler;
+					descriptor.imageLayout = imgInfoIt->imageLayout;
+					imgInfoIt++;
+				}
+				break;
+			case ::vk::DescriptorType::eSampledImage:
+				break;
+			case ::vk::DescriptorType::eStorageImage:
+				break;
+			case ::vk::DescriptorType::eUniformTexelBuffer:
+				break;
+			case ::vk::DescriptorType::eStorageTexelBuffer:
+				break;
+			case ::vk::DescriptorType::eUniformBuffer:
+				break;
+			case ::vk::DescriptorType::eStorageBuffer:
+				break;
+			case ::vk::DescriptorType::eUniformBufferDynamic:
+				{
+					descriptor.buffer = alloc->getBuffer();
+					::vk::DeviceSize offset;
+					void * dataP = nullptr;
 
-			const auto & bindingNumber = dataPair.first;
-			const auto & dataVec       = dataPair.second;
+					const auto & dataVec = *dataIt;
+					const auto & dataRange = dataVec.size();
 
-			::vk::DeviceSize offset;
-			void * dataP = nullptr;
-			
-			// allocate data on gpu
-			if ( alloc->allocate( dataVec.size(), offset ) && alloc->map( dataP ) ){
+					// allocate data on gpu
+					if ( alloc->allocate( dataRange, offset ) && alloc->map( dataP ) ){
 
-				// copy data to gpu
-				memcpy( dataP, dataVec.data(), dataVec.size() );
+						// copy data to gpu
+						memcpy( dataP, dataVec.data(), dataRange );
 
-				// update dynamic binding offsets for this binding
-				descriptorSetData.dynamicBindingOffsets[bindingNumber] = offset;
+						// update dynamic binding offsets for this binding
+						*dynamicOffsetsIt = offset;
 
-				// store the buffer 
-				descriptorSetData.descriptorBindings[bindingNumber].buffer = alloc->getBuffer();
-				descriptorSetData.descriptorBindings[bindingNumber].range = dataVec.size();
+					} else{
+						ofLogError() << "commitUniforms: could not allocate transient memory.";
+					}
+					dataIt++;
+					dynamicOffsetsIt++;
+					descriptor.range = dataRange;
+				}
+				break;
+			case ::vk::DescriptorType::eStorageBufferDynamic:
+				break;
+			case ::vk::DescriptorType::eInputAttachment:
+				break;
+			default:
+				break;
+			} // end switch
 
-			} else{
-				ofLogError() << "commitUniforms: could not allocate transient memory.";
-			}
-		} // end foreach descriptorSetData.dynamicUboData
+		} // end for each descriptor
 	} // end foreach mDescriptorSetData
 }
 

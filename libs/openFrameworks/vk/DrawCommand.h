@@ -13,69 +13,12 @@ class DrawCommand;	   // ffdecl.
 class RenderBatch;	   // ffdecl.
 class BufferAllocator;	   // ffdecl.
 
-
 // ----------------------------------------------------------------------
 
 class DrawCommand
 {
 	friend class RenderBatch;
 	
-public:
-
-	struct DescriptorSetData_t
-	{
-		// Everything a possible descriptor binding might contain.
-		// Type of decriptor decides which values will be used.
-		struct DescriptorData_t
-		{
-			::vk::Sampler        sampler = 0;                                             // |
-			::vk::ImageView      imageView = 0;                                           // | > keep in this order, so we can pass address for sampler as descriptorImageInfo
-			::vk::ImageLayout    imageLayout = ::vk::ImageLayout::eShaderReadOnlyOptimal; // |
-			::vk::DescriptorType type = ::vk::DescriptorType::eUniformBufferDynamic;
-			::vk::Buffer         buffer = 0;                                              // |
-			::vk::DeviceSize     offset = 0;                                              // | > keep in this order, as we can cast this to a DescriptorBufferInfo
-			::vk::DeviceSize     range = 0;                                               // |
-			uint32_t             bindingNumber = 0; // <-- may be sparse, may repeat (for arrays of images bound to the same binding), but must increase be monotonically (may only repeat or up over the series inside the samplerBindings vector).
-			uint32_t             arrayIndex = 0;    // <-- must be in sequence for array elements of same binding
-		};
-
-
-		// Sparse list of all bindings belonging to this descriptor set
-		// We use this to calculate a hash of descriptorState. This must 
-		// be tightly packed - that's why we use a vector.
-		std::vector<DescriptorData_t> descriptorBindings;
-
-		// Compile-time static assert makes sure DescriptorData can be
-		// successfully hashed.
-		static_assert( (
-			+ sizeof( DescriptorData_t::type )
-			+ sizeof( DescriptorData_t::sampler )
-			+ sizeof( DescriptorData_t::imageView )
-			+ sizeof( DescriptorData_t::imageLayout )
-			+ sizeof( DescriptorData_t::bindingNumber )
-			+ sizeof( DescriptorData_t::buffer )
-			+ sizeof( DescriptorData_t::offset )
-			+ sizeof( DescriptorData_t::range )
-			+ sizeof( DescriptorData_t::arrayIndex )
-			) == sizeof( DescriptorData_t ), "DescriptorData_t is not tightly packed. It must be tightly packed for hash calculations." );
-
-
-		// One data container vector per descriptorBinding - data container vector size is 
-		// determined by ubo subrange size. Ubo data bindings may be sparse. 
-		// Data is copied from here to GPU memory upon draw.
-		std::map<uint32_t, std::vector<uint8_t>> dynamicUboData;
-		
-		// Dynamic offsets for ubos, indexed by binding number - each ubo needs one dynamic offset.
-		//     We use these dynamic offsets when binding the descriptorSet when recording the command buffer 
-		//     so that we can possibly recycle the descriptorSet. If we were setting the
-		//     offsets directly in DescriptorData_t we would not be able to use dynamic Uniform Buffers,
-		//     but would be using "static" default Uniform Buffers.
-		std::map<uint32_t, uint32_t> dynamicBindingOffsets; 
-
-		// map from descriptor binding to image attachment, 
-		// indexed by index of corresponding descriptorData_t in descriptorBindings
-		std::map<size_t, ::vk::DescriptorImageInfo> imageAttachment;
-	};
 
 private:
 
@@ -87,8 +30,10 @@ private:      /* transient data */
 
 	uint64_t mPipelineHash = 0;
 
-	// Bindings data for descriptorSets, (vector index == set number) -- indices must not be sparse!
-	std::vector<DescriptorSetData_t> mDescriptorSetData;
+	// Bindings data for descriptorSets, (vector index == set number) - retrieved from shader on setup
+	std::vector<DescriptorSetData_t>   mDescriptorSetData;
+	// Lookup table for uniform name-> desciptorSetData - retrieved from shader on setup
+	std::map<std::string, UniformId_t> mUniformDictionary;
 
 	// vector of buffers holding vertex attribute data
 	std::vector<::vk::Buffer> mVertexBuffers;
@@ -149,8 +94,6 @@ public:
 	template <class T>
 	of::vk::DrawCommand & setUniform( const std::string& uniformName, const T& uniformValue_ );
 
-	
-
 
 };
 
@@ -161,26 +104,33 @@ public:
 template<class T>
 inline DrawCommand& DrawCommand::setUniform( const std::string & uniformName, const T & uniformValue_ ){
 
-	const auto memberSubrange = mPipelineState.getShader()->findUboMemberSubRange( uniformName );
-
-	if ( memberSubrange ){
-		if ( memberSubrange->range < sizeof( T ) ){
-			ofLogWarning() << "Could not set uniform '" << uniformName << "': Uniform data size does not match: "
-				<< " Expected: " << memberSubrange->range << ", received: " << sizeof( T ) << ".";
-			return *this;
-		}
-		// --------| invariant: size match, we can copy data into our vector.
-
-		auto & dataVec = mDescriptorSetData[memberSubrange->setNumber].dynamicUboData[memberSubrange->bindingNumber];
-
-		if ( memberSubrange->offset + memberSubrange->range <= dataVec.size() ){
-			memcpy( dataVec.data() + memberSubrange->offset, &uniformValue_, memberSubrange->range );
-		} else{
-			ofLogError() << "Not enough space in local uniform storage. Has this drawCommand been properly initialised?";
-		}
-	} else {
-		; // set a breakpoint here if you want to catch uniform name not found.
+	auto uniformInfoIt = mUniformDictionary.find( uniformName );
+	
+	if ( uniformInfoIt == mUniformDictionary.end() ){
+		ofLogWarning() << "Could not set Uniform '" << uniformName << "': Uniform name not found in shader";
+		return *this;
 	}
+
+	// --------| invariant: uniform found
+
+	const auto & uniformInfo = uniformInfoIt->second;
+	
+	if ( uniformInfo.dataRange < sizeof( T ) ){
+		ofLogWarning() << "Could not set uniform '" << uniformName << "': Uniform data size does not match: "
+			<< " Expected: " << uniformInfo.dataRange << ", received: " << sizeof( T ) << ".";
+		return *this;
+	}
+
+	// --------| invariant: size match, we can copy data into our vector.
+
+	auto & dataVec = mDescriptorSetData[uniformInfo.setIndex].dynamicUboData[uniformInfo.auxDataIndex];
+
+	if ( uniformInfo.dataOffset + uniformInfo.dataRange <= dataVec.size() ){
+		memcpy( dataVec.data() + uniformInfo.dataOffset, &uniformValue_, uniformInfo.dataRange );
+	} else{
+		ofLogError() << "Not enough space in local uniform storage. Has this drawCommand been properly initialised?";
+	}
+
 	return *this;
 }
 
@@ -214,7 +164,7 @@ inline const of::vk::GraphicsPipelineState & of::vk::DrawCommand::getPipelineSta
 	return mPipelineState;
 }
 
-inline const of::vk::DrawCommand::DescriptorSetData_t & of::vk::DrawCommand::getDescriptorSetData( size_t setId_ ) const{
+inline const of::vk::DescriptorSetData_t & of::vk::DrawCommand::getDescriptorSetData( size_t setId_ ) const{
 	return mDescriptorSetData[setId_];
 }
 

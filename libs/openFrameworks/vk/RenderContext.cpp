@@ -152,7 +152,7 @@ const::vk::DescriptorSet RenderContext::getDescriptorSet( uint64_t descriptorSet
 
 	::vk::DescriptorSet allocatedDescriptorSet = nullptr;
 
-	auto & descriptors = drawCommand.getDescriptorSetData( setId ).descriptorBindings;
+	auto & descriptors = drawCommand.getDescriptorSetData( setId ).descriptors;
 
 	// find out required pool sizes for this descriptor set
 
@@ -258,6 +258,7 @@ const::vk::DescriptorSet RenderContext::getDescriptorSet( uint64_t descriptorSet
 			descriptorBufferInfo,           // pBufferInfo
 			nullptr                         // 
 		);
+		
 	}
 
 	mDevice.updateDescriptorSets( writeDescriptorSets, nullptr );

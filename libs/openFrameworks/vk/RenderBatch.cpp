@@ -131,13 +131,10 @@ void RenderBatch::processDrawCommands( const ::vk::CommandBuffer& cmd ){
 		for ( size_t setId = 0; setId != setLayoutKeys.size(); ++setId ){
 
 			uint64_t setLayoutKey = setLayoutKeys[setId];
-			const auto & descriptorSetBindings = dc.getDescriptorSetData( setId ).descriptorBindings;
+			const auto & descriptors = dc.getDescriptorSetData( setId ).descriptors;
 
 			// calculate hash of descriptorset, combined with descriptor set sampler state
-			uint64_t descriptorSetHash = SpookyHash::Hash64(
-				descriptorSetBindings.data(),
-				descriptorSetBindings.size() * sizeof( DrawCommand::DescriptorSetData_t::DescriptorData_t ),
-				setLayoutKey );
+			uint64_t descriptorSetHash = SpookyHash::Hash64( descriptors.data(), descriptors.size() * sizeof( DescriptorSetData_t::DescriptorData_t ), setLayoutKey );
 
 			// Receive a descriptorSet from the renderContext's cache.
 			// The renderContext will allocate and initialise a DescriptorSet if none has been found.
@@ -145,14 +142,10 @@ void RenderBatch::processDrawCommands( const ::vk::CommandBuffer& cmd ){
 
 			boundVkDescriptorSets.emplace_back( descriptorSet );
 
-			const auto & offsetMap  = dc.getDescriptorSetData( setId ).dynamicBindingOffsets;
+			const auto & offsets  = dc.getDescriptorSetData( setId ).dynamicBindingOffsets;
 			
-			dynamicBindingOffsets.reserve( dynamicBindingOffsets.size() + offsetMap.size() );
-
 			// now append dynamic binding offsets for this set to vector of dynamic offsets for this draw call
-			std::transform( offsetMap.begin(), offsetMap.end(), std::back_inserter( dynamicBindingOffsets ), [](const std::pair<uint32_t, uint32_t>&rhs){
-				return rhs.second;
-			} );
+			dynamicBindingOffsets.insert( dynamicBindingOffsets.end(), offsets.begin(), offsets.end() );
 
 		}
 
@@ -164,7 +157,7 @@ void RenderBatch::processDrawCommands( const ::vk::CommandBuffer& cmd ){
 		if ( !boundVkDescriptorSets.empty() ){
 			cmd.bindDescriptorSets(
 				::vk::PipelineBindPoint::eGraphics,	                           // use graphics, not compute pipeline
-				*dc.mPipelineState.getShader()->getPipelineLayout(), // VkPipelineLayout object used to program the bindings.
+				*dc.mPipelineState.getShader()->getPipelineLayout(),           // VkPipelineLayout object used to program the bindings.
 				0,                                                             // firstset: first set index (of the above) to bind to - mDescriptorSet[0] will be bound to pipeline layout [firstset]
 				boundVkDescriptorSets.size(),                                  // setCount: how many sets to bind
 				boundVkDescriptorSets.data(),                                  // the descriptor sets to match up with our mPipelineLayout (need to be compatible)
