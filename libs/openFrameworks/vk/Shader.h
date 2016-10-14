@@ -164,6 +164,7 @@ public:
 	{
 		::vk::Device device;
 		std::map<::vk::ShaderStageFlagBits, std::string> sources;
+		bool printDebugInfo = false;
 	} mSettings;
 
 	struct UboMemberSubrange
@@ -172,7 +173,14 @@ public:
 		uint32_t bindingNumber;
 		uint32_t offset;
 		uint32_t range;
+
+		friend
+			inline bool operator < ( UboMemberSubrange const & lhs, UboMemberSubrange const & rhs ){
+			return lhs.offset < rhs.offset;
+		}
 	};
+
+	
 
 	struct UboRange
 	{

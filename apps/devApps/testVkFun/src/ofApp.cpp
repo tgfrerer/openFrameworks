@@ -67,6 +67,7 @@ void ofApp::setupDrawCommands(){
 		shaderSettings.device = renderer->getVkDevice();
 		shaderSettings.sources[::vk::ShaderStageFlagBits::eVertex]   = "default.vert";
 		shaderSettings.sources[::vk::ShaderStageFlagBits::eFragment] = "default.frag";
+		shaderSettings.printDebugInfo = true;
 
 		auto mShaderDefault = std::make_shared<of::vk::Shader>( shaderSettings );
 
@@ -114,6 +115,7 @@ void ofApp::setupDrawCommands(){
 		shaderSettings.device = renderer->getVkDevice();
 		shaderSettings.sources[::vk::ShaderStageFlagBits::eVertex]   = "textured.vert";
 		shaderSettings.sources[::vk::ShaderStageFlagBits::eFragment] = "textured.frag";
+		shaderSettings.printDebugInfo = false;
 		auto mShaderTextured = std::make_shared<of::vk::Shader>( shaderSettings );
 
 		of::vk::GraphicsPipelineState pipeline;

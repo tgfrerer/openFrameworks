@@ -616,9 +616,81 @@ bool of::vk::Shader::createSetLayouts(){
 
 
 	}
-
-
+	
 	// ---------
+
+	// print out shader binding log, but only when compiled in debug mode.
+	if ( mSettings.printDebugInfo ){
+
+		std::ostringstream log;
+		log << "Shader Uniform Bindings: " << endl;
+
+		for ( const auto & descriptorSetPair : uniformSetLayouts ){
+			const auto & setId = descriptorSetPair.first;
+			const size_t indentLevel = 2;
+
+			log << std::string( indentLevel, ' ' )
+				<< " Set " << std::setw( 2 ) << setId << ": " << std::endl;
+
+			for ( const auto & bindingPair : descriptorSetPair.second ){
+				const size_t indentLevel = 6;
+
+				const auto & bindingNumber = bindingPair.first;
+				const auto & binding = bindingPair.second;
+
+				log << std::string( indentLevel, ' ' )
+					<< std::setw( 2 ) << std::right << binding.layoutBinding.binding;
+
+				if ( binding.layoutBinding.descriptorCount == 0 ){
+					log << " - UNUSED - " << std::endl;
+				} else{
+					log << "[" << std::setw( 3 ) << std::right << binding.layoutBinding.descriptorCount << "] : '" << binding.name << "'\t";
+				}
+
+				switch ( binding.layoutBinding.descriptorType ){
+					case ::vk::DescriptorType::eUniformBufferDynamic:
+						log << "Dynamic";
+						// fall through to uniformBuffer, as these two are similar.
+					case ::vk::DescriptorType::eUniformBuffer:
+					{
+						log << "UniformBuffer - ";
+						log << " Total Size : " << std::right << std::setw( 4 ) << binding.uboRange.storageSize << "B";
+						log << std::endl;
+
+						std::map< of::vk::Shader::UboMemberSubrange, std::string> reverseSubrangeMap;
+
+						for ( const auto & subrangePair : binding.uboRange.subranges ){
+							reverseSubrangeMap.insert( { subrangePair.second, subrangePair.first } );
+						};
+
+						for ( const auto & subrangePair : reverseSubrangeMap ){
+							const size_t indentLevel = 12;
+
+							const auto & name = subrangePair.second;
+							const auto & subrange = subrangePair.first;
+
+							log << std::string( indentLevel, ' ' )
+								<< "> " << std::setw( 40 ) << "'" + subrangePair.second + "'"
+								<< ", offset: " << std::setw( 5 ) << std::right << subrange.offset << "B"
+								<< ", size  : " << std::setw( 5 ) << std::right << subrange.range << "B"
+								<< std::endl;
+						}
+					}
+					break;
+					case ::vk::DescriptorType::eCombinedImageSampler:
+						log << "Combined Image Sampler";
+						break;
+					default:
+						break;
+				} // end switch binding.layoutBinding.descriptorType
+
+				log << std::endl;
+			}
+		}
+		ofLogNotice() << log.str();
+	}
+
+	// --------- build VkDescriptorSetLayouts
 	
 	mDescriptorSetsInfo.clear();
 	mDescriptorSetsInfo.reserve( uniformSetLayouts.size() );
@@ -706,7 +778,6 @@ void of::vk::Shader::getSetAndBindingNumber( const spirv_cross::Compiler & compi
 // ----------------------------------------------------------------------
 
 void of::vk::Shader::reflectVertexInputs(const spirv_cross::Compiler & compiler, of::vk::Shader::VertexInfo& vertexInfo ){
-	ofLog() << "Vertex Attribute locations";
 	const auto shaderResources = compiler.get_shader_resources();
 
 	vertexInfo.attribute.resize( shaderResources.stage_inputs.size() );
@@ -723,8 +794,6 @@ void of::vk::Shader::reflectVertexInputs(const spirv_cross::Compiler & compiler,
 		if ( ( 1ull << spv::DecorationLocation ) & compiler.get_decoration_mask( attributeInput.id ) ){
 			location = compiler.get_decoration( attributeInput.id, spv::DecorationLocation );
 		}
-
-		ofLog() << " + " << std::setw( 2 ) << location << " : " << attributeInput.name;
 
 		vertexInfo.attributeNames[location] = attributeInput.name;
 
