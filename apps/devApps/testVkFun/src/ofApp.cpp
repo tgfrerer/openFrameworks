@@ -93,6 +93,8 @@ void ofApp::setupDrawCommands(){
 		shaderSettings.device = renderer->getVkDevice();
 		shaderSettings.sources[::vk::ShaderStageFlagBits::eVertex]   = "fullScreenQuad.vert";
 		shaderSettings.sources[::vk::ShaderStageFlagBits::eFragment] = "fullScreenQuad.frag";
+		shaderSettings.printDebugInfo = true;
+
 		auto mShaderFullScreenQuad = std::make_shared<of::vk::Shader>( shaderSettings );
 		
 		of::vk::GraphicsPipelineState pipeline;
@@ -115,7 +117,8 @@ void ofApp::setupDrawCommands(){
 		shaderSettings.device = renderer->getVkDevice();
 		shaderSettings.sources[::vk::ShaderStageFlagBits::eVertex]   = "textured.vert";
 		shaderSettings.sources[::vk::ShaderStageFlagBits::eFragment] = "textured.frag";
-		shaderSettings.printDebugInfo = false;
+		shaderSettings.printDebugInfo = true;
+
 		auto mShaderTextured = std::make_shared<of::vk::Shader>( shaderSettings );
 
 		of::vk::GraphicsPipelineState pipeline;
