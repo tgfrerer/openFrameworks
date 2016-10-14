@@ -215,7 +215,7 @@ bool of::vk::Shader::getSpirV( const ::vk::ShaderStageFlagBits shaderStage, cons
 		} else{
 			spirCode.clear();
 			spirCode.assign( module.cbegin(), module.cend() );
-			// ofLogNotice() << "OK \tShader compile: " << fileName;
+			ofLogNotice() << "OK \tShader compile: " << fileName;
 			return true;
 		}
 		
