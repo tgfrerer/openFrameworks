@@ -375,20 +375,26 @@ bool of::vk::Shader::reflectUBOs( const spirv_cross::Compiler & compiler, const 
 			auto & storedUniform = insertion.first->second;
 
 			if ( storedUniform.uboRange.storageSize != tmpUniform.uboRange.storageSize ){
+				of::utils::setConsoleColor( 12 /* red */ );
 				ofLogWarning() << "Ubo: '" << ubo.name << "' re-defined with incompatible storage size.";
+				of::utils::resetConsoleColor();
 				// !TODO: try to recover.
 				return false;
 			} else if ( storedUniform.setNumber != tmpUniform.setNumber
 				|| storedUniform.layoutBinding.binding != tmpUniform.layoutBinding.binding ){
+				of::utils::setConsoleColor( 14 /* yellow */ );
 				ofLogWarning() << "Ubo: '" << ubo.name << "' re-defined with inconsistent set/binding numbers.";
+				of::utils::resetConsoleColor();
 			} else {
 				// Merge stage flags
 				storedUniform.layoutBinding.stageFlags |= tmpUniform.layoutBinding.stageFlags;
 				// Merge memberRanges
 				ostringstream overlapMsg;
 				if ( checkMemberRangesOverlap( storedUniform.uboRange.subranges, tmpUniform.uboRange.subranges, overlapMsg ) ){
+					of::utils::setConsoleColor( 14 /* yellow */ );
 					// member ranges overlap: print diagnostic message
 					ofLogWarning() << "Inconsistency found parsing UBO: '" << ubo.name << "': " << std::endl << overlapMsg.str();
+					of::utils::resetConsoleColor();
 				}
 				// insert any new subranges if necesary.
 				storedUniform.uboRange.subranges.insert( tmpUniform.uboRange.subranges.begin(), tmpUniform.uboRange.subranges.end() );
@@ -429,7 +435,9 @@ bool of::vk::Shader::reflectSamplers( const spirv_cross::Compiler & compiler, co
 			// otherwise print a warning and return false.
 			if ( result.first->second.layoutBinding.binding != tmpUniform.layoutBinding.binding
 				|| result.first->second.setNumber != tmpUniform.setNumber ){
+				of::utils::setConsoleColor( 14 /* yellow */ );
 				ofLogWarning() << "Uniform: '" << sampledImage.name << "' is declared multiple times, but with inconsistent binding/set number.";
+				of::utils::resetConsoleColor();
 				return false;
 			}
 		}
@@ -512,7 +520,9 @@ bool of::vk::Shader::createSetLayouts(){
 				placeHolderUniform.layoutBinding.binding = i;
 				auto insertionResult = bindings.insert( { i, placeHolderUniform } );
 				if ( insertionResult.second == true ){
+					of::utils::setConsoleColor( 14 /* yellow */ );
 					ofLogWarning() << "Detected sparse bindings: gap at set: " << setNumber << ", binding: " << i << ". This could slow the GPU down.";
+					of::utils::resetConsoleColor();
 				} 
 			}
 		}
@@ -577,7 +587,9 @@ bool of::vk::Shader::createSetLayouts(){
 						auto & insertionResult = mUniformDictionary.insert( { memberName, uboMemberUniformId } );
 
 						if ( insertionResult.second == false ){
+							of::utils::setConsoleColor( 14 /* yellow */ );
 							ofLogWarning() << "Uniform Ubo member name not uniqe: '" << memberName << "'.";
+							of::utils::resetConsoleColor();
 						}
 						
 					}
@@ -817,7 +829,9 @@ void of::vk::Shader::reflectVertexInputs(const spirv_cross::Compiler & compiler,
 			vertexInfo.attribute[location].format = ::vk::Format::eR32G32B32A32Sfloat;	 // 4-part float
 			break;
 		default:
+			of::utils::setConsoleColor( 14 /* yellow */ );
 			ofLogWarning() << "Could not determine vertex attribute type for: " << attributeInput.name;
+			of::utils::resetConsoleColor();
 			break;
 		}
 	}
