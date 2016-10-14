@@ -367,7 +367,7 @@ bool of::vk::Shader::reflectUBOs( const spirv_cross::Compiler & compiler, const 
 		// Let's see if an uniform buffer with this fingerprint has already been seen.
 		// If yes, it would already be in uniformStore.
 
-		auto insertion = mUniforms.insert( { ubo.name, std::move( tmpUniform )  } );
+		auto insertion = mUniforms.insert( { ubo.name, tmpUniform } );
 
 		if (insertion.second == false ){
 			// Uniform with this key already existed, nothing was inserted.
