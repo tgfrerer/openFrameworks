@@ -317,7 +317,17 @@ void of::vk::Shader::reflect(
 
 // ----------------------------------------------------------------------
 
+size_t calcMaxRange(){
+	of::vk::UniformId_t uniformT;
+	uniformT.dataRange = ~( 0ULL );
+	return uniformT.dataRange;
+}
+
+// ----------------------------------------------------------------------
+
 bool of::vk::Shader::reflectUBOs( const spirv_cross::Compiler & compiler, const ::vk::ShaderStageFlagBits & shaderStage ){
+
+	static const size_t maxRange = calcMaxRange();
 
 	auto uniformBuffers = compiler.get_shader_resources().uniform_buffers;
 
@@ -328,7 +338,14 @@ bool of::vk::Shader::reflectUBOs( const spirv_cross::Compiler & compiler, const 
 		tmpUniform.name = ubo.name;
 
 		tmpUniform.uboRange.storageSize = compiler.get_declared_struct_size( compiler.get_type( ubo.type_id ) );
-				
+
+		if ( tmpUniform.uboRange.storageSize > maxRange ){
+			of::utils::setConsoleColor( 14 /* yellow */ );
+			ofLogWarning() << "Ubo '" << ubo.name << "' is too large. Consider splitting it up. Size: " << tmpUniform.uboRange.storageSize;
+			of::utils::resetConsoleColor();
+		}
+
+
 		tmpUniform.layoutBinding
 			.setDescriptorCount( 1 )                                            /* Must be 1 for ubo bindings, as arrays of ubos are not allowed */
 			.setDescriptorType( ::vk::DescriptorType::eUniformBufferDynamic )   /* All our uniform buffer are dynamic */

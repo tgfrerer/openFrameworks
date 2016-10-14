@@ -128,16 +128,20 @@ struct DescriptorSetData_t
 
 struct UniformId_t
 {
+
 	union
 	{
+		// this is currently tightly packed to span 64 bits, but it should be possible to 
+		// make it span 128 bits if necessary.
+
 		uint64_t id = 0;
 		struct
 		{
-			uint64_t setIndex : 3;         // 0 ..              7 (maxBoundDescriptorSets is 8)
+			uint64_t setIndex        :  3; // 0 ..             7 (maxBoundDescriptorSets is 8)
 			uint64_t descriptorIndex : 14; // 0 ..        16'383 (index into DescriptorData_t::descriptors, per set)
-			uint64_t auxDataIndex : 14;    // 0 ..        32'768 (index into helper data vectors per descriptor type per set)
-			uint64_t dataOffset : 17;      // 0 ..        65'535
-			uint64_t dataRange : 16;       // 0 ..        65'535
+			uint64_t dataOffset      : 21; // 0 ..     2'097'152 (we want to keep this large as it limits the addressable memory range for fixed offset descriptors)
+			uint64_t dataRange       : 12; // 0 ..         4'095 (max number of bytes per ubo is 2048)
+			uint64_t auxDataIndex    : 14; // 0 ..        16'383 (index into helper data vectors per descriptor type per set)
 		};
 	};
 
