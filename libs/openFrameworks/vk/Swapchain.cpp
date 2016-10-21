@@ -53,12 +53,19 @@ void Swapchain::setup(
 	// use guaranteed fallback mode (FIFO) if preferred mode couldn't be found.
 	VkPresentModeKHR swapchainPresentMode = VK_PRESENT_MODE_FIFO_KHR;
 
+	bool presentModeSwitchSuccessful = false;
 	for ( auto & p : presentModes ){
 		if ( p == presentMode_ ){
 			swapchainPresentMode = p;
+			presentModeSwitchSuccessful = true;
 			break;
 		}
 	}
+
+	if (!presentModeSwitchSuccessful){
+		ofLogWarning() << "Could not switch to selected Swapchain Present Mode. Falling back to FIFO...";
+	}
+
 	// write current present mode back to reference from parameter
 	// so caller can find out whether chosen present mode has been 
 	// applied successfully.
