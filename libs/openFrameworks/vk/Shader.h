@@ -343,7 +343,7 @@ public:
 	const std::shared_ptr<::vk::DescriptorSetLayout>& getDescriptorSetLayout( size_t setId ) const;
 
 	// get all set layouts 
-	const std::vector<std::shared_ptr<::vk::DescriptorSetLayout>>& of::vk::Shader::getDescriptorSetLayouts() const;
+	const std::vector<std::shared_ptr<::vk::DescriptorSetLayout>>& getDescriptorSetLayouts() const;
 	
 	// returns hash of spirv code over all shader shader stages
 	const uint64_t getShaderCodeHash();

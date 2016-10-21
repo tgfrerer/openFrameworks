@@ -583,8 +583,8 @@ bool of::vk::Shader::createSetLayouts(){
 						uboMemberUniformId.dataRange  = memberRange.range;
 						
 						mUniformDictionary.insert( { uniform.name + '.' + memberName, uboMemberUniformId } );
-						
-						auto & insertionResult = mUniformDictionary.insert( { memberName, uboMemberUniformId } );
+
+						auto insertionResult = mUniformDictionary.insert( { memberName, uboMemberUniformId } );
 
 						if ( insertionResult.second == false ){
 							of::utils::setConsoleColor( 14 /* yellow */ );
