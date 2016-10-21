@@ -263,7 +263,9 @@ void ofVkRenderer::setupDepthStencil(){
 
 // ----------------------------------------------------------------------
 
-::vk::RenderPass&& ofVkRenderer::generateDefaultRenderPass() const {
+::vk::RenderPass ofVkRenderer::generateDefaultRenderPass() const {
+
+	::vk::RenderPass result = nullptr;
 
 	// Note that we keep initialLayout of the color attachment eUndefined ==
 	// `VK_IMAGE_LAYOUT_UNDEFINED` -- we do this to say we effectively don't care
@@ -337,7 +339,9 @@ void ofVkRenderer::setupDepthStencil(){
 		.setDependencyCount ( dependencies.size() )
 		.setPDependencies   ( dependencies.data() );
 
-	return mDevice.createRenderPass( renderPassCreateInfo );
+	result = mDevice.createRenderPass( renderPassCreateInfo );
+
+	return result;
 }
 
 // ----------------------------------------------------------------------

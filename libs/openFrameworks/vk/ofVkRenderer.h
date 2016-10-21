@@ -325,7 +325,7 @@ public:
 	const ::vk::Instance& getInstance();
 	::vk::SurfaceKHR& getWindowSurface();
 
-	::vk::RenderPass&& generateDefaultRenderPass() const;
+	::vk::RenderPass generateDefaultRenderPass() const;
 
 	const std::shared_ptr<of::vk::RenderContext> & getDefaultContext();
 
