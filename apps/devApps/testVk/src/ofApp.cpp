@@ -69,23 +69,23 @@ void ofApp::setup(){
 		of::vk::Shader::Settings shaderSettings{
 			renderer->getShaderManager(),
 			{
-				{ VK_SHADER_STAGE_VERTEX_BIT  , "default.vert" },
-				{ VK_SHADER_STAGE_FRAGMENT_BIT, "default.frag" },
+				{ ::vk::ShaderStageFlagBits::eVertex  , "default.vert" },
+				{ ::vk::ShaderStageFlagBits::eFragment, "default.frag" },
 			}
 		};
 		// shader creation makes shader reflect. 
 		mShaderDefault = std::make_shared<of::vk::Shader>( shaderSettings );
 		
-		shaderSettings.sources[VK_SHADER_STAGE_VERTEX_BIT]   = "normalcolor.vert";
-		shaderSettings.sources[VK_SHADER_STAGE_FRAGMENT_BIT] = "normalcolor.frag";
+		shaderSettings.sources[::vk::ShaderStageFlagBits::eVertex]   = "normalcolor.vert";
+		shaderSettings.sources[::vk::ShaderStageFlagBits::eFragment] = "normalcolor.frag";
 		mShaderNormals = std::make_shared<of::vk::Shader>( shaderSettings );
 		
-		shaderSettings.sources[VK_SHADER_STAGE_VERTEX_BIT]   = "lambert.vert";
-		shaderSettings.sources[VK_SHADER_STAGE_FRAGMENT_BIT] = "lambert.frag";
+		shaderSettings.sources[::vk::ShaderStageFlagBits::eVertex]   = "lambert.vert";
+		shaderSettings.sources[::vk::ShaderStageFlagBits::eFragment] = "lambert.frag";
 		mShaderLambert = std::make_shared<of::vk::Shader>( shaderSettings );
 
-		shaderSettings.sources[VK_SHADER_STAGE_VERTEX_BIT] = "textured.vert";
-		shaderSettings.sources[VK_SHADER_STAGE_FRAGMENT_BIT] = "textured.frag";
+		shaderSettings.sources[::vk::ShaderStageFlagBits::eVertex] = "textured.vert";
+		shaderSettings.sources[::vk::ShaderStageFlagBits::eFragment] = "textured.frag";
 		mShaderTextured = std::make_shared<of::vk::Shader>( shaderSettings );
 
 	}
@@ -163,12 +163,13 @@ void ofApp::drawModeExplicit(){
 	context
 		.pushMatrix()
 		.translate( { 0,0,-10 } )
-		.bindTexture(  mVkTex, "tex_0" )
+		.bindTexture( mVkTex, "tex_0" )
 		.setUniform( "globalColor", ofFloatColor::white )
 		.setShader( mShaderTextured )
-		.setPolyMode( VK_POLYGON_MODE_FILL )
+		.setPolyMode( ::vk::PolygonMode::eFill )
 		.draw( cmd, rect )
 		.popMatrix();
+		
 
 	context
 		.pushMatrix()
@@ -180,7 +181,7 @@ void ofApp::drawModeExplicit(){
 
 	context
 		.setShader( mShaderDefault )
-		.setPolyMode( VK_POLYGON_MODE_LINE )
+		.setPolyMode( ::vk::PolygonMode::eLine )
 		.pushMatrix()
 		.setUniform( "globalColor", ofFloatColor::white )
 		.translate( { -200, -200, -200 } )
@@ -197,7 +198,7 @@ void ofApp::drawModeExplicit(){
 	context
 		.setShader( mShaderDefault )
 		.pushMatrix()
-		.setPolyMode( VK_POLYGON_MODE_POINT )
+		.setPolyMode( ::vk::PolygonMode::ePoint )
 		.translate( { 200, -200, 200 } )
 		.draw(cmd, ico )
 		.popMatrix();
@@ -205,12 +206,12 @@ void ofApp::drawModeExplicit(){
 	context
 		.setUniform( "globalColor", ofFloatColor::red )
 		.setShader( mShaderLambert )
-		.setPolyMode( VK_POLYGON_MODE_FILL )
+		.setPolyMode( ::vk::PolygonMode::eFill )
 		.draw( cmd, mFontMesh );
 
 	context
 		.setShader( mShaderDefault )
-		.setPolyMode( VK_POLYGON_MODE_FILL )
+		.setPolyMode( ::vk::PolygonMode::eFill )
 		.setUniform( "globalColor", ofFloatColor::darkBlue )
 		.pushMatrix()
 	    .rotateRad( ( ofGetFrameNum() % 360 ) * DEG_TO_RAD, { 0.f,0.f,1.f } )

@@ -78,6 +78,7 @@ enum ofTargetPlatform{
     #define OF_TARGET_IPHONE OF_TARGET_IOS
 #endif 
 
+
 // Cross-platform deprecation warning
 #ifdef __GNUC__
 	// clang also has this defined. deprecated(message) is only for gcc>=4.5
@@ -922,16 +923,6 @@ enum ofDrawBitmapMode{
 	OF_BITMAPMODE_MODEL_BILLBOARD
 };
 
-/// \brief Sets the text encoding mode.
-/// 
-/// This is not currently used in the codebase, but the
-/// assumption is that will once again begin using this as we
-/// continue to work on our UTF8 implementation.
-enum ofTextEncoding{
-	OF_ENCODING_UTF8,
-	OF_ENCODING_ISO_8859_15
-};
-
 //#define OF_USE_LEGACY_MESH
 template<class V, class N, class C, class T>
 class ofMesh_;
@@ -956,3 +947,9 @@ using ofDefaultVertexType = ofDefaultVec3;
 using ofDefaultNormalType = ofDefaultVec3;
 using ofDefaultColorType = ofFloatColor;
 using ofDefaultTexCoordType = ofDefaultVec2;
+
+#if defined(TARGET_EMSCRIPTEN)
+	#define OF_USE_POCO 0
+#elif !defined(OF_USE_POCO)
+	#define OF_USE_POCO 1
+#endif

@@ -1,5 +1,15 @@
 #pragma once
-#include <vulkan/vulkan.h>
+
+#include <vulkan/vulkan.hpp>
+
+#include "vk/Swapchain.h"
+#include "vk/HelperTypes.h"
+#include "vk/BufferAllocator.h"
+#include "vk/ImageAllocator.h"
+#include "vk/DrawCommand.h"
+#include "vk/RenderBatch.h"
+#include "vk/Texture.h"
+
 #include "ofBaseTypes.h"
 #include "ofPolyline.h"
 #include "ofMatrix4x4.h"
@@ -8,14 +18,12 @@
 #include "ofBitmapFont.h"
 #include "ofPath.h"
 #include "ofMaterial.h"
-#include "vk/Swapchain.h"
-#include "vk/Context.h"
 #include "ofMesh.h"
 
 
-#define RENDERER_FUN_NOT_IMPLEMENTED {                  \
-	ofLog() << __FUNCTION__ << ": not yet implemented.";\
-};                                                      \
+#define RENDERER_FUN_NOT_IMPLEMENTED {                                   \
+	ofLogVerbose() << __FUNCTION__ << ": not implemented in VkRenderer.";\
+}                                                                        \
 
 
 class ofShapeTessellation;
@@ -23,10 +31,10 @@ class ofShapeTessellation;
 
 namespace of{
 namespace vk{
+	class RenderContext;
 	class Shader;
-	class ShaderManager;
-}
-};
+}	// end namespace of::vk
+};  // end namespace of
 
 
 class ofVkRenderer : public ofBaseRenderer
@@ -44,25 +52,21 @@ class ofVkRenderer : public ofBaseRenderer
 	ofPath mPath;
 	const ofAppBaseWindow * window;
 
-	mutable ofMesh mRectMesh;
-
 public:
 	static const string TYPE;
 
 	const struct Settings
 	{
-		uint32_t vkVersion = 1 << 22;                                  // target version
-		uint32_t numVirtualFrames = 0;                                 // number of virtual frames to allocate and to produce - set this through vkWindowSettings
-		uint32_t numSwapchainImages = 0;                               // number of swapchain images to aim for (api gives no guarantee for this.)
-		VkPresentModeKHR swapchainType = VK_PRESENT_MODE_FIFO_KHR;	   // selected swapchain type (api only guarantees FIFO)
-		bool useDebugLayers = false;                                    // whether to use vulkan debug layers
+		uint32_t vkVersion = 1 << 22;                                      // target version
+		uint32_t numVirtualFrames = 0;                                     // number of virtual frames to allocate and to produce - set this through vkWindowSettings
+		uint32_t numSwapchainImages = 0;                                   // number of swapchain images to aim for (api gives no guarantee for this.)
+		::vk::PresentModeKHR swapchainType = ::vk::PresentModeKHR::eFifo;	   // selected swapchain type (api only guarantees FIFO)
+		bool useDebugLayers = false;                                       // whether to use vulkan debug layers
 	} mSettings;
 
 	ofVkRenderer( const ofAppBaseWindow * window, Settings settings ); 
 	
 	void setup();
-	void setupDefaultContext();
-	void resetDefaultContext();
 	virtual ~ofVkRenderer() override;
 
 	virtual const string & getType() override{
@@ -74,11 +78,9 @@ public:
 
 	const uint32_t getSwapChainSize();
 
-	const VkRenderPass& getDefaultRenderPass();
-
 	virtual void draw( const ofPolyline & poly )const RENDERER_FUN_NOT_IMPLEMENTED;
 	virtual void draw( const ofPath & shape ) const RENDERER_FUN_NOT_IMPLEMENTED;
-	virtual void draw( const ofMesh & vertexData, ofPolyRenderMode renderType, bool useColors, bool useTextures, bool useNormals ) const;
+	virtual void draw( const ofMesh & vertexData, ofPolyRenderMode renderType, bool useColors, bool useTextures, bool useNormals ) const RENDERER_FUN_NOT_IMPLEMENTED;
 	virtual void draw( const of3dPrimitive& model, ofPolyRenderMode renderType ) const RENDERER_FUN_NOT_IMPLEMENTED;
 	virtual void draw( const ofNode& model ) const RENDERER_FUN_NOT_IMPLEMENTED;
 	virtual void draw( const ofImage & image, float x, float y, float z, float w, float h, float sx, float sy, float sw, float sh ) const RENDERER_FUN_NOT_IMPLEMENTED;
@@ -106,22 +108,22 @@ public:
 	virtual void setCoordHandedness( ofHandednessType handedness ) RENDERER_FUN_NOT_IMPLEMENTED;
 	virtual ofHandednessType getCoordHandedness() const override;
 
-	virtual void pushMatrix() override;
-	virtual void popMatrix() override;
+	virtual void pushMatrix() override RENDERER_FUN_NOT_IMPLEMENTED;
+	virtual void popMatrix() override RENDERER_FUN_NOT_IMPLEMENTED;
 
-	virtual glm::mat4x4 getCurrentMatrix( ofMatrixMode matrixMode_ ) const override;
-	virtual glm::mat4x4 getCurrentOrientationMatrix() const override;
+	virtual glm::mat4x4 getCurrentMatrix( ofMatrixMode matrixMode_ ) const;
+	virtual glm::mat4x4 getCurrentOrientationMatrix() const;
 
-	virtual void translate( float x, float y, float z = 0 );;
+	virtual void translate( float x, float y, float z = 0 ) RENDERER_FUN_NOT_IMPLEMENTED;
 
-	virtual void translate( const glm::vec3& p );
+	virtual void translate( const glm::vec3& p ) RENDERER_FUN_NOT_IMPLEMENTED;
 	virtual void scale( float xAmnt, float yAmnt, float zAmnt = 1 ) RENDERER_FUN_NOT_IMPLEMENTED;
 
-	virtual void rotateRad( float degrees, float axisX, float axisY, float axisZ ) override;
-	virtual void rotateXRad( float degrees ) override;
-	virtual void rotateYRad( float degrees ) override;
-	virtual void rotateZRad( float degrees ) override;
-	virtual void rotateRad( float degrees ) override;
+	virtual void rotateRad( float degrees, float axisX, float axisY, float axisZ ) RENDERER_FUN_NOT_IMPLEMENTED;
+	virtual void rotateXRad( float degrees ) RENDERER_FUN_NOT_IMPLEMENTED;
+	virtual void rotateYRad( float degrees ) RENDERER_FUN_NOT_IMPLEMENTED;
+	virtual void rotateZRad( float degrees ) RENDERER_FUN_NOT_IMPLEMENTED;
+	virtual void rotateRad( float degrees ) RENDERER_FUN_NOT_IMPLEMENTED;
 
 	virtual void matrixMode( ofMatrixMode mode ) RENDERER_FUN_NOT_IMPLEMENTED;
 
@@ -137,14 +139,12 @@ public:
 	virtual glm::mat4x4 getCurrentViewMatrix() const override;
 	virtual glm::mat4x4 getCurrentNormalMatrix() const override;
 
-	virtual void bind( const ofCamera & camera, const ofRectangle & viewport );
-	virtual void unbind( const ofCamera & camera );
+	virtual void bind( const ofCamera & camera, const ofRectangle & viewport ) RENDERER_FUN_NOT_IMPLEMENTED;
+	virtual void unbind( const ofCamera & camera ) RENDERER_FUN_NOT_IMPLEMENTED;
 
 	virtual void setupGraphicDefaults()RENDERER_FUN_NOT_IMPLEMENTED;
 
-	virtual void setupScreen(){
-		// noop
-	};
+	virtual void setupScreen()RENDERER_FUN_NOT_IMPLEMENTED;
 
 	void resizeScreen( int w, int h );
 
@@ -152,7 +152,7 @@ public:
 
 	virtual ofRectMode getRectMode() override;
 
-	virtual void setFillMode( ofFillFlag fill );
+	virtual void setFillMode( ofFillFlag fill ) RENDERER_FUN_NOT_IMPLEMENTED;
 
 	virtual ofFillFlag getFillMode() override;
 
@@ -166,16 +166,16 @@ public:
 	virtual void enableAntiAliasing() RENDERER_FUN_NOT_IMPLEMENTED;
 	virtual void disableAntiAliasing() RENDERER_FUN_NOT_IMPLEMENTED;
 
-	virtual void setColor( int r, int g, int b );
-	virtual void setColor( int r, int g, int b, int a );
-	virtual void setColor( const ofColor & color );
-	virtual void setColor( const ofColor & color, int _a );
-	virtual void setColor( int gray );
-	virtual void setHexColor( int hexColor );;
+	virtual void setColor( int r, int g, int b ) RENDERER_FUN_NOT_IMPLEMENTED;
+	virtual void setColor( int r, int g, int b, int a ) RENDERER_FUN_NOT_IMPLEMENTED;
+	virtual void setColor( const ofColor & color ) RENDERER_FUN_NOT_IMPLEMENTED;
+	virtual void setColor( const ofColor & color, int _a ) RENDERER_FUN_NOT_IMPLEMENTED;
+	virtual void setColor( int gray ) RENDERER_FUN_NOT_IMPLEMENTED;
+	virtual void setHexColor( int hexColor ) RENDERER_FUN_NOT_IMPLEMENTED;
 
 	virtual void setBitmapTextMode( ofDrawBitmapMode mode ) RENDERER_FUN_NOT_IMPLEMENTED;
 
-	virtual ofColor getBackgroundColor() override;
+	virtual ofColor getBackgroundColor();
 	virtual void setBackgroundColor( const ofColor & c ) RENDERER_FUN_NOT_IMPLEMENTED;
 
 	virtual void background( const ofColor & c ) RENDERER_FUN_NOT_IMPLEMENTED;
@@ -192,7 +192,7 @@ public:
 	virtual void clearAlpha() RENDERER_FUN_NOT_IMPLEMENTED;
 
 	virtual void drawLine( float x1, float y1, float z1, float x2, float y2, float z2 ) const RENDERER_FUN_NOT_IMPLEMENTED;
-	virtual void drawRectangle( float x, float y, float z, float w, float h ) const;
+	virtual void drawRectangle( float x, float y, float z, float w, float h ) const RENDERER_FUN_NOT_IMPLEMENTED;
 	virtual void drawTriangle( float x1, float y1, float z1, float x2, float y2, float z2, float x3, float y3, float z3 ) const RENDERER_FUN_NOT_IMPLEMENTED;
 	virtual void drawCircle( float x, float y, float z, float radius ) const RENDERER_FUN_NOT_IMPLEMENTED;
 	virtual void drawEllipse( float x, float y, float z, float width, float height ) const RENDERER_FUN_NOT_IMPLEMENTED;
@@ -200,7 +200,7 @@ public:
 	virtual void drawString( const ofTrueTypeFont & font, string text, float x, float y ) const RENDERER_FUN_NOT_IMPLEMENTED;
 
 	virtual ofPath & getPath() override;
-	virtual ofStyle getStyle() const override;
+	virtual ofStyle getStyle() const;
 	virtual void setStyle( const ofStyle & style ) RENDERER_FUN_NOT_IMPLEMENTED;
 	virtual void pushStyle() RENDERER_FUN_NOT_IMPLEMENTED;
 	virtual void popStyle() RENDERER_FUN_NOT_IMPLEMENTED;
@@ -216,123 +216,97 @@ public:
 private:
 
 
-	void createInstance();
-	void destroyInstance();
+	void                                   createInstance();
+	void                                   destroyInstance();
 
-	void  createDevice();
-	void destroyDevice();
+	void                                   createDevice();
+	void                                   destroyDevice();
 
-	void destroySurface();
+	void                                   destroySurface();
 
-	VkDebugReportCallbackEXT           mDebugReportCallback = nullptr;
-	VkDebugReportCallbackCreateInfoEXT mDebugCallbackCreateInfo = {};
+	VkDebugReportCallbackEXT               mDebugReportCallback = nullptr;
+	VkDebugReportCallbackCreateInfoEXT     mDebugCallbackCreateInfo = {};
 
-	void requestDebugLayers();
-	void createDebugLayers();
-	void destroyDebugLayers();
+	void                                   requestDebugLayers();
+	void                                   createDebugLayers();
+	void                                   destroyDebugLayers();
 
-	VkInstance                         mInstance                           = nullptr;  // vulkan loader instance
-	VkDevice                           mDevice                             = nullptr;  // virtual device
-	VkPhysicalDevice                   mPhysicalDevice                     = nullptr;  // actual GPU
-	VkPhysicalDeviceProperties         mPhysicalDeviceProperties = {};
-	VkPhysicalDeviceMemoryProperties   mPhysicalDeviceMemoryProperties;
+	::vk::Instance                         mInstance                           = nullptr;  // vulkan loader instance
+	::vk::Device                           mDevice                             = nullptr;  // virtual device
+	::vk::PhysicalDevice                   mPhysicalDevice                     = nullptr;  // actual GPU
+	::vk::PhysicalDeviceProperties         mPhysicalDeviceProperties = {};
+	::vk::PhysicalDeviceMemoryProperties   mPhysicalDeviceMemoryProperties;
 
-	std::vector<const char*>           mInstanceLayers;                                // debug layer list for instance
-	std::vector<const char*>           mInstanceExtensions;                            // debug layer list for device
-	std::vector<const char*>           mDeviceLayers;                                  // debug layer list for device
-	std::vector<const char*>           mDeviceExtensions;                              // debug layer list for device
+	std::vector<const char*>               mInstanceLayers;                                // debug layer list for instance
+	std::vector<const char*>               mInstanceExtensions;                            // debug layer list for device
+	std::vector<const char*>               mDeviceLayers;                                  // debug layer list for device
+	std::vector<const char*>               mDeviceExtensions;                              // debug layer list for device
 
-	uint32_t                           mVkGraphicsFamilyIndex = 0;
-
+	uint32_t                               mVkGraphicsFamilyIndex = 0;
+	std::shared_ptr<::vk::PipelineCache>   mPipelineCache;
 
 public:
 
 	// return handle to renderer's vkDevice
 	// CONSIDER: error checking for when device has not been aqcuired yet.
-	const VkDevice& getVkDevice() const;
+	const ::vk::Device& getVkDevice() const;
 
-	const VkPhysicalDeviceProperties& getVkPhysicalDeviceProperties() const;
+	const ::vk::PhysicalDeviceProperties& getVkPhysicalDeviceProperties() const;
+
+	const ::vk::PhysicalDeviceMemoryProperties& getVkPhysicalDeviceMemoryProperties() const;
 
 	// get memory allocation info for best matching memory type that matches any of the type bits and flags
-	bool  getMemoryAllocationInfo( const VkMemoryRequirements& memReqs, VkFlags memProps, VkMemoryAllocateInfo& memInfo ) const;
-
-	// get draw command pool
-	const VkCommandPool& getCommandPool() const;
-
-	// get draw command buffer
-	const VkCommandBuffer& getCurrentDrawCommandBuffer() const;
+	bool  getMemoryAllocationInfo( const ::vk::MemoryRequirements& memReqs, ::vk::MemoryPropertyFlags memProps, ::vk::MemoryAllocateInfo& memInfo ) const;
 
 	// get current draw queue (careful: access is not thread-safe!)
-	const VkQueue& getQueue() const;
+	const ::vk::Queue& getQueue() const;
 
-	const shared_ptr<of::vk::Context>& getDefaultContext();
-
-	void setDefaultContext( std::shared_ptr<of::vk::Context>& defaultContext );
-
-	shared_ptr<of::vk::ShaderManager>& getShaderManager();
-
-	// Return number of virtual frames (n.b. that's not swapchain frames) for this renderer
+	// Return requested number of virtual frames (n.b. that's not swapchain frames) for this renderer
 	// virtual frames are frames that are produced and submitted to the swapchain.
 	// Once submitted, they are re-used as soon as their respective fence signals that
 	// they have finished rendering.
 	const size_t getVirtualFramesCount();
 
+	const std::shared_ptr<::vk::PipelineCache>& getPipelineCache();
+
 private:
 
 	ofRectangle mViewport;
 
-	VkCommandPool            mDrawCommandPool = nullptr;
-	
-	struct FrameResources
-	{
-		VkCommandBuffer                       cmd                     = nullptr;
-		VkSemaphore                           semaphoreImageAcquired  = nullptr;
-		VkSemaphore                           semaphoreRenderComplete = nullptr;
-		VkFence                               fence                   = nullptr;
-		VkFramebuffer                         framebuffer             = nullptr;
-	};
-
-	std::vector<FrameResources> mFrameResources; // one frame resource per virtual frame
-	uint32_t                    mFrameIndex = 0; // index of frame currently in production
-
-	VkRenderPass                mRenderPass = nullptr; /*main renderpass*/ 
-
-
-	void                     setupFrameResources();
+	::vk::CommandPool mSetupCommandPool;
 
 	void                     querySurfaceCapabilities();
-	void                     createCommandPool();
-
+	void                     createSetupCommandPool();
+	
 	void                     setupSwapChain();
 	void                     setupDepthStencil();
-	void                     setupRenderPass();
+	void                     setupDefaultContext();
 	
-	void                     setupFrameBuffer(uint32_t swapchainImageIndex);
-	void                     flushSetupCommandBuffer(VkCommandBuffer cmd);
+	void                     attachSwapChainImages(uint32_t swapchainImageIndex);
 
 
 	// our main (primary) gpu queue. all commandbuffers are submitted to this queue
 	// as are present commands.
-	VkQueue	mQueue = nullptr;
+	::vk::Queue	mQueue = nullptr;
 
 	// the actual window drawing surface to actually really show something on screen.
 	// this is set externally using GLFW.
-	VkSurfaceKHR mWindowSurface = nullptr;	
+	::vk::SurfaceKHR mWindowSurface = nullptr;
 
-	VkSurfaceFormatKHR mWindowColorFormat = {};
+	::vk::SurfaceFormatKHR mWindowColorFormat = {};
 
 	// Depth buffer format
 	// Depth format is selected during Vulkan initialization, in createDevice()
-	VkFormat mDepthFormat;
+	::vk::Format mDepthFormat;
 
 	// our depth stencil: 
 	// we only need one since there is only ever one frame in flight.
 	// !TODO: maybe move this into swapchain
 	struct DepthStencilResource
 	{
-		VkImage image      = nullptr;
-		VkDeviceMemory mem = nullptr;
-		VkImageView view   = nullptr;
+		::vk::Image image      = nullptr;
+		::vk::DeviceMemory mem = nullptr;
+		::vk::ImageView view   = nullptr;
 	};
 
 	// one depth stencil image per swapchain frame
@@ -341,95 +315,59 @@ private:
 	// vulkan swapchain
 	Swapchain mSwapchain;
 
-	// context used for implicit rendering
-	// reset this context if you don't want explicit rendering
-	// but want to use your own.
-	std::shared_ptr<of::vk::Context> mDefaultContext;
-
-	// shader manager - this should be a unique object.
-	std::shared_ptr<of::vk::ShaderManager> mShaderManager;
-
 	uint32_t mWindowWidth = 0;
 	uint32_t mWindowHeight = 0;
 
+	std::shared_ptr<of::vk::RenderContext> mDefaultContext;
+
 public:
 
-	const VkInstance& getInstance();
-	const VkSurfaceKHR& getWindowSurface();
+	const ::vk::Instance& getInstance();
+	::vk::SurfaceKHR& getWindowSurface();
 
-	friend class of::vk::Context;
+	::vk::RenderPass&& generateDefaultRenderPass() const;
+
+	const std::shared_ptr<of::vk::RenderContext> & getDefaultContext();
+
+	const ::vk::CommandPool& getSetupCommandPool() const;
+
 };
 
 // ----------------------------------------------------------------------
 // inline methods
 
-inline const VkDevice& ofVkRenderer::getVkDevice() const{
+inline const ::vk::Device& ofVkRenderer::getVkDevice() const{
 	return mDevice;
 };
 
-inline const VkPhysicalDeviceProperties& ofVkRenderer::getVkPhysicalDeviceProperties() const{
+inline const ::vk::PhysicalDeviceProperties& ofVkRenderer::getVkPhysicalDeviceProperties() const{
 	return mPhysicalDeviceProperties;
 }
 
-inline const shared_ptr<of::vk::Context>& ofVkRenderer::getDefaultContext(){
+inline const::vk::PhysicalDeviceMemoryProperties & ofVkRenderer::getVkPhysicalDeviceMemoryProperties() const{
+	return mPhysicalDeviceMemoryProperties;
+}
+
+
+inline const size_t ofVkRenderer::getVirtualFramesCount(){
+	return mSettings.numVirtualFrames;
+}
+
+inline const std::shared_ptr<of::vk::RenderContext>& ofVkRenderer::getDefaultContext(){
 	return mDefaultContext;
 }
 
-inline void ofVkRenderer::setDefaultContext( std::shared_ptr<of::vk::Context>& defaultContext ){
-	mDefaultContext = defaultContext;
+
+inline const::vk::CommandPool & ofVkRenderer::getSetupCommandPool() const{
+	return mSetupCommandPool;
 }
 
-inline shared_ptr<of::vk::ShaderManager>& ofVkRenderer::getShaderManager(){
-	return mShaderManager;
-}
-
-inline const size_t ofVkRenderer::getVirtualFramesCount(){
-	return mFrameResources.size();
-}
-
-inline const VkCommandPool& ofVkRenderer::getCommandPool() const{
-	return mDrawCommandPool;
-}
-
-inline const VkCommandBuffer& ofVkRenderer::getCurrentDrawCommandBuffer() const{
-	if ( mFrameIndex < mFrameResources.size() ){
-		return mFrameResources[mFrameIndex].cmd;
-	} else{
-		static VkCommandBuffer errorCmdBuffer = nullptr;
-		ofLogError() << "No current draw command buffer";
-		return errorCmdBuffer;
-	}
-}
-
-inline const VkQueue& ofVkRenderer::getQueue() const{
+inline const ::vk::Queue& ofVkRenderer::getQueue() const{
 	return mQueue;
-}
-
-
-
-inline void ofVkRenderer::translate( float x, float y, float z ){
-	translate( { x,y,z } );
-}
-
-inline void ofVkRenderer::setColor( int r, int g, int b ){
-	setColor( ofColor( r, g, b, 255.f ) );
-}
-
-inline void ofVkRenderer::setColor( int r, int g, int b, int a ){
-	setColor( ofColor( r, g, b, a ) );
-}
-inline void ofVkRenderer::setColor( const ofColor & color, int _a ){
-	setColor( ofColor( color.r, color.g, color.b, _a ) );
-}
-
-inline void ofVkRenderer::setColor( int gray ){
-	setColor( ofColor( gray ) );
-}
-
-inline void ofVkRenderer::setHexColor( int hexColor ){
-	setColor( ofColor::fromHex( hexColor ) );
 }
 
 // ----------------------------------------------------------------------
 // clean up macros
-#undef RENDERER_FUN_NOT_IMPLEMENTED
+#ifdef RENDERER_FUN_NOT_IMPLEMENTED
+	#undef RENDERER_FUN_NOT_IMPLEMENTED
+#endif

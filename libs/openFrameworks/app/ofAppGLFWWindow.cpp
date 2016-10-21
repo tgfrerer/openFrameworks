@@ -73,7 +73,9 @@ void ofAppGLFWWindow::close(){
 		glfwSetWindowSizeCallback( windowP, nullptr );
 		glfwSetWindowCloseCallback( windowP, nullptr );
 		glfwSetScrollCallback( windowP, nullptr );
+#if GLFW_VERSION_MAJOR>3 || GLFW_VERSION_MINOR>=1
 		glfwSetDropCallback( windowP, nullptr );
+#endif
 		//hide the window before we destroy it stops a flicker on OS X on exit.
 		glfwHideWindow(windowP);
 		glfwDestroyWindow(windowP);
@@ -160,6 +162,8 @@ void ofAppGLFWWindow::setup(const ofGLFWWindowSettings & _settings){
 		// write the window size back in our settings 
 		glfwGetWindowSize( windowP, &settings.width, &settings.height );
 
+		currentW = settings.width;
+		currentH = settings.height;
 	}
 	else{
 		ofLog() << "Vulkan not supported.";
@@ -340,7 +344,9 @@ void ofAppGLFWWindow::setup(const ofGLFWWindowSettings & _settings){
 	glfwSetWindowSizeCallback(windowP, resize_cb);
 	glfwSetWindowCloseCallback(windowP, exit_cb);
 	glfwSetScrollCallback(windowP, scroll_cb);
-	glfwSetDropCallback(windowP, drop_cb);
+#if GLFW_VERSION_MAJOR>3 || GLFW_VERSION_MINOR>=1
+		glfwSetDropCallback( windowP, drop_cb );
+#endif
 }
 
 //------------------------------------------------------------
@@ -1434,7 +1440,7 @@ VkResult ofAppGLFWWindow::createVkSurface(){
 	// create a window surface for this window, 
 	// and store the pointer to it with the renderer.
 	auto r = dynamic_pointer_cast<ofVkRenderer>( currentRenderer );
-	return glfwCreateWindowSurface( r->getInstance(), windowP, VK_NULL_HANDLE, const_cast<VkSurfaceKHR*>( &( r->getWindowSurface() ) ) );
+	return glfwCreateWindowSurface( r->getInstance(), windowP, VK_NULL_HANDLE, reinterpret_cast<VkSurfaceKHR*>( &( r->getWindowSurface() ) ) );
 }
 
 //------------------------------------------------------------

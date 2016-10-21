@@ -1,6 +1,5 @@
 #pragma once
-#include "vulkan/vulkan.h"
-#include "ofPixels.h"
+#include "vulkan/vulkan.hpp"
 
 namespace of{
 namespace vk{
@@ -11,72 +10,33 @@ namespace vk{
 
 class Texture
 {
-public:
-	struct TexData
-	{
-		// All data neccessary to describe a Vulkan texture 
-		// Q: how are mip levels dealt with?
-
-		VkImage           image       = nullptr;
-		VkDeviceMemory    mem         = nullptr;
-		VkImageView       view        = nullptr;
-		VkSampler         sampler     = nullptr;
-
-		int32_t           tex_width   = 0;
-		int32_t           tex_height  = 0;
-	};
-
 private:
-	TexData mTexData;
-	VkDevice mDevice = nullptr;
+	
+	const ::vk::Sampler     mSampler     = nullptr;
+	const ::vk::ImageView   mImageView   = nullptr;
+	const ::vk::ImageLayout mImageLayout = ::vk::ImageLayout::eShaderReadOnlyOptimal;
+
+	const ::vk::Device      mDevice;
+
+	Texture() = delete;
 
 public:
 
-	Texture(){
-	};
-
-	VkSampler getVkSampler(){
-		return mTexData.sampler;
+	Texture(const ::vk::Device& device_, const ::vk::Image & image_);
+	
+	const ::vk::Sampler& getSampler(){
+		return mSampler;
 	}
 
-	VkImageView getVkImageView(){
-		return mTexData.view;
+	const ::vk::ImageView& getImageView(){
+		return mImageView;
 	}
 
-	void load( const ofPixels& pix_ );;
+	const ::vk::ImageLayout& getImageLayout(){
+		return mImageLayout;
+	}
 
-	~Texture(){
-		
-		// get device
-		if ( mDevice ){
-
-			auto err = vkDeviceWaitIdle( mDevice );
-			assert( !err );
-			// let's cleanup - 
-
-			if ( mTexData.view ){
-				vkDestroyImageView( mDevice, mTexData.view, nullptr );
-				mTexData.view = nullptr;
-			}
-			if ( mTexData.image ){
-				vkDestroyImage( mDevice, mTexData.image, nullptr );
-				mTexData.image = nullptr;
-			}
-			if ( mTexData.sampler ){
-				vkDestroySampler( mDevice, mTexData.sampler, nullptr );
-				mTexData.sampler = nullptr;
-			}
-
-			if ( mTexData.mem ){
-				vkFreeMemory( mDevice, mTexData.mem, nullptr );
-				mTexData.mem = nullptr;
-			}
-		}
-		
-	};
-
-
-
+	~Texture();;
 };
 
 } /* namespace vk */

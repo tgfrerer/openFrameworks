@@ -16,7 +16,11 @@
 #include "ofGLRenderer.h"
 #include "ofGLProgrammableRenderer.h"
 #include "ofTrueTypeFont.h"
+
+#if OF_USE_POCO
 #include "ofURLFileLoader.h"
+#endif
+
 #include "ofMainLoop.h"
 
 
@@ -212,7 +216,7 @@ void ofExitCallback(){
 
 
 	// finish every library and subsystem
-	#ifndef TARGET_EMSCRIPTEN
+	#if OF_USE_POCO
 		ofURLFileLoaderShutdown();
 	#endif
 

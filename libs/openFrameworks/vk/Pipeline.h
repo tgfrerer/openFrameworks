@@ -1,6 +1,6 @@
 #pragma once
 
-#include "vulkan/vulkan.h"
+#include "vulkan/vulkan.hpp"
 #include <string>
 #include <array>
 
@@ -64,9 +64,6 @@ class Shader;
 
 class GraphicsPipelineState
 {
-	// The idea is to have the context hold a pipeline in memory, 
-	// and with each draw command store the current pipeline's 
-	// hash into the command batch. 
 
 	// when we build the command buffer, we need to check 
 	// if the current context state is matched by an already 
@@ -77,62 +74,81 @@ class GraphicsPipelineState
 	// if it is, we bind that pipeline.
 
 
-private:	// default state for pipeline
+public:	// these states can be set upfront
 
-	VkPipelineInputAssemblyStateCreateInfo mInputAssemblyState;
-	VkPipelineTessellationStateCreateInfo  mTessellationState;
-	VkPipelineViewportStateCreateInfo      mViewportState;
-	VkPipelineRasterizationStateCreateInfo mRasterizationState;
-	VkPipelineMultisampleStateCreateInfo   mMultisampleState;
-	VkPipelineDepthStencilStateCreateInfo  mDepthStencilState;
-	VkPipelineColorBlendAttachmentState    mDefaultBlendAttachmentState;
-	VkPipelineColorBlendStateCreateInfo    mColorBlendState;
-	std::array<VkDynamicState, 2>          mDefaultDynamicStates;
-	VkPipelineDynamicStateCreateInfo       mDynamicState;
+	::vk::PipelineInputAssemblyStateCreateInfo              inputAssemblyState;
+	::vk::PipelineTessellationStateCreateInfo               tessellationState;
+	::vk::PipelineViewportStateCreateInfo                   viewportState;
+	::vk::PipelineRasterizationStateCreateInfo              rasterizationState;
+	::vk::PipelineMultisampleStateCreateInfo                multisampleState;
+	::vk::PipelineDepthStencilStateCreateInfo               depthStencilState;
 	
-	VkRenderPass      mRenderPass         = nullptr;
-	uint32_t          mSubpass            = 0;
-	int32_t           mBasePipelineIndex  = -1;
+	std::array<::vk::DynamicState, 2>                       dynamicStates;
+	std::array<::vk::PipelineColorBlendAttachmentState,8>   blendAttachmentStates; // 8 == max color attachments.
+	
+	::vk::PipelineColorBlendStateCreateInfo                 colorBlendState;
 
-	// shader allows us to derive pipeline layout
+	::vk::PipelineDynamicStateCreateInfo                    dynamicState;
+
+private: // these states must be received through context
+
+	// non-owning - note that renderpass may be inherited from a 
+	// primary command buffer.
+	mutable ::vk::RenderPass  mRenderPass         = 0;
+	mutable uint32_t          mSubpass            = 0;
+
+private:
+	int32_t                   mBasePipelineIndex  = -1;
+
+	// shader allows us to derive pipeline layout, has public getters and setters.
 	std::shared_ptr<of::vk::Shader>        mShader;
 
 public:
+	
+	GraphicsPipelineState();
 
-	void setup();
 	void reset();
 
-	uint64_t calculateHash();
+	uint64_t calculateHash() const;
 
 	// whether this pipeline state is dirty.
-	VkBool32          mDirty              = true;
+	mutable VkBool32          mDirty              = true;
 
-	void setShader(const std::shared_ptr<of::vk::Shader> & shader ){
-		if ( shader.get() != mShader.get() ){
-			mShader = shader;
-			mDirty = true;
-		}
-	}
+	const std::shared_ptr<Shader> getShader() const;
+	void                          setShader( const std::shared_ptr<Shader> & shader );
+	void                          touchShader() const;
 
-	const std::shared_ptr<of::vk::Shader> getShader() const{
-		return mShader;
-	}
-
-	void setRenderPass( const VkRenderPass& renderPass ){
+	void setRenderPass( const ::vk::RenderPass& renderPass ) const {
 		if ( renderPass != mRenderPass ){
 			mRenderPass = renderPass;
 			mDirty = true;
 		}
 	}
 
-	void setPolyMode(VkPolygonMode & polyMode){
-		if ( mRasterizationState.polygonMode != polyMode ){
-			mRasterizationState.polygonMode = polyMode;
+	const ::vk::RenderPass & getRenderPass() const{
+		return mRenderPass;
+	}
+
+	void setSubPass( uint32_t subpassId ) const {
+		if ( subpassId != mSubpass ){
+			mSubpass = subpassId;
 			mDirty = true;
 		}
 	}
 
-	VkPipeline createPipeline( const VkDevice& device, const VkPipelineCache& pipelineCache, VkPipeline basePipelineHandle = nullptr );
+	void setPolyMode( const ::vk::PolygonMode & polyMode){
+		if ( rasterizationState.polygonMode != polyMode ){
+			rasterizationState.polygonMode = polyMode;
+			mDirty = true;
+		}
+	}
+
+	::vk::Pipeline createPipeline( const ::vk::Device& device, const std::shared_ptr<::vk::PipelineCache>& pipelineCache, ::vk::Pipeline basePipelineHandle = nullptr );
+
+	bool  operator== ( GraphicsPipelineState const & rhs );
+	bool  operator!= ( GraphicsPipelineState const & rhs ){
+		return !operator==( rhs );
+	};
 
 };
 
@@ -141,32 +157,35 @@ public:
 /// \brief  Create a pipeline cache object
 /// \detail Optionally load from disk, if filepath given.
 /// \note  	Ownership: passed on.
-static VkPipelineCache&& createPipelineCache( const VkDevice& device, std::string filePath = "" ){
-	VkPipelineCache cache;
-	ofBuffer cacheFileBuffer;
+static std::shared_ptr<::vk::PipelineCache> createPipelineCache( const ::vk::Device& device, std::string filePath = "" ){
+	::vk::PipelineCache cache;
 
-	VkPipelineCacheCreateInfo info{
-		VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO,                // VkStructureType               sType;
-		nullptr,                                                     // const void*                   pNext;
-		0,                                                           // VkPipelineCacheCreateFlags    flags;
-		0,                                                           // size_t                        initialDataSize;
-		nullptr,                                                     // const void*                   pInitialData;
-	};
+	ofBuffer cacheFileBuffer;
+	::vk::PipelineCacheCreateInfo info;
 
 	if ( ofFile( filePath ).exists() ){
 		cacheFileBuffer = ofBufferFromFile( filePath, true );
-		info.initialDataSize = cacheFileBuffer.size();
-		info.pInitialData = cacheFileBuffer.getData();
+		info.setInitialDataSize( cacheFileBuffer.size() );
+		info.setPInitialData( cacheFileBuffer.getData() );
 	}
 
-	auto err = vkCreatePipelineCache( device, &info, nullptr, &cache );
+	auto result = std::shared_ptr<::vk::PipelineCache>(
+		new ::vk::PipelineCache( device.createPipelineCache( info ) ), [d = device]( ::vk::PipelineCache* rhs ){
+		if ( rhs ){
+			d.destroyPipelineCache( *rhs );
+			delete( rhs );
+		}
+	} );
 
-	if ( err != VK_SUCCESS ){
-		ofLogError() << "Vulkan error in " << __FILE__ << ", line " << __LINE__;
-	}
-
-	return std::move( cache );
+	return result;
 };
 
 } // namespace vk
 } // namespace of
+
+// ----------------------------------------------------------------------
+
+inline const std::shared_ptr<of::vk::Shader> of::vk::GraphicsPipelineState::getShader() const{
+	return mShader;
+}
+
