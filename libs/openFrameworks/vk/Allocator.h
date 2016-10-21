@@ -5,6 +5,7 @@
 namespace of{
 namespace vk{
 
+
 class AbstractAllocator
 {
 
@@ -32,14 +33,13 @@ public:
 
 	virtual const AbstractAllocator::Settings& getSettings() const = 0;
 
-	friend
-	static bool getMemoryAllocationInfo( const ::vk::PhysicalDeviceMemoryProperties& memProps, const::vk::MemoryRequirements & memReqs, ::vk::MemoryPropertyFlags memFlags, ::vk::MemoryAllocateInfo & allocInfo );
+	//bool getMemoryAllocationInfo( const ::vk::PhysicalDeviceMemoryProperties& memProps, const::vk::MemoryRequirements & memReqs, ::vk::MemoryPropertyFlags memFlags, ::vk::MemoryAllocateInfo & allocInfo );
 	
 };
 
 // ----------------------------------------------------------------------
-
-bool getMemoryAllocationInfo( const ::vk::PhysicalDeviceMemoryProperties& memProps, const::vk::MemoryRequirements & memReqs, ::vk::MemoryPropertyFlags memFlags, ::vk::MemoryAllocateInfo & allocInfo ){
+namespace {
+inline bool getMemoryAllocationInfo( const ::vk::PhysicalDeviceMemoryProperties& memProps, const::vk::MemoryRequirements & memReqs, ::vk::MemoryPropertyFlags memFlags, ::vk::MemoryAllocateInfo & allocInfo ){
 	if ( !memReqs.size ){
 		allocInfo.allocationSize = 0;
 		allocInfo.memoryTypeIndex = ~0;
@@ -50,7 +50,7 @@ bool getMemoryAllocationInfo( const ::vk::PhysicalDeviceMemoryProperties& memPro
 	uint32_t memoryTypeIndex;
 	for ( memoryTypeIndex = 0; memoryTypeIndex < memProps.memoryTypeCount; ++memoryTypeIndex ){
 		if ( ( memReqs.memoryTypeBits & ( 1 << memoryTypeIndex ) ) &&
-			( memProps.memoryTypes[memoryTypeIndex].propertyFlags & memFlags ) == memFlags ){
+		    ( memProps.memoryTypes[memoryTypeIndex].propertyFlags & memFlags ) == memFlags ){
 			break;
 		}
 	}
@@ -64,6 +64,8 @@ bool getMemoryAllocationInfo( const ::vk::PhysicalDeviceMemoryProperties& memPro
 
 	return true;
 }
+}
+
 
 } // namespace of::vk
 } // namespace of
