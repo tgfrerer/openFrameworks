@@ -128,6 +128,23 @@ struct DescriptorSetData_t
 
 struct UniformId_t
 {
+	/* 
+	
+	A Uniform Id is a unique key to identify a uniform.
+	Multiple uniform Ids may point to the same descriptor in case the descriptor is an ubo and has members, for example
+
+	It contains information that tells you where to find corresponding data.
+	
+	* setIndex: index into a vector of DescriptorSetData_t for this shader
+	* descriptorIndex: index into the vector of descriptors of the above DescriptorSetData_t
+	* auxIndex: index into vector of auxiliary data, which vector is depending on the type of the descriptor returned above
+	* dataRange:  in case the descriptor is an UBO, max size in bytes for the ubo member field
+	* dataOffset: in case the descriptor is an UBO, offset into the Ubo's memory to get to the first byte owned by the member field
+	
+	The shader's mUniformDictionary has a mapping between uniform names and uniform IDs
+
+	
+	*/
 
 	union
 	{
@@ -139,9 +156,9 @@ struct UniformId_t
 		{
 			uint64_t setIndex        :  3; // 0 ..             7 (maxBoundDescriptorSets is 8)
 			uint64_t descriptorIndex : 14; // 0 ..        16'383 (index into DescriptorData_t::descriptors, per set)
-			uint64_t dataOffset      : 21; // 0 ..     2'097'152 (we want to keep this large as it limits the addressable memory range for fixed offset descriptors)
-			uint64_t dataRange       : 12; // 0 ..         4'095 (max number of bytes per ubo is 2048)
-			uint64_t auxDataIndex    : 14; // 0 ..        16'383 (index into helper data vectors per descriptor type per set)
+			uint64_t dataOffset      : 16; // 0 ..        65'536 (offset within range for ubo members, will always be smaller or equal range)
+			uint64_t dataRange       : 16; // 0 ..        65'536 (max number of bytes per ubo)
+			uint64_t auxDataIndex    : 15; // 0 ..        32'767 (index into helper data vectors per descriptor type per set)
 		};
 	};
 

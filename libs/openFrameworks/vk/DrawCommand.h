@@ -101,8 +101,6 @@ public:
 
 // ------------------------------------------------------------
 
-
-// upload uniform data to gpu memory
 template<class T>
 inline DrawCommand& DrawCommand::setUniform( const std::string & uniformName, const T & uniformValue_ ){
 
