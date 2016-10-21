@@ -108,7 +108,7 @@ private:
 		return mPipelineCache[pipelineHash];
 	};
 	
-	const std::unique_ptr<BufferAllocator> & RenderContext::getAllocator();
+	const std::unique_ptr<BufferAllocator> & getAllocator();
 	
 
 public:
