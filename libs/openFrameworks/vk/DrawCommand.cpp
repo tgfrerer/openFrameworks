@@ -120,7 +120,7 @@ void DrawCommand::commitMeshAttributes( const std::unique_ptr<BufferAllocator>& 
 			ofLogError() << "Mesh has no vertices.";
 			return;
 		} else {
-			mNumVertices = mesh.getVertices().size();
+			mNumVertices = uint32_t(mesh.getVertices().size());
 		}
 
 		if ( mesh.hasColors() && mesh.usingColors()){
@@ -143,7 +143,7 @@ void DrawCommand::commitMeshAttributes( const std::unique_ptr<BufferAllocator>& 
 			if ( alloc->allocate( byteSize, offset ) && alloc->map( dataP ) ){
 				memcpy( dataP, indices.data(), byteSize );
 				setIndices( alloc->getBuffer(), offset );
-				mNumIndices = indices.size();
+				mNumIndices = uint32_t(indices.size());
 			}
 		} else{
 			mIndexBuffer = nullptr;
@@ -157,6 +157,25 @@ void DrawCommand::commitMeshAttributes( const std::unique_ptr<BufferAllocator>& 
 
 void DrawCommand::setMesh(const shared_ptr<ofMesh> & msh_ ){
 	mMsh = msh_;
+}
+
+// ------------------------------------------------------------
+
+// upload vertex data to gpu memory
+template<typename T>
+inline bool DrawCommand::allocAndSetAttribute( const std::string & attrName_, const std::vector<T>& vec, const std::unique_ptr<BufferAllocator>& alloc ){
+	void * dataP = nullptr;
+	::vk::DeviceSize offset = 0;
+
+	const auto byteSize = sizeof( vec[0] ) * vec.size();
+	// allocate data on gpu
+	if ( alloc->allocate( byteSize, offset ) && alloc->map( dataP ) ){
+		alloc->map( dataP );
+		memcpy( dataP, vec.data(), byteSize );
+		setAttribute( attrName_, alloc->getBuffer(), offset );
+		return true;
+	}
+	return false;
 }
 
 // ------------------------------------------------------------

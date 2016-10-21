@@ -70,10 +70,10 @@ public:
 	const ::vk::DeviceSize&              getIndexOffsets();
 	const ::vk::Buffer&                  getIndexBuffer();
 	
-	const uint32_t                       getNumIndices();
+	uint32_t                             getNumIndices();
 	of::vk::DrawCommand &                setNumVertices( uint32_t numVertices );
 	
-	const uint32_t                       getNumVertices();
+	uint32_t                             getNumVertices();
 	of::vk::DrawCommand &                setNumIndices( uint32_t numIndices );
 
 	// set data for upload to ubo - data is stored locally 
@@ -160,25 +160,6 @@ inline of::vk::DrawCommand & of::vk::DrawCommand::setUniform( const std::string 
 }
 
 
-// ------------------------------------------------------------
-
-// upload vertex data to gpu memory
-template<typename T>
-inline bool DrawCommand::allocAndSetAttribute( const std::string & attrName_, const std::vector<T>& vec, const std::unique_ptr<BufferAllocator>& alloc ){
-	void * dataP = nullptr;
-	::vk::DeviceSize offset = 0;
-
-	const auto byteSize = sizeof( vec[0] ) * vec.size();
-	// allocate data on gpu
-	if ( alloc->allocate( byteSize, offset ) && alloc->map( dataP ) ){
-		alloc->map( dataP );
-		memcpy( dataP, vec.data(), byteSize );
-		setAttribute( attrName_, alloc->getBuffer(), offset );
-		return true;
-	}
-	return false;
-}
-
 } // namespace 
 } // end namespace of
 
@@ -209,11 +190,11 @@ inline const::vk::Buffer & of::vk::DrawCommand::getIndexBuffer(){
 	return mIndexBuffer;
 }
 
-inline const uint32_t of::vk::DrawCommand::getNumIndices(){
+inline uint32_t of::vk::DrawCommand::getNumIndices(){
 	return mNumIndices;
 }
 
-inline const uint32_t of::vk::DrawCommand::getNumVertices(){
+inline uint32_t of::vk::DrawCommand::getNumVertices(){
 	return mNumVertices;
 }
 
