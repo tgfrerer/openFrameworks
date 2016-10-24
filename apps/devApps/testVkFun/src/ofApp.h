@@ -63,7 +63,7 @@ class ofApp : public ofBaseApp{
 		void update();
 		void draw();
 
-		void uploadStaticAttributes( of::vk::RenderContext & currentContext );
+		void uploadStaticData( of::vk::RenderContext & currentContext );
 
 		void keyPressed(int key);
 		void keyReleased(int key);

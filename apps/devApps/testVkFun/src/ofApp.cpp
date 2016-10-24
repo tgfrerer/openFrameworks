@@ -150,7 +150,7 @@ void ofApp::draw(){
 
 	auto & currentContext = *renderer->getDefaultContext();
 
-	uploadStaticAttributes( currentContext );
+	uploadStaticData( currentContext );
 
 	static const glm::mat4x4 clip ( 
 		1.0f, 0.0f, 0.0f, 0.0f,
@@ -189,7 +189,7 @@ void ofApp::draw(){
 		.setAttribute( 0, mRectangleData.posBuffer )
 		.setAttribute( 1, mRectangleData.texCoordBuffer )
 		;
-	
+
 	of::vk::RenderBatch batch{ currentContext };
 
 	batch.draw( drawFullScreenQuad );
@@ -204,7 +204,7 @@ void ofApp::draw(){
 
 //--------------------------------------------------------------
 
-void ofApp::uploadStaticAttributes( of::vk::RenderContext & currentContext ){
+void ofApp::uploadStaticData( of::vk::RenderContext & currentContext ){
 
 	static bool wasUploaded = false;
 
