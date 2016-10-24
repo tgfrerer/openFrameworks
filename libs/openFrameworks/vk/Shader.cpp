@@ -360,7 +360,7 @@ bool of::vk::Shader::reflectUBOs( const spirv_cross::Compiler & compiler, const 
 			// Note that SpirV-Cross will only tell us the ranges of *actually used* members within an UBO. 
 			// By merging the ranges later, we effectively also create aliases for member names which are 
 			// not consistently named the same.
-			auto memberName = compiler.get_member_name( ubo.type_id, r.index );
+			auto memberName = compiler.get_member_name( ubo.base_type_id, r.index );
 			tmpUniform.uboRange.subranges[memberName] = { tmpUniform.setNumber, tmpUniform.layoutBinding.binding, (uint32_t)r.offset, (uint32_t)r.range };
 		}
 
