@@ -609,8 +609,10 @@ void ofAppGLFWWindow::setWindowShape(int w, int h){
 			setWindowPosition(pos.x, pos.y);
 		}
 	#else
-		glfwSetWindowSize(windowP,currentW,currentH);
-	#endif
+        #ifndef OF_TARGET_API_VULKAN
+	        glfwSetWindowSize(windowP,currentW,currentH);
+        #endif
+    #endif
 }
 
 //------------------------------------------------------------
