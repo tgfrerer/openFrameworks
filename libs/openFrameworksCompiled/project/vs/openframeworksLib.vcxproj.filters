@@ -63,9 +63,6 @@
     <ClInclude Include="..\..\..\openFrameworks\ofMain.h">
       <Filter>libs\openFrameworks</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\openFrameworks\app\ofAppGlutWindow.h">
-      <Filter>libs\openFrameworks\app</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\..\openFrameworks\app\ofAppRunner.h">
       <Filter>libs\openFrameworks\app</Filter>
     </ClInclude>
@@ -273,9 +270,6 @@
     <ClInclude Include="..\..\..\openFrameworks\app\ofAppNoWindow.h">
       <Filter>libs\openFrameworks\app</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\openFrameworks\utils\ofXml.h">
-      <Filter>libs\openFrameworks\utils</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\..\openFrameworks\gl\ofBufferObject.h">
       <Filter>libs\openFrameworks\gl</Filter>
     </ClInclude>
@@ -353,12 +347,11 @@
     </ClInclude>
     <ClInclude Include="..\..\..\openFrameworks\vk\Texture.h">
       <Filter>libs\openFrameworks\vk</Filter>
+    <ClInclude Include="..\..\..\openFrameworks\utils\ofXml.h">
+      <Filter>libs\openFrameworks\utils</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\..\openFrameworks\app\ofAppGlutWindow.cpp">
-      <Filter>libs\openFrameworks\app</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\openFrameworks\app\ofAppRunner.cpp">
       <Filter>libs\openFrameworks\app</Filter>
     </ClCompile>
@@ -527,9 +520,6 @@
     <ClCompile Include="..\..\..\openFrameworks\app\ofAppNoWindow.cpp">
       <Filter>libs\openFrameworks\app</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\openFrameworks\utils\ofXml.cpp">
-      <Filter>libs\openFrameworks\utils</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\openFrameworks\utils\ofFpsCounter.cpp">
       <Filter>libs\openFrameworks\utils</Filter>
     </ClCompile>
@@ -572,6 +562,8 @@
     <ClCompile Include="..\..\..\openFrameworks\vk\spooky\SpookyV2.cpp">
       <Filter>libs\openFrameworks\vk\spooky</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\openFrameworks\utils\ofXml.cpp">
+      <Filter>libs\openFrameworks\utils</Filter>
     <None Include="..\..\..\openFrameworks\3d\ofMesh.inl">
       <Filter>libs\openFrameworks\3d</Filter>
     </None>
