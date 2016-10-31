@@ -227,6 +227,10 @@ Module{
                 includes = includes.concat(include_paths);
             }
         }
+        if(qbs.targetOS.contains("linux")) {
+            var vk_sdk_includes = qbs.getEnv("VULKAN_SDK") + "/include";
+            includes = includes.concat(vk_sdk_includes);
+        }
         includes = includes.concat(PKG_CONFIG_INCLUDES);
         if(platform === "msys2"){
             includes.push(FileInfo.joinPaths(Helpers.msys2root(),'mingw32/include'));

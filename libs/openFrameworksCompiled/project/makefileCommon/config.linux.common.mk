@@ -249,7 +249,6 @@ PLATFORM_CORE_EXCLUSIONS += $(OF_LIBS_PATH)/assimp/%
 PLATFORM_CORE_EXCLUSIONS += $(OF_LIBS_PATH)/rtAudio/%
 PLATFORM_CORE_EXCLUSIONS += $(OF_LIBS_PATH)/openssl/%
 PLATFORM_CORE_EXCLUSIONS += $(OF_LIBS_PATH)/boost/%
-# PLATFORM_CORE_EXCLUSIONS += $(OF_LIBS_PATH)/glfw/%
 # PLATFORM_CORE_EXCLUSIONS += $(OF_LIBS_PATH)/shaderc/%
 PLATFORM_CORE_EXCLUSIONS += $(OF_LIBS_PATH)/glfw/%
 PLATFORM_CORE_EXCLUSIONS += $(OF_LIBS_PATH)/curl/%
@@ -272,6 +271,7 @@ endif
 ################################################################################
 
 PLATFORM_HEADER_SEARCH_PATHS =
+PLATFORM_HEADER_SEARCH_PATHS += "$(VULKAN_SDK)/include"
 
 ################################################################################
 # PLATFORM LIBRARIES
