@@ -291,7 +291,7 @@ ofMatrix4x4 clip(1.0f,  0.0f, 0.0f, 0.0f,
 
 - [x] Unify transient vertex and index buffers and Context
 - [x] Define default pipeline layout based on default descriptor set layout
-- [ ] Take into account usingNormals, usingTexCoords etc. when rendering meshes
+- [x] Take into account usingNormals, usingTexCoords etc. when rendering meshes
 - [x] Add vertex color support
 - [x] Add support for drawing wireframes (part of default pipeline generation)
 - [x] Dynamically derive pipelines from render states such as POLYGON_MODE, BLENDING_MODE etc.
@@ -300,8 +300,6 @@ ofMatrix4x4 clip(1.0f,  0.0f, 0.0f, 0.0f,
 - [ ] Shader: add "#pragma parameter" sugar
 - [X] Shader: auto-recompile from GLSL on change
 - [X] Add Shader manager
-- [ ] Add Buffer object - this is to back UBO, Attribute buffers and Index Buffers
-
 
 ----------------------------------------------------------------------
 
@@ -312,6 +310,21 @@ ofMatrix4x4 clip(1.0f,  0.0f, 0.0f, 0.0f,
 2. Keep it simple
 4. Optimise
 
+----------------------------------------------------------------------
+
+## Other things that could be worth adding:
+
++ compute support
++ mip map support
++ multi-pass rendering
++ text rendering
++ MSAA resolve using renderpass
++ 
+
+
+
+
+----------------------------------------------------------------------
 
 [spec]: https://www.khronos.org/registry/vulkan/specs/1.0-wsi_extensions/pdf/vkspec.pdf
 [awesome]: https://github.com/vinjn/awesome-vulkan

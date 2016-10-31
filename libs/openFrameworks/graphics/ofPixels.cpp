@@ -363,7 +363,7 @@ void ofPixels_<PixelType>::setFromAlignedPixels(const PixelType * newPixels, siz
 	size_t channels = channelsFromPixelFormat(_pixelFormat);
 	if(channels==0) return;
 
-	switch(pixelFormat){
+	switch(_pixelFormat){
 	case OF_PIXELS_I420: {
 	    if(strides.size() != 3){
 		ofLogError("ofPixels") << "number of planes for I420 should be 3";
@@ -570,7 +570,7 @@ size_t ofPixels_<PixelType>::getPixelIndex(size_t x, size_t y) const {
 
 template<typename PixelType>
 ofColor_<PixelType> ofPixels_<PixelType>::getColor(size_t index) const {
-	return Pixel(pixels + index,getNumChannels(),pixelFormat).getColor();
+	return (Pixel(pixels, getNumChannels(),pixelFormat) + index).getColor();
 }
 
 template<typename PixelType>

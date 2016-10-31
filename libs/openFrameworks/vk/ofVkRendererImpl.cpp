@@ -292,7 +292,7 @@ void ofVkRenderer::setupDepthStencil(){
 		.setFormat          ( mDepthFormat )
 		.setSamples         ( vk::SampleCountFlagBits::e1 )
 		.setLoadOp          ( vk::AttachmentLoadOp::eClear )
-		.setStoreOp         ( vk::AttachmentStoreOp::eStore )
+		.setStoreOp         ( vk::AttachmentStoreOp::eStore)
 		.setStencilLoadOp   ( vk::AttachmentLoadOp::eDontCare )
 		.setStencilStoreOp  ( vk::AttachmentStoreOp::eDontCare )
 		.setInitialLayout   ( vk::ImageLayout::eUndefined )

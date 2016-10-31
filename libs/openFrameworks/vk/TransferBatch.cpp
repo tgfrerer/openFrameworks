@@ -1,6 +1,5 @@
 #include "ofLog.h"
 #include "vk/TransferBatch.h"
-#include "vk/vkBufferObject.h"
 
 using namespace of::vk;
 /*
