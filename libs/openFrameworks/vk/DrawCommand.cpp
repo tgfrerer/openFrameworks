@@ -43,6 +43,7 @@ void DrawCommand::commitUniforms(const std::unique_ptr<BufferAllocator>& alloc )
 	for ( auto & descriptorSetData : mDescriptorSetData ){
 
 		auto imgInfoIt        = descriptorSetData.imageAttachment.begin();
+		auto bufferInfoIt     = descriptorSetData.bufferAttachment.begin();
 		auto dynamicOffsetsIt = descriptorSetData.dynamicBindingOffsets.begin();
 		auto dataIt           = descriptorSetData.dynamicUboData.begin();
 
@@ -69,8 +70,6 @@ void DrawCommand::commitUniforms(const std::unique_ptr<BufferAllocator>& alloc )
 				break;
 			case ::vk::DescriptorType::eUniformBuffer:
 				break;
-			case ::vk::DescriptorType::eStorageBuffer:
-				break;
 			case ::vk::DescriptorType::eUniformBufferDynamic:
 				{
 					descriptor.buffer = alloc->getBuffer();
@@ -80,10 +79,10 @@ void DrawCommand::commitUniforms(const std::unique_ptr<BufferAllocator>& alloc )
 					const auto & dataVec = *dataIt;
 					const auto & dataRange = dataVec.size();
 
-					// allocate data on gpu
+					// allocate memory on gpu
 					if ( alloc->allocate( dataRange, offset ) && alloc->map( dataP ) ){
 
-						// copy data to gpu
+						// copy data from draw command temp storage to gpu
 						memcpy( dataP, dataVec.data(), dataRange );
 
 						// update dynamic binding offsets for this binding
@@ -97,7 +96,17 @@ void DrawCommand::commitUniforms(const std::unique_ptr<BufferAllocator>& alloc )
 					descriptor.range = dataRange;
 				}
 				break;
+			case ::vk::DescriptorType::eStorageBuffer:
+				break;
 			case ::vk::DescriptorType::eStorageBufferDynamic:
+			{
+				descriptor.buffer = bufferInfoIt->buffer;
+				descriptor.range  = bufferInfoIt->range;
+				*dynamicOffsetsIt = bufferInfoIt->offset;
+
+				bufferInfoIt++;
+				dynamicOffsetsIt++;
+			}
 				break;
 			case ::vk::DescriptorType::eInputAttachment:
 				break;

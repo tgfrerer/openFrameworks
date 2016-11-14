@@ -177,9 +177,9 @@ void ofApp::draw(){
 	auto projectionMatrix = clip * mCam.getProjectionMatrix( ofGetCurrentViewport() );
 
 
-	// Create a fresh copy of our prototype const draw command
 	ofMatrix4x4 modelMatrix = glm::rotate( float( TWO_PI * ( ( ofGetFrameNum() % 360 ) / 360.f ) ), glm::vec3( { 0.f, 1.f, 0.f } ) );
 
+	// Create a fresh copy of our prototype const draw command
 	auto hero = drawPhong;
 	hero
 		.setUniform( "projectionMatrix", projectionMatrix )
@@ -210,7 +210,11 @@ void ofApp::draw(){
 	batch.draw( hero );
 	batch.draw( texturedRect );
 
+	// batch.submit processes all draw commands into a command buffer 
+	// and submits it to the current render context.
 	batch.submit();	
+
+
 
 	// At end of draw(), context will submit its list of vkCommandBuffers
 	// to the graphics queue in one API call.

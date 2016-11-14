@@ -108,6 +108,7 @@
       <WarningLevel>Level3</WarningLevel>
       <BrowseInformation>false</BrowseInformation>
       <CompileAs>CompileAsCpp</CompileAs>
+      <DisableSpecificWarnings>4996; 4267</DisableSpecificWarnings>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -212,6 +213,7 @@
     <ClInclude Include="..\..\..\openFrameworks\events\ofEventUtils.h" />
     <ClInclude Include="..\..\..\openFrameworks\vk\Allocator.h" />
     <ClInclude Include="..\..\..\openFrameworks\vk\BufferAllocator.h" />
+    <ClInclude Include="..\..\..\openFrameworks\vk\ComputeCommand.h" />
     <ClInclude Include="..\..\..\openFrameworks\vk\DrawCommand.h" />
     <ClInclude Include="..\..\..\openFrameworks\vk\HelperTypes.h" />
     <ClInclude Include="..\..\..\openFrameworks\vk\ImageAllocator.h" />
@@ -296,6 +298,7 @@
     <ClCompile Include="..\..\..\openFrameworks\communication\ofArduino.cpp" />
     <ClCompile Include="..\..\..\openFrameworks\communication\ofSerial.cpp" />
     <ClCompile Include="..\..\..\openFrameworks\vk\BufferAllocator.cpp" />
+    <ClCompile Include="..\..\..\openFrameworks\vk\ComputeCommand.cpp" />
     <ClCompile Include="..\..\..\openFrameworks\vk\DrawCommand.cpp" />
     <ClCompile Include="..\..\..\openFrameworks\vk\ImageAllocator.cpp" />
     <ClCompile Include="..\..\..\openFrameworks\vk\ofVkRenderer.cpp" />

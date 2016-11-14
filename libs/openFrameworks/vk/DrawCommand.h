@@ -25,7 +25,6 @@ private:
 
 	// a draw command has everything needed to draw an object
 	GraphicsPipelineState mPipelineState;
-	// map from binding number to ubo data state
 
 private:      /* transient data */
 
@@ -95,7 +94,8 @@ public:
 	template <class T>
 	of::vk::DrawCommand & setUniform( const std::string& uniformName, const T& uniformValue_ );
 
-	of::vk::DrawCommand & setUniform( const std::string& uniformName, const std::shared_ptr<of::vk::Texture>& tex_ );
+	of::vk::DrawCommand & setTexture( const std::string& name, const std::shared_ptr<of::vk::Texture>& tex_ );
+	of::vk::DrawCommand & setStorageBuffer( const std::string& name, const std::shared_ptr<of::vk::BufferRegion>& buf_ );
 
 };
 
@@ -136,12 +136,12 @@ inline DrawCommand& DrawCommand::setUniform( const std::string & uniformName, co
 
 // ------------------------------------------------------------
 
-inline of::vk::DrawCommand & of::vk::DrawCommand::setUniform( const std::string & uniformName, const std::shared_ptr<of::vk::Texture>& tex_ ){
+inline of::vk::DrawCommand & of::vk::DrawCommand::setTexture( const std::string & uniformName, const std::shared_ptr<of::vk::Texture>& tex_ ){
 	
 	auto uniformInfoIt = mUniformDictionary.find( uniformName );
 
 	if ( uniformInfoIt == mUniformDictionary.end() ){
-		ofLogWarning() << "Could not set Uniform '" << uniformName << "': Uniform name not found in shader";
+		ofLogWarning() << "Could not set Texture '" << uniformName << "': Uniform name not found in shader";
 		return *this;
 	}
 
@@ -154,11 +154,31 @@ inline of::vk::DrawCommand & of::vk::DrawCommand::setUniform( const std::string 
 	imageAttachment.sampler     = tex_->getSampler();
 	imageAttachment.imageView   = tex_->getImageView();
 	imageAttachment.imageLayout = tex_->getImageLayout();
-
 	
 	return *this;
 }
 
+// ------------------------------------------------------------
+
+inline of::vk::DrawCommand & of::vk::DrawCommand::setStorageBuffer( const std::string & uniformName, const std::shared_ptr<of::vk::BufferRegion>& buf_ ){
+
+	auto uniformInfoIt = mUniformDictionary.find( uniformName );
+
+	if ( uniformInfoIt == mUniformDictionary.end() ){
+		ofLogWarning() << "Could not set Storage Buffer '" << uniformName << "': Uniform name not found in shader";
+		return *this;
+	}
+
+	// --------| invariant: uniform found
+
+	const auto & uniformInfo = uniformInfoIt->second;
+
+	auto & bufferAttachment = mDescriptorSetData[uniformInfo.setIndex].bufferAttachment[uniformInfo.auxDataIndex];
+
+	bufferAttachment = *buf_;
+
+	return *this;
+}
 
 } // namespace 
 } // end namespace of

@@ -3,6 +3,7 @@
 #include <map>
 #include "vulkan/vulkan.hpp"
 #include "vk/spirv-cross/include/spirv_cross.hpp"
+#include "vk/HelperTypes.h"
 
 //   The smallest unit we may bind in Vulkan are DescriptorSets.
 //   
@@ -122,6 +123,7 @@ struct DescriptorSetData_t
 	std::vector<std::vector<uint8_t>>      dynamicUboData;
 	std::vector<uint32_t>                  dynamicBindingOffsets;
 	std::vector<::vk::DescriptorImageInfo> imageAttachment;
+	std::vector<of::vk::BufferRegion>      bufferAttachment;
 };
 
 // ----------

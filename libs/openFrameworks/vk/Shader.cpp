@@ -657,6 +657,14 @@ bool of::vk::Shader::createSetLayouts(){
 					tmpDescriptorSetData.dynamicUboData.back().resize( uniformId.dataRange );
 				}
 
+				if ( layoutBinding.descriptorType == ::vk::DescriptorType::eStorageBufferDynamic ){
+					tmpDescriptorSetData.dynamicBindingOffsets.push_back( 0 );
+					tmpDescriptorSetData.bufferAttachment.push_back( {} );
+					uniformId.auxDataIndex = tmpDescriptorSetData.bufferAttachment.size() - 1;
+					
+					uniformId.dataRange = uniform.uboRange.storageSize; //! TODO: where to we get the size from? 
+				}
+
 				for ( uint32_t arrayIndex = 0; arrayIndex != layoutBinding.descriptorCount; ++arrayIndex ){
 
 					DescriptorSetData_t::DescriptorData_t descriptorData;

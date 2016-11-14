@@ -351,6 +351,9 @@
     <ClInclude Include="..\..\..\openFrameworks\vk\spirv-cross\include\spirv_cross.hpp">
       <Filter>libs\openFrameworks\vk\spirv-cross</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\..\openFrameworks\vk\ComputeCommand.h">
+      <Filter>libs\openFrameworks\vk</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\openFrameworks\app\ofAppRunner.cpp">
@@ -586,6 +589,9 @@
     </ClCompile>
     <ClCompile Include="..\..\..\openFrameworks\vk\spirv-cross\include\spirv_cross.cpp">
       <Filter>libs\openFrameworks\vk\spirv-cross</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\openFrameworks\vk\ComputeCommand.cpp">
+      <Filter>libs\openFrameworks\vk</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
