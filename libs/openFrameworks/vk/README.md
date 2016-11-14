@@ -1,8 +1,8 @@
 
 # Experimental Renderer using the Vulkan API
 
-This renderer is experimental. Expect things to change without warning
-all the time. Send pull requests to influence what changes.
+This renderer and its API is experimental. Expect things to change without warning
+all the time.
 
 ## Switch between GL and VK rendering mode
 
@@ -127,7 +127,7 @@ This renderer adds Vulkan support to openFrameworks.
 
 Since Vulkan is a much more explicit API than OpenGL and a rather
 fundamental architectural shift, this Renderer does not aim to be a
-replacement for OpenGL, but a modern middleware layer for rendering, processing & tinkering with Vulkan within an openFrameworks environment.
+replacement for OpenGL, but a modern middle layer for rendering, processing & tinkering with Vulkan within an openFrameworks environment.
 
 Vulkan assumes that you know what you are doing. It also assumes that
 you are very, very explicit about what you are doing.
@@ -140,76 +140,7 @@ The idea is that you might want to prototype your app by slapping
 together some of these building blocks, and then, replacing some of
 these blocks (the ones that actually make a difference in speed, usability or aesthetics) with customised elements.
 
-Generators should exist for a whide range of common Vulkan objects which are ready to be used together or not at all if need be. Using these generators we can create a default renderer environment, the Context, which can be a starting point for exploration.
-
 Advanced users will probably want to write their own scene graphs, renderer addons etc. Great! We should make sure that this is possible.
-
-
-----------------------------------------------------------------------
-
-## Context
-
-Context tracks pipeline and dynamic drawing state - and helps keeping track of memory, descriptors and shaders. The aim for Context should be to provide a friendly environment to quickly prototype drawing using vulkan.
-
-You'll find an example on how to use a more explicit, faster, and more powerful drawing syntax in the `testVk` directory, under [apps/devApps/testVk](https://github.com/openframeworks-vk/openFrameworks/blob/vk/apps/devApps/testVk/src/ofApp.cpp#L163). 
-
-Context is initialised with a list of shaders. Only these shaders can then be used to draw within the Context. When a Context begins, the first shader that was added to the Context is bound automatically as the default shader. Shaders stay bound to the Context until another shader is bound or the Context is ended.
-
-Most Context methods return a reference to the Context itself, which makes them chainable. You can therefore write code like this:
-
-    context
-      .pushMatrix()
-      .translate( { 0,0,-10 } )
-      .bindTexture(  mVkTex, "tex_0" )
-      .setUniform( "globalColor", ofFloatColor::white )
-      .setShader( mShaderTextured )
-      .setPolyMode( VK_POLYGON_MODE_FILL )
-      .draw( cmd, rect )
-      .popMatrix();
-
-
-UBO ("Uniform Buffer Object") bindings inside shaders are shared inside the Context, if they have the same name across shader files.
-
-Shared UBOs must match types and numbers of members, or `Context` will return an error message when analysing the shaders.
-
-Context allows you to set values for uniform buffer object members, such as: 
-
-    context.setUniform( "globalColor", ofFloatColor::white );
-
-Where `globalColor` is a vec4 member inside the shader UBO named `Style`: 
-
-    //glsl shader code: 
-
-    layout (set = 0, binding = 1) uniform Style
-    {
-      vec4 globalColor;
-    };
-
-Note that the same member can be addressed as: 
-
-    context.setUniform( "Style.globalColor", ofFloatColor::white );
-
-Context will auto-detect if the type you pass using the setUniform method is compatible with the shader uniform.
-
-To retrieve the current value of a uniform member variable call: 
-
-    ofFloatColor currentColor = context.getUniform<ofFloatColor>( "Style.globalColor");
-
-Note that this is a templated call.
-
-Uniform members keep their value for as long as the context remains open, that is, until Context::end() is called. 
-
-Uniform members can be `pushed` and `popped` on stacks using `Context`. To push the UBO containing the current matrix state, call:
-
-    pushBuffer( "DefaultMatrices" );
-
-Or, simply, `Context::pushMatrix()`.
-
-And
-
-    popBuffer( "DefaultMatrices" );
-
-will restore the state of all UBO members attached to `DefaultMatrices`.
 
 
 ----------------------------------------------------------------------
@@ -319,10 +250,6 @@ ofMatrix4x4 clip(1.0f,  0.0f, 0.0f, 0.0f,
 + multi-pass rendering
 + text rendering
 + MSAA resolve using renderpass
-+ 
-
-
-
 
 ----------------------------------------------------------------------
 

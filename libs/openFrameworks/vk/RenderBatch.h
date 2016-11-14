@@ -15,12 +15,15 @@ namespace vk{
 class RenderBatch
 {
 	/*
+	
+	A Batch maps to a Primary Command buffer which begins and ends a RenderPass
 
 	Batch is an object which processes draw instructions
 	received through draw command objects.
 
 	Batch's mission is to create a command buffer where
 	the number of pipeline changes is minimal.
+
 
 	*/
 	RenderContext * mRenderContext;
