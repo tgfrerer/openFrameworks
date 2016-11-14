@@ -2,10 +2,10 @@
 
 #include <memory>
 #include "ofLog.h"
+#include "vk/Shader.h"
 #include "vk/Pipeline.h"
 #include "vk/BufferAllocator.h"
 #include "vk/ImageAllocator.h"
-#include "vk/DrawCommand.h"
 #include "vk/HelperTypes.h"
 /*
 
@@ -95,7 +95,7 @@ private:
 	void updateDescriptorPool();
 
 	// Fetch descriptor either from cache - or allocate and initialise a descriptor based on DescriptorSetData.
-	const ::vk::DescriptorSet getDescriptorSet( uint64_t descriptorSetHash, size_t setId, const DrawCommand & drawCommand );
+	const ::vk::DescriptorSet getDescriptorSet( uint64_t descriptorSetHash, size_t setId, const ::vk::DescriptorSetLayout & setLayout_, const std::vector<of::vk::DescriptorSetData_t::DescriptorData_t> & descriptors );
 
 	// cache for all pipelines ever used within this context
 	std::map<uint64_t, std::shared_ptr<::vk::Pipeline>>    mPipelineCache;

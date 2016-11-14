@@ -137,7 +137,7 @@ void RenderContext::swap(){
 
 // ------------------------------------------------------------
 
-const::vk::DescriptorSet RenderContext::getDescriptorSet( uint64_t descriptorSetHash, size_t setId, const DrawCommand & drawCommand ){
+const::vk::DescriptorSet RenderContext::getDescriptorSet( uint64_t descriptorSetHash, size_t setId, const ::vk::DescriptorSetLayout & setLayout_, const std::vector<DescriptorSetData_t::DescriptorData_t> & descriptors ){
 
 	auto & currentVirtualFrame = mVirtualFrames[mCurrentVirtualFrame];
 	auto & descriptorSetCache = currentVirtualFrame.descriptorSetCache;
@@ -151,8 +151,6 @@ const::vk::DescriptorSet RenderContext::getDescriptorSet( uint64_t descriptorSet
 	// ----------| Invariant: descriptor set has not been found in the cache for the current frame.
 
 	::vk::DescriptorSet allocatedDescriptorSet = nullptr;
-
-	auto & descriptors = drawCommand.getDescriptorSetData( setId ).descriptors;
 
 	// find out required pool sizes for this descriptor set
 
@@ -217,12 +215,12 @@ const::vk::DescriptorSet RenderContext::getDescriptorSet( uint64_t descriptorSet
 	// ---------| invariant: currentVirtualFrame.descriptorPools.back() contains a pool large enough to allocate our descriptor set from
 
 	// we are able to allocate from the current descriptor pool
-	auto & setLayout = *( drawCommand.getPipelineState().getShader()->getDescriptorSetLayout( setId ) );
+	
 	auto allocInfo = ::vk::DescriptorSetAllocateInfo();
 	allocInfo
 		.setDescriptorPool( currentVirtualFrame.descriptorPools.back() )
 		.setDescriptorSetCount( 1 )
-		.setPSetLayouts( &setLayout )
+		.setPSetLayouts( &setLayout_ )
 		;
 
 	allocatedDescriptorSet = mDevice.allocateDescriptorSets( allocInfo ).front();
