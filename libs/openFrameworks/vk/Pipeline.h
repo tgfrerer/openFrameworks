@@ -66,6 +66,15 @@ class Shader;
 
 class ComputePipelineState
 {
+
+private:
+
+	int32_t                                mBasePipelineIndex = -1;
+	mutable VkBool32                       mDirty = true;  // whether this pipeline state is dirty.
+
+														   // shader allows us to derive pipeline layout, has public getters and setters.
+	std::shared_ptr<of::vk::Shader>        mShader;
+
 public:
 
 	const std::shared_ptr<Shader>          getShader() const;
@@ -74,13 +83,12 @@ public:
 
 	::vk::Pipeline createPipeline( const ::vk::Device& device, const std::shared_ptr<::vk::PipelineCache>& pipelineCache, ::vk::Pipeline basePipelineHandle = nullptr );
 
-private:
+	uint64_t calculateHash() const;
 
-	int32_t                                mBasePipelineIndex = -1;
-	mutable VkBool32                       mDirty = true;  // whether this pipeline state is dirty.
-
-	// shader allows us to derive pipeline layout, has public getters and setters.
-	std::shared_ptr<of::vk::Shader>        mShader;
+	bool  operator== ( ComputePipelineState const & rhs );
+	bool  operator!= ( ComputePipelineState const & rhs ){
+		return !operator==( rhs );
+	};
 
 };
 
@@ -160,13 +168,6 @@ public:
 		}
 	}
 
-	void setPolyMode( const ::vk::PolygonMode & polyMode){
-		if ( rasterizationState.polygonMode != polyMode ){
-			rasterizationState.polygonMode = polyMode;
-			mDirty = true;
-		}
-	}
-
 	::vk::Pipeline createPipeline( const ::vk::Device& device, const std::shared_ptr<::vk::PipelineCache>& pipelineCache, ::vk::Pipeline basePipelineHandle = nullptr );
 
 	bool  operator== ( GraphicsPipelineState const & rhs );
@@ -213,3 +214,6 @@ inline const std::shared_ptr<of::vk::Shader> of::vk::GraphicsPipelineState::getS
 	return mShader;
 }
 
+inline const std::shared_ptr<of::vk::Shader> of::vk::ComputePipelineState::getShader() const{
+	return mShader;
+}

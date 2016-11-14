@@ -54,6 +54,25 @@ void ComputePipelineState::touchShader() const{
 
 // ----------------------------------------------------------------------
 
+bool ComputePipelineState::operator==( ComputePipelineState const & rhs ){
+	return mShader->getShaderCodeHash() == rhs.mShader->getShaderCodeHash();
+}
+
+// ----------------------------------------------------------------------
+
+uint64_t ComputePipelineState::calculateHash() const{
+
+	std::vector<uint64_t> setLayoutKeys = mShader->getDescriptorSetLayoutKeys();
+
+	uint64_t hash = mShader->getShaderCodeHash();
+
+	hash = SpookyHash::Hash64( setLayoutKeys.data(), sizeof( uint64_t ) * setLayoutKeys.size(), hash );
+
+	return hash;
+}
+
+// ----------------------------------------------------------------------
+
 GraphicsPipelineState::GraphicsPipelineState(){
 	reset();
 }
@@ -303,6 +322,8 @@ uint64_t GraphicsPipelineState::calculateHash() const {
 	// ofLog() << "pipeline hash:" << std::hex << hash;
 	return hash;
 }
+
+// ----------------------------------------------------------------------
 
 void GraphicsPipelineState::setShader( const std::shared_ptr<Shader>& shader ){
 	if ( shader.get() != mShader.get() ){
