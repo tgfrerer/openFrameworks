@@ -153,6 +153,9 @@ bool of::vk::Shader::getSpirV( const ::vk::ShaderStageFlagBits shaderStage, cons
 		case ::vk::ShaderStageFlagBits::eFragment : 
 			shaderType = shaderc_shader_kind::shaderc_glsl_default_fragment_shader;
 			break;
+		case ::vk::ShaderStageFlagBits::eCompute:
+			shaderType = shaderc_shader_kind::shaderc_glsl_default_compute_shader;
+			break;
 		default:
 			break;
 		}
@@ -285,6 +288,8 @@ void of::vk::Shader::reflect(
 		// --- samplers
 		reflectSamplers( compiler, shaderStage );
 
+		reflectStorageBuffers(compiler, shaderStage);
+
 		// --- vertex inputs ---
 		if ( shaderStage == ::vk::ShaderStageFlagBits::eVertex ){
 			reflectVertexInputs(compiler, vertexInfo );
@@ -407,6 +412,57 @@ bool of::vk::Shader::reflectUBOs( const spirv_cross::Compiler & compiler, const 
 	return true;
 }
 
+// ----------------------------------------------------------------------
+
+bool of::vk::Shader::reflectStorageBuffers( const spirv_cross::Compiler & compiler, const ::vk::ShaderStageFlagBits & shaderStage ){
+
+	static const size_t maxRange = calcMaxRange();
+
+	auto storageBuffers = compiler.get_shader_resources().storage_buffers;
+
+	for ( const auto & buffer : storageBuffers){
+
+		Uniform_t tmpUniform;
+
+		tmpUniform.name = buffer.name;
+
+		tmpUniform.uboRange.storageSize = compiler.get_declared_struct_size( compiler.get_type( buffer.type_id ) );
+
+		if ( tmpUniform.uboRange.storageSize > maxRange ){
+			of::utils::setConsoleColor( 14 /* yellow */ );
+			ofLogWarning() << "Ubo '" << buffer.name << "' is too large. Consider splitting it up. Size: " << tmpUniform.uboRange.storageSize;
+			of::utils::resetConsoleColor();
+		}
+
+		tmpUniform.layoutBinding
+			.setDescriptorCount( 1 )                                            /* Must be 1 for ubo bindings, as arrays of ubos are not allowed */
+			.setDescriptorType( ::vk::DescriptorType::eStorageBufferDynamic )   /* All our storage buffers are dynamic */
+			.setStageFlags( shaderStage )
+			;
+
+		getSetAndBindingNumber( compiler, buffer, tmpUniform.setNumber, tmpUniform.layoutBinding.binding );
+
+		auto bufferRanges = compiler.get_active_buffer_ranges( buffer.id );
+
+		for ( const auto &r : bufferRanges ){
+			auto memberName = compiler.get_member_name( buffer.base_type_id, r.index );
+			tmpUniform.uboRange.subranges[memberName] = { tmpUniform.setNumber, tmpUniform.layoutBinding.binding, (uint32_t)r.offset, (uint32_t)r.range };
+		}
+
+		// Let's see if an uniform buffer with this fingerprint has already been seen.
+		// If yes, it would already be in uniformStore.
+
+		auto insertion = mUniforms.insert( { buffer.name, tmpUniform } );
+		if ( insertion.second == false ){
+			// Uniform with this key already existed, nothing was inserted.
+			// !TODO: check for errors: let us know if an uniform with this name has already been defined.
+		}
+
+	} // end: for all uniform buffers
+
+
+	return true;
+}
 // ----------------------------------------------------------------------
 
 bool of::vk::Shader::reflectSamplers( const spirv_cross::Compiler & compiler, const ::vk::ShaderStageFlagBits & shaderStage ){

@@ -4,6 +4,54 @@
 #include <array>
 
 using namespace of::vk;
+
+// ----------------------------------------------------------------------
+
+::vk::Pipeline ComputePipelineState::createPipeline( const ::vk::Device & device, const std::shared_ptr<::vk::PipelineCache> & pipelineCache, ::vk::Pipeline basePipelineHandle_ ){
+	::vk::Pipeline pipeline;
+
+	::vk::PipelineCreateFlags createFlags;
+
+	if ( basePipelineHandle_ ){
+		// if we already have a base pipeline handle,
+		// this means we want to create the next pipeline as 
+		// a derivative of the previous pipeline.
+		createFlags |= ::vk::PipelineCreateFlagBits::eDerivative;
+	} else{
+		// if we have got no base pipeline handle, 
+		// we want to signal that this pipeline is not derived from any other, 
+		// but may allow derivative pipelines.
+		createFlags |= ::vk::PipelineCreateFlagBits::eAllowDerivatives;
+	}
+
+	::vk::ComputePipelineCreateInfo createInfo;
+	createInfo
+		.setFlags( createFlags )
+		.setStage( mShader->getShaderStageCreateInfo().front() )
+		.setLayout( *mShader->getPipelineLayout() )
+		.setBasePipelineHandle( basePipelineHandle_ )
+		.setBasePipelineIndex( mBasePipelineIndex )
+		;
+
+	pipeline = device.createComputePipeline( *pipelineCache, createInfo, nullptr );
+	return pipeline;
+}
+
+// ----------------------------------------------------------------------
+
+void ComputePipelineState::setShader( const std::shared_ptr<Shader>& shader ){
+	if ( shader.get() != mShader.get() ){
+		mShader = shader;
+		mDirty = true;
+	}
+}
+
+// ----------------------------------------------------------------------
+
+void ComputePipelineState::touchShader() const{
+	mDirty = mShader->compile();
+}
+
 // ----------------------------------------------------------------------
 
 GraphicsPipelineState::GraphicsPipelineState(){

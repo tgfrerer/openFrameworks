@@ -62,6 +62,30 @@ namespace vk{
 
 class Shader;
 
+// ------------------------------------------------------------
+
+class ComputePipelineState
+{
+public:
+
+	const std::shared_ptr<Shader>          getShader() const;
+	void                                   setShader( const std::shared_ptr<Shader> & shader );
+	void                                   touchShader() const;
+
+	::vk::Pipeline createPipeline( const ::vk::Device& device, const std::shared_ptr<::vk::PipelineCache>& pipelineCache, ::vk::Pipeline basePipelineHandle = nullptr );
+
+private:
+
+	int32_t                                mBasePipelineIndex = -1;
+	mutable VkBool32                       mDirty = true;  // whether this pipeline state is dirty.
+
+	// shader allows us to derive pipeline layout, has public getters and setters.
+	std::shared_ptr<of::vk::Shader>        mShader;
+
+};
+
+// ------------------------------------------------------------
+
 class GraphicsPipelineState
 {
 

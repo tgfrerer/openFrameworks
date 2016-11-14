@@ -61,7 +61,21 @@ void ofApp::setupStaticAllocators(){
 //--------------------------------------------------------------
 
 void ofApp::setupDrawCommands(){
-	 
+	
+	{
+		of::vk::Shader::Settings shaderSettings;
+		shaderSettings.device = renderer->getVkDevice();
+		shaderSettings.sources[::vk::ShaderStageFlagBits::eCompute] = "compute.glsl";
+		shaderSettings.printDebugInfo = true;
+
+		auto shaderCompute = std::make_shared<of::vk::Shader>( shaderSettings );
+
+		of::vk::ComputePipelineState computePipeline;
+		computePipeline.setShader( shaderCompute );
+		//auto pipeline = computePipeline.createPipeline();
+
+	}
+
 	{
 		of::vk::Shader::Settings shaderSettings;
 		shaderSettings.device = renderer->getVkDevice();
