@@ -771,6 +771,12 @@ bool of::vk::Shader::createSetLayouts(){
 						}
 					}
 					break;
+					case ::vk::DescriptorType::eStorageBufferDynamic:
+						log << "Dynamic Storage Buffer - ";
+						log << " Total Size : " << std::right << std::setw( 4 ) << binding.uboRange.storageSize << "B";
+						log << std::endl;
+
+						break;
 					case ::vk::DescriptorType::eCombinedImageSampler:
 						log << "Combined Image Sampler";
 						break;
