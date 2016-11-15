@@ -454,8 +454,20 @@ bool of::vk::Shader::reflectStorageBuffers( const spirv_cross::Compiler & compil
 
 		auto insertion = mUniforms.insert( { buffer.name, tmpUniform } );
 		if ( insertion.second == false ){
+
+			auto & storedUniform = insertion.first->second;
 			// Uniform with this key already existed, nothing was inserted.
-			// !TODO: check for errors: let us know if an uniform with this name has already been defined.
+			if ( storedUniform.setNumber != tmpUniform.setNumber
+				|| storedUniform.layoutBinding.binding != tmpUniform.layoutBinding.binding ){
+				of::utils::setConsoleColor( 14 /* yellow */ );
+				ofLogWarning() << "Buffer: '" << buffer.name << "' re-defined with inconsistent set/binding numbers.";
+				of::utils::resetConsoleColor();
+			} else{
+				// Merge stage flags
+				storedUniform.layoutBinding.stageFlags |= tmpUniform.layoutBinding.stageFlags;
+				// insert any new subranges if necesary.
+				storedUniform.uboRange.subranges.insert( tmpUniform.uboRange.subranges.begin(), tmpUniform.uboRange.subranges.end() );
+			}
 		}
 
 	} // end: for all uniform buffers
@@ -484,17 +496,23 @@ bool of::vk::Shader::reflectSamplers( const spirv_cross::Compiler & compiler, co
 		// Let's see if an uniform buffer with this fingerprint has already been seen.
 		// If yes, it would already be in uniformStore.
 
-		auto result = mUniforms.insert( { sampledImage.name, tmpUniform } );
+		auto insertion = mUniforms.insert( { sampledImage.name, tmpUniform } );
 
-		if ( result.second == false ){
+		if ( insertion.second == false ){
 			// uniform with this key already exists: check set and binding numbers are identical
+			auto & storedUniform = insertion.first->second;
 			// otherwise print a warning and return false.
-			if ( result.first->second.layoutBinding.binding != tmpUniform.layoutBinding.binding
-				|| result.first->second.setNumber != tmpUniform.setNumber ){
+			if ( storedUniform.layoutBinding.binding != tmpUniform.layoutBinding.binding
+				|| storedUniform.setNumber != tmpUniform.setNumber ){
 				of::utils::setConsoleColor( 14 /* yellow */ );
-				ofLogWarning() << "Uniform: '" << sampledImage.name << "' is declared multiple times, but with inconsistent binding/set number.";
+				ofLogWarning() << "Combined image sampler: '" << sampledImage.name << "' is declared multiple times, but with inconsistent binding/set number.";
 				of::utils::resetConsoleColor();
 				return false;
+			} else{
+				// Merge stage flags
+				storedUniform.layoutBinding.stageFlags |= tmpUniform.layoutBinding.stageFlags;
+				// insert any new subranges if necesary.
+				storedUniform.uboRange.subranges.insert( tmpUniform.uboRange.subranges.begin(), tmpUniform.uboRange.subranges.end() );
 			}
 		}
 
