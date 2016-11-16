@@ -680,7 +680,7 @@ bool of::vk::Shader::createSetLayouts(){
 					tmpDescriptorSetData.bufferAttachment.push_back( {} );
 					uniformId.auxDataIndex = tmpDescriptorSetData.bufferAttachment.size() - 1;
 					
-					uniformId.dataRange = uniform.uboRange.storageSize; //! TODO: where to we get the size from? 
+					uniformId.dataRange = uniform.uboRange.storageSize;
 				}
 
 				for ( uint32_t arrayIndex = 0; arrayIndex != layoutBinding.descriptorCount; ++arrayIndex ){
