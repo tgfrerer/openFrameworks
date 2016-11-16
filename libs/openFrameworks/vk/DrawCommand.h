@@ -95,7 +95,7 @@ public:
 	of::vk::DrawCommand & setUniform( const std::string& uniformName, const T& uniformValue_ );
 
 	of::vk::DrawCommand & setTexture( const std::string& name, const std::shared_ptr<of::vk::Texture>& tex_ );
-	of::vk::DrawCommand & setStorageBuffer( const std::string& name, const std::shared_ptr<of::vk::BufferRegion>& buf_ );
+	of::vk::DrawCommand & setStorageBuffer( const std::string& name, const of::vk::BufferRegion& buf_ );
 
 };
 
@@ -160,7 +160,7 @@ inline of::vk::DrawCommand & of::vk::DrawCommand::setTexture( const std::string 
 
 // ------------------------------------------------------------
 
-inline of::vk::DrawCommand & of::vk::DrawCommand::setStorageBuffer( const std::string & uniformName, const std::shared_ptr<of::vk::BufferRegion>& buf_ ){
+inline of::vk::DrawCommand & of::vk::DrawCommand::setStorageBuffer( const std::string & uniformName, const of::vk::BufferRegion& buf_ ){
 
 	auto uniformInfoIt = mUniformDictionary.find( uniformName );
 
@@ -175,7 +175,7 @@ inline of::vk::DrawCommand & of::vk::DrawCommand::setStorageBuffer( const std::s
 
 	auto & bufferAttachment = mDescriptorSetData[uniformInfo.setIndex].bufferAttachment[uniformInfo.auxDataIndex];
 
-	bufferAttachment = *buf_;
+	bufferAttachment = buf_;
 
 	return *this;
 }
