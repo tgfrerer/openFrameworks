@@ -31,6 +31,8 @@ class ofApp : public ofBaseApp{
 	StaticMesh mStaticMesh;
 	StaticMesh mRectangleData;
 
+	of::vk::BufferRegion mStaticColourBuffer;
+
 	public:
 		void setup();
 		void setupStaticAllocators();

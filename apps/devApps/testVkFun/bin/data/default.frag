@@ -1,4 +1,4 @@
-#version 420 core
+#version 450 core
 
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_ARB_shading_language_420pack : enable
@@ -10,10 +10,16 @@ layout (set = 0, binding = 0) uniform DefaultMatrices
 	mat4 modelMatrix;
 	mat4 viewMatrix;
 };
+
 layout (set = 0, binding = 1) uniform Style
 {
 	vec4 globalColor;
 } style;
+
+layout (std430, set = 0, binding = 2)  buffer colorLayout 
+{
+  vec4 colourList[];
+};
 
 layout (location = 0) in vec4 inPosition;
 layout (location = 1) flat in vec3 inNormal;
@@ -32,7 +38,9 @@ void main()
   float lambert = dot(l,normal);
 
   vec3 normalColor = (inNormal + vec3(1.0)) * vec3(0.5);
-  outFragColor = vec4(normalColor,1);
+  // outFragColor = vec4(normalColor,1);
   
-  outFragColor = vec4(vec3(1,0,0) * lambert, 1);
+  vec3 plainColor =  colourList[2].rgb;
+
+  outFragColor = vec4(plainColor * lambert, 1);
 }

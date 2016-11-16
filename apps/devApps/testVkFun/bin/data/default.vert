@@ -1,4 +1,4 @@
-#version 420 core
+#version 450 core
 
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_ARB_shading_language_420pack : enable
@@ -16,6 +16,11 @@ layout (set = 0, binding = 1) uniform Style
 {
 	vec4 globalColor;
 } style;
+
+layout (std430, set = 0, binding = 2)  buffer colorLayout 
+{
+  vec4 colourList[];
+};
 
 // inputs (vertex attributes)
 layout (location = 0) in vec3 inPos;

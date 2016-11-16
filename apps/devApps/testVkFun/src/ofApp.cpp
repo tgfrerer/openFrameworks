@@ -41,7 +41,7 @@ void ofApp::setupStaticAllocators(){
 		allocatorSettings.memFlags = ::vk::MemoryPropertyFlagBits::eDeviceLocal;
 		allocatorSettings.physicalDeviceMemoryProperties = renderer->getVkPhysicalDeviceMemoryProperties();
 		allocatorSettings.physicalDeviceProperties = renderer->getVkPhysicalDeviceProperties();
-
+		allocatorSettings.bufferUsageFlags = allocatorSettings.bufferUsageFlags | ::vk::BufferUsageFlagBits::eStorageBuffer;
 		mStaticAllocator = std::make_unique<of::vk::BufferAllocator>( allocatorSettings );
 		mStaticAllocator->setup();
 	}
@@ -185,7 +185,8 @@ void ofApp::draw(){
 		.setUniform( "projectionMatrix", projectionMatrix )
 		.setUniform( "viewMatrix", viewMatrix )
 		.setUniform( "modelMatrix", modelMatrix )
-		//.setUniform( "globalColor", ofFloatColor::magenta )
+		//.setUniform( "globalColor", ofFloatColor::white )
+		.setStorageBuffer( "colorLayout", mStaticColourBuffer )
 		.setNumIndices( mStaticMesh.indexBuffer.numElements )
 		.setIndices( mStaticMesh.indexBuffer )
 		.setAttribute( 0, mStaticMesh.posBuffer )
@@ -197,7 +198,7 @@ void ofApp::draw(){
 		.setUniform( "projectionMatrix", projectionMatrix )
 		.setUniform( "viewMatrix", viewMatrix )
 		.setUniform( "modelMatrix", glm::mat4() )
-		.setUniform( "tex_0", mTexture )
+		.setTexture( "tex_0", mTexture )
 		.setNumIndices( mRectangleData.indexBuffer.numElements )
 		.setIndices( mRectangleData.indexBuffer )
 		.setAttribute( 0, mRectangleData.posBuffer )
@@ -206,9 +207,9 @@ void ofApp::draw(){
 
 	of::vk::RenderBatch batch{ currentContext };
 
-	batch.draw( drawFullScreenQuad );
+//	batch.draw( drawFullScreenQuad );
 	batch.draw( hero );
-	batch.draw( texturedRect );
+	//batch.draw( texturedRect );
 
 	// batch.submit processes all draw commands into a command buffer 
 	// and submits it to the current render context.
@@ -231,6 +232,12 @@ void ofApp::uploadStaticData( of::vk::RenderContext & currentContext ){
 	}
 
 	ofMesh meshPlane = ofMesh::plane( 1024 / 2, 768 / 2, 2, 2, OF_PRIMITIVE_TRIANGLES );
+
+	std::array<glm::vec4, 3> colourVec{{
+			{1,0,0,1},
+			{0,1,0,1},
+			{0,0,1,1},
+		}};
 
 	std::vector<of::vk::TransferSrcData> srcDataVec = {
 		// data for our strange hero object
@@ -264,6 +271,12 @@ void ofApp::uploadStaticData( of::vk::RenderContext & currentContext ){
 			meshPlane.getTexCoordsPointer(),
 			meshPlane.getNumTexCoords(),
 			sizeof(ofDefaultTexCoordType)
+		},
+		// data for the storage buffer
+		{
+			colourVec.data(),
+			colourVec.size(),
+			sizeof(glm::vec4)
 		}
 	};
 
@@ -271,7 +284,7 @@ void ofApp::uploadStaticData( of::vk::RenderContext & currentContext ){
 
 	std::vector<of::vk::BufferRegion> bufferRegions = currentContext.storeBufferDataCmd( srcDataVec, mStaticAllocator );
 
-	if ( bufferRegions.size() == 6 ) {
+	if ( bufferRegions.size() == 7 ) {
 		mStaticMesh.indexBuffer       = bufferRegions[0];
 		mStaticMesh.posBuffer         = bufferRegions[1];
 		mStaticMesh.normalBuffer      = bufferRegions[2];
@@ -279,6 +292,8 @@ void ofApp::uploadStaticData( of::vk::RenderContext & currentContext ){
 		mRectangleData.indexBuffer    = bufferRegions[3];
 		mRectangleData.posBuffer      = bufferRegions[4];
 		mRectangleData.texCoordBuffer = bufferRegions[5];
+		
+		mStaticColourBuffer           = bufferRegions[6];
 	}
 	
 	ofPixels pix;
@@ -307,9 +322,9 @@ void ofApp::keyPressed(int key){
 
 void ofApp::keyReleased(int key){
 	if ( key == ' ' ){
-		//const_cast<of::vk::DrawCommand&>( drawPhong ).getPipelineState().touchShader();
+		const_cast<of::vk::DrawCommand&>( drawPhong ).getPipelineState().touchShader();
 		//const_cast<of::vk::DrawCommand&>( drawFullScreenQuad ).getPipelineState().touchShader();
-		const_cast<of::vk::DrawCommand&>( drawTextured ).getPipelineState().touchShader();
+		//const_cast<of::vk::DrawCommand&>( drawTextured ).getPipelineState().touchShader();
 	} else if ( key == 'l' ){
 		isFrameLocked ^= true;
 		ofSetFrameRate( isFrameLocked ? EXAMPLE_TARGET_FRAME_RATE : 0);
