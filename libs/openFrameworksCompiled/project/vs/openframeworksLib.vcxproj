@@ -230,7 +230,6 @@
     <ClInclude Include="..\..\..\openFrameworks\vk\spooky\SpookyV2.h" />
     <ClInclude Include="..\..\..\openFrameworks\vk\Swapchain.h" />
     <ClInclude Include="..\..\..\openFrameworks\vk\Texture.h" />
-    <ClInclude Include="..\..\..\openFrameworks\vk\TransferBatch.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\openFrameworks\3d\of3dPrimitives.cpp" />
@@ -311,7 +310,6 @@
     <ClCompile Include="..\..\..\openFrameworks\vk\spooky\SpookyV2.cpp" />
     <ClCompile Include="..\..\..\openFrameworks\vk\Swapchain.cpp" />
     <ClCompile Include="..\..\..\openFrameworks\vk\Texture.cpp" />
-    <ClCompile Include="..\..\..\openFrameworks\vk\TransferBatch.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\..\openFrameworks\3d\ofMesh.inl" />

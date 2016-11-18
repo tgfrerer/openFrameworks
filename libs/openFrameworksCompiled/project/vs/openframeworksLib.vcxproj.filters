@@ -324,9 +324,6 @@
     <ClInclude Include="..\..\..\openFrameworks\vk\Texture.h">
       <Filter>libs\openFrameworks\vk</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\openFrameworks\vk\TransferBatch.h">
-      <Filter>libs\openFrameworks\vk</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\..\openFrameworks\vk\Allocator.h">
       <Filter>libs\openFrameworks\vk\Allocator</Filter>
     </ClInclude>
@@ -573,9 +570,6 @@
       <Filter>libs\openFrameworks\vk</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\openFrameworks\vk\Texture.cpp">
-      <Filter>libs\openFrameworks\vk</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\openFrameworks\vk\TransferBatch.cpp">
       <Filter>libs\openFrameworks\vk</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\openFrameworks\vk\BufferAllocator.cpp">
