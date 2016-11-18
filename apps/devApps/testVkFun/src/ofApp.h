@@ -17,6 +17,8 @@ class ofApp : public ofBaseApp{
 	const of::vk::DrawCommand drawFullScreenQuad;
 	const of::vk::DrawCommand drawTextured;
 
+	const of::vk::ComputeCommand computeCmd;
+
 	ofEasyCam mCam;
 
 	std::shared_ptr<ofMesh> mMeshL;
@@ -32,6 +34,7 @@ class ofApp : public ofBaseApp{
 	StaticMesh mRectangleData;
 
 	of::vk::BufferRegion mStaticColourBuffer;
+	of::vk::BufferRegion mParticlesRegion;
 
 	public:
 		void setup();

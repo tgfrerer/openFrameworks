@@ -4,12 +4,13 @@
 #include "vk/Pipeline.h"
 #include "vk/HelperTypes.h"
 #include "vk/Texture.h"
+#include "vk/RenderContext.h"
 
 namespace of{
 namespace vk{
 
 class BufferAllocator;	   // ffdecl.
-
+class RenderContext;       // ffdecl.
 class ComputeCommand
 {
 
@@ -45,6 +46,9 @@ public:
 	of::vk::ComputeCommand & setUniform( const std::string& uniformName, const T& uniformValue_ );
 
 	of::vk::ComputeCommand & setUniform( const std::string& uniformName, const of::vk::Texture& tex_ );
+	of::vk::ComputeCommand & setStorageBuffer( const std::string& name, const of::vk::BufferRegion& buf_ );
+
+	void submit( of::vk::RenderContext& rc_, const glm::uvec3& dims );
 
 };
 
@@ -105,6 +109,28 @@ inline ComputeCommand & ComputeCommand::setUniform( const std::string & uniformN
 	imageAttachment.imageView   = tex_.getImageView();
 	imageAttachment.imageLayout = tex_.getImageLayout();
 
+
+	return *this;
+}
+
+// ------------------------------------------------------------
+
+inline ComputeCommand & ComputeCommand::setStorageBuffer( const std::string & uniformName, const of::vk::BufferRegion& buf_ ){
+
+	auto uniformInfoIt = mUniformDictionary.find( uniformName );
+
+	if ( uniformInfoIt == mUniformDictionary.end() ){
+		ofLogWarning() << "Could not set Storage Buffer '" << uniformName << "': Uniform name not found in shader";
+		return *this;
+	}
+
+	// --------| invariant: uniform found
+
+	const auto & uniformInfo = uniformInfoIt->second;
+
+	auto & bufferAttachment = mDescriptorSetData[uniformInfo.setIndex].bufferAttachment[uniformInfo.auxDataIndex];
+
+	bufferAttachment = buf_;
 
 	return *this;
 }

@@ -72,8 +72,7 @@ void ofApp::setupDrawCommands(){
 
 		of::vk::ComputePipelineState computePipeline;
 		computePipeline.setShader( shaderCompute );
-		//auto pipeline = computePipeline.createPipeline();
-
+		const_cast<of::vk::ComputeCommand&>(computeCmd).setup( computePipeline );
 	}
 
 	{
@@ -207,18 +206,27 @@ void ofApp::draw(){
 
 	of::vk::RenderBatch batch{ currentContext };
 
-//	batch.draw( drawFullScreenQuad );
+	batch.draw( drawFullScreenQuad );
 	batch.draw( hero );
-	//batch.draw( texturedRect );
-
-	// batch.submit processes all draw commands into a command buffer 
-	// and submits it to the current render context.
-	batch.submit();	
-
+	batch.draw( texturedRect );
 
 
 	// At end of draw(), context will submit its list of vkCommandBuffers
 	// to the graphics queue in one API call.
+
+	// batch.submit processes all draw commands into a command buffer 
+	// and submits it to the current render context.
+	batch.submit();
+
+	// submitting the compute command after the batch has been submitted
+	// means it will end up on the queue *after* the draw instructions.
+
+	auto comp = computeCmd;
+	comp.setStorageBuffer( "ParticleBuf", mParticlesRegion );
+	uint32_t flipFlop = ofGetFrameNum() % 2;
+	comp.setUniform( "flipFlop", flipFlop );
+	comp.submit( currentContext, {1,1,1} );
+
 }
 
 //--------------------------------------------------------------
@@ -238,6 +246,28 @@ void ofApp::uploadStaticData( of::vk::RenderContext & currentContext ){
 			{0,1,0,1},
 			{0,0,1,1},
 		}};
+
+	struct Particle
+	{
+		glm::vec2 pos;
+		glm::vec2 vel;
+		glm::vec4 result;
+	};
+
+	std::array<Particle, 2> particleVec{
+		{
+			{
+				{  1.f, 1.f },
+				{ 0.5f, 0.5f},
+				{  0.f, 0.f, 0.f, 0.f}
+			},
+			{
+				{ 0.f, 0.f},
+				{ 0.0f, 0.0f },
+				{ 1.f, 1.f, 1.f, 1.f }
+			}
+		}
+	};
 
 	std::vector<of::vk::TransferSrcData> srcDataVec = {
 		// data for our strange hero object
@@ -277,14 +307,21 @@ void ofApp::uploadStaticData( of::vk::RenderContext & currentContext ){
 			colourVec.data(),
 			colourVec.size(),
 			sizeof(glm::vec4)
+		},
+		// data for the particle storage buffer
+		{
+			particleVec.data(),
+			particleVec.size(),
+			sizeof(Particle),
 		}
+
 	};
 
 	const auto & staticBuffer = mStaticAllocator->getBuffer();
 
 	std::vector<of::vk::BufferRegion> bufferRegions = currentContext.storeBufferDataCmd( srcDataVec, mStaticAllocator );
 
-	if ( bufferRegions.size() == 7 ) {
+	if ( bufferRegions.size() == 8 ) {
 		mStaticMesh.indexBuffer       = bufferRegions[0];
 		mStaticMesh.posBuffer         = bufferRegions[1];
 		mStaticMesh.normalBuffer      = bufferRegions[2];
@@ -294,6 +331,7 @@ void ofApp::uploadStaticData( of::vk::RenderContext & currentContext ){
 		mRectangleData.texCoordBuffer = bufferRegions[5];
 		
 		mStaticColourBuffer           = bufferRegions[6];
+		mParticlesRegion              = bufferRegions[7];
 	}
 	
 	ofPixels pix;

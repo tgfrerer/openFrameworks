@@ -7,6 +7,7 @@
 #include "vk/BufferAllocator.h"
 #include "vk/ImageAllocator.h"
 #include "vk/HelperTypes.h"
+#include "vk/ComputeCommand.h"
 /*
 
 MISSION: 
@@ -30,13 +31,14 @@ namespace of{
 namespace vk{
 
 class RenderBatch; // ffdecl.
-
+class ComputeCommand;
 
 // ------------------------------------------------------------
 
 class RenderContext
 {
 	friend RenderBatch;
+	friend ComputeCommand;
 public:
 	struct Settings
 	{
@@ -144,13 +146,14 @@ public:
 	// It *must* be submitted to this context within the same frame, that is, before swap().
 	// command buffer will also begin renderpass, based on current framebuffer and render area,
 	// and clear the render area based on current clear values.
-	::vk::CommandBuffer requestPrimaryCommandBufferWithRenderpass();
+	::vk::CommandBuffer requestPrimaryCommandBufferWithRenderpass() const;
 
-	::vk::CommandBuffer requestPrimaryCommandBuffer();
+	::vk::CommandBuffer requestPrimaryCommandBuffer() const ;
 
-	::vk::CommandBuffer allocateTransientCommandBuffer( const ::vk::CommandBufferLevel & commandBufferLevel );
+	// !TODO: combine this with requestPrimaryCommandBuffer
+	::vk::CommandBuffer allocateTransientCommandBuffer( const ::vk::CommandBufferLevel & commandBufferLevel ) const;
 
-	const std::unique_ptr<of::vk::BufferAllocator>& getTransientAllocator(){
+	const std::unique_ptr<of::vk::BufferAllocator>& getTransientAllocator() const{
 		return mTransientMemory;
 	};
 
@@ -255,7 +258,7 @@ inline ::vk::BufferCopy RenderContext::stageBufferData( const TransferSrcData& d
 
 // ------------------------------------------------------------
 
-inline ::vk::CommandBuffer RenderContext::requestPrimaryCommandBufferWithRenderpass(){
+inline ::vk::CommandBuffer RenderContext::requestPrimaryCommandBufferWithRenderpass() const {
 	::vk::CommandBuffer cmd;
 
 	::vk::CommandBufferAllocateInfo commandBufferAllocateInfo;
@@ -292,7 +295,7 @@ inline ::vk::CommandBuffer RenderContext::requestPrimaryCommandBufferWithRenderp
 
 // ------------------------------------------------------------
 
-inline ::vk::CommandBuffer RenderContext::requestPrimaryCommandBuffer(){
+inline ::vk::CommandBuffer RenderContext::requestPrimaryCommandBuffer() const {
 	::vk::CommandBuffer cmd;
 
 	::vk::CommandBufferAllocateInfo commandBufferAllocateInfo;
@@ -309,8 +312,8 @@ inline ::vk::CommandBuffer RenderContext::requestPrimaryCommandBuffer(){
 }
 // ------------------------------------------------------------
 
-inline ::vk::CommandBuffer RenderContext::allocateTransientCommandBuffer(
-	const ::vk::CommandBufferLevel & commandBufferLevel = ::vk::CommandBufferLevel::ePrimary  ){
+inline ::vk::CommandBuffer RenderContext::allocateTransientCommandBuffer (
+	const ::vk::CommandBufferLevel & commandBufferLevel = ::vk::CommandBufferLevel::ePrimary  ) const {
 	::vk::CommandBuffer cmd;
 
 	::vk::CommandBufferAllocateInfo commandBufferAllocateInfo;
