@@ -9,15 +9,16 @@ layout (set = 0, binding = 0) uniform DefaultMatrices
 	mat4 projectionMatrix;
 	mat4 modelMatrix;
 	mat4 viewMatrix;
+	
 }; 
 // note: if you don't specify a variable name for the block, 
 // its elements will live in the global namespace.
-layout (set = 0, binding = 1) uniform Style
-{
-	vec4 globalColor;
-} style;
+// layout (set = 0, binding = 1) uniform Style
+// {
+// 	vec4 globalColor;
+// } style;
 
-layout (std430, set = 0, binding = 2)  buffer colorLayout 
+layout (std430, set = 0, binding = 1)  buffer colorLayout 
 {
   vec4 colourList[];
 };

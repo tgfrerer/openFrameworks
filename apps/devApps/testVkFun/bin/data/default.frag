@@ -11,12 +11,12 @@ layout (set = 0, binding = 0) uniform DefaultMatrices
 	mat4 viewMatrix;
 };
 
-layout (set = 0, binding = 1) uniform Style
-{
-	vec4 globalColor;
-} style;
+// layout (set = 0, binding = 1) uniform Style
+// {
+// 	vec4 globalColor;
+// } style;
 
-layout (std430, set = 0, binding = 2)  buffer colorLayout 
+layout (std430, set = 0, binding = 1)  buffer colorLayout 
 {
   vec4 colourList[];
 };
@@ -40,7 +40,7 @@ void main()
   vec3 normalColor = (inNormal + vec3(1.0)) * vec3(0.5);
   // outFragColor = vec4(normalColor,1);
   
-  vec3 plainColor =  colourList[2].rgb;
+  vec3 plainColor =  colourList[1].rgb;
 
   outFragColor = vec4(plainColor * lambert, 1);
 }
