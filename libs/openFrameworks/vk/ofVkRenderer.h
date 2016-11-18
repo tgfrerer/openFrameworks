@@ -7,6 +7,7 @@
 #include "vk/BufferAllocator.h"
 #include "vk/ImageAllocator.h"
 #include "vk/DrawCommand.h"
+#include "vk/ComputeCommand.h"
 #include "vk/RenderBatch.h"
 #include "vk/Texture.h"
 

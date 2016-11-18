@@ -8,8 +8,6 @@
 namespace of{
 namespace vk{
 
-class DrawCommand;	   // ffdecl.
-class RenderBatch;	   // ffdecl.
 class BufferAllocator;	   // ffdecl.
 
 class ComputeCommand

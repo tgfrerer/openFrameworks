@@ -2,6 +2,25 @@
 #include "vk/BufferAllocator.h"
 
 using namespace of::vk;
+// setup all non-transient state for this draw object
+
+// current ubo values are stored with draw command
+
+// think about it as immutable DATA versus STATE - we want immutable DATA
+// not state. DATA is Plain Old Data - and this is how the draw command 
+// must store itself.
+
+// ----------------------------------------------------------------------
+
+
+void ComputeCommand::setup( const ComputePipelineState& pipelineState ){
+
+	mPipelineState = pipelineState;
+
+	mDescriptorSetData = mPipelineState.getShader()->getDescriptorSetData();
+	mUniformDictionary = mPipelineState.getShader()->getUniformDictionary();
+
+}
 
 // ------------------------------------------------------------
 
