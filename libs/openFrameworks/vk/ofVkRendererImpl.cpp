@@ -402,7 +402,7 @@ void ofVkRenderer::finishRender(){
 	// TODO: if there are other Contexts flying around on other threads, ask them to finish their work for
 	// the frame.
 
-	mDefaultContext->submitDraw();
+	mDefaultContext->submitToQueue();
 	// present swapchain frame
 	mSwapchain.queuePresent( mQueue, mSwapchain.getCurrentImageIndex(), { mDefaultContext->getSemaphoreRenderComplete()} );
 	

@@ -21,36 +21,37 @@ class RenderBatch
 	Batch is an object which processes draw instructions
 	received through draw command objects.
 
-	Batch's mission is to create a command buffer where
-	the number of pipeline changes is minimal.
-
+	Batch's mission is to create a single command buffer from all draw commands
+	it accumulates, and it aims to minimize the number of pipeline switches
+	between draw calls.
 
 	*/
-	RenderContext * mRenderContext;
-
-	RenderBatch() = delete;
 
 public:
 
-	RenderBatch( RenderContext& rpc );
+	RenderBatch( RenderContext& rc );
 
 	~RenderBatch(){
-		// todo: check if batch was submitted already - if not, submit.
-		// submit();
+		if ( !mDrawCommands.empty() ){
+			ofLogWarning() << "Unsubmitted draw commands leftover in RenderBatch";
+		}
 	}
 
-private:
-
-	uint32_t            mVkSubPassId = 0;
-
-	std::list<DrawCommand> mDrawCommands;
-
-	void processDrawCommands(const ::vk::CommandBuffer& cmd);
-
 public:
+
 	uint32_t nextSubPass();
 	void draw( const DrawCommand& dc );
 	void submit();
+
+private:
+
+	RenderContext *        mRenderContext;
+	uint32_t               mVkSubPassId = 0;
+	std::list<DrawCommand> mDrawCommands;
+
+	RenderBatch() = delete;
+	void processDrawCommands( const ::vk::CommandBuffer& cmd );
+
 };
 
 

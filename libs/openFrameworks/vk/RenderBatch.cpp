@@ -5,8 +5,8 @@
 using namespace of::vk;
 
 // ------------------------------------------------------------
-RenderBatch::RenderBatch( RenderContext & rpc )
-	:mRenderContext( &rpc ){
+RenderBatch::RenderBatch( RenderContext & rc )
+	:mRenderContext( &rc ){
 }
 
 // ------------------------------------------------------------
@@ -39,7 +39,7 @@ void RenderBatch::submit(){
 	// context will submit command buffers batched to queue 
 	// at its own pleasure, but in seqence.
 
-	auto mVkCmd = mRenderContext->requestAndBeginPrimaryCommandBuffer();
+	auto mVkCmd = mRenderContext->requestPrimaryCommandBufferWithRenderpass();
 
 	// TODO: if comamnd buffer is secondary, 
 	// we need to begin() it, otherwise it will have been begun.
@@ -73,7 +73,7 @@ void RenderBatch::submit(){
 }
 
 // ----------------------------------------------------------------------
-
+// !TODO: move this to renderContext.
 void RenderBatch::processDrawCommands( const ::vk::CommandBuffer& cmd ){
 
 	// first order draw commands

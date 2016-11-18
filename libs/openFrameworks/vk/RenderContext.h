@@ -17,7 +17,7 @@ MISSION:
 
 	One or more batches may submit into a rendercontext - the render-
 	context will accumulate vkCommandbuffers, and will submit them 
-	on submitDraw.
+	on submitToQueue.
 
 	A RenderContext is the OWNER of all elements used to draw within 
 	one thread.
@@ -142,7 +142,11 @@ public:
 	// Create and return command buffer. 
 	// Lifetime is limited to current frame. 
 	// It *must* be submitted to this context within the same frame, that is, before swap().
-	::vk::CommandBuffer requestAndBeginPrimaryCommandBuffer();
+	// command buffer will also begin renderpass, based on current framebuffer and render area,
+	// and clear the render area based on current clear values.
+	::vk::CommandBuffer requestPrimaryCommandBufferWithRenderpass();
+
+	::vk::CommandBuffer requestPrimaryCommandBuffer();
 
 	::vk::CommandBuffer allocateTransientCommandBuffer( const ::vk::CommandBufferLevel & commandBufferLevel );
 
@@ -163,8 +167,10 @@ public:
 	// move command buffer to the rendercontext for batched submission
 	void submit( ::vk::CommandBuffer&& commandBuffer );
 	
-	void submitDraw();
+	// submit all accumulated command buffers to vulkan draw queue for rendering
+	void submitToQueue();
 	// void submitTransfer();
+
 	void swap();
 
 };
@@ -249,7 +255,7 @@ inline ::vk::BufferCopy RenderContext::stageBufferData( const TransferSrcData& d
 
 // ------------------------------------------------------------
 
-inline ::vk::CommandBuffer RenderContext::requestAndBeginPrimaryCommandBuffer(){
+inline ::vk::CommandBuffer RenderContext::requestPrimaryCommandBufferWithRenderpass(){
 	::vk::CommandBuffer cmd;
 
 	::vk::CommandBufferAllocateInfo commandBufferAllocateInfo;
@@ -266,7 +272,7 @@ inline ::vk::CommandBuffer RenderContext::requestAndBeginPrimaryCommandBuffer(){
 	{	// begin renderpass
 		//! TODO: get correct clear values, and clear value count
 		std::array<::vk::ClearValue, 2> clearValues;
-		clearValues[0].setColor( reinterpret_cast<const ::vk::ClearColorValue&>( ofFloatColor::blueSteel ) );
+		clearValues[0].setColor( reinterpret_cast<const ::vk::ClearColorValue&>( ofFloatColor::black ) );
 		clearValues[1].setDepthStencil( { 1.f, 0 } );
 
 		::vk::RenderPassBeginInfo renderPassBeginInfo;
@@ -284,6 +290,23 @@ inline ::vk::CommandBuffer RenderContext::requestAndBeginPrimaryCommandBuffer(){
 	return cmd;
 }
 
+// ------------------------------------------------------------
+
+inline ::vk::CommandBuffer RenderContext::requestPrimaryCommandBuffer(){
+	::vk::CommandBuffer cmd;
+
+	::vk::CommandBufferAllocateInfo commandBufferAllocateInfo;
+	commandBufferAllocateInfo
+		.setCommandPool( mVirtualFrames[mCurrentVirtualFrame].commandPool )
+		.setLevel( ::vk::CommandBufferLevel::ePrimary )
+		.setCommandBufferCount( 1 )
+		;
+
+	mDevice.allocateCommandBuffers( &commandBufferAllocateInfo, &cmd );
+
+	cmd.begin( { ::vk::CommandBufferUsageFlagBits::eOneTimeSubmit } );
+	return cmd;
+}
 // ------------------------------------------------------------
 
 inline ::vk::CommandBuffer RenderContext::allocateTransientCommandBuffer(

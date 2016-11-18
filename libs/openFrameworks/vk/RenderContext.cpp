@@ -111,7 +111,7 @@ void RenderContext::begin(){
 
 // ------------------------------------------------------------
 
-void RenderContext::submitDraw(){
+void RenderContext::submitToQueue(){
 	::vk::PipelineStageFlags wait_dst_stage_mask = ::vk::PipelineStageFlagBits::eColorAttachmentOutput;
 	::vk::SubmitInfo submitInfo;
 
