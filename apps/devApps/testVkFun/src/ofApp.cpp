@@ -198,7 +198,7 @@ void ofApp::draw(){
 		.setUniform( "projectionMatrix", projectionMatrix )
 		.setUniform( "viewMatrix", viewMatrix )
 		.setUniform( "modelMatrix", glm::mat4() )
-		.setTexture( "tex_0", mTexture )
+		.setTexture( "tex_0", *mTexture )
 		.setNumIndices( mRectangleData.indexBuffer.numElements )
 		.setIndices( mRectangleData.indexBuffer )
 		.setAttribute( 0, mRectangleData.posBuffer )

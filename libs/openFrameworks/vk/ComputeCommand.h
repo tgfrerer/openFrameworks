@@ -44,7 +44,7 @@ public:
 	template <class T>
 	of::vk::ComputeCommand & setUniform( const std::string& uniformName, const T& uniformValue_ );
 
-	of::vk::ComputeCommand & setUniform( const std::string& uniformName, const std::shared_ptr<of::vk::Texture>& tex_ );
+	of::vk::ComputeCommand & setUniform( const std::string& uniformName, const of::vk::Texture& tex_ );
 
 };
 
@@ -86,7 +86,7 @@ inline ComputeCommand& ComputeCommand::setUniform( const std::string & uniformNa
 
 // ------------------------------------------------------------
 
-inline ComputeCommand & ComputeCommand::setUniform( const std::string & uniformName, const std::shared_ptr<Texture>& tex_ ){
+inline ComputeCommand & ComputeCommand::setUniform( const std::string & uniformName, const Texture & tex_ ){
 
 	auto uniformInfoIt = mUniformDictionary.find( uniformName );
 
@@ -101,9 +101,9 @@ inline ComputeCommand & ComputeCommand::setUniform( const std::string & uniformN
 
 	auto & imageAttachment = mDescriptorSetData[uniformInfo.setIndex].imageAttachment[uniformInfo.auxDataIndex];
 
-	imageAttachment.sampler = tex_->getSampler();
-	imageAttachment.imageView = tex_->getImageView();
-	imageAttachment.imageLayout = tex_->getImageLayout();
+	imageAttachment.sampler     = tex_.getSampler();
+	imageAttachment.imageView   = tex_.getImageView();
+	imageAttachment.imageLayout = tex_.getImageLayout();
 
 
 	return *this;

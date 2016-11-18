@@ -94,7 +94,7 @@ public:
 	template <class T>
 	of::vk::DrawCommand & setUniform( const std::string& uniformName, const T& uniformValue_ );
 
-	of::vk::DrawCommand & setTexture( const std::string& name, const std::shared_ptr<of::vk::Texture>& tex_ );
+	of::vk::DrawCommand & setTexture( const std::string& name, const of::vk::Texture& tex_ );
 	of::vk::DrawCommand & setStorageBuffer( const std::string& name, const of::vk::BufferRegion& buf_ );
 
 };
@@ -136,7 +136,7 @@ inline DrawCommand& DrawCommand::setUniform( const std::string & uniformName, co
 
 // ------------------------------------------------------------
 
-inline of::vk::DrawCommand & of::vk::DrawCommand::setTexture( const std::string & uniformName, const std::shared_ptr<of::vk::Texture>& tex_ ){
+inline of::vk::DrawCommand & of::vk::DrawCommand::setTexture( const std::string & uniformName, const of::vk::Texture& tex_ ){
 	
 	auto uniformInfoIt = mUniformDictionary.find( uniformName );
 
@@ -151,9 +151,9 @@ inline of::vk::DrawCommand & of::vk::DrawCommand::setTexture( const std::string 
 
 	auto & imageAttachment = mDescriptorSetData[uniformInfo.setIndex].imageAttachment[uniformInfo.auxDataIndex];
 
-	imageAttachment.sampler     = tex_->getSampler();
-	imageAttachment.imageView   = tex_->getImageView();
-	imageAttachment.imageLayout = tex_->getImageLayout();
+	imageAttachment.sampler     = tex_.getSampler();
+	imageAttachment.imageView   = tex_.getImageView();
+	imageAttachment.imageLayout = tex_.getImageLayout();
 	
 	return *this;
 }

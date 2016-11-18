@@ -24,15 +24,15 @@ public:
 
 	Texture(const ::vk::Device& device_, const ::vk::Image & image_);
 	
-	const ::vk::Sampler& getSampler(){
+	const ::vk::Sampler& getSampler() const{
 		return mSampler;
 	}
 
-	const ::vk::ImageView& getImageView(){
+	const ::vk::ImageView& getImageView() const {
 		return mImageView;
 	}
 
-	const ::vk::ImageLayout& getImageLayout(){
+	const ::vk::ImageLayout& getImageLayout() const{
 		return mImageLayout;
 	}
 
