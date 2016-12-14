@@ -381,7 +381,7 @@ std::vector<BufferRegion> RenderContext::storeBufferDataCmd( const std::vector<T
 
 		cmd.pipelineBarrier(
 			::vk::PipelineStageFlagBits::eTransfer,
-			::vk::PipelineStageFlagBits::eVertexInput,
+			::vk::PipelineStageFlagBits::eTopOfPipe, //<- not sure if this is optimal.
 			::vk::DependencyFlagBits(),
 			{}, /* no fence */
 			{ bufferTransferBarrier }, /* buffer barriers */
