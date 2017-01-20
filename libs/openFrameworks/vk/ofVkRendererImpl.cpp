@@ -9,14 +9,13 @@
 
 void ofVkRenderer::setup(){
 
-	// The surface has been assigned by glfwwindow, through glfw,
-	// just before this setup() method was called.
-	querySurfaceCapabilities();
-	
 	createSetupCommandPool();
 
+	mSwapchain->setRendererProperties( mRendererProperties );
 	setupSwapChain();
-	
+
+	mViewport = { 0.f, 0.f, float( mSwapchain->getWidth() ), float( mSwapchain->getHeight()) };
+
 	mPipelineCache = of::vk::createPipelineCache( mDevice, "pipelineCache.bin" );
 
 	// sets up resources to keep track of production frames
@@ -37,7 +36,7 @@ void ofVkRenderer::setupDefaultContext(){
 	settings.transientMemoryAllocatorSettings.size = ( ( 1ULL << 24 ) * mSettings.numVirtualFrames );
 	settings.renderer = this;
 	settings.pipelineCache = getPipelineCache();
-	settings.renderArea = { 0,0, mWindowWidth, mWindowHeight };
+	settings.renderArea = { 0,0, mSwapchain->getWidth(), mSwapchain->getHeight()};
 	settings.renderPass = generateDefaultRenderPass();
 	
 	mDefaultContext = make_shared<of::vk::RenderContext>(std::move(settings));
@@ -47,36 +46,14 @@ void ofVkRenderer::setupDefaultContext(){
 // ----------------------------------------------------------------------
 
 void ofVkRenderer::setupSwapChain(){
-
+	
 	mDevice.resetCommandPool( mSetupCommandPool, vk::CommandPoolResetFlagBits::eReleaseResources );
 	
 	// Allocate pre-present and post-present command buffers, 
 	// from main command pool, mCommandPool.
-	
-	uint32_t numSwapChainFrames = mSettings.numSwapchainImages;
-
-	vk::PresentModeKHR presentMode = mSettings.swapchainType;
-
-	// Note that the mSwapchain.setup() method will *modify* numSwapChainFrames 
-	// and presentMode if it wasn't able to apply the chosen values
-	// and had to resort to using fallback settings.
-
-	mSwapchain.setup(
-		mInstance,
-		mDevice,
-		mPhysicalDevice,
-		mWindowSurface,
-		mWindowColorFormat,
-		mWindowWidth,
-		mWindowHeight,
-		numSwapChainFrames,
-		presentMode
-	);
+	mSwapchain->setup( );
 
 	setupDepthStencil();
-
-	mViewport = { 0.f, 0.f, float( mWindowWidth ), float( mWindowHeight ) };
-
 }
 
 // ----------------------------------------------------------------------
@@ -90,50 +67,21 @@ void ofVkRenderer::resizeScreen( int w, int h ){
 	
 	auto err = vkDeviceWaitIdle( mDevice );
 	assert( !err );
-
+	
+	mSwapchain->changeExtent( w, h );
 	setupSwapChain();
-	mViewport.setWidth( w );
-	mViewport.setHeight( h );
-	mWindowWidth = w;
-	mWindowHeight = h;
+	
+	mViewport.setWidth( mSwapchain->getWidth() );
+	mViewport.setHeight( mSwapchain->getHeight() );
+
 	if ( mDefaultContext ){
-		mDefaultContext->setRenderArea( { { 0 , 0 }, {mWindowWidth ,  mWindowHeight } } );
+		mDefaultContext->setRenderArea( { { 0, 0 }, { mSwapchain->getWidth() ,  mSwapchain->getHeight() } } );
 	}
 
 	ofLogVerbose() << "Screen resize complete";
 }
  
-// ----------------------------------------------------------------------
-// todo: this must go to swapchain.
-void ofVkRenderer::querySurfaceCapabilities(){
 
-	// we need to find out if the current physical device supports 
-	// PRESENT
-	
-	VkBool32 presentSupported = VK_FALSE;
-	vkGetPhysicalDeviceSurfaceSupportKHR( mPhysicalDevice, mVkGraphicsFamilyIndex, mWindowSurface, &presentSupported );
-
-	// find out which color formats are supported
-
-	// Get list of supported surface formats
-	std::vector<vk::SurfaceFormatKHR> surfaceFormats = mPhysicalDevice.getSurfaceFormatsKHR( mWindowSurface );
-
-	// If the surface format list only includes one entry with VK_FORMAT_UNDEFINED,
-	// there is no preferred format, so we assume VK_FORMAT_B8G8R8A8_UNORM
-	if ( ( surfaceFormats.size() == 1 ) && ( surfaceFormats[0].format == vk::Format::eUndefined) ){
-		mWindowColorFormat.format = vk::Format::eB8G8R8A8Unorm;
-	}
-	else{
-		// Always select the first available color format
-		// If you need a specific format (e.g. SRGB) you'd need to
-		// iterate over the list of available surface format and
-		// check for its presence
-		mWindowColorFormat.format = surfaceFormats[0].format;
-	}
-	mWindowColorFormat.colorSpace = surfaceFormats[0].colorSpace;
-
-	ofLog() << "Present supported: " << ( presentSupported ? "TRUE" : "FALSE" );
-}
 
 // ----------------------------------------------------------------------
 
@@ -195,7 +143,7 @@ void ofVkRenderer::setupDepthStencil(){
 	imgCreateInfo
 		.setImageType( vk::ImageType::e2D )
 		.setFormat( mDepthFormat )
-		.setExtent( { mWindowWidth,mWindowHeight,1 } )
+		.setExtent( { mSwapchain->getWidth(), mSwapchain->getHeight(), 1 } )
 		.setMipLevels( 1 )
 		.setArrayLayers( 1 )
 		.setSamples( vk::SampleCountFlagBits::e1 )
@@ -220,7 +168,7 @@ void ofVkRenderer::setupDepthStencil(){
 		.setFormat( mDepthFormat )
 		.setSubresourceRange( subresourceRange );
 	
-	mDepthStencil.resize(mSwapchain.getImageCount());
+	mDepthStencil.resize(mSwapchain->getImageCount());
 
 	for ( auto& depthStencil : mDepthStencil ){
 		vk::MemoryRequirements memReqs;
@@ -279,7 +227,7 @@ void ofVkRenderer::setupDepthStencil(){
 	std::array<vk::AttachmentDescription, 2> attachments;
 	
 	attachments[0]		// color attachment
-		.setFormat          ( mWindowColorFormat.format )
+		.setFormat          ( mSwapchain->getColorFormat() )
 		.setSamples         ( vk::SampleCountFlagBits::e1 )
 		.setLoadOp          ( vk::AttachmentLoadOp::eClear )
 		.setStoreOp         ( vk::AttachmentStoreOp::eStore )
@@ -354,7 +302,7 @@ void ofVkRenderer::attachSwapChainImages( uint32_t swapchainImageIndex ){
 	std::vector<vk::ImageView> attachments(2, nullptr);
 	
 	// Attachment0 is the image view for the image buffer to the corresponding swapchain image view
-	attachments[0] = mSwapchain.getImage( swapchainImageIndex ).view;
+	attachments[0] = mSwapchain->getImage( swapchainImageIndex ).view;
 	
 	// Attachment1 is the image view for the depthStencil buffer
 	attachments[1] = mDepthStencil[swapchainImageIndex].view;
@@ -386,7 +334,7 @@ void ofVkRenderer::startRender(){
 	mDefaultContext->begin();
 
 	// receive index for next available swapchain image
-	auto err = mSwapchain.acquireNextImage( mDefaultContext->getImageAcquiredSemaphore(), swapIdx );
+	auto err = mSwapchain->acquireNextImage( mDefaultContext->getImageAcquiredSemaphore(), swapIdx );
 
 	// ---------| invariant: new swap chain image has been acquired for drawing into.
 
@@ -399,12 +347,12 @@ void ofVkRenderer::startRender(){
 
 void ofVkRenderer::finishRender(){
 
-	// TODO: if there are other Contexts flying around on other threads, ask them to finish their work for
-	// the frame.
+	// TODO: if there are other Contexts flying around on other threads, 
+	// ask them to finish their work for the frame.
 
 	mDefaultContext->submitToQueue();
 	// present swapchain frame
-	mSwapchain.queuePresent( mQueue, mSwapchain.getCurrentImageIndex(), { mDefaultContext->getSemaphoreRenderComplete()} );
+	mSwapchain->queuePresent( mQueue, mSwapchain->getCurrentImageIndex(), { mDefaultContext->getSemaphoreRenderComplete()} );
 	
 	// swap current frame index inside context
 	mDefaultContext->swap();
@@ -413,5 +361,5 @@ void ofVkRenderer::finishRender(){
 // ----------------------------------------------------------------------
 
 const uint32_t ofVkRenderer::getSwapChainSize(){
-	return mSwapchain.getImageCount();
+	return mSwapchain->getImageCount();
 }

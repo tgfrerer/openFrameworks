@@ -61,7 +61,7 @@ public:
 		uint32_t vkVersion = 1 << 22;                                      // target version
 		uint32_t numVirtualFrames = 0;                                     // number of virtual frames to allocate and to produce - set this through vkWindowSettings
 		uint32_t numSwapchainImages = 0;                                   // number of swapchain images to aim for (api gives no guarantee for this.)
-		::vk::PresentModeKHR swapchainType = ::vk::PresentModeKHR::eFifo;	   // selected swapchain type (api only guarantees FIFO)
+		::vk::PresentModeKHR presentMode = ::vk::PresentModeKHR::eFifo;	   // selected swapchain type (api only guarantees FIFO)
 		bool useDebugLayers = false;                                       // whether to use vulkan debug layers
 	} mSettings;
 
@@ -213,7 +213,6 @@ public:
 	virtual const of3dGraphics & get3dGraphics() const override;
 	virtual of3dGraphics & get3dGraphics() override;
 
-
 private:
 
 
@@ -223,7 +222,7 @@ private:
 	void                                   createDevice();
 	void                                   destroyDevice();
 
-	void                                   destroySurface();
+	//void                                   destroySurface();
 
 	VkDebugReportCallbackEXT               mDebugReportCallback = nullptr;
 	VkDebugReportCallbackCreateInfoEXT     mDebugCallbackCreateInfo = {};
@@ -232,18 +231,20 @@ private:
 	void                                   createDebugLayers();
 	void                                   destroyDebugLayers();
 
-	::vk::Instance                         mInstance                           = nullptr;  // vulkan loader instance
-	::vk::Device                           mDevice                             = nullptr;  // virtual device
-	::vk::PhysicalDevice                   mPhysicalDevice                     = nullptr;  // actual GPU
-	::vk::PhysicalDeviceProperties         mPhysicalDeviceProperties = {};
-	::vk::PhysicalDeviceMemoryProperties   mPhysicalDeviceMemoryProperties;
+	of::vk::RendererProperties mRendererProperties;
+	
+	::vk::Instance                         &mInstance                       = mRendererProperties.instance;
+	::vk::Device                           &mDevice                         = mRendererProperties.device;
+	::vk::PhysicalDevice                   &mPhysicalDevice                 = mRendererProperties.physicalDevice;
+	::vk::PhysicalDeviceProperties         &mPhysicalDeviceProperties       = mRendererProperties.physicalDeviceProperties;
+	::vk::PhysicalDeviceMemoryProperties   &mPhysicalDeviceMemoryProperties = mRendererProperties.physicalDeviceMemoryProperties;
+	uint32_t                               &mVkGraphicsFamilyIndex          = mRendererProperties.graphicsFamilyIndex;
 
 	std::vector<const char*>               mInstanceLayers;                                // debug layer list for instance
 	std::vector<const char*>               mInstanceExtensions;                            // debug layer list for device
 	std::vector<const char*>               mDeviceLayers;                                  // debug layer list for device
 	std::vector<const char*>               mDeviceExtensions;                              // debug layer list for device
 
-	uint32_t                               mVkGraphicsFamilyIndex = 0;
 	std::shared_ptr<::vk::PipelineCache>   mPipelineCache;
 
 public:
@@ -276,7 +277,6 @@ private:
 
 	::vk::CommandPool mSetupCommandPool;
 
-	void                     querySurfaceCapabilities();
 	void                     createSetupCommandPool();
 	
 	void                     setupSwapChain();
@@ -290,11 +290,6 @@ private:
 	// as are present commands.
 	::vk::Queue	mQueue = nullptr;
 
-	// the actual window drawing surface to actually really show something on screen.
-	// this is set externally using GLFW.
-	::vk::SurfaceKHR mWindowSurface = nullptr;
-
-	::vk::SurfaceFormatKHR mWindowColorFormat = {};
 
 	// Depth buffer format
 	// Depth format is selected during Vulkan initialization, in createDevice()
@@ -314,17 +309,18 @@ private:
 	std::vector<DepthStencilResource> mDepthStencil;
 
 	// vulkan swapchain
-	Swapchain mSwapchain;
+	shared_ptr<of::vk::Swapchain> mSwapchain;
 
-	uint32_t mWindowWidth = 0;
-	uint32_t mWindowHeight = 0;
 
 	std::shared_ptr<of::vk::RenderContext> mDefaultContext;
 
 public:
 
 	const ::vk::Instance& getInstance();
-	::vk::SurfaceKHR& getWindowSurface();
+
+	void setSwapchain( std::shared_ptr<of::vk::Swapchain> swapchain_ ){
+		mSwapchain = swapchain_;
+	};
 
 	::vk::RenderPass generateDefaultRenderPass() const;
 

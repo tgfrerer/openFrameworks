@@ -77,13 +77,6 @@ const vk::Instance& ofVkRenderer::getInstance() {
 
 // ----------------------------------------------------------------------
 
-vk::SurfaceKHR& ofVkRenderer::getWindowSurface() {
-	return mWindowSurface;
-}
-
-
-// ----------------------------------------------------------------------
-
 ofVkRenderer::~ofVkRenderer()
 {
 	// Tell GPU to finish whatever it is doing 
@@ -112,24 +105,18 @@ ofVkRenderer::~ofVkRenderer()
 	mDevice.destroyCommandPool( mSetupCommandPool );
 
 	destroyDevice();
-	destroySurface();
+	// !TODO: destroy surface.
+	// we need to do this in a way which is agnostic of the windowing system
+	// destroySurface();
 	destroyDebugLayers();
 	destroyInstance();
 }
 
 // ----------------------------------------------------------------------
 
-void ofVkRenderer::destroySurface(){
-	vkDestroySurfaceKHR( mInstance, mWindowSurface, nullptr );
-	mWindowSurface = VK_NULL_HANDLE;
-}
-
-// ----------------------------------------------------------------------
-
- void ofVkRenderer::createInstance()
-{
+void ofVkRenderer::createInstance(){
 	ofLog() << "Creating instance.";
-	
+
 	std::string appName = "openFrameworks" + ofGetVersionInfo();
 
 	vk::ApplicationInfo applicationInfo;
@@ -199,17 +186,17 @@ void ofVkRenderer::createDevice()
 		std::vector<vk::QueueFamilyProperties> queueFamilyPropertyList = mPhysicalDevice.getQueueFamilyProperties();
 
 		bool foundGraphics = false;
-		for (uint32_t i = 0; i < queueFamilyPropertyList.size(); ++i) {
+		for ( uint32_t i = 0; i < queueFamilyPropertyList.size(); ++i ){
 			// test queue family against flag bitfields
-			if (queueFamilyPropertyList[i].queueFlags & vk::QueueFlagBits::eGraphics) {
+			if ( queueFamilyPropertyList[i].queueFlags & vk::QueueFlagBits::eGraphics ){
 				foundGraphics = true;
 				mVkGraphicsFamilyIndex = i;
 				break;
 			}
 		}
-		if (!foundGraphics) {
+		if ( !foundGraphics ){
 			ofLogError() << "Vulkan error: did not find queue family that supports graphics";
-			ofExit(-1);
+			ofExit( -1 );
 		}
 	}
 
@@ -429,14 +416,14 @@ ofRectangle ofVkRenderer::getNativeViewport() const
 
 int ofVkRenderer::getViewportWidth() const
 {
-	return mWindowWidth;
+	return mViewport.width;
 }
 
 // ----------------------------------------------------------------------
 
 int ofVkRenderer::getViewportHeight() const
 {
-	return mWindowHeight;
+	return mViewport.height;
 }
 
 // ----------------------------------------------------------------------
@@ -482,15 +469,13 @@ inline ofColor ofVkRenderer::getBackgroundColor(){
 	return ofColor();
 }
 
-bool ofVkRenderer::getBackgroundAuto()
-{
+bool ofVkRenderer::getBackgroundAuto(){
 	return bBackgroundAuto;
 }
 
 // ----------------------------------------------------------------------
 
-ofPath & ofVkRenderer::getPath()
-{
+ofPath & ofVkRenderer::getPath(){
 	return mPath;
 }
 

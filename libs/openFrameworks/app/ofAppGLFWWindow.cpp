@@ -139,7 +139,7 @@ void ofAppGLFWWindow::setup(const ofGLFWWindowSettings & _settings){
 		ofVkRenderer::Settings rendererSettings;
 		rendererSettings.numSwapchainImages = _settings.numSwapchainImages;
 		rendererSettings.numVirtualFrames   = _settings.numVirtualFrames;
-		rendererSettings.swapchainType      = _settings.swapchainType;
+		rendererSettings.presentMode        = _settings.presentMode;
 		rendererSettings.vkVersion          = _settings.vkVersion;
 		rendererSettings.useDebugLayers     = _settings.useDebugLayers;
 
@@ -150,7 +150,16 @@ void ofAppGLFWWindow::setup(const ofGLFWWindowSettings & _settings){
 		// now we need to create a window surface
 		// this stores the window surface into the renderer as a side-effect.
 		createVkSurface();
-		
+
+		of::vk::SwapchainSettings swapchainSettings{};
+		swapchainSettings.width = _settings.width;
+		swapchainSettings.height = _settings.height;
+		swapchainSettings.numSwapChainFrames = rendererSettings.numSwapchainImages;
+		swapchainSettings.presentMode = rendererSettings.presentMode;
+		swapchainSettings.windowSurface = getVkSurface();
+
+		vkRenderer->setSwapchain(std::make_shared<of::vk::Swapchain>(swapchainSettings));
+
 		vkRenderer->setup();
 
 		//don't try and show a window if its been requsted to be hidden
@@ -1442,14 +1451,26 @@ VkResult ofAppGLFWWindow::createVkSurface(){
 	// create a window surface for this window, 
 	// and store the pointer to it with the renderer.
 	auto r = dynamic_pointer_cast<ofVkRenderer>( currentRenderer );
-	return glfwCreateWindowSurface( r->getInstance(), windowP, VK_NULL_HANDLE, reinterpret_cast<VkSurfaceKHR*>( &( r->getWindowSurface() ) ) );
+	return glfwCreateWindowSurface( r->getInstance(), windowP, VK_NULL_HANDLE, reinterpret_cast<VkSurfaceKHR*>( &( mWindowSurface ) ) );
+}
+
+//------------------------------------------------------------
+
+void ofAppGLFWWindow::destroyVkSurface(){
+	auto r = dynamic_pointer_cast<ofVkRenderer>( currentRenderer );
+
+	vkDestroySurfaceKHR( r->getInstance(), mWindowSurface, nullptr );
+	mWindowSurface = VK_NULL_HANDLE;
 }
 
 //------------------------------------------------------------
 const VkSurfaceKHR& ofAppGLFWWindow::getVkSurface(){
-	auto r = dynamic_pointer_cast<ofVkRenderer>( currentRenderer );
-	return r->getWindowSurface();
+	return mWindowSurface;
 };
+
+
+//------------------------------------------------------------
+
 #endif // OF_TARGET_API_VULKAN
 
 #ifndef OF_TARGET_API_VULKAN

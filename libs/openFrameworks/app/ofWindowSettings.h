@@ -125,7 +125,7 @@ public:
 	uint32_t vkVersion             = 1 << 22;
 	uint32_t numSwapchainImages    = 2;                               // number of images the swapchain should try to create
 	uint32_t numVirtualFrames      = 3;                               // number of virtual frames to produce to feed swapchain
-	::vk::PresentModeKHR swapchainType = ::vk::PresentModeKHR::eFifo; // api only guarantees FIFO to be present.
+	::vk::PresentModeKHR presentMode = ::vk::PresentModeKHR::eFifo; // api only guarantees FIFO to be present.
 	bool useDebugLayers            = true;                            // whether to use debug layers or not (default == true)
 };
 

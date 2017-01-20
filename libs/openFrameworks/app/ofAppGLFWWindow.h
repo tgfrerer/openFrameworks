@@ -89,10 +89,18 @@ public:
 	
 	void setup( const ofVkWindowSettings & settings );
 
-	// Create a vkSurface using GLFW. The surface is owned by the current renderer.
+	// Create a vkSurface using GLFW. The surface is owned by the current window.
 	VkResult             createVkSurface();
+
+	// storage for a pointer to a vkSurface owned by this window
+	VkSurfaceKHR         mWindowSurface;
+
+	// Destroy a vkSurface
+	void destroyVkSurface();
+
 	// Return vkSurface used to render to this window 
 	const VkSurfaceKHR&  getVkSurface();
+
 
 #else
 	void setup(const ofGLWindowSettings & settings);

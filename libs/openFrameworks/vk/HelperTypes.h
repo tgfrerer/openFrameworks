@@ -5,6 +5,16 @@
 namespace of{
 namespace vk{
 
+struct RendererProperties
+{
+	::vk::Instance                       instance                       = nullptr;  // vulkan loader instance
+	::vk::Device                         device                         = nullptr;  // virtual device
+	::vk::PhysicalDevice                 physicalDevice                 = nullptr;  // actual GPU
+	::vk::PhysicalDeviceProperties       physicalDeviceProperties       = {};
+	::vk::PhysicalDeviceMemoryProperties physicalDeviceMemoryProperties = {};
+	uint32_t                             graphicsFamilyIndex            = 0;
+};
+
 struct TransferSrcData
 {
 	void * pData ;

@@ -21,10 +21,10 @@ int main(){
 	
 	{
 		ofVkWindowSettings settings;
-		settings.setVkVersion( 1, 0, 26 );
+		settings.setVkVersion( 1, 0, 33 );
 		settings.numSwapchainImages = 3;
 		settings.numVirtualFrames = 3;
-		settings.swapchainType = ::vk::PresentModeKHR::eMailbox;
+		settings.presentMode = ::vk::PresentModeKHR::eMailbox;
 
 #ifdef NDEBUG
 		settings.useDebugLayers = false;

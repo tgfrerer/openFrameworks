@@ -75,7 +75,7 @@ void ofAppVkNoWindow::setup(const ofVkWindowSettings & settings){
 
 	rendererSettings.numSwapchainImages = settings.numSwapchainImages;
 	rendererSettings.numVirtualFrames   = settings.numVirtualFrames;
-	rendererSettings.swapchainType      = settings.swapchainType;
+	rendererSettings.presentMode        = settings.presentMode;
 	rendererSettings.useDebugLayers     = settings.useDebugLayers;
 	rendererSettings.vkVersion          = settings.vkVersion;
 
