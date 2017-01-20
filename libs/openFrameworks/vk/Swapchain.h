@@ -54,7 +54,7 @@ public:
 	// the image must be returned to the swapchain when done using 
 	// queuePresent
 	// \note this might cause waiting.
-	vk::Result acquireNextImage( ::vk::Semaphore presentCompleteSemaphore, uint32_t *imageIndex );
+	vk::Result acquireNextImage( ::vk::Semaphore presentCompleteSemaphore, uint32_t &imageIndex );
 
 	// mark the image ready to present by the swapchain.
 	// this returns the image to the swapchain and tells the 
@@ -63,7 +63,7 @@ public:
 	::vk::Result queuePresent( ::vk::Queue queue, uint32_t imageIndex );
 	// Present the current image to the queue
 	// Waits with execution until all waitSemaphores have been signalled
-	::vk::Result queuePresent( ::vk::Queue queue, uint32_t imageIndex, std::vector<::vk::Semaphore> waitSemaphores_ );
+	::vk::Result queuePresent( ::vk::Queue queue, uint32_t imageIndex, const std::vector<::vk::Semaphore>& waitSemaphores_ );
 
 	// return number of swapchain images
 	inline const uint32_t & getImageCount() const { return mImageCount; };

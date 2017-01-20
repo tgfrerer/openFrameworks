@@ -386,7 +386,7 @@ void ofVkRenderer::startRender(){
 	mDefaultContext->begin();
 
 	// receive index for next available swapchain image
-	auto err = mSwapchain.acquireNextImage( mDefaultContext->getImageAcquiredSemaphore(), &swapIdx );
+	auto err = mSwapchain.acquireNextImage( mDefaultContext->getImageAcquiredSemaphore(), swapIdx );
 
 	// ---------| invariant: new swap chain image has been acquired for drawing into.
 

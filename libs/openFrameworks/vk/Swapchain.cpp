@@ -118,13 +118,13 @@ void Swapchain::setup(
 	std::vector<vk::Image> swapchainImages = mDevice.getSwapchainImagesKHR( mSwapchain );
 	mImageCount = swapchainImages.size();
 
-	// Swapchain re-created because of window resize, most possibly
-	// therefore we have to destroy old ImageView object(s).
 
-	if ( !mImages.empty() ){
-		for ( auto&b : mImages ){
-			mDevice.destroyImageView( b.view );
-		}
+	for ( auto&b : mImages ){
+		// If there were any images available at all to iterate over, this means
+		// that the swapchain was re-created. 
+		// This happens on window resize, for example.
+		// Therefore we have to destroy old ImageView object(s).
+		mDevice.destroyImageView( b.view );
 	}
 
 	mImages.resize( mImageCount );
@@ -174,11 +174,12 @@ void Swapchain::reset(){
 		// note that we only destroy the VkImageView,
 		// as the VkImage is owned by the swapchain mSwapchain
 		// and will get destroyed when destroying the swapchain
-		vkDestroyImageView( mDevice, b.view, nullptr );
+		mDevice.destroyImageView( b.view );
 	}
 	mImages.clear();
 
-	vkDestroySwapchainKHR( mDevice, mSwapchain, nullptr );
+	mDevice.destroySwapchainKHR( mSwapchain );
+
 }
 
 // ----------------------------------------------------------------------
@@ -186,7 +187,7 @@ void Swapchain::reset(){
 // Acquires the next image in the swap chain
 // blocks cpu until image has been acquired
 // signals semaphorePresentComplete once image has been acquired
-vk::Result Swapchain::acquireNextImage( vk::Semaphore semaphorePresentComplete, uint32_t *imageIndex ){
+vk::Result Swapchain::acquireNextImage( vk::Semaphore semaphorePresentComplete, uint32_t &imageIndex ){
 	// TODO: research:
 	// because we are blocking here, could this affect our frame rate? could it take away time for cpu work?
 	// we somehow need to make sure to keep the internal time value increasing in regular intervals,
@@ -194,12 +195,13 @@ vk::Result Swapchain::acquireNextImage( vk::Semaphore semaphorePresentComplete, 
 
 	//mImageIndex = mDevice.acquireNextImageKHR( mSwapchain, UINT64_MAX, semaphorePresentComplete, nullptr );
 
-	auto err = vkAcquireNextImageKHR( mDevice, mSwapchain, UINT64_MAX, semaphorePresentComplete, ( VkFence )nullptr, imageIndex );
+	auto err = vkAcquireNextImageKHR( mDevice, mSwapchain, UINT64_MAX, semaphorePresentComplete, ( VkFence )nullptr, &imageIndex );
 	
 	if ( err != VK_SUCCESS ){
-		ofLogWarning() << "image acquisition returned: " << err;
+		ofLogWarning() << "Swapchain image acquisition returned: " << err;
+		imageIndex = mImageIndex;
 	}
-	mImageIndex = *imageIndex;
+	mImageIndex = imageIndex;
 
 	return vk::Result(err);
 }
@@ -214,7 +216,7 @@ vk::Result Swapchain::queuePresent( vk::Queue queue, uint32_t currentBuffer ){
 
 // ----------------------------------------------------------------------
 
-vk::Result Swapchain::queuePresent( vk::Queue queue, uint32_t currentImageIndex, std::vector<vk::Semaphore> waitSemaphores_ ){
+vk::Result Swapchain::queuePresent( vk::Queue queue, uint32_t currentImageIndex, const std::vector<vk::Semaphore>& waitSemaphores_ ){
 	
 	vk::PresentInfoKHR presentInfo;
 	presentInfo
