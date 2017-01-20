@@ -150,7 +150,7 @@ void ofAppGLFWWindow::setup(const ofGLFWWindowSettings & _settings){
 		// now we need to create a window surface
 		// this stores the window surface into the renderer as a side-effect.
 		createVkSurface();
-
+		
 		vkRenderer->setup();
 
 		//don't try and show a window if its been requsted to be hidden

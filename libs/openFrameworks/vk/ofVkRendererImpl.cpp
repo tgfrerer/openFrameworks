@@ -104,7 +104,7 @@ void ofVkRenderer::resizeScreen( int w, int h ){
 }
  
 // ----------------------------------------------------------------------
-
+// todo: this must go to swapchain.
 void ofVkRenderer::querySurfaceCapabilities(){
 
 	// we need to find out if the current physical device supports 
