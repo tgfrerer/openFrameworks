@@ -1,5 +1,7 @@
 #include "ofMain.h"
 #include "ofApp.h"
+#include "vk/ofAppVkNoWindow.h"
+
 
 //========================================================================
 int main(){
@@ -12,6 +14,7 @@ int main(){
 
 	// Create a new window 
 	auto mainWindow = std::make_shared<ofAppGLFWWindow>();
+	//auto mainWindow = std::make_shared<ofAppVkNoWindow>();
 
 	// Store main window in mainloop
 	ofGetMainLoop()->addWindow( mainWindow );
