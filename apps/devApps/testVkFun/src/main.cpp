@@ -4,23 +4,35 @@
 //========================================================================
 int main(){
 
+	// Do basic initialisation (mostly setup timers, and randseed)
+	ofInit();
+
 	auto consoleLogger = new ofConsoleLoggerChannel();
 	ofSetLoggerChannel( std::shared_ptr<ofBaseLoggerChannel>( consoleLogger, []( ofBaseLoggerChannel * lhs){} ) );
 
-	ofVkWindowSettings settings;
-	settings.setVkVersion( 1, 0, 26 );
-	settings.numSwapchainImages = 3;
-	settings.numVirtualFrames = 3;
-	settings.swapchainType = ::vk::PresentModeKHR::eMailbox;
+	// Create a new window 
+	auto mainWindow = std::make_shared<ofAppGLFWWindow>();
+
+	// Store main window in mainloop
+	ofGetMainLoop()->addWindow( mainWindow );
+	
+	{
+		ofVkWindowSettings settings;
+		settings.setVkVersion( 1, 0, 26 );
+		settings.numSwapchainImages = 3;
+		settings.numVirtualFrames = 3;
+		settings.swapchainType = ::vk::PresentModeKHR::eMailbox;
 
 #ifdef NDEBUG
-	settings.useDebugLayers = false;
+		settings.useDebugLayers = false;
 #else
-	settings.useDebugLayers = true;
+		settings.useDebugLayers = true;
 #endif
 
-	ofCreateWindow( settings );
+		// Initialise main window, and associated renderer.
+		mainWindow->setup( settings );
+	}
 
+	// Initialise and start application
 	ofRunApp( new ofApp() );
-
 }
