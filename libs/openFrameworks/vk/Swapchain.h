@@ -57,9 +57,7 @@ class Swapchain {
 
 public:
 
-	Swapchain( const SwapchainSettings& settings_ )
-	: mSettings(settings_){
-	};
+	Swapchain( const SwapchainSettings& settings_ );;
 
 	~Swapchain();
 
@@ -69,9 +67,8 @@ public:
 
 	void setup();
 
-	// request an image from the swapchain, so that we might render to it
-	// the image must be returned to the swapchain when done using 
-	// queuePresent
+	// Request an image index from the swapchain, so that we might render into it
+	// the image must be returned to the swapchain when done using queuePresent
 	// \note this might cause waiting.
 	::vk::Result acquireNextImage( ::vk::Semaphore presentCompleteSemaphore, uint32_t &imageIndex );
 
@@ -100,18 +97,18 @@ public:
 		return mWindowColorFormat.format;
 	};
 
-	// return current swapchain image width in pixels
+	// Return current swapchain image width in pixels
 	inline uint32_t getWidth(){
 		return mSettings.width;
 	};
 
-	// retunr current swapchain image height in pixels
+	// Return current swapchain image height in pixels
 	inline uint32_t getHeight(){
 		return mSettings.height;
 	}
 
-	// change width and height in internal settings. 
-	// caution: this method requires a call to setup() to be applied.
+	// Change width and height in internal settings. 
+	// Caution: this method requires a call to setup() to be applied, and is very costly.
 	inline void changeExtent( uint32_t w, uint32_t h ){
 		const_cast<uint32_t&>(mSettings.width ) = w;
 		const_cast<uint32_t&>(mSettings.height) = h;

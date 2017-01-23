@@ -5,9 +5,16 @@
 
 using namespace of::vk;
 
+// ----------------------------------------------------------------------
+
+of::vk::Swapchain::Swapchain( const SwapchainSettings & settings_ )
+	: mSettings( settings_ ){
+}
+
+// ----------------------------------------------------------------------
 
 of::vk::Swapchain::~Swapchain(){
-	// it's imperative we clean up.
+	// It's imperative we clean up.
 
 	for ( auto&b : mImages ){
 		// note that we only destroy the VkImageView,
@@ -18,8 +25,9 @@ of::vk::Swapchain::~Swapchain(){
 	mImages.clear();
 
 	mDevice.destroySwapchainKHR( mVkSwapchain );
-
 }
+
+// ----------------------------------------------------------------------
 
 void Swapchain::setup()
 {
@@ -170,19 +178,12 @@ void Swapchain::setup()
 
 }
 
-
 // ----------------------------------------------------------------------
 
 // Acquires the next image in the swap chain
-// blocks cpu until image has been acquired
-// signals semaphorePresentComplete once image has been acquired
+// Blocks cpu until image has been acquired
+// Signals semaphorePresentComplete once image has been acquired
 vk::Result Swapchain::acquireNextImage( ::vk::Semaphore semaphorePresentComplete, uint32_t &imageIndex ){
-	// TODO: research:
-	// because we are blocking here, could this affect our frame rate? could it take away time for cpu work?
-	// we somehow need to make sure to keep the internal time value increasing in regular intervals,
-	// tracking the current frame number!
-
-	//mImageIndex = mDevice.acquireNextImageKHR( mSwapchain, UINT64_MAX, semaphorePresentComplete, nullptr );
 
 	auto err = vkAcquireNextImageKHR( mDevice, mVkSwapchain, UINT64_MAX, semaphorePresentComplete, ( VkFence )nullptr, &imageIndex );
 	

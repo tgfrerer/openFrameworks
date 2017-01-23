@@ -150,15 +150,17 @@ void ofAppGLFWWindow::setup(const ofGLFWWindowSettings & _settings){
 		// now we need to create a window surface
 		// this stores the window surface into the renderer as a side-effect.
 		createVkSurface();
-
-		of::vk::SwapchainSettings swapchainSettings{};
-		swapchainSettings.width = _settings.width;
-		swapchainSettings.height = _settings.height;
-		swapchainSettings.numSwapChainFrames = rendererSettings.numSwapchainImages;
-		swapchainSettings.presentMode = rendererSettings.presentMode;
-		swapchainSettings.windowSurface = getVkSurface();
-
-		vkRenderer->setSwapchain(std::make_shared<of::vk::Swapchain>(swapchainSettings));
+		
+		{
+			// create swapchain
+			of::vk::SwapchainSettings swapchainSettings{};
+			swapchainSettings.width = _settings.width;
+			swapchainSettings.height = _settings.height;
+			swapchainSettings.numSwapChainFrames = rendererSettings.numSwapchainImages;
+			swapchainSettings.presentMode = rendererSettings.presentMode;
+			swapchainSettings.windowSurface = getVkSurface();
+			vkRenderer->setSwapchain(std::make_shared<of::vk::Swapchain>(swapchainSettings));
+		}
 
 		vkRenderer->setup();
 
@@ -1448,10 +1450,10 @@ void ofAppGLFWWindow::iconify(bool bIconify){
 // Vulkan
 //------------------------------------------------------------
 VkResult ofAppGLFWWindow::createVkSurface(){
-	// create a window surface for this window, 
-	// and store the pointer to it with the renderer.
+	// Create window surface for this window through WSI, and
+	// store surface in mWindowSurface
 	auto r = dynamic_pointer_cast<ofVkRenderer>( currentRenderer );
-	return glfwCreateWindowSurface( r->getInstance(), windowP, VK_NULL_HANDLE, reinterpret_cast<VkSurfaceKHR*>( &( mWindowSurface ) ) );
+	return glfwCreateWindowSurface( r->getInstance(), windowP, VK_NULL_HANDLE, &mWindowSurface  );
 }
 
 //------------------------------------------------------------
