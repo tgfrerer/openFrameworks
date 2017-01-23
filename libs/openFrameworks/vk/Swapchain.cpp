@@ -1,19 +1,18 @@
 #include "vk/Swapchain.h"
 #include <vector>
 #include "ofLog.h"
-#include "GLFW/glfw3.h"
 
 using namespace of::vk;
 
 // ----------------------------------------------------------------------
 
-of::vk::Swapchain::Swapchain( const SwapchainSettings & settings_ )
+WsiSwapchain::WsiSwapchain( const WsiSwapchainSettings & settings_ )
 	: mSettings( settings_ ){
 }
 
 // ----------------------------------------------------------------------
 
-of::vk::Swapchain::~Swapchain(){
+WsiSwapchain::~WsiSwapchain(){
 	// It's imperative we clean up.
 
 	for ( auto&b : mImages ){
@@ -29,7 +28,7 @@ of::vk::Swapchain::~Swapchain(){
 
 // ----------------------------------------------------------------------
 
-void Swapchain::setup()
+void WsiSwapchain::setup()
 {
 
 	::vk::Result err = ::vk::Result::eSuccess;
@@ -178,12 +177,36 @@ void Swapchain::setup()
 
 }
 
+// Return current swapchain image width in pixels
+
+inline uint32_t of::vk::WsiSwapchain::getWidth(){
+	return mSettings.width;
+}
+
+// Return current swapchain image height in pixels
+
+inline uint32_t of::vk::WsiSwapchain::getHeight(){
+	return mSettings.height;
+}
+
+// Change width and height in internal settings. 
+// Caution: this method requires a call to setup() to be applied, and is very costly.
+
+inline void of::vk::WsiSwapchain::changeExtent( uint32_t w, uint32_t h ){
+	const_cast<uint32_t&>( mSettings.width ) = w;
+	const_cast<uint32_t&>( mSettings.height ) = h;
+}
+
+inline ::vk::Format & of::vk::WsiSwapchain::getColorFormat(){
+	return mWindowColorFormat.format;
+}
+
 // ----------------------------------------------------------------------
 
 // Acquires the next image in the swap chain
 // Blocks cpu until image has been acquired
 // Signals semaphorePresentComplete once image has been acquired
-vk::Result Swapchain::acquireNextImage( ::vk::Semaphore semaphorePresentComplete, uint32_t &imageIndex ){
+vk::Result WsiSwapchain::acquireNextImage( ::vk::Semaphore semaphorePresentComplete, uint32_t &imageIndex ){
 
 	auto err = vkAcquireNextImageKHR( mDevice, mVkSwapchain, UINT64_MAX, semaphorePresentComplete, ( VkFence )nullptr, &imageIndex );
 	
@@ -199,14 +222,14 @@ vk::Result Swapchain::acquireNextImage( ::vk::Semaphore semaphorePresentComplete
 // ----------------------------------------------------------------------
   
 // Present the current image to the queue
-vk::Result Swapchain::queuePresent( ::vk::Queue queue, uint32_t currentBuffer ){
+vk::Result WsiSwapchain::queuePresent( ::vk::Queue queue, uint32_t currentBuffer ){
 	std::vector<::vk::Semaphore> noSemaphores;
 	return queuePresent( queue, currentBuffer, noSemaphores);
 }
 
 // ----------------------------------------------------------------------
 
-vk::Result Swapchain::queuePresent( ::vk::Queue queue, uint32_t currentImageIndex, const std::vector<::vk::Semaphore>& waitSemaphores_ ){
+vk::Result WsiSwapchain::queuePresent( ::vk::Queue queue, uint32_t currentImageIndex, const std::vector<::vk::Semaphore>& waitSemaphores_ ){
 	
 	::vk::PresentInfoKHR presentInfo;
 	presentInfo
@@ -222,9 +245,33 @@ vk::Result Swapchain::queuePresent( ::vk::Queue queue, uint32_t currentImageInde
 	return queue.presentKHR( presentInfo );
 }
 
+// return images vector
+
+const std::vector<ImageRef>& WsiSwapchain::getImages() const{
+	return mImages;
+}
+
+// return image by index
+
+const ImageRef & WsiSwapchain::getImage( size_t i ) const{
+	return mImages[i];
+}
+
+// return number of swapchain images
+
+const uint32_t & WsiSwapchain::getImageCount() const{
+	return mImageCount;
+}
+
+// return last acquired buffer id
+
+const uint32_t & WsiSwapchain::getCurrentImageIndex() const{
+	return mImageIndex;
+}
+
 // ----------------------------------------------------------------------
 
-void Swapchain::querySurfaceCapabilities(){
+void WsiSwapchain::querySurfaceCapabilities(){
 
 	if ( mSurfaceProperties.queried == false ){
 		
@@ -254,6 +301,10 @@ void Swapchain::querySurfaceCapabilities(){
 		ofLog() << "Present supported: " << ( mSurfaceProperties.presentSupported ? "TRUE" : "FALSE" );
 		mSurfaceProperties.queried = true;
 	}
+}
+
+void WsiSwapchain::setRendererProperties( const RendererProperties & rendererProperties_ ){
+	mRendererProperties = rendererProperties_;
 }
 
 // ----------------------------------------------------------------------

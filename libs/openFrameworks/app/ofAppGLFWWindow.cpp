@@ -147,19 +147,18 @@ void ofAppGLFWWindow::setup(const ofGLFWWindowSettings & _settings){
 		auto vkRenderer = dynamic_pointer_cast<ofVkRenderer>( currentRenderer );
 		// we have a renderer.
 
-		// now we need to create a window surface
-		// this stores the window surface into the renderer as a side-effect.
+		// Now we need to create a window surface
 		createVkSurface();
 		
 		{
 			// create swapchain
-			of::vk::SwapchainSettings swapchainSettings{};
+			of::vk::WsiSwapchainSettings swapchainSettings{};
 			swapchainSettings.width = _settings.width;
 			swapchainSettings.height = _settings.height;
 			swapchainSettings.numSwapChainFrames = rendererSettings.numSwapchainImages;
 			swapchainSettings.presentMode = rendererSettings.presentMode;
 			swapchainSettings.windowSurface = getVkSurface();
-			vkRenderer->setSwapchain(std::make_shared<of::vk::Swapchain>(swapchainSettings));
+			vkRenderer->setSwapchain( std::make_shared<of::vk::WsiSwapchain>( swapchainSettings ) );
 		}
 
 		vkRenderer->setup();

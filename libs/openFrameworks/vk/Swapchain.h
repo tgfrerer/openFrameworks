@@ -8,41 +8,99 @@
 namespace of{
 namespace vk{
 
-
-// TODO: rename
-typedef struct
-{
-	::vk::Image imageRef;	   // owned by SwapchainKHR, only referenced here
-	::vk::ImageView view;
-} SwapchainImage;
-
+// ----------------------------------------------------------------------
 
 struct SwapchainSettings
 {
-	uint32_t                width              = 0;
-	uint32_t                height             = 0;
+	uint32_t                width = 0;
+	uint32_t                height = 0;
 	uint32_t                numSwapChainFrames = 0;
-	::vk::PresentModeKHR    presentMode        = ::vk::PresentModeKHR::eFifo;
-	::vk::SurfaceKHR        windowSurface      = nullptr;
 };
 
+// ----------------------------------------------------------------------
+
+struct WsiSwapchainSettings : public SwapchainSettings
+{
+	::vk::PresentModeKHR    presentMode = ::vk::PresentModeKHR::eFifo;
+	::vk::SurfaceKHR        windowSurface = nullptr;
+};
+
+// ----------------------------------------------------------------------
+
+// Todo: clarify this
+// Image view for image which Swapchain donesn't own
+// Owner of image is WSI
+struct ImageRef
+{
+	::vk::Image imageRef;	   // owned by SwapchainKHR, only referenced here
+	::vk::ImageView view;
+};
+
+// ----------------------------------------------------------------------
 
 class Swapchain {
+public:
 
-	::vk::SwapchainKHR      mVkSwapchain;
-	::vk::SurfaceFormatKHR  mWindowColorFormat = {};
+	virtual void setRendererProperties( const of::vk::RendererProperties& rendererProperties_ ) = 0 ;
+	virtual void setup(){};
 
+	virtual ~Swapchain(){};
+
+	// Request an image index from the swapchain, so that we might render into it
+	// the image must be returned to the swapchain when done using queuePresent
+	// \note this might cause waiting.
+	virtual ::vk::Result acquireNextImage( ::vk::Semaphore presentCompleteSemaphore, uint32_t &imageIndex ) =  0;
+
+	// mark the image ready to present by the swapchain.
+	// this returns the image to the swapchain and tells the 
+	// swapchain that we're done rendering to it and that 
+	// it may show the image on screen.
+	virtual ::vk::Result queuePresent( ::vk::Queue queue, uint32_t imageIndex ) = 0;
+	// Present the current image to the queue
+	// Waits with execution until all waitSemaphores have been signalled
+	virtual ::vk::Result queuePresent( ::vk::Queue queue, uint32_t imageIndex, const std::vector<::vk::Semaphore>& waitSemaphores_ ) = 0;
+
+	// return images vector
+	virtual const std::vector<ImageRef> & getImages() const = 0 ;
+	
+	// return image by index
+	virtual const ImageRef& getImage( size_t i ) const = 0 ;
+
+	// return number of swapchain images
+	virtual const uint32_t & getImageCount() const = 0;
+	
+	// return last acquired buffer id
+	virtual const uint32_t & getCurrentImageIndex() const = 0;
+
+	virtual ::vk::Format& getColorFormat() = 0;
+
+	// Return current swapchain image width in pixels
+	virtual uint32_t getWidth() = 0 ;
+
+	// Return current swapchain image height in pixels
+	virtual uint32_t getHeight() = 0;
+
+	// Change width and height in internal settings. 
+	// Caution: this method requires a call to setup() to be applied, and is very costly.
+	virtual void changeExtent( uint32_t w, uint32_t h ) = 0;
+};
+
+// ----------------------------------------------------------------------
+
+class WsiSwapchain : public Swapchain
+{
 	uint32_t             mImageCount = 0;
 	uint32_t             mImageIndex = 0;
 
-	std::vector<SwapchainImage> mImages;  // owning, clients may only borrow!
-	
+	std::vector<ImageRef> mImages;  // owning, clients may only borrow!
+
 	void                 querySurfaceCapabilities();
 
-	RendererProperties mRendererProperties;
-	const ::vk::Device &mDevice = mRendererProperties.device;
+	RendererProperties      mRendererProperties;
+	const ::vk::Device      &mDevice = mRendererProperties.device;
 
-	const SwapchainSettings mSettings;
+	::vk::SwapchainKHR      mVkSwapchain;
+	::vk::SurfaceFormatKHR  mWindowColorFormat = {};
 
 	struct SurfaceProperties
 	{
@@ -53,68 +111,58 @@ class Swapchain {
 		VkBool32 presentSupported = VK_FALSE;
 	} mSurfaceProperties;
 
-	//void querySurfaceCapabilities();
+	const WsiSwapchainSettings mSettings;
 
 public:
+	
+	WsiSwapchain( const WsiSwapchainSettings& settings_ );
+	
+	void setRendererProperties( const of::vk::RendererProperties& rendererProperties_ ) override;
 
-	Swapchain( const SwapchainSettings& settings_ );;
+	void setup() override;
 
-	~Swapchain();
-
-	void setRendererProperties( const of::vk::RendererProperties& rendererProperties_ ){
-		mRendererProperties = rendererProperties_;
-	};
-
-	void setup();
+	virtual ~WsiSwapchain();
 
 	// Request an image index from the swapchain, so that we might render into it
 	// the image must be returned to the swapchain when done using queuePresent
 	// \note this might cause waiting.
-	::vk::Result acquireNextImage( ::vk::Semaphore presentCompleteSemaphore, uint32_t &imageIndex );
+	::vk::Result acquireNextImage( ::vk::Semaphore presentCompleteSemaphore, uint32_t &imageIndex ) override;
 
 	// mark the image ready to present by the swapchain.
 	// this returns the image to the swapchain and tells the 
 	// swapchain that we're done rendering to it and that 
 	// it may show the image on screen.
-	::vk::Result queuePresent( ::vk::Queue queue, uint32_t imageIndex );
+	::vk::Result queuePresent( ::vk::Queue queue, uint32_t imageIndex ) override;
+
 	// Present the current image to the queue
 	// Waits with execution until all waitSemaphores have been signalled
-	::vk::Result queuePresent( ::vk::Queue queue, uint32_t imageIndex, const std::vector<::vk::Semaphore>& waitSemaphores_ );
+	::vk::Result queuePresent( ::vk::Queue queue, uint32_t imageIndex, const std::vector<::vk::Semaphore>& waitSemaphores_ ) override;
 
 	// return images vector
-	inline const std::vector<SwapchainImage> & getImages() const{ return mImages; };
-	
+	const std::vector<ImageRef> & getImages() const override;
+
 	// return image by index
-	inline const SwapchainImage& getImage( size_t i ) const{ return mImages[i]; };
+	const ImageRef& getImage( size_t i ) const override;
 
 	// return number of swapchain images
-	inline const uint32_t & getImageCount() const { return mImageCount; };
-	
-	// return last acquired buffer id
-	inline const uint32_t & getCurrentImageIndex() const { return mImageIndex; };
+	const uint32_t & getImageCount() const override;
 
-	inline ::vk::Format& getColorFormat(){
-		return mWindowColorFormat.format;
-	};
+	// return last acquired buffer id
+	const uint32_t & getCurrentImageIndex() const override;
+
+	::vk::Format& getColorFormat() override;
 
 	// Return current swapchain image width in pixels
-	inline uint32_t getWidth(){
-		return mSettings.width;
-	};
+	uint32_t getWidth() override;
 
 	// Return current swapchain image height in pixels
-	inline uint32_t getHeight(){
-		return mSettings.height;
-	}
+	uint32_t getHeight() override;
 
 	// Change width and height in internal settings. 
 	// Caution: this method requires a call to setup() to be applied, and is very costly.
-	inline void changeExtent( uint32_t w, uint32_t h ){
-		const_cast<uint32_t&>(mSettings.width ) = w;
-		const_cast<uint32_t&>(mSettings.height) = h;
-	};
-};
+	void changeExtent( uint32_t w, uint32_t h ) override;
 
+};
 
 
 } // end namespace vk
