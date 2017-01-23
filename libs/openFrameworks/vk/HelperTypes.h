@@ -1,6 +1,7 @@
 #pragma once
 
 #include <vulkan/vulkan.hpp>
+#include "ofLog.h"
 
 namespace of{
 namespace vk{
@@ -41,6 +42,37 @@ struct BufferRegion
 	::vk::DeviceSize range = VK_WHOLE_SIZE;
 	uint64_t numElements = 0;
 };
+
+// get memory allocation info for best matching memory type that matches any of the type bits and flags
+static bool getMemoryAllocationInfo(
+	const ::vk::MemoryRequirements& memReqs,
+	::vk::MemoryPropertyFlags memProps,
+	::vk::PhysicalDeviceMemoryProperties physicalMemProperties,
+	::vk::MemoryAllocateInfo& memInfo ) {
+	if ( !memReqs.size ){
+		memInfo.allocationSize = 0;
+		memInfo.memoryTypeIndex = ~0;
+		return true;
+	}
+
+	// Find an available memory type that satifies the requested properties.
+	uint32_t memoryTypeIndex;
+	for ( memoryTypeIndex = 0; memoryTypeIndex < physicalMemProperties.memoryTypeCount; ++memoryTypeIndex ){
+		if ( ( memReqs.memoryTypeBits & ( 1 << memoryTypeIndex ) ) &&
+			( physicalMemProperties.memoryTypes[memoryTypeIndex].propertyFlags & memProps ) == memProps ){
+			break;
+		}
+	}
+	if ( memoryTypeIndex >= physicalMemProperties.memoryTypeCount ){
+		ofLogError() << "memorytypeindex not found" ;
+		return false;
+	}
+
+	memInfo.allocationSize = memReqs.size;
+	memInfo.memoryTypeIndex = memoryTypeIndex;
+
+	return true;
+}
 
 } // end namespace of::vk
 } // end namespace of

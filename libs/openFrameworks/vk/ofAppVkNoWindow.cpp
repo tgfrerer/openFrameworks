@@ -67,30 +67,40 @@ ofAppVkNoWindow::ofAppVkNoWindow(){
 }
 
 //----------------------------------------------------------
+
 void ofAppVkNoWindow::setup(const ofVkWindowSettings & settings){
 	width = settings.width;
 	height = settings.height;
 
 	ofVkRenderer::Settings rendererSettings;
 
-	rendererSettings.numSwapchainImages = settings.numSwapchainImages;
-	rendererSettings.numVirtualFrames   = settings.numVirtualFrames;
-	rendererSettings.presentMode        = settings.presentMode;
-	rendererSettings.useDebugLayers     = settings.useDebugLayers;
 	rendererSettings.vkVersion          = settings.vkVersion;
+	rendererSettings.numVirtualFrames   = settings.numVirtualFrames;
+	rendererSettings.useDebugLayers     = settings.useDebugLayers;
+	rendererSettings.numSwapchainImages = settings.numSwapchainImages;
+	rendererSettings.presentMode        = settings.presentMode;
 
-	currentRenderer = shared_ptr<ofBaseRenderer>(new ofVkRenderer( this, rendererSettings));
-	auto vkRenderer = dynamic_pointer_cast<ofVkRenderer>( currentRenderer );
-	// we have a renderer.
+	// create renderer as vkRenderer
+	auto vkRenderer = make_shared<ofVkRenderer>( this, rendererSettings );
 
-	// now we need to create a window surface
-	// this stores the window surface into the renderer as a side-effect.
-	// createVkSurface();
+	// Now create a swapchain
+	{
+		// Create swapchain based on swapchain settings,
+		// and swapchainSettings type
+		of::vk::ImgSwapchainSettings swapchainSettings{};
+		swapchainSettings.width = settings.width;
+		swapchainSettings.height = settings.height;
+		swapchainSettings.numSwapChainFrames = rendererSettings.numSwapchainImages;
+		swapchainSettings.path = "render/img_";
+		vkRenderer->setSwapchain( std::make_shared<of::vk::ImgSwapchain>( swapchainSettings ) );
+	}
 
 	auto device = vkRenderer->getVkDevice();
 
 	vkRenderer->setup();
 
+	// Store renderer ptr
+	currentRenderer = vkRenderer;
 }
 
 //----------------------------------------------------------
@@ -134,7 +144,9 @@ void ofAppVkNoWindow::update(){
 
 //----------------------------------------------------------
 void ofAppVkNoWindow::draw(){
+	currentRenderer->startRender();
 	events().notifyDraw();
+	currentRenderer->finishRender();
 }
 
 //------------------------------------------------------------

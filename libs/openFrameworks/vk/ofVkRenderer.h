@@ -62,6 +62,7 @@ public:
 		uint32_t numVirtualFrames = 0;                                     // number of virtual frames to allocate and to produce - set this through vkWindowSettings
 		uint32_t numSwapchainImages = 0;                                   // number of swapchain images to aim for (api gives no guarantee for this.)
 		::vk::PresentModeKHR presentMode = ::vk::PresentModeKHR::eFifo;	   // selected swapchain type (api only guarantees FIFO)
+		
 		bool useDebugLayers = false;                                       // whether to use vulkan debug layers
 	} mSettings;
 
@@ -257,9 +258,6 @@ public:
 
 	const ::vk::PhysicalDeviceMemoryProperties& getVkPhysicalDeviceMemoryProperties() const;
 
-	// get memory allocation info for best matching memory type that matches any of the type bits and flags
-	bool  getMemoryAllocationInfo( const ::vk::MemoryRequirements& memReqs, ::vk::MemoryPropertyFlags memProps, ::vk::MemoryAllocateInfo& memInfo ) const;
-
 	// get current draw queue (careful: access is not thread-safe!)
 	const ::vk::Queue& getQueue() const;
 
@@ -290,14 +288,12 @@ private:
 	// as are present commands.
 	::vk::Queue	mQueue = nullptr;
 
-
 	// Depth buffer format
 	// Depth format is selected during Vulkan initialization, in createDevice()
 	::vk::Format mDepthFormat;
 
 	// our depth stencil: 
 	// we only need one since there is only ever one frame in flight.
-	// !TODO: maybe move this into swapchain
 	struct DepthStencilResource
 	{
 		::vk::Image image      = nullptr;
@@ -310,7 +306,6 @@ private:
 
 	// vulkan swapchain
 	shared_ptr<of::vk::Swapchain> mSwapchain;
-
 
 	std::shared_ptr<of::vk::RenderContext> mDefaultContext;
 

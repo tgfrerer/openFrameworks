@@ -16,7 +16,7 @@ WsiSwapchain::~WsiSwapchain(){
 	// It's imperative we clean up.
 
 	for ( auto&b : mImages ){
-		// note that we only destroy the VkImageView,
+		// Note that we only destroy the VkImageView,
 		// as the VkImage is owned by the swapchain mSwapchain
 		// and will get destroyed when destroying the swapchain
 		mDevice.destroyImageView( b.view );
@@ -30,7 +30,6 @@ WsiSwapchain::~WsiSwapchain(){
 
 void WsiSwapchain::setup()
 {
-
 	::vk::Result err = ::vk::Result::eSuccess;
 
 	// The surface in SwapchainSettings::windowSurface has been assigned by glfwwindow, through glfw,
@@ -42,11 +41,11 @@ void WsiSwapchain::setup()
 	// Get physical device surface properties and formats
 	const ::vk::SurfaceCapabilitiesKHR & surfCaps = mSurfaceProperties.capabilities;
 
-	// get available present modes for physical device
+	// Get available present modes for physical device
 	const std::vector<::vk::PresentModeKHR>& presentModes = mSurfaceProperties.presentmodes;
 
 
-	// either set or get the swapchain surface extents
+	// Either set or get the swapchain surface extents
 	::vk::Extent2D swapchainExtent = {};
 
 	if ( surfCaps.currentExtent.width == -1 ){
@@ -76,7 +75,7 @@ void WsiSwapchain::setup()
 		ofLogWarning() << "Could not switch to selected Swapchain Present Mode. Falling back to FIFO...";
 	}
 
-	// write current present mode back to reference from parameter
+	// Write current present mode back to reference from parameter
 	// so caller can find out whether chosen present mode has been 
 	// applied successfully.
 	const_cast<::vk::PresentModeKHR&>(mSettings.presentMode) = swapchainPresentMode;
@@ -86,7 +85,7 @@ void WsiSwapchain::setup()
 		desiredNumberOfSwapchainImages = surfCaps.maxImageCount;
 	}
 
-	// write current value back to parameter reference so caller
+	// Write current value back to parameter reference so caller
 	// has a chance to check if values were applied correctly.
 	const_cast<uint32_t&>(mSettings.numSwapChainFrames) = desiredNumberOfSwapchainImages;
 
@@ -183,12 +182,13 @@ inline uint32_t of::vk::WsiSwapchain::getWidth(){
 	return mSettings.width;
 }
 
+// ----------------------------------------------------------------------
 // Return current swapchain image height in pixels
-
 inline uint32_t of::vk::WsiSwapchain::getHeight(){
 	return mSettings.height;
 }
 
+// ----------------------------------------------------------------------
 // Change width and height in internal settings. 
 // Caution: this method requires a call to setup() to be applied, and is very costly.
 
@@ -197,7 +197,9 @@ inline void of::vk::WsiSwapchain::changeExtent( uint32_t w, uint32_t h ){
 	const_cast<uint32_t&>( mSettings.height ) = h;
 }
 
-inline ::vk::Format & of::vk::WsiSwapchain::getColorFormat(){
+// ----------------------------------------------------------------------
+
+const ::vk::Format & of::vk::WsiSwapchain::getColorFormat(){
 	return mWindowColorFormat.format;
 }
 
@@ -245,26 +247,26 @@ vk::Result WsiSwapchain::queuePresent( ::vk::Queue queue, uint32_t currentImageI
 	return queue.presentKHR( presentInfo );
 }
 
+// ----------------------------------------------------------------------
 // return images vector
-
-const std::vector<ImageRef>& WsiSwapchain::getImages() const{
+const std::vector<ImageWithView>& WsiSwapchain::getImages() const{
 	return mImages;
 }
 
+// ----------------------------------------------------------------------
 // return image by index
-
-const ImageRef & WsiSwapchain::getImage( size_t i ) const{
+const ImageWithView & WsiSwapchain::getImage( size_t i ) const{
 	return mImages[i];
 }
 
+// ----------------------------------------------------------------------
 // return number of swapchain images
-
 const uint32_t & WsiSwapchain::getImageCount() const{
 	return mImageCount;
 }
 
+// ----------------------------------------------------------------------
 // return last acquired buffer id
-
 const uint32_t & WsiSwapchain::getCurrentImageIndex() const{
 	return mImageIndex;
 }
@@ -303,8 +305,201 @@ void WsiSwapchain::querySurfaceCapabilities(){
 	}
 }
 
+// ----------------------------------------------------------------------
+
 void WsiSwapchain::setRendererProperties( const RendererProperties & rendererProperties_ ){
 	mRendererProperties = rendererProperties_;
 }
 
 // ----------------------------------------------------------------------
+
+ImgSwapchain::ImgSwapchain( const ImgSwapchainSettings & settings_ )
+	: mSettings( settings_ ){}
+
+// ----------------------------------------------------------------------
+
+void ImgSwapchain::setRendererProperties( const of::vk::RendererProperties & rendererProperties_ ){
+	mRendererProperties = rendererProperties_;
+}
+
+// ----------------------------------------------------------------------
+
+void of::vk::ImgSwapchain::setup(){
+
+	// !TODO: use image allocator to combine and simplify allocations.
+
+	// first, clean up previous images, if any.
+	for ( auto&imgView : mImages ){
+		if ( imgView.imageRef ){
+			mDevice.destroyImageView( imgView.view ); imgView.view     = nullptr;
+			mDevice.destroyImage( imgView.imageRef ); imgView.imageRef = nullptr;
+		}
+	}
+
+	mImages.resize( mImageCount );
+
+	for ( auto & mMem : mImageMemory ){
+		if ( mMem ){
+			mDevice.freeMemory( mMem );
+			mMem = nullptr;
+		}
+	}
+
+	mImageMemory.resize( mImageCount, nullptr );
+
+	// We will need commandbuffers to translate image from one layout to another.
+	// We will also need an allocator to get memory for our images.
+	for ( size_t i = 0; i != mImageCount; ++i ){
+		::vk::ImageCreateInfo createInfo;
+		createInfo
+			.setImageType( ::vk::ImageType::e2D )
+			.setFormat( mSettings.colorFormat )
+			.setExtent( { mSettings.width, mSettings.height, 1 } )
+			.setMipLevels( 1 )
+			.setArrayLayers( 1 )
+			.setSamples( ::vk::SampleCountFlagBits::e1 )
+			.setTiling( ::vk::ImageTiling::eOptimal )
+			.setUsage( ::vk::ImageUsageFlagBits::eColorAttachment | ::vk::ImageUsageFlagBits::eTransferSrc )
+			.setSharingMode( ::vk::SharingMode::eExclusive )
+			.setQueueFamilyIndexCount( 0 )
+			.setPQueueFamilyIndices( nullptr )
+			.setInitialLayout( ::vk::ImageLayout::eUndefined )
+			;
+
+		mImages[i].imageRef = mDevice.createImage( createInfo );
+
+		// now allocate memory
+		auto memReqs = mDevice.getImageMemoryRequirements( mImages[i].imageRef );
+		
+		::vk::MemoryAllocateInfo memAllocateInfo;
+		
+		if ( false == getMemoryAllocationInfo( memReqs,
+			::vk::MemoryPropertyFlags( ::vk::MemoryPropertyFlagBits::eDeviceLocal),
+			mRendererProperties.physicalDeviceMemoryProperties, 
+			memAllocateInfo ) )
+		{
+			ofLogFatalError() << "Image Swapchain: Could not allocate suitable memory for swapchain images." ;
+			assert( false );
+		};
+
+		// ----------| Invariant: Chosen memory type may be allocated 
+
+		mImageMemory[i] = mDevice.allocateMemory( memAllocateInfo );
+
+		mDevice.bindImageMemory( mImages[i].imageRef, mImageMemory[i], 0 );
+
+		::vk::ImageSubresourceRange subresourceRange;
+		subresourceRange
+			.setAspectMask( ::vk::ImageAspectFlags( ::vk::ImageAspectFlagBits::eColor ) )
+			.setBaseMipLevel( 0 )
+			.setLevelCount( 1 )
+			.setBaseArrayLayer( 0 )
+			.setLayerCount( 1 )
+			;
+
+		::vk::ImageViewCreateInfo imageViewCreateInfo;
+		imageViewCreateInfo
+			.setImage( mImages[i].imageRef )
+			.setViewType( ::vk::ImageViewType::e2D )
+			.setFormat( mSettings.colorFormat )
+			.setSubresourceRange( subresourceRange )
+			;
+		mImages[i].view = mDevice.createImageView( imageViewCreateInfo );
+	}
+
+}
+
+// ----------------------------------------------------------------------
+
+of::vk::ImgSwapchain::~ImgSwapchain(){
+
+	for ( auto & imgView : mImages ){
+		if ( imgView.imageRef ){
+			mDevice.destroyImageView( imgView.view ); imgView.view     = nullptr;
+			mDevice.destroyImage( imgView.imageRef ); imgView.imageRef = nullptr;
+		}
+	}
+	mImages.clear();
+
+	for ( auto & mMem : mImageMemory ){
+		if ( mMem ){
+			mDevice.freeMemory( mMem );
+			mMem = nullptr;
+		}
+	}
+	mImageMemory.clear();
+
+}
+
+// ----------------------------------------------------------------------
+
+::vk::Result ImgSwapchain::acquireNextImage( ::vk::Semaphore presentCompleteSemaphore, uint32_t & imageIndex ){
+	//!TODO implement acquireNextImage
+	return ::vk::Result();
+}
+
+// ----------------------------------------------------------------------
+
+::vk::Result ImgSwapchain::queuePresent( ::vk::Queue queue, uint32_t imageIndex ){
+	//!TODO: implement queue present
+	return ::vk::Result();
+}
+
+// ----------------------------------------------------------------------
+
+::vk::Result ImgSwapchain::queuePresent( ::vk::Queue queue, uint32_t imageIndex, const std::vector<::vk::Semaphore>& waitSemaphores_ ){
+	//!TODO: implement queuePresent with semaphore
+	
+	// map memory, write it out.
+	
+	return ::vk::Result();
+}
+
+// ----------------------------------------------------------------------
+
+const std::vector<ImageWithView>& ImgSwapchain::getImages() const{
+	return mImages;
+}
+
+// ----------------------------------------------------------------------
+
+const ImageWithView & ImgSwapchain::getImage( size_t i ) const{
+	return mImages[i];
+}
+
+// ----------------------------------------------------------------------
+
+const uint32_t & ImgSwapchain::getImageCount() const{
+	return mImages.size();
+}
+
+// ----------------------------------------------------------------------
+
+const uint32_t & ImgSwapchain::getCurrentImageIndex() const{
+	return mImageIndex;
+}
+
+// ----------------------------------------------------------------------
+
+const ::vk::Format & ImgSwapchain::getColorFormat(){
+	return mSettings.colorFormat;
+}
+
+// ----------------------------------------------------------------------
+uint32_t ImgSwapchain::getWidth(){
+	return mSettings.width;
+}
+
+// ----------------------------------------------------------------------
+uint32_t ImgSwapchain::getHeight(){
+	return mSettings.height;
+}
+
+// ----------------------------------------------------------------------
+void ImgSwapchain::changeExtent( uint32_t w, uint32_t h ){
+	const_cast<uint32_t&>( mSettings.width )  = w;
+	const_cast<uint32_t&>( mSettings.height ) = h;
+}
+
+// ----------------------------------------------------------------------
+

@@ -3,7 +3,9 @@
 #include "ofConstants.h"
 #include "ofAppBaseWindow.h"
 
+
 class ofBaseApp;
+class ofVkRenderer;
 
 class ofAppVkNoWindow : public ofAppBaseWindow {
 

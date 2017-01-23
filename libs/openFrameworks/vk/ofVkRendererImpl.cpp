@@ -105,34 +105,6 @@ const std::shared_ptr<::vk::PipelineCache>& ofVkRenderer::getPipelineCache(){
 	return mPipelineCache;
 }
 
-// ----------------------------------------------------------------------
-
-bool  ofVkRenderer::getMemoryAllocationInfo( const ::vk::MemoryRequirements& memReqs, ::vk::MemoryPropertyFlags memProps, ::vk::MemoryAllocateInfo& memInfo ) const
-{
-	if ( !memReqs.size ){
-		memInfo.allocationSize = 0;
-		memInfo.memoryTypeIndex = ~0;
-		return true;
-	}
-
-	// Find an available memory type that satifies the requested properties.
-	uint32_t memoryTypeIndex;
-	for ( memoryTypeIndex = 0; memoryTypeIndex < mPhysicalDeviceMemoryProperties.memoryTypeCount; ++memoryTypeIndex ){
-		if ( ( memReqs.memoryTypeBits & ( 1 << memoryTypeIndex ) ) &&
-			( mPhysicalDeviceMemoryProperties.memoryTypes[memoryTypeIndex].propertyFlags & memProps ) == memProps ){
-			break;
-		}
-	}
-	if ( memoryTypeIndex >= mPhysicalDeviceMemoryProperties.memoryTypeCount ){
-		assert( 0 && "memorytypeindex not found" );
-		return false;
-	}
-
-	memInfo.allocationSize = memReqs.size;
-	memInfo.memoryTypeIndex = memoryTypeIndex;
-
-	return true;
-}
 
 // ----------------------------------------------------------------------
 
@@ -157,7 +129,8 @@ void ofVkRenderer::setupDepthStencil(){
 
 	vk::ImageSubresourceRange subresourceRange;
 	
-	subresourceRange.setAspectMask( vk::ImageAspectFlags( vk::ImageAspectFlagBits::eDepth | vk::ImageAspectFlagBits::eStencil ) )
+	subresourceRange
+		.setAspectMask( vk::ImageAspectFlags( vk::ImageAspectFlagBits::eDepth | vk::ImageAspectFlagBits::eStencil ) )
 		.setBaseMipLevel( 0 )
 		.setLevelCount( 1 )
 		.setBaseArrayLayer( 0 )
@@ -183,7 +156,10 @@ void ofVkRenderer::setupDepthStencil(){
 		memReqs = mDevice.getImageMemoryRequirements( depthStencil.image );
 
 		vk::MemoryAllocateInfo memInfo;
-		getMemoryAllocationInfo( memReqs, vk::MemoryPropertyFlags( vk::MemoryPropertyFlagBits::eDeviceLocal ), memInfo );
+		of::vk::getMemoryAllocationInfo( memReqs,
+			vk::MemoryPropertyFlags( vk::MemoryPropertyFlagBits::eDeviceLocal ),
+			mPhysicalDeviceMemoryProperties,
+			memInfo );
 
 		if ( depthStencil.mem ){
 			// Free any previously allocated memory
@@ -351,6 +327,7 @@ void ofVkRenderer::finishRender(){
 	// ask them to finish their work for the frame.
 
 	mDefaultContext->submitToQueue();
+
 	// present swapchain frame
 	mSwapchain->queuePresent( mQueue, mSwapchain->getCurrentImageIndex(), { mDefaultContext->getSemaphoreRenderComplete()} );
 	

@@ -72,7 +72,7 @@ void of::vk::ImageAllocator::reset(){
 // ----------------------------------------------------------------------
 // brief   linear allocator
 // param   byteCount number of bytes to allocate
-// param   frameIdx current virtual frame index
+// out param   offset : address of first byte of allocated image
 bool ImageAllocator::allocate( ::vk::DeviceSize byteCount_, ::vk::DeviceSize& offset ){
 	uint32_t alignedByteCount = mImageGranularity * ( ( byteCount_ + mImageGranularity - 1 ) / mImageGranularity );
 
