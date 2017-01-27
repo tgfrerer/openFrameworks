@@ -193,6 +193,7 @@ inline uint32_t of::vk::WsiSwapchain::getHeight(){
 // Caution: this method requires a call to setup() to be applied, and is very costly.
 
 inline void of::vk::WsiSwapchain::changeExtent( uint32_t w, uint32_t h ){
+	mSurfaceProperties.queried = false;
 	const_cast<uint32_t&>( mSettings.width ) = w;
 	const_cast<uint32_t&>( mSettings.height ) = h;
 }
