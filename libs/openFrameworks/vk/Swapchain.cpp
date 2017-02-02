@@ -178,21 +178,20 @@ void WsiSwapchain::setup()
 
 // Return current swapchain image width in pixels
 
-inline uint32_t of::vk::WsiSwapchain::getWidth(){
+inline uint32_t WsiSwapchain::getWidth(){
 	return mSettings.width;
 }
 
 // ----------------------------------------------------------------------
 // Return current swapchain image height in pixels
-inline uint32_t of::vk::WsiSwapchain::getHeight(){
+inline uint32_t WsiSwapchain::getHeight(){
 	return mSettings.height;
 }
 
 // ----------------------------------------------------------------------
 // Change width and height in internal settings. 
 // Caution: this method requires a call to setup() to be applied, and is very costly.
-
-inline void of::vk::WsiSwapchain::changeExtent( uint32_t w, uint32_t h ){
+void WsiSwapchain::changeExtent( uint32_t w, uint32_t h ){
 	mSurfaceProperties.queried = false;
 	const_cast<uint32_t&>( mSettings.width ) = w;
 	const_cast<uint32_t&>( mSettings.height ) = h;
@@ -200,7 +199,7 @@ inline void of::vk::WsiSwapchain::changeExtent( uint32_t w, uint32_t h ){
 
 // ----------------------------------------------------------------------
 
-const ::vk::Format & of::vk::WsiSwapchain::getColorFormat(){
+const ::vk::Format & WsiSwapchain::getColorFormat(){
 	return mWindowColorFormat.format;
 }
 
@@ -208,8 +207,25 @@ const ::vk::Format & of::vk::WsiSwapchain::getColorFormat(){
 
 // Acquires the next image in the swap chain
 // Blocks cpu until image has been acquired
-// Signals semaphorePresentComplete once image has been acquired
 vk::Result WsiSwapchain::acquireNextImage( ::vk::Semaphore semaphorePresentComplete, uint32_t &imageIndex ){
+
+	/*
+
+	Q: What is the semaphore good for? 
+	A: See vk spec pp. 610:
+	
+	"The semaphore must be unsignaled and not have any uncompleted signal or
+wait operations pending. It will become signaled when the application can use the image. Queue operations that access
+the image contents must wait until the semaphore signals; typically applications should include the semaphore in the
+pWaitSemaphores list for the queue submission that transitions the image away from the VK_IMAGE_LAYOUT_
+PRESENT_SRC_KHR layout. Use of the semaphore allows rendering operations to be recorded and submitted before the
+presentation engine has completed its use of the image."
+	
+	This means, we must make sure not to render into the image before the semaphore signals. 
+	We do this by adding the semaphore to the wait semaphores in the present queue. This also means, that
+	the image only can be rendered into once the semaphore has been signalled.
+
+	*/
 
 	auto err = vkAcquireNextImageKHR( mDevice, mVkSwapchain, UINT64_MAX, semaphorePresentComplete, ( VkFence )nullptr, &imageIndex );
 	
@@ -312,195 +328,5 @@ void WsiSwapchain::setRendererProperties( const RendererProperties & rendererPro
 	mRendererProperties = rendererProperties_;
 }
 
-// ----------------------------------------------------------------------
 
-ImgSwapchain::ImgSwapchain( const ImgSwapchainSettings & settings_ )
-	: mSettings( settings_ ){}
-
-// ----------------------------------------------------------------------
-
-void ImgSwapchain::setRendererProperties( const of::vk::RendererProperties & rendererProperties_ ){
-	mRendererProperties = rendererProperties_;
-}
-
-// ----------------------------------------------------------------------
-
-void of::vk::ImgSwapchain::setup(){
-
-	// !TODO: use image allocator to combine and simplify allocations.
-
-	// first, clean up previous images, if any.
-	for ( auto&imgView : mImages ){
-		if ( imgView.imageRef ){
-			mDevice.destroyImageView( imgView.view ); imgView.view     = nullptr;
-			mDevice.destroyImage( imgView.imageRef ); imgView.imageRef = nullptr;
-		}
-	}
-
-	mImages.resize( mImageCount );
-
-	for ( auto & mMem : mImageMemory ){
-		if ( mMem ){
-			mDevice.freeMemory( mMem );
-			mMem = nullptr;
-		}
-	}
-
-	mImageMemory.resize( mImageCount, nullptr );
-
-	// We will need commandbuffers to translate image from one layout to another.
-	// We will also need an allocator to get memory for our images.
-	for ( size_t i = 0; i != mImageCount; ++i ){
-		::vk::ImageCreateInfo createInfo;
-		createInfo
-			.setImageType( ::vk::ImageType::e2D )
-			.setFormat( mSettings.colorFormat )
-			.setExtent( { mSettings.width, mSettings.height, 1 } )
-			.setMipLevels( 1 )
-			.setArrayLayers( 1 )
-			.setSamples( ::vk::SampleCountFlagBits::e1 )
-			.setTiling( ::vk::ImageTiling::eOptimal )
-			.setUsage( ::vk::ImageUsageFlagBits::eColorAttachment | ::vk::ImageUsageFlagBits::eTransferSrc )
-			.setSharingMode( ::vk::SharingMode::eExclusive )
-			.setQueueFamilyIndexCount( 0 )
-			.setPQueueFamilyIndices( nullptr )
-			.setInitialLayout( ::vk::ImageLayout::eUndefined )
-			;
-
-		mImages[i].imageRef = mDevice.createImage( createInfo );
-
-		// now allocate memory
-		auto memReqs = mDevice.getImageMemoryRequirements( mImages[i].imageRef );
-		
-		::vk::MemoryAllocateInfo memAllocateInfo;
-		
-		if ( false == getMemoryAllocationInfo( memReqs,
-			::vk::MemoryPropertyFlags( ::vk::MemoryPropertyFlagBits::eDeviceLocal),
-			mRendererProperties.physicalDeviceMemoryProperties, 
-			memAllocateInfo ) )
-		{
-			ofLogFatalError() << "Image Swapchain: Could not allocate suitable memory for swapchain images." ;
-			assert( false );
-		};
-
-		// ----------| Invariant: Chosen memory type may be allocated 
-
-		mImageMemory[i] = mDevice.allocateMemory( memAllocateInfo );
-
-		mDevice.bindImageMemory( mImages[i].imageRef, mImageMemory[i], 0 );
-
-		::vk::ImageSubresourceRange subresourceRange;
-		subresourceRange
-			.setAspectMask( ::vk::ImageAspectFlags( ::vk::ImageAspectFlagBits::eColor ) )
-			.setBaseMipLevel( 0 )
-			.setLevelCount( 1 )
-			.setBaseArrayLayer( 0 )
-			.setLayerCount( 1 )
-			;
-
-		::vk::ImageViewCreateInfo imageViewCreateInfo;
-		imageViewCreateInfo
-			.setImage( mImages[i].imageRef )
-			.setViewType( ::vk::ImageViewType::e2D )
-			.setFormat( mSettings.colorFormat )
-			.setSubresourceRange( subresourceRange )
-			;
-		mImages[i].view = mDevice.createImageView( imageViewCreateInfo );
-	}
-
-}
-
-// ----------------------------------------------------------------------
-
-of::vk::ImgSwapchain::~ImgSwapchain(){
-
-	for ( auto & imgView : mImages ){
-		if ( imgView.imageRef ){
-			mDevice.destroyImageView( imgView.view ); imgView.view     = nullptr;
-			mDevice.destroyImage( imgView.imageRef ); imgView.imageRef = nullptr;
-		}
-	}
-	mImages.clear();
-
-	for ( auto & mMem : mImageMemory ){
-		if ( mMem ){
-			mDevice.freeMemory( mMem );
-			mMem = nullptr;
-		}
-	}
-	mImageMemory.clear();
-
-}
-
-// ----------------------------------------------------------------------
-
-::vk::Result ImgSwapchain::acquireNextImage( ::vk::Semaphore presentCompleteSemaphore, uint32_t & imageIndex ){
-	//!TODO implement acquireNextImage
-	return ::vk::Result();
-}
-
-// ----------------------------------------------------------------------
-
-::vk::Result ImgSwapchain::queuePresent( ::vk::Queue queue, uint32_t imageIndex ){
-	//!TODO: implement queue present
-	return ::vk::Result();
-}
-
-// ----------------------------------------------------------------------
-
-::vk::Result ImgSwapchain::queuePresent( ::vk::Queue queue, uint32_t imageIndex, const std::vector<::vk::Semaphore>& waitSemaphores_ ){
-	//!TODO: implement queuePresent with semaphore
-	
-	// map memory, write it out.
-	
-	return ::vk::Result();
-}
-
-// ----------------------------------------------------------------------
-
-const std::vector<ImageWithView>& ImgSwapchain::getImages() const{
-	return mImages;
-}
-
-// ----------------------------------------------------------------------
-
-const ImageWithView & ImgSwapchain::getImage( size_t i ) const{
-	return mImages[i];
-}
-
-// ----------------------------------------------------------------------
-
-const uint32_t & ImgSwapchain::getImageCount() const{
-	return mImages.size();
-}
-
-// ----------------------------------------------------------------------
-
-const uint32_t & ImgSwapchain::getCurrentImageIndex() const{
-	return mImageIndex;
-}
-
-// ----------------------------------------------------------------------
-
-const ::vk::Format & ImgSwapchain::getColorFormat(){
-	return mSettings.colorFormat;
-}
-
-// ----------------------------------------------------------------------
-uint32_t ImgSwapchain::getWidth(){
-	return mSettings.width;
-}
-
-// ----------------------------------------------------------------------
-uint32_t ImgSwapchain::getHeight(){
-	return mSettings.height;
-}
-
-// ----------------------------------------------------------------------
-void ImgSwapchain::changeExtent( uint32_t w, uint32_t h ){
-	const_cast<uint32_t&>( mSettings.width )  = w;
-	const_cast<uint32_t&>( mSettings.height ) = h;
-}
-
-// ----------------------------------------------------------------------
 

@@ -27,8 +27,8 @@ RenderContext::~RenderContext(){
 		for ( auto & pool : vf.descriptorPools ){
 			mDevice.destroyDescriptorPool( pool );
 		}
-		if ( vf.semaphoreImageAcquired ){
-			mDevice.destroySemaphore( vf.semaphoreImageAcquired );
+		if ( vf.semaphorePresentComplete ){
+			mDevice.destroySemaphore( vf.semaphorePresentComplete );
 		}
 		if ( vf.semaphoreRenderComplete ){
 			mDevice.destroySemaphore( vf.semaphoreRenderComplete );
@@ -53,7 +53,7 @@ RenderContext::~RenderContext(){
 
 void RenderContext::setup(){
 	for ( auto &f : mVirtualFrames ){
-		f.semaphoreImageAcquired = mDevice.createSemaphore( {} );
+		f.semaphorePresentComplete = mDevice.createSemaphore( {} );  // this semaphore should be owned by the swapchain.
 		f.semaphoreRenderComplete = mDevice.createSemaphore( {} );
 		f.fence = mDevice.createFence( { ::vk::FenceCreateFlagBits::eSignaled } );	/* Fence starts as "signaled" */
 		f.commandPool = mDevice.createCommandPool( { ::vk::CommandPoolCreateFlagBits::eTransient } );
@@ -115,9 +115,14 @@ void RenderContext::submitToQueue(){
 	::vk::PipelineStageFlags wait_dst_stage_mask = ::vk::PipelineStageFlagBits::eColorAttachmentOutput;
 	::vk::SubmitInfo submitInfo;
 
+	// Synchronisation works this way: 
+	// First, we tell the GPU to wait on imageAcquiredSemaphore - which means the swapchain has finished presenting
+	// the image we want to render into and it is ready to be drawn into.
+	// Second, we tell the GPU to set a semaphore, and only signal it once rendering for this frame is complete.
+
 	submitInfo
 		.setWaitSemaphoreCount( 1 )
-		.setPWaitSemaphores( &getImageAcquiredSemaphore() )
+		.setPWaitSemaphores( &getSemaphorePresentComplete() )
 		.setPWaitDstStageMask( &wait_dst_stage_mask )
 		.setCommandBufferCount( mVirtualFrames[mCurrentVirtualFrame].commandBuffers.size() )
 		.setPCommandBuffers( mVirtualFrames[mCurrentVirtualFrame].commandBuffers.data() )

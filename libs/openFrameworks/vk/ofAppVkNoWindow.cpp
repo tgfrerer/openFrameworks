@@ -1,6 +1,7 @@
 #include "ofAppVkNoWindow.h"
 #include "ofBaseApp.h"
 #include "ofVkRenderer.h"
+#include "ImgSwapchain.h"
 
 #if defined TARGET_OSX || defined TARGET_LINUX
 #include <stdlib.h>

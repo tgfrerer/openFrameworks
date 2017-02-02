@@ -217,6 +217,7 @@
     <ClInclude Include="..\..\..\openFrameworks\vk\DrawCommand.h" />
     <ClInclude Include="..\..\..\openFrameworks\vk\HelperTypes.h" />
     <ClInclude Include="..\..\..\openFrameworks\vk\ImageAllocator.h" />
+    <ClInclude Include="..\..\..\openFrameworks\vk\ImgSwapchain.h" />
     <ClInclude Include="..\..\..\openFrameworks\vk\ofAppVkNoWindow.h" />
     <ClInclude Include="..\..\..\openFrameworks\vk\ofVkRenderer.h" />
     <ClInclude Include="..\..\..\openFrameworks\vk\Pipeline.h" />
@@ -301,6 +302,7 @@
     <ClCompile Include="..\..\..\openFrameworks\vk\ComputeCommand.cpp" />
     <ClCompile Include="..\..\..\openFrameworks\vk\DrawCommand.cpp" />
     <ClCompile Include="..\..\..\openFrameworks\vk\ImageAllocator.cpp" />
+    <ClCompile Include="..\..\..\openFrameworks\vk\ImgSwapchain.cpp" />
     <ClCompile Include="..\..\..\openFrameworks\vk\ofAppVkNoWindow.cpp" />
     <ClCompile Include="..\..\..\openFrameworks\vk\ofVkRenderer.cpp" />
     <ClCompile Include="..\..\..\openFrameworks\vk\ofVkRendererImpl.cpp" />

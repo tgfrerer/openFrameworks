@@ -306,11 +306,12 @@ void ofVkRenderer::startRender(){
 	// !TODO: notify any contexts in a thread-safe way that the last frame has finished rendering.
 	// allContexts.renderComplete();
 	// This means they may dispose of any transient resources for that frame, and start building new command buffers.
-	// maybe the way to do this is through a promise and a future.
+	// maybe the way to do this is through a condition_variable
 	mDefaultContext->begin();
 
 	// receive index for next available swapchain image
-	auto err = mSwapchain->acquireNextImage( mDefaultContext->getImageAcquiredSemaphore(), swapIdx );
+	// effectively, this means the renderer is taking ownership of the image away from the swapchain.
+	auto err = mSwapchain->acquireNextImage( mDefaultContext->getSemaphorePresentComplete(), swapIdx );
 
 	// ---------| invariant: new swap chain image has been acquired for drawing into.
 

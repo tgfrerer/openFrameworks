@@ -61,8 +61,8 @@ private:
 		::vk::Framebuffer                       frameBuffer;
 		std::list<::vk::DescriptorPool>         descriptorPools;
 		std::map<uint64_t, ::vk::DescriptorSet> descriptorSetCache;
-		::vk::Semaphore                         semaphoreImageAcquired;
-		::vk::Semaphore                         semaphoreRenderComplete;
+		::vk::Semaphore                         semaphorePresentComplete; // TODO: virtual frame should not own these, but borrow from swapchain
+		::vk::Semaphore                         semaphoreRenderComplete;  // TODO: virtual frame should not own these, but borrow from swapchain
 		::vk::Fence                             fence;
 		std::vector<::vk::CommandBuffer>        commandBuffers;
 	};
@@ -120,7 +120,7 @@ public:
 
 
 	const ::vk::Fence       & getFence() const ;
-	const ::vk::Semaphore   & getImageAcquiredSemaphore() const ;
+	const ::vk::Semaphore   & getSemaphorePresentComplete() const ;
 	const ::vk::Semaphore   & getSemaphoreRenderComplete() const ;
 	const ::vk::Framebuffer & getFramebuffer() const;
 	const ::vk::RenderPass  & getRenderPass() const; 
@@ -189,8 +189,8 @@ inline const ::vk::Fence & RenderContext::getFence() const {
 	return mVirtualFrames.at( mCurrentVirtualFrame ).fence;
 }
 
-inline const ::vk::Semaphore & RenderContext::getImageAcquiredSemaphore() const {
-	return mVirtualFrames.at( mCurrentVirtualFrame ).semaphoreImageAcquired;
+inline const ::vk::Semaphore & RenderContext::getSemaphorePresentComplete() const {
+	return mVirtualFrames.at( mCurrentVirtualFrame ).semaphorePresentComplete;
 }
 
 inline const ::vk::Semaphore & RenderContext::getSemaphoreRenderComplete() const {
