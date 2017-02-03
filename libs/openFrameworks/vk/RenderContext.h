@@ -185,7 +185,9 @@ public:
 	void submit( ::vk::CommandBuffer&& commandBuffer );
 	
 	// submit all accumulated command buffers to vulkan draw queue for rendering
+	// this is where semaphore synchronisation happens. 
 	void submitToQueue();
+
 	// void submitTransfer();
 
 	void swap();

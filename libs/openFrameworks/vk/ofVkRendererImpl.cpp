@@ -295,21 +295,18 @@ void ofVkRenderer::startRender(){
 
 	uint32_t swapIdx = 0; /*receives index of current swap chain image*/
 
-	//----------| invariant: last frame has finished rendering. It may not yet be finished presenting.
 
-	// !TODO: notify any contexts in a thread-safe way that the last frame has finished rendering.
-	// allContexts.renderComplete();
-	// This means they may dispose of any transient resources for that frame, and start building new command buffers.
-	// maybe the way to do this is through a condition_variable
 	mDefaultContext->begin();
 
-	// receive index for next available swapchain image
+	// ----------| invariant: last frame has finished rendering. 
+
+	// Receive index for next available swapchain image
 	// effectively, this means the renderer is taking ownership of the image away from the swapchain.
 	auto err = mSwapchain->acquireNextImage( mDefaultContext->getSemaphorePresentComplete(), swapIdx );
 
 	// ---------| invariant: new swap chain image has been acquired for drawing into.
 
-	/* connect default context frame buffer to swapchain image, and depth stencil image */
+	// connect default context frame buffer to swapchain image, and depth stencil image
 	attachSwapChainImages( swapIdx ); 
 
 }
