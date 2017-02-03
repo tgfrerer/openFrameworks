@@ -15,7 +15,7 @@ WsiSwapchain::WsiSwapchain( const WsiSwapchainSettings & settings_ )
 WsiSwapchain::~WsiSwapchain(){
 	// It's imperative we clean up.
 
-	for ( auto&b : mImages ){
+	for ( auto & b : mImages ){
 		// Note that we only destroy the VkImageView,
 		// as the VkImage is owned by the swapchain mSwapchain
 		// and will get destroyed when destroying the swapchain

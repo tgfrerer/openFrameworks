@@ -10,6 +10,12 @@
 #include "vk/ComputeCommand.h"
 /*
 
+A RenderContext acts as an accumulator and owner for Renderbatches
+it safely manages memory by accumulating commandBuffers and their
+dependent data in virtual frames. 
+
+It abstracts the swapchain.
+
 MISSION: 
 
 	A RenderContext needs to be able to live within its own thread - 
@@ -22,6 +28,7 @@ MISSION:
 
 	A RenderContext is the OWNER of all elements used to draw within 
 	one thread.
+
 
 */
 
@@ -63,8 +70,15 @@ private:
 		std::map<uint64_t, ::vk::DescriptorSet> descriptorSetCache;
 		::vk::Semaphore                         semaphorePresentComplete; // TODO: virtual frame should not own these, but borrow from swapchain
 		::vk::Semaphore                         semaphoreRenderComplete;  // TODO: virtual frame should not own these, but borrow from swapchain
-		::vk::Fence                             fence;
 		std::vector<::vk::CommandBuffer>        commandBuffers;
+
+		// The most important element in here is the fence, as it protects 
+		// all resources above from being overwritten while still in flight.
+		// The fence is placed in the command stream upon queue submit, and 
+		// it is waited upon in begin(). This ensures all resources for 
+		// this virtual frame are available and the GPU is finished using 
+		// them for rendering / presenting.
+		::vk::Fence                             fence;                    
 	};
 
 	std::vector<VirtualFrame>                   mVirtualFrames;
@@ -104,7 +118,7 @@ private:
 	
 	const ::vk::Rect2D&                mRenderArea = mSettings.renderArea;
 	
-	void resetFence();
+	void waitForFence();
 
 	std::shared_ptr<::vk::Pipeline>& borrowPipeline( uint64_t pipelineHash ){
 		return mPipelineCache[pipelineHash];

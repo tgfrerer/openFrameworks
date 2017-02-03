@@ -136,6 +136,7 @@ public:
 
 	// Present the current image to the queue
 	// Waits with execution until all waitSemaphores have been signalled
+	// Pass renderComplete Semaphores here, so present waits for rendering to be complete.
 	::vk::Result queuePresent( ::vk::Queue queue, uint32_t imageIndex, const std::vector<::vk::Semaphore>& waitSemaphores_ ) override;
 
 	// return images vector

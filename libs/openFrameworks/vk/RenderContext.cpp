@@ -88,8 +88,25 @@ void RenderContext::setupFrameBufferAttachments( const std::vector<::vk::ImageVi
 
 // ------------------------------------------------------------
 
+void RenderContext::waitForFence(){
+	auto fenceWaitResult = mDevice.waitForFences( { getFence() }, VK_TRUE, 100'000'000 );
+
+	if ( fenceWaitResult != ::vk::Result::eSuccess ){
+		ofLogError() << "RenderContext: Waiting for fence takes too long: " << ::vk::to_string( fenceWaitResult );
+	}
+}
+
+// ------------------------------------------------------------
+
 void RenderContext::begin(){
-	resetFence();
+
+	// Wait until fence for current virtual frame has been reached by GPU, which 
+	// indicates that all virtual frame resource access has completed, and that
+	// all resources of this virtual frame may be reset or re-used.
+	
+	waitForFence();
+
+	mDevice.resetFences( { getFence() } );
 
 	// free old command buffers - this is necessary since otherwise you end up with 
 	// leaking them.
@@ -116,10 +133,11 @@ void RenderContext::submitToQueue(){
 	::vk::SubmitInfo submitInfo;
 
 	// Synchronisation works this way: 
-	// First, we tell the GPU to wait on imageAcquiredSemaphore - which means the swapchain has finished presenting
-	// the image we want to render into and it is ready to be drawn into.
+	// First, we tell the GPU to wait on presentComplete - which means the swapchain has finished presenting
+	// and the image we want to render into is ready to be drawn into.
 	// Second, we tell the GPU to set a semaphore, and only signal it once rendering for this frame is complete.
-
+	// Third, insert a fence into the command stream. This fence will only allow the CPU to continue once it has been 
+	// waited upon 
 	submitInfo
 		.setWaitSemaphoreCount( 1 )
 		.setPWaitSemaphores( &getSemaphorePresentComplete() )
@@ -331,12 +349,6 @@ void RenderContext::updateDescriptorPool(){
 	// Mark descriptor pool for this frame as not dirty
 	mDescriptorPoolsDirty ^= ( 1ULL << mCurrentVirtualFrame );
 
-}
-// ------------------------------------------------------------
-
-void RenderContext::resetFence(){
-	mDevice.resetFences( { mVirtualFrames.at( mCurrentVirtualFrame ).fence } );
-	//! TODO: once the fence has been reset, transfers are complete.
 }
 
 // ------------------------------------------------------------

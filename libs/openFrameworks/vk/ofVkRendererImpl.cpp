@@ -295,12 +295,6 @@ void ofVkRenderer::startRender(){
 
 	uint32_t swapIdx = 0; /*receives index of current swap chain image*/
 
-	auto fenceWaitResult = mDevice.waitForFences( { mDefaultContext->getFence() }, VK_TRUE, 100'000'000 );
-
-	if ( fenceWaitResult != vk::Result::eSuccess ){
-		ofLog() << "Waiting for fence takes too long: " << vk::to_string( fenceWaitResult );
-	}
-	
 	//----------| invariant: last frame has finished rendering. It may not yet be finished presenting.
 
 	// !TODO: notify any contexts in a thread-safe way that the last frame has finished rendering.
