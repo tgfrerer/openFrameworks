@@ -239,16 +239,8 @@ presentation engine has completed its use of the image."
 }
 
 // ----------------------------------------------------------------------
-  
-// Present the current image to the queue
-vk::Result WsiSwapchain::queuePresent( ::vk::Queue queue, uint32_t currentBuffer ){
-	std::vector<::vk::Semaphore> noSemaphores;
-	return queuePresent( queue, currentBuffer, noSemaphores);
-}
 
-// ----------------------------------------------------------------------
-
-vk::Result WsiSwapchain::queuePresent( ::vk::Queue queue, uint32_t currentImageIndex, const std::vector<::vk::Semaphore>& waitSemaphores_ ){
+vk::Result WsiSwapchain::queuePresent( ::vk::Queue queue, const std::vector<::vk::Semaphore>& waitSemaphores_ ){
 	
 	::vk::PresentInfoKHR presentInfo;
 	presentInfo
@@ -256,7 +248,7 @@ vk::Result WsiSwapchain::queuePresent( ::vk::Queue queue, uint32_t currentImageI
 		.setPWaitSemaphores( waitSemaphores_.data())
 		.setSwapchainCount( 1 )
 		.setPSwapchains( &mVkSwapchain )
-		.setPImageIndices( &currentImageIndex )
+		.setPImageIndices( &mImageIndex)
 		;
 
 	// each command wich begins with vkQueue... is appended to the end of the 

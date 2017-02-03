@@ -46,15 +46,10 @@ public:
 	// \note this might cause waiting.
 	::vk::Result acquireNextImage( ::vk::Semaphore presentCompleteSemaphore, uint32_t &imageIndex ) override;
 
-	// mark the image ready to present by the swapchain.
-	// this returns the image to the swapchain and tells the 
-	// swapchain that we're done rendering to it and that 
-	// it may show the image on screen.
-	::vk::Result queuePresent( ::vk::Queue queue, uint32_t imageIndex ) override;
 
 	// Present the current image to the queue
 	// Waits with execution until all waitSemaphores have been signalled
-	::vk::Result queuePresent( ::vk::Queue queue, uint32_t imageIndex, const std::vector<::vk::Semaphore>& waitSemaphores_ ) override;
+	::vk::Result queuePresent( ::vk::Queue queue, const std::vector<::vk::Semaphore>& waitSemaphores_ ) override;
 
 	// return images vector
 	const std::vector<ImageWithView> & getImages() const override;

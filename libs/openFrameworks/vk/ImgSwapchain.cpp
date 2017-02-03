@@ -139,14 +139,9 @@ ImgSwapchain::~ImgSwapchain(){
 
 // ----------------------------------------------------------------------
 
-::vk::Result ImgSwapchain::queuePresent( ::vk::Queue queue, uint32_t imageIndex ){
-	//!TODO: implement queue present
-	return ::vk::Result();
-}
-
 // ----------------------------------------------------------------------
 
-::vk::Result ImgSwapchain::queuePresent( ::vk::Queue queue, uint32_t imageIndex, const std::vector<::vk::Semaphore>& waitSemaphores_ ){
+::vk::Result ImgSwapchain::queuePresent( ::vk::Queue queue, const std::vector<::vk::Semaphore>& waitSemaphores_ ){
 	//!TODO: implement queuePresent with semaphore
 
 	// map memory, write it out.
