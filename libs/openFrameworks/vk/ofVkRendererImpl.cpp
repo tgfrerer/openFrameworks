@@ -9,7 +9,6 @@
 
 void ofVkRenderer::setup(){
 
-	createSetupCommandPool();
 
 	mSwapchain->setRendererProperties( mRendererProperties );
 	setupSwapChain();
@@ -47,7 +46,6 @@ void ofVkRenderer::setupDefaultContext(){
 
 void ofVkRenderer::setupSwapChain(){
 	
-	mDevice.resetCommandPool( mSetupCommandPool, vk::CommandPoolResetFlagBits::eReleaseResources );
 	
 	// Allocate pre-present and post-present command buffers, 
 	// from main command pool, mCommandPool.
@@ -81,20 +79,6 @@ void ofVkRenderer::resizeScreen( int w, int h ){
 	ofLogVerbose() << "Screen resize complete";
 }
  
-
-
-// ----------------------------------------------------------------------
-
-void ofVkRenderer::createSetupCommandPool(){
-	// create a command pool
-	vk::CommandPoolCreateInfo poolInfo;
-	poolInfo
-		.setQueueFamilyIndex( 0 )
-		.setFlags( vk::CommandPoolCreateFlags( vk::CommandPoolCreateFlagBits::eResetCommandBuffer | vk::CommandPoolCreateFlagBits::eTransient ) ) ;
-
-	mSetupCommandPool = mDevice.createCommandPool( poolInfo );
-}
-
 // ----------------------------------------------------------------------
 
 const std::shared_ptr<::vk::PipelineCache>& ofVkRenderer::getPipelineCache(){

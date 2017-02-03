@@ -101,8 +101,6 @@ ofVkRenderer::~ofVkRenderer()
 	mPipelineCache.reset();
 
 	// reset command pool and all associated command buffers.
-	mDevice.resetCommandPool( mSetupCommandPool, ::vk::CommandPoolResetFlagBits::eReleaseResources );
-	mDevice.destroyCommandPool( mSetupCommandPool );
 
 	destroyDevice();
 	// !TODO: destroy surface.

@@ -273,9 +273,7 @@ private:
 
 	ofRectangle mViewport;
 
-	::vk::CommandPool mSetupCommandPool;
 
-	void                     createSetupCommandPool();
 	
 	void                     setupSwapChain();
 	void                     setupDepthStencil();
@@ -321,7 +319,6 @@ public:
 
 	const std::shared_ptr<of::vk::RenderContext> & getDefaultContext();
 
-	const ::vk::CommandPool& getSetupCommandPool() const;
 
 };
 
@@ -350,9 +347,6 @@ inline const std::shared_ptr<of::vk::RenderContext>& ofVkRenderer::getDefaultCon
 }
 
 
-inline const::vk::CommandPool & ofVkRenderer::getSetupCommandPool() const{
-	return mSetupCommandPool;
-}
 
 inline const ::vk::Queue& ofVkRenderer::getQueue() const{
 	return mQueue;
