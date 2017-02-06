@@ -300,7 +300,7 @@ private:
 	};
 
 	// one depth stencil image per swapchain frame
-	std::vector<DepthStencilResource> mDepthStencil;
+	std::unique_ptr<DepthStencilResource, std::function<void(DepthStencilResource*)>> mDepthStencil;
 
 	// vulkan swapchain
 	shared_ptr<of::vk::Swapchain> mSwapchain;

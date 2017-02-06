@@ -125,19 +125,36 @@ void ofVkRenderer::setupDepthStencil(){
 		.setFormat( mDepthFormat )
 		.setSubresourceRange( subresourceRange );
 	
-	mDepthStencil.resize(mSwapchain->getImageCount());
+	mDepthStencil.reset();
 
-	for ( auto& depthStencil : mDepthStencil ){
-		vk::MemoryRequirements memReqs;
-		if ( depthStencil.image ){
+	mDepthStencil = decltype( mDepthStencil )( new DepthStencilResource, [device = mDevice]( DepthStencilResource* depthStencil ){
+	
+		// custom deleter for depthStencil.
+
+		if ( depthStencil->image ){
 			// Destroy previously created image, if any
-			mDevice.destroyImage( depthStencil.image );
-			depthStencil.image = nullptr;
+			device.destroyImage( depthStencil->image );
+			depthStencil->image = nullptr;
 		}
+		if ( depthStencil->mem ){
+			// Free any previously allocated memory
+			device.freeMemory( depthStencil->mem );
+			depthStencil->mem = nullptr;
+		}
+		if ( depthStencil->view ){
+			// Destroy any previous depthStencil ImageView
+			device.destroyImageView( depthStencil->view );
+			depthStencil->view = nullptr;
+		}
+		delete ( depthStencil );
+	} );
+
+	{
+		vk::MemoryRequirements memReqs;
+				
+		mDepthStencil->image = mDevice.createImage( imgCreateInfo );
 		
-		depthStencil.image = mDevice.createImage( imgCreateInfo );
-		
-		memReqs = mDevice.getImageMemoryRequirements( depthStencil.image );
+		memReqs = mDevice.getImageMemoryRequirements( mDepthStencil->image );
 
 		vk::MemoryAllocateInfo memInfo;
 		of::vk::getMemoryAllocationInfo( memReqs,
@@ -145,25 +162,13 @@ void ofVkRenderer::setupDepthStencil(){
 			mPhysicalDeviceMemoryProperties,
 			memInfo );
 
-		if ( depthStencil.mem ){
-			// Free any previously allocated memory
-			mDevice.freeMemory( depthStencil.mem );
-			depthStencil.mem = nullptr;
-		}
-
-		depthStencil.mem = mDevice.allocateMemory( memInfo );
-		mDevice.bindImageMemory( depthStencil.image, depthStencil.mem, 0 );
+		mDepthStencil->mem = mDevice.allocateMemory( memInfo );
+		mDevice.bindImageMemory( mDepthStencil->image, mDepthStencil->mem, 0 );
 
 		// now attach the newly minted image to the image view
-		imgViewCreateInfo.setImage( depthStencil.image );
+		imgViewCreateInfo.setImage( mDepthStencil->image );
 
-		if ( depthStencil.view ){
-			// Destroy any previous depthStencil ImageView
-			mDevice.destroyImageView( depthStencil.view );
-			depthStencil.view = nullptr;
-		}
-
-		depthStencil.view = mDevice.createImageView( imgViewCreateInfo, nullptr );
+		mDepthStencil->view = mDevice.createImageView( imgViewCreateInfo, nullptr );
 
 	}
 
@@ -265,7 +270,7 @@ void ofVkRenderer::attachSwapChainImages( uint32_t swapchainImageIndex ){
 	attachments[0] = mSwapchain->getImage( swapchainImageIndex ).view;
 	
 	// Attachment1 is the image view for the depthStencil buffer
-	attachments[1] = mDepthStencil[swapchainImageIndex].view;
+	attachments[1] = mDepthStencil->view;
 
 	mDefaultContext->setupFrameBufferAttachments(attachments);
 

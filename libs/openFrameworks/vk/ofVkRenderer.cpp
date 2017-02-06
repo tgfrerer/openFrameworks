@@ -90,12 +90,7 @@ ofVkRenderer::~ofVkRenderer()
 
 	mDefaultContext.reset();
 
-	for ( auto & depthStencilResource : mDepthStencil ){
-		mDevice.destroyImageView( depthStencilResource.view );
-		mDevice.destroyImage( depthStencilResource.image );
-		mDevice.freeMemory( depthStencilResource.mem );
-	}
-	mDepthStencil.clear();
+	mDepthStencil.reset();
 
 	mSwapchain.reset();
 	mPipelineCache.reset();

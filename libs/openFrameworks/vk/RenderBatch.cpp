@@ -132,13 +132,13 @@ void RenderBatch::processDrawCommands( const ::vk::CommandBuffer& cmd ){
 
 			uint64_t setLayoutKey = setLayoutKeys[setId];
 			auto & descriptors = dc.getDescriptorSetData( setId ).descriptors;
-			const auto descriptorSet = dc.mPipelineState.getShader()->getDescriptorSetLayout( setId );
+			const auto descriptorSetLayout = dc.mPipelineState.getShader()->getDescriptorSetLayout( setId );
 			// calculate hash of descriptorset, combined with descriptor set sampler state
 			uint64_t descriptorSetHash = SpookyHash::Hash64( descriptors.data(), descriptors.size() * sizeof( DescriptorSetData_t::DescriptorData_t ), setLayoutKey );
 
 			// Receive a descriptorSet from the renderContext's cache.
 			// The renderContext will allocate and initialise a DescriptorSet if none has been found.
-			const ::vk::DescriptorSet& descriptorSet = mRenderContext->getDescriptorSet( descriptorSetHash, setId, *descriptorSet , descriptors );
+			const ::vk::DescriptorSet& descriptorSet = mRenderContext->getDescriptorSet( descriptorSetHash, setId, *descriptorSetLayout , descriptors );
 
 			boundVkDescriptorSets.emplace_back( descriptorSet );
 
