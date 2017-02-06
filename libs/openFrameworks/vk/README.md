@@ -142,6 +142,22 @@ these blocks (the ones that actually make a difference in speed, usability or ae
 
 Advanced users will probably want to write their own scene graphs, renderer addons etc. Great! We should make sure that this is possible.
 
+----------------------------------------------------------------------
+
+## RenderContext
+
+A RenderContext is an isolated context for temporary memory objects such as 
+command pools, memory pools, descriptor pools etc. As such, it is used to 
+generate a command buffer, which it owns.
+
+There are two types of RenderContext: PRIMARY and SECONDARY. As such they map
+to the two types of CommandBuffers which exist, of the same names. 
+
+A PRIMARY context is made from a Renderpass which is opened/closed for 
+the duration of the begin()/end() of the context.
+
+A SECONDARY context creates secondary command buffers which must be called 
+from a PRIMARY context to be added to a renderQueue.
 
 ----------------------------------------------------------------------
 

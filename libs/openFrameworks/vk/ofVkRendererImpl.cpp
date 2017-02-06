@@ -223,8 +223,8 @@ void ofVkRenderer::setupDepthStencil(){
 		.setSrcSubpass      ( VK_SUBPASS_EXTERNAL )
 		.setDstSubpass      ( 0 )
 		.setSrcStageMask    ( vk::PipelineStageFlagBits::eBottomOfPipe )
-		.setSrcAccessMask   ( vk::AccessFlagBits::eMemoryRead )
 		.setDstStageMask    ( vk::PipelineStageFlagBits::eColorAttachmentOutput )
+		.setSrcAccessMask   ( vk::AccessFlagBits::eMemoryRead )
 		.setDstAccessMask   ( vk::AccessFlagBits::eColorAttachmentWrite )
 		.setDependencyFlags ( vk::DependencyFlagBits::eByRegion )
 		;
@@ -232,8 +232,8 @@ void ofVkRenderer::setupDepthStencil(){
 		.setSrcSubpass      ( VK_SUBPASS_EXTERNAL )
 		.setDstSubpass      ( 0 )
 		.setSrcStageMask    ( vk::PipelineStageFlagBits::eColorAttachmentOutput )
-		.setSrcAccessMask   ( vk::AccessFlagBits::eColorAttachmentWrite )
 		.setDstStageMask    ( vk::PipelineStageFlagBits::eBottomOfPipe )
+		.setSrcAccessMask   ( vk::AccessFlagBits::eColorAttachmentWrite )
 		.setDstAccessMask   ( vk::AccessFlagBits::eMemoryRead )
 		.setDependencyFlags ( vk::DependencyFlagBits::eByRegion )
 		;
@@ -303,7 +303,7 @@ void ofVkRenderer::finishRender(){
 	// ask them to finish their work for the frame.
 
 	mDefaultContext->submitToQueue();
-
+	
 	// present swapchain frame
 	mSwapchain->queuePresent( mQueue, { mDefaultContext->getSemaphoreRenderComplete()} );
 	

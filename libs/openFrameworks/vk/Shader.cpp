@@ -743,7 +743,7 @@ bool of::vk::Shader::createSetLayouts(){
 
 				switch ( binding.layoutBinding.descriptorType ){
 					case ::vk::DescriptorType::eUniformBufferDynamic:
-						log << "Dynamic";
+						log << "Dynamic ";
 						// fall through to uniformBuffer, as these two are similar.
 					case ::vk::DescriptorType::eUniformBuffer:
 					{

@@ -132,13 +132,13 @@ void RenderBatch::processDrawCommands( const ::vk::CommandBuffer& cmd ){
 
 			uint64_t setLayoutKey = setLayoutKeys[setId];
 			auto & descriptors = dc.getDescriptorSetData( setId ).descriptors;
-			const auto desciptorSet = dc.mPipelineState.getShader()->getDescriptorSetLayout( setId );
+			const auto descriptorSet = dc.mPipelineState.getShader()->getDescriptorSetLayout( setId );
 			// calculate hash of descriptorset, combined with descriptor set sampler state
 			uint64_t descriptorSetHash = SpookyHash::Hash64( descriptors.data(), descriptors.size() * sizeof( DescriptorSetData_t::DescriptorData_t ), setLayoutKey );
 
 			// Receive a descriptorSet from the renderContext's cache.
 			// The renderContext will allocate and initialise a DescriptorSet if none has been found.
-			const ::vk::DescriptorSet& descriptorSet = mRenderContext->getDescriptorSet( descriptorSetHash, setId, *desciptorSet , descriptors );
+			const ::vk::DescriptorSet& descriptorSet = mRenderContext->getDescriptorSet( descriptorSetHash, setId, *descriptorSet , descriptors );
 
 			boundVkDescriptorSets.emplace_back( descriptorSet );
 
@@ -150,7 +150,6 @@ void RenderBatch::processDrawCommands( const ::vk::CommandBuffer& cmd ){
 		}
 
 		// We always bind the full descriptor set.
-		// Bind uniforms (the first set contains the matrices)
 
 		// bind dc descriptorsets to current pipeline descriptor sets
 		// make sure dynamic ubos have the correct offsets

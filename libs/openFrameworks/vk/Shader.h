@@ -120,7 +120,7 @@ struct DescriptorSetData_t
 		) == sizeof( DescriptorData_t ), "DescriptorData_t is not tightly packed. It must be tightly packed for hash calculations." );
 
 
-	std::vector<std::vector<uint8_t>>      dynamicUboData;
+	std::vector<std::vector<uint8_t>>      dynamicUboData;        // temp storage for uniform data, one vector of bytes per ubo
 	std::vector<uint32_t>                  dynamicBindingOffsets;
 	std::vector<::vk::DescriptorImageInfo> imageAttachment;
 	std::vector<of::vk::BufferRegion>      bufferAttachment;
