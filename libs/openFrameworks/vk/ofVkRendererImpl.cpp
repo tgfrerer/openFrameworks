@@ -9,7 +9,6 @@
 
 void ofVkRenderer::setup(){
 
-
 	mSwapchain->setRendererProperties( mRendererProperties );
 	setupSwapChain();
 
@@ -36,7 +35,7 @@ void ofVkRenderer::setupDefaultContext(){
 	settings.renderer = this;
 	settings.pipelineCache = getPipelineCache();
 	settings.renderArea = { 0,0, mSwapchain->getWidth(), mSwapchain->getHeight()};
-	settings.renderPass = generateDefaultRenderPass();
+	settings.renderPass = generateDefaultRenderPass(mSwapchain->getColorFormat(), mDepthFormat);
 	
 	mDefaultContext = make_shared<of::vk::RenderContext>(std::move(settings));
 	mDefaultContext->setup();
@@ -45,10 +44,11 @@ void ofVkRenderer::setupDefaultContext(){
 // ----------------------------------------------------------------------
 
 void ofVkRenderer::setupSwapChain(){
-	
-	
-	// Allocate pre-present and post-present command buffers, 
-	// from main command pool, mCommandPool.
+
+	// This method is called on initialisation, and 
+	// every time the window is resized, as a resize
+	// means render image targets have to be re-created.
+
 	mSwapchain->setup( );
 
 	setupDepthStencil();
@@ -176,7 +176,7 @@ void ofVkRenderer::setupDepthStencil(){
 
 // ----------------------------------------------------------------------
 
-::vk::RenderPass ofVkRenderer::generateDefaultRenderPass() const {
+::vk::RenderPass ofVkRenderer::generateDefaultRenderPass(::vk::Format colorFormat_, ::vk::Format depthFormat_) const {
 
 	::vk::RenderPass result = nullptr;
 
@@ -192,7 +192,7 @@ void ofVkRenderer::setupDepthStencil(){
 	std::array<vk::AttachmentDescription, 2> attachments;
 	
 	attachments[0]		// color attachment
-		.setFormat          ( mSwapchain->getColorFormat() )
+		.setFormat          ( colorFormat_ )
 		.setSamples         ( vk::SampleCountFlagBits::e1 )
 		.setLoadOp          ( vk::AttachmentLoadOp::eClear )
 		.setStoreOp         ( vk::AttachmentStoreOp::eStore )
@@ -202,7 +202,7 @@ void ofVkRenderer::setupDepthStencil(){
 		.setFinalLayout     ( vk::ImageLayout::ePresentSrcKHR )
 		;
 	attachments[1]		//depth stencil attachment
-		.setFormat          ( mDepthFormat )
+		.setFormat          ( depthFormat_ )
 		.setSamples         ( vk::SampleCountFlagBits::e1 )
 		.setLoadOp          ( vk::AttachmentLoadOp::eClear )
 		.setStoreOp         ( vk::AttachmentStoreOp::eStore)
@@ -211,6 +211,9 @@ void ofVkRenderer::setupDepthStencil(){
 		.setInitialLayout   ( vk::ImageLayout::eUndefined )
 		.setFinalLayout     ( vk::ImageLayout::eDepthStencilAttachmentOptimal )
 		;
+
+	// Define 2 attachments, and tell us what layout to expect these to be in.
+	// Index references attachments from above.
 
 	vk::AttachmentReference colorReference{ 0, vk::ImageLayout::eColorAttachmentOptimal };
 	vk::AttachmentReference depthReference{ 1, vk::ImageLayout::eDepthStencilAttachmentOptimal};
@@ -223,10 +226,12 @@ void ofVkRenderer::setupDepthStencil(){
 		.setPDepthStencilAttachment ( &depthReference )
 		;
 
+	// Define 2 dependencies for subpass 0
+
 	std::array<vk::SubpassDependency, 2> dependencies;
 	dependencies[0]
-		.setSrcSubpass      ( VK_SUBPASS_EXTERNAL )
-		.setDstSubpass      ( 0 )
+		.setSrcSubpass      ( VK_SUBPASS_EXTERNAL ) // producer
+		.setDstSubpass      ( 0 )                   // consumer
 		.setSrcStageMask    ( vk::PipelineStageFlagBits::eBottomOfPipe )
 		.setDstStageMask    ( vk::PipelineStageFlagBits::eColorAttachmentOutput )
 		.setSrcAccessMask   ( vk::AccessFlagBits::eMemoryRead )
@@ -234,8 +239,8 @@ void ofVkRenderer::setupDepthStencil(){
 		.setDependencyFlags ( vk::DependencyFlagBits::eByRegion )
 		;
 	dependencies[1]
-		.setSrcSubpass      ( VK_SUBPASS_EXTERNAL )
-		.setDstSubpass      ( 0 )
+		.setSrcSubpass      ( VK_SUBPASS_EXTERNAL ) // producer
+		.setDstSubpass      ( 0 )                   // consumer
 		.setSrcStageMask    ( vk::PipelineStageFlagBits::eColorAttachmentOutput )
 		.setDstStageMask    ( vk::PipelineStageFlagBits::eBottomOfPipe )
 		.setSrcAccessMask   ( vk::AccessFlagBits::eColorAttachmentWrite )
@@ -243,6 +248,8 @@ void ofVkRenderer::setupDepthStencil(){
 		.setDependencyFlags ( vk::DependencyFlagBits::eByRegion )
 		;
 	
+	// Define 1 renderpass with 1 subpass
+
 	vk::RenderPassCreateInfo renderPassCreateInfo;
 	renderPassCreateInfo
 		.setAttachmentCount ( attachments.size() )

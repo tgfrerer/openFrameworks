@@ -59,10 +59,10 @@ public:
 	const struct Settings
 	{
 		uint32_t vkVersion = 1 << 22;                                      // target version
-		uint32_t numVirtualFrames = 0;                                     // number of virtual frames to allocate and to produce - set this through vkWindowSettings
-		uint32_t numSwapchainImages = 0;                                   // number of swapchain images to aim for (api gives no guarantee for this.)
+		uint32_t numVirtualFrames = 2;                                     // number of virtual frames to allocate and to produce - set this through vkWindowSettings
+		uint32_t numSwapchainImages = 2;                                   // number of swapchain images to aim for (api gives no guarantee for this.)
 		::vk::PresentModeKHR presentMode = ::vk::PresentModeKHR::eFifo;	   // selected swapchain type (api only guarantees FIFO)
-		
+		bool useDepthStencil = true;
 		bool useDebugLayers = false;                                       // whether to use vulkan debug layers
 	} mSettings;
 
@@ -315,7 +315,7 @@ public:
 		mSwapchain = swapchain_;
 	};
 
-	::vk::RenderPass generateDefaultRenderPass() const;
+	::vk::RenderPass generateDefaultRenderPass(::vk::Format colorFormat_, ::vk::Format depthFormat_) const;
 
 	const std::shared_ptr<of::vk::RenderContext> & getDefaultContext();
 
