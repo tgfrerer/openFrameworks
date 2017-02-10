@@ -223,7 +223,6 @@
     <ClInclude Include="..\..\..\openFrameworks\vk\Pipeline.h" />
     <ClInclude Include="..\..\..\openFrameworks\vk\RenderBatch.h" />
     <ClInclude Include="..\..\..\openFrameworks\vk\RenderContext.h" />
-    <ClInclude Include="..\..\..\openFrameworks\vk\RenderPass.h" />
     <ClInclude Include="..\..\..\openFrameworks\vk\Shader.h" />
     <ClInclude Include="..\..\..\openFrameworks\vk\spirv-cross\include\GLSL.std.450.h" />
     <ClInclude Include="..\..\..\openFrameworks\vk\spirv-cross\include\spirv.hpp" />

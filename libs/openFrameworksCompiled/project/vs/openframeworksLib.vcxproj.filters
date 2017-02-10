@@ -312,9 +312,6 @@
     <ClInclude Include="..\..\..\openFrameworks\vk\RenderContext.h">
       <Filter>libs\openFrameworks\vk</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\openFrameworks\vk\RenderPass.h">
-      <Filter>libs\openFrameworks\vk</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\..\openFrameworks\vk\Shader.h">
       <Filter>libs\openFrameworks\vk</Filter>
     </ClInclude>
