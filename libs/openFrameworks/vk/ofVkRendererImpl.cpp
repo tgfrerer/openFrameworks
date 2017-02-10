@@ -289,12 +289,11 @@ void ofVkRenderer::startRender(){
 
 	// start of new frame
 
-	uint32_t swapIdx = 0; /*receives index of current swap chain image*/
-
-
 	mDefaultContext->begin();
 
 	// ----------| invariant: last frame has finished rendering. 
+
+	uint32_t swapIdx = 0; /*receives index of current swap chain image*/
 
 	// Receive index for next available swapchain image
 	// effectively, this means the renderer is taking ownership of the image away from the swapchain.

@@ -41,7 +41,7 @@ void RenderBatch::submit(){
 
 	auto mVkCmd = mRenderContext->requestPrimaryCommandBufferWithRenderpass();
 
-	// TODO: if comamnd buffer is secondary, 
+	// TODO: if command buffer is secondary, 
 	// we need to begin() it, otherwise it will have been begun.
 	{
 		// set dynamic viewport
