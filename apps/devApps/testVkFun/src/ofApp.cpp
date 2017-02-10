@@ -8,7 +8,48 @@ std::shared_ptr<ofVkRenderer> renderer = nullptr;
 //--------------------------------------------------------------
 
 void ofApp::setup(){
+
 	renderer = dynamic_pointer_cast<ofVkRenderer>( ofGetCurrentRenderer() );
+
+	if ( false )
+	{
+		//!TODO: this will unlink the current context and all its allocations will be in vain.
+		// Much better to not even setup this context if we're redefining the context in setup.
+		// this needs somehow to be caught by the renderer.
+
+		auto rendererProperties = renderer->getVkRendererProperties();
+		auto swapchain = renderer->getSwapchain();
+
+		//!TODO: create a generator method to provide us with default settings 
+		// based on the current renderer.
+		of::vk::RenderContext::Settings settings;
+
+		settings.transientMemoryAllocatorSettings.device = renderer->getVkDevice();
+		settings.transientMemoryAllocatorSettings.frameCount = renderer->mSettings.numVirtualFrames;
+		settings.transientMemoryAllocatorSettings.physicalDeviceMemoryProperties = 
+			rendererProperties.physicalDeviceMemoryProperties;
+		settings.transientMemoryAllocatorSettings.physicalDeviceProperties = rendererProperties.physicalDeviceProperties;
+		settings.transientMemoryAllocatorSettings.size = ( ( 1ULL << 24 ) * renderer->mSettings.numVirtualFrames );
+		settings.renderer = renderer.get();
+		settings.pipelineCache = renderer->getPipelineCache();
+
+		auto vp = renderer->getNativeViewport();
+
+		vk::Rect2D rect;
+		rect.setExtent( { uint32_t( vp.width/2 ), uint32_t( vp.height/2 ) } );
+		rect.setOffset( { int32_t( vp.x ),     int32_t( vp.y ) } );
+
+		settings.renderArea = rect;
+		settings.renderPass = renderer->generateDefaultRenderPass( swapchain->getColorFormat(), 
+			renderer->getVkDepthFormat() );
+
+		auto context = make_shared<of::vk::RenderContext>( std::move( settings ) );
+
+		renderer->setDefaultContext(context);
+
+		context->setup();
+
+	}
 
 	ofDisableSetupScreen();
 	ofSetFrameRate( EXAMPLE_TARGET_FRAME_RATE );
@@ -25,7 +66,6 @@ void ofApp::setup(){
 	mCam.setupPerspective( false, 60, 0.f, 5000 );
 	mCam.setPosition( { 0,0, mCam.getImagePlaneDistance() } );
 	mCam.lookAt( { 0,0,0 } );
-
 	mCam.setEvents( ofEvents() );
 }
 
@@ -214,18 +254,54 @@ void ofApp::draw(){
 	// At end of draw(), context will submit its list of vkCommandBuffers
 	// to the graphics queue in one API call.
 
-	// batch.submit processes all draw commands into a command buffer 
-	// and submits it to the current render context.
+	// batch.submit processes all draw commands into a vk command buffer 
+	// and adds them to the list of vkCommands that a rendercontext accumulates
+	// the rendercontext then submits these commands to the queue in one go.
+	//
+	// The main work batch does here is:
+	//
+	// * create pipelines if necessary (compares against hashmap inside rendercontext)
+	// * bind pipeline
+	// * create descriptorsets if necessary
+	// * bind descriptorsets
+	// * set correct dynamic offsets for dynamic descriptors
+	// * bind vertex data
+	// * bind index data
 	batch.submit();
+
+	/*
+	
+	!TODO: make drawing more explicit
+
+	The idea is to make drawing more explicit - to give you more control over draw commands,
+	and to allow you to insert vulkan commands yourself if need be. the commands you might 
+	want to insert are mostly sync commands i would assume. the draw commands above help
+	you to keep track of volatile memory.
+
+
+	auto cmd = renderContext->beginPrimaryCommandBuffer()
+
+	renderContext->beginRenderPass(cmd);
+	cmd.setviewport()
+
+	batch.processDrawCommandsInto(cmd);
+
+	cmd.endRenderpass();
+	cmd.end()
+	
+	renderContext.submit(cmd); // this adds cmd to list of cmdbuffers earmarked for execution
+
+	*/
+
 
 	// submitting the compute command after the batch has been submitted
 	// means it will end up on the queue *after* the draw instructions.
 
-	auto comp = computeCmd;
+	/*auto comp = computeCmd;
 	comp.setStorageBuffer( "ParticleBuf", mParticlesRegion );
 	uint32_t flipFlop = ofGetFrameNum() % 2;
 	comp.setUniform( "flipFlop", flipFlop );
-	comp.submit( currentContext, {1,1,1} );
+	comp.submit( currentContext, {1,1,1} );*/
 
 }
 
