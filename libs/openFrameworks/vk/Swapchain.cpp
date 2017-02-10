@@ -63,6 +63,7 @@ void WsiSwapchain::setup()
 	::vk::PresentModeKHR swapchainPresentMode = ::vk::PresentModeKHR::eFifo;
 
 	bool presentModeSwitchSuccessful = false;
+
 	for ( auto & p : presentModes ){
 		if ( p == mSettings.presentMode ){
 			swapchainPresentMode = p;
@@ -309,7 +310,7 @@ void WsiSwapchain::querySurfaceCapabilities(){
 		}
 		mWindowColorFormat.colorSpace = mSurfaceProperties.surfaceFormats[0].colorSpace;
 
-		ofLog() << "Present supported: " << ( mSurfaceProperties.presentSupported ? "TRUE" : "FALSE" );
+		// ofLog() << "Present supported: " << ( mSurfaceProperties.presentSupported ? "TRUE" : "FALSE" );
 		mSurfaceProperties.queried = true;
 	}
 }
