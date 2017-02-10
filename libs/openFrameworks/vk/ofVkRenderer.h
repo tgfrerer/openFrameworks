@@ -299,12 +299,14 @@ private:
 		::vk::ImageView view   = nullptr;
 	};
 
-	// one depth stencil image per swapchain frame
+	// Depthstencil image used for depth tests with default context.
 	std::unique_ptr<DepthStencilResource, std::function<void(DepthStencilResource*)>> mDepthStencil;
 
 	// vulkan swapchain
-	shared_ptr<of::vk::Swapchain> mSwapchain;
+	std::shared_ptr<of::vk::Swapchain> mSwapchain;
 
+	// The default context
+	// This is the context which will render to the swapchain
 	std::shared_ptr<of::vk::RenderContext> mDefaultContext;
 
 public:
@@ -319,6 +321,13 @@ public:
 
 	const std::shared_ptr<of::vk::RenderContext> & getDefaultContext();
 
+	void setDefaultContext( std::shared_ptr<of::vk::RenderContext> ctx );
+
+	std::shared_ptr<of::vk::Swapchain> & getSwapchain();
+
+	const of::vk::RendererProperties & getVkRendererProperties();
+
+	const ::vk::Format& getVkDepthFormat();
 
 };
 
@@ -344,6 +353,22 @@ inline const size_t ofVkRenderer::getVirtualFramesCount(){
 
 inline const std::shared_ptr<of::vk::RenderContext>& ofVkRenderer::getDefaultContext(){
 	return mDefaultContext;
+}
+
+inline void ofVkRenderer::setDefaultContext( std::shared_ptr<of::vk::RenderContext> ctx ){
+	mDefaultContext = ctx;
+}
+
+inline std::shared_ptr<of::vk::Swapchain>& ofVkRenderer::getSwapchain(){
+	return mSwapchain;
+}
+
+inline const of::vk::RendererProperties & ofVkRenderer::getVkRendererProperties(){
+	return mRendererProperties;
+}
+
+inline const::vk::Format & ofVkRenderer::getVkDepthFormat(){
+	return mDepthFormat;
 }
 
 
