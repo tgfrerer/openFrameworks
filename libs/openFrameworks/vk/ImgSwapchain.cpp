@@ -28,6 +28,7 @@ void ImgSwapchain::setup(){
 	}
 
 	mImages.resize( mImageCount );
+	mImageTransferFence.resize( mImageCount );
 
 	for ( auto & mMem : mImageMemory ){
 		if ( mMem ){
@@ -37,6 +38,7 @@ void ImgSwapchain::setup(){
 	}
 
 	mImageMemory.resize( mImageCount, nullptr );
+
 
 	// We will need commandbuffers to translate image from one layout to another.
 	// We will also need an allocator to get memory for our images.
@@ -95,7 +97,13 @@ void ImgSwapchain::setup(){
 			.setSubresourceRange( subresourceRange )
 			;
 		mImages[i].view = mDevice.createImageView( imageViewCreateInfo );
+
+		mImageTransferFence[i] = mDevice.createFence( { ::vk::FenceCreateFlagBits::eSignaled } );
 	}
+
+	// pre-set imageIndex so it will start at 0 with first increment.
+	mImageIndex = mImageCount - 1;
+
 }
 
 // ----------------------------------------------------------------------
@@ -118,33 +126,64 @@ ImgSwapchain::~ImgSwapchain(){
 	}
 	mImageMemory.clear();
 
+	for ( auto & f : mImageTransferFence ){
+		mDevice.destroyFence( f );
+	}
+	mImageTransferFence.clear();
+
 }
 
 // ----------------------------------------------------------------------
 
 // this method may block
 ::vk::Result ImgSwapchain::acquireNextImage( ::vk::Semaphore presentCompleteSemaphore, uint32_t & imageIndex ){
-	//!TODO implement acquireNextImage
 
 	// What this method does: it gets the next available (free to render into) image from the 
 	// internal queue of images, and returns its index, effectively passing ownership of this
 	// image to the renderer.
 
-	// it sets the semaphore, which should signal only when present is complete - 
-	// that's what the WSI does. This will be hard to simulate, as we cannot really
-	// signal a semaphore from userland.
+	// This method must signal the semaphore `presentCompleteSemaphore` 
+	// as soon as the image is free to be rendered into.
+
+	imageIndex = ( mImageIndex + 1 ) % mImageCount;
+
+	auto fenceWaitResult = mDevice.waitForFences( { mImageTransferFence[imageIndex] }, VK_TRUE, 100'000'000 );
+
+	if ( fenceWaitResult != ::vk::Result::eSuccess ){
+		ofLogError() << "ImgSwapchain: Waiting for fence takes too long: " << ::vk::to_string( fenceWaitResult );
+	}
+
+	// Invariant: we can assume the image has been transferred, unless it was the very first image,
+
+	mDevice.resetFences( { mImageTransferFence[imageIndex] } );
+
+	// TODO: we must set the presentComplete semaphore.
 
 	return ::vk::Result();
 }
 
 // ----------------------------------------------------------------------
 
-// ----------------------------------------------------------------------
-
 ::vk::Result ImgSwapchain::queuePresent( ::vk::Queue queue, const std::vector<::vk::Semaphore>& waitSemaphores_ ){
-	//!TODO: implement queuePresent with semaphore
+	
+	::vk::PipelineStageFlags wait_dst_stage_mask = ::vk::PipelineStageFlagBits::eColorAttachmentOutput;
 
-	// map memory, write it out.
+	::vk::SubmitInfo submitInfo;
+	submitInfo
+		.setWaitSemaphoreCount( waitSemaphores_.size() )
+		.setPWaitSemaphores( waitSemaphores_.data())      // these are the renderComplete semaphores
+		.setPWaitDstStageMask( &wait_dst_stage_mask )
+		.setCommandBufferCount( 0 )
+		.setPCommandBuffers( nullptr )
+		.setSignalSemaphoreCount( 0 )
+		.setPSignalSemaphores( nullptr ) // once this has been reached, the semaphore for present complete will signal.
+		;
+
+	// TODO: 
+	// We should add a command buffer which transfers the image resource from 
+	// optimal to linear - using a pipeline barrier
+
+	queue.submit( { submitInfo }, mImageTransferFence[mImageIndex]);
 
 	return ::vk::Result();
 }
@@ -163,7 +202,7 @@ const ImageWithView & ImgSwapchain::getImage( size_t i ) const{
 
 // ----------------------------------------------------------------------
 
-const uint32_t & ImgSwapchain::getImageCount() const{
+const uint32_t  ImgSwapchain::getImageCount() const{
 	return mImages.size();
 }
 

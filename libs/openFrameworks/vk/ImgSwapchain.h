@@ -25,11 +25,12 @@ class ImgSwapchain : public Swapchain
 	std::vector<::vk::DeviceMemory> mImageMemory; // TODO: this needs to go, use an image allocator
 	std::vector<ImageWithView> mImages;  // owning, clients may only borrow
 
+	std::vector<::vk::Fence> mImageTransferFence;
+
 	RendererProperties      mRendererProperties;
 	const ::vk::Device      &mDevice = mRendererProperties.device;
 
 	::vk::Queue	mTransferQueue = nullptr;
-
 
 public:
 
