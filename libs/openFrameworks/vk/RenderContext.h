@@ -326,6 +326,7 @@ inline ::vk::CommandBuffer RenderContext::requestPrimaryCommandBuffer() const {
 	cmd.begin( { ::vk::CommandBufferUsageFlagBits::eOneTimeSubmit } );
 	return cmd;
 }
+
 // ------------------------------------------------------------
 
 inline ::vk::CommandBuffer RenderContext::allocateTransientCommandBuffer (

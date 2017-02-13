@@ -58,7 +58,7 @@ public:
 	const ImageWithView& getImage( size_t i ) const override;
 
 	// return number of swapchain images
-	const uint32_t & getImageCount() const override;
+	const uint32_t getImageCount() const override;
 
 	// return last acquired buffer id
 	const uint32_t & getCurrentImageIndex() const override;

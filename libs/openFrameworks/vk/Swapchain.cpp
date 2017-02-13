@@ -271,7 +271,7 @@ const ImageWithView & WsiSwapchain::getImage( size_t i ) const{
 
 // ----------------------------------------------------------------------
 // return number of swapchain images
-const uint32_t & WsiSwapchain::getImageCount() const{
+const uint32_t WsiSwapchain::getImageCount() const{
 	return mImageCount;
 }
 

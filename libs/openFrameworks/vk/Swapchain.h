@@ -50,6 +50,7 @@ public:
 	// Request an image index from the swapchain, so that we might render into it
 	// the image must be returned to the swapchain when done using queuePresent
 	// \note this might cause waiting.
+	// presentCompleteSemaphore will be signalled once image is ready to be rendered into.
 	virtual ::vk::Result acquireNextImage( ::vk::Semaphore presentCompleteSemaphore, uint32_t &imageIndex ) =  0;
 
 	// Present the current image to the queue
@@ -63,7 +64,7 @@ public:
 	virtual const ImageWithView& getImage( size_t i ) const = 0 ;
 
 	// return number of swapchain images
-	virtual const uint32_t & getImageCount() const = 0;
+	virtual const uint32_t getImageCount() const = 0;
 	
 	// return last acquired buffer id
 	virtual const uint32_t & getCurrentImageIndex() const = 0;
@@ -136,7 +137,7 @@ public:
 	const ImageWithView& getImage( size_t i ) const override;
 
 	// return number of swapchain images
-	const uint32_t & getImageCount() const override;
+	const uint32_t getImageCount() const override;
 
 	// return last acquired buffer id
 	const uint32_t & getCurrentImageIndex() const override;

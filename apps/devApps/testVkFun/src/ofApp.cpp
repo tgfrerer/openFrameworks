@@ -40,8 +40,7 @@ void ofApp::setup(){
 		rect.setOffset( { int32_t( vp.x ),     int32_t( vp.y ) } );
 
 		settings.renderArea = rect;
-		settings.renderPass = renderer->generateDefaultRenderPass( swapchain->getColorFormat(), 
-			renderer->getVkDepthFormat() );
+		settings.renderPass = renderer->generateDefaultRenderPass( swapchain->getColorFormat(), renderer->getVkDepthFormat() );
 
 		auto context = make_shared<of::vk::RenderContext>( std::move( settings ) );
 
@@ -254,7 +253,7 @@ void ofApp::draw(){
 	// At end of draw(), context will submit its list of vkCommandBuffers
 	// to the graphics queue in one API call.
 
-	// batch.submit processes all draw commands into a vk command buffer 
+	// batch.submit() processes all draw commands into a vk command buffer 
 	// and adds them to the list of vkCommands that a rendercontext accumulates
 	// the rendercontext then submits these commands to the queue in one go.
 	//
@@ -278,6 +277,12 @@ void ofApp::draw(){
 	want to insert are mostly sync commands i would assume. the draw commands above help
 	you to keep track of volatile memory.
 
+	Q: Why do we need more explicit access to CommandBuffers? Mainly for sync objects, 
+	   such as pipeline barriers. But we can define a lot of dependencies using the renderpass!
+
+	Q: how do we render to a canvas which has different dimensions than our main rendertargets?
+	   We need a separate renderpass for that. Can't use subpasses, since subpasses inherit the
+	   dimension from the main renderpass.
 
 	auto cmd = renderContext->beginPrimaryCommandBuffer()
 
@@ -292,7 +297,6 @@ void ofApp::draw(){
 	renderContext.submit(cmd); // this adds cmd to list of cmdbuffers earmarked for execution
 
 	*/
-
 
 	// submitting the compute command after the batch has been submitted
 	// means it will end up on the queue *after* the draw instructions.

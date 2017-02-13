@@ -22,7 +22,8 @@ void RenderBatch::draw( const DrawCommand& dc_ ){
 	dc.commitUniforms( mRenderContext->getAllocator() );
 	dc.commitMeshAttributes( mRenderContext->getAllocator() );
 	
-	// Renderpass is constant over a context, as a context encapsulates a renderpass with all its subpasses.
+	// Renderpass is constant over a context, as a context encapsulates 
+	// a renderpass with all its subpasses.
 	dc.mPipelineState.setRenderPass( mRenderContext->getRenderPass() );
 	
 	// CONSIDER: subpass might change based on rendercontext state 

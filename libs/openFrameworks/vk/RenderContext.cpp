@@ -82,7 +82,7 @@ void RenderContext::setupFrameBufferAttachments( const std::vector<::vk::ImageVi
 		.setLayers( 1 )
 		;
 
-	// create a framebuffer for the current virual frame, and link it to the current swapchain images.
+	// create a framebuffer for the current virtual frame, and link it to the current swapchain images.
 	fb = mDevice.createFramebuffer( frameBufferCreateInfo );
 }
 
@@ -135,9 +135,11 @@ void RenderContext::submitToQueue(){
 	// Synchronisation works this way: 
 	// First, we tell the GPU to wait on presentComplete - which means the swapchain has finished presenting
 	// and the image we want to render into is ready to be drawn into.
-	// Second, we tell the GPU to set a semaphore, and only signal it once rendering for this frame is complete.
+	// Second, we tell the GPU to set a semaphore, and only signal it once rendering 
+	// for this frame is complete.
 	// Third, insert a fence into the command stream. This fence will only allow the CPU to continue once it has been 
 	// waited upon 
+
 	submitInfo
 		.setWaitSemaphoreCount( 1 )
 		.setPWaitSemaphores( &getSemaphorePresentComplete() )

@@ -55,7 +55,7 @@ static bool getMemoryAllocationInfo(
 		return true;
 	}
 
-	// Find an available memory type that satifies the requested properties.
+	// Find an available memory type that satisfies the requested properties.
 	uint32_t memoryTypeIndex;
 	for ( memoryTypeIndex = 0; memoryTypeIndex < physicalMemProperties.memoryTypeCount; ++memoryTypeIndex ){
 		if ( ( memReqs.memoryTypeBits & ( 1 << memoryTypeIndex ) ) &&
