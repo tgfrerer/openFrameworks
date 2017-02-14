@@ -108,7 +108,7 @@ void ComputeCommand::submit( RenderContext & context, const glm::uvec3& dims = {
 
 	commitUniforms( context.getTransientAllocator() );
 
-	auto cmd = context.requestPrimaryCommandBuffer();
+	auto cmd = context.allocateCommandBuffer(::vk::CommandBufferLevel::ePrimary);
 
 
 	// current draw state for building command buffer - this is based on parsing the drawCommand list

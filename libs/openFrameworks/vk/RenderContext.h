@@ -124,7 +124,7 @@ private:
 		return mPipelineCache[pipelineHash];
 	};
 	
-	const std::unique_ptr<BufferAllocator> & getAllocator();
+	const std::unique_ptr<BufferAllocator> & getAllocator() const;
 	
 
 public:
@@ -160,12 +160,7 @@ public:
 	// It *must* be submitted to this context within the same frame, that is, before swap().
 	// command buffer will also begin renderpass, based on current framebuffer and render area,
 	// and clear the render area based on current clear values.
-	::vk::CommandBuffer requestPrimaryCommandBufferWithRenderpass() const;
 
-	::vk::CommandBuffer requestPrimaryCommandBuffer() const ;
-
-	// !TODO: combine this with requestPrimaryCommandBuffer
-	::vk::CommandBuffer allocateTransientCommandBuffer( const ::vk::CommandBufferLevel & commandBufferLevel ) const;
 
 	const std::unique_ptr<of::vk::BufferAllocator>& getTransientAllocator() const{
 		return mTransientMemory;
@@ -233,7 +228,7 @@ inline const ::vk::Rect2D & RenderContext::getRenderArea() const{
 	return mRenderArea;
 }
 
-inline const std::unique_ptr<BufferAllocator> & RenderContext::getAllocator(){
+inline const std::unique_ptr<BufferAllocator> & RenderContext::getAllocator() const{
 	return mTransientMemory;
 }
 
@@ -274,62 +269,10 @@ inline ::vk::BufferCopy RenderContext::stageBufferData( const TransferSrcData& d
 
 // ------------------------------------------------------------
 
-inline ::vk::CommandBuffer RenderContext::requestPrimaryCommandBufferWithRenderpass() const {
-	::vk::CommandBuffer cmd;
-
-	::vk::CommandBufferAllocateInfo commandBufferAllocateInfo;
-	commandBufferAllocateInfo
-		.setCommandPool( mVirtualFrames[mCurrentVirtualFrame].commandPool )
-		.setLevel( ::vk::CommandBufferLevel::ePrimary )
-		.setCommandBufferCount( 1 )
-		;
-
-	mDevice.allocateCommandBuffers( &commandBufferAllocateInfo, &cmd );
-
-	cmd.begin( { ::vk::CommandBufferUsageFlagBits::eOneTimeSubmit } );
-
-	{	// begin renderpass
-		//! TODO: get correct clear values, and clear value count
-		std::array<::vk::ClearValue, 2> clearValues;
-		clearValues[0].setColor( reinterpret_cast<const ::vk::ClearColorValue&>( ofFloatColor::black ) );
-		clearValues[1].setDepthStencil( { 1.f, 0 } );
-
-		::vk::RenderPassBeginInfo renderPassBeginInfo;
-		renderPassBeginInfo
-			.setRenderPass( getRenderPass() )
-			.setFramebuffer(getFramebuffer() )
-			.setRenderArea( getRenderArea() )
-			.setClearValueCount( uint32_t(clearValues.size()) )
-			.setPClearValues( clearValues.data() )
-			;
-
-		cmd.beginRenderPass( renderPassBeginInfo, ::vk::SubpassContents::eInline );
-	}
-
-	return cmd;
-}
 
 // ------------------------------------------------------------
 
-inline ::vk::CommandBuffer RenderContext::requestPrimaryCommandBuffer() const {
-	::vk::CommandBuffer cmd;
-
-	::vk::CommandBufferAllocateInfo commandBufferAllocateInfo;
-	commandBufferAllocateInfo
-		.setCommandPool( mVirtualFrames[mCurrentVirtualFrame].commandPool )
-		.setLevel( ::vk::CommandBufferLevel::ePrimary )
-		.setCommandBufferCount( 1 )
-		;
-
-	mDevice.allocateCommandBuffers( &commandBufferAllocateInfo, &cmd );
-
-	cmd.begin( { ::vk::CommandBufferUsageFlagBits::eOneTimeSubmit } );
-	return cmd;
-}
-
-// ------------------------------------------------------------
-
-inline ::vk::CommandBuffer RenderContext::allocateTransientCommandBuffer (
+inline ::vk::CommandBuffer RenderContext::allocateCommandBuffer (
 	const ::vk::CommandBufferLevel & commandBufferLevel = ::vk::CommandBufferLevel::ePrimary  ) const {
 	::vk::CommandBuffer cmd;
 

@@ -377,7 +377,7 @@ std::vector<BufferRegion> RenderContext::storeBufferDataCmd( const std::vector<T
 	::vk::DeviceSize firstOffset = copyRegions.front().dstOffset;
 	::vk::DeviceSize totalStaticRange = ( copyRegions.back().dstOffset + copyRegions.back().size ) - firstOffset;
 
-	::vk::CommandBuffer cmd = allocateTransientCommandBuffer( ::vk::CommandBufferLevel::ePrimary );
+	::vk::CommandBuffer cmd = allocateCommandBuffer( ::vk::CommandBufferLevel::ePrimary );
 
 	cmd.begin( { ::vk::CommandBufferUsageFlagBits::eOneTimeSubmit } );
 	{
@@ -553,7 +553,7 @@ std::shared_ptr<::vk::Image> of::vk::RenderContext::storeImageCmd( const ImageTr
 		.setSubresourceRange( subresourceRange )
 		;
 	
-	::vk::CommandBuffer cmd = allocateTransientCommandBuffer( ::vk::CommandBufferLevel::ePrimary );
+	::vk::CommandBuffer cmd = allocateCommandBuffer( ::vk::CommandBufferLevel::ePrimary );
 
 	cmd.begin( { ::vk::CommandBufferUsageFlagBits::eOneTimeSubmit } );
 
