@@ -22,7 +22,10 @@ void ofApp::draw(){
 
 	of::vk::RenderBatch batch{ *context };
 
-	batch.submit();
+	batch.begin();
+
+	batch.end();
+
 
 }
 

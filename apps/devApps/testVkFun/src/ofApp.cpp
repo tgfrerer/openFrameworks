@@ -245,10 +245,13 @@ void ofApp::draw(){
 
 	of::vk::RenderBatch batch{ currentContext };
 
-	batch.draw( drawFullScreenQuad );
-	batch.draw( hero );
-	batch.draw( texturedRect );
-
+	batch.begin();
+	batch
+		.draw( drawFullScreenQuad )
+		.draw( hero )
+		.draw( texturedRect )
+		;
+	batch.end();
 
 	// At end of draw(), context will submit its list of vkCommandBuffers
 	// to the graphics queue in one API call.
@@ -266,7 +269,6 @@ void ofApp::draw(){
 	// * set correct dynamic offsets for dynamic descriptors
 	// * bind vertex data
 	// * bind index data
-	batch.submit();
 
 	/*
 	

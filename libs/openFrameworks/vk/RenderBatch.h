@@ -27,6 +27,16 @@ class RenderBatch
 
 	*/
 
+	RenderContext *  mRenderContext;
+	uint32_t               mVkSubPassId = 0;
+	std::list<DrawCommand> mDrawCommands;
+
+	// vulkan command buffer mapped to this batch.
+	::vk::CommandBuffer mVkCmd;
+
+	// renderbatch must be constructed from a valid context.
+	RenderBatch() = delete;
+
 public:
 
 	RenderBatch( RenderContext& rc );
@@ -37,20 +47,24 @@ public:
 		}
 	}
 
-public:
-
 	uint32_t nextSubPass();
-	void draw( const DrawCommand& dc );
-	void submit();
+	
+	RenderBatch & draw( const DrawCommand& dc );
+	
+	// Begin command buffer, begin renderpass, 
+	// and also setup default values for scissor and viewport.
+	void begin();
+
+	// End renderpass, processes draw commands added to batch, and submits batch translated into commandBuffer to 
+	// context's command buffer queue.
+	void end();
+
+	// return vulkan command buffer mapped to this batch
+	::vk::CommandBuffer& getVkCommandBuffer();
 
 private:
-
-	RenderContext *        mRenderContext;
-	uint32_t               mVkSubPassId = 0;
-	std::list<DrawCommand> mDrawCommands;
-
-	RenderBatch() = delete;
-	void processDrawCommands( const ::vk::CommandBuffer& cmd );
+	
+	void processDrawCommands( );
 
 };
 
@@ -63,6 +77,11 @@ inline uint32_t RenderBatch::nextSubPass(){
 	return ++mVkSubPassId;
 }
 
+// ----------------------------------------------------------------------
+
+inline ::vk::CommandBuffer & of::vk::RenderBatch::getVkCommandBuffer(){
+	return mVkCmd;
+}
 
 // ----------------------------------------------------------------------
 

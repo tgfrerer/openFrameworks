@@ -160,7 +160,7 @@ public:
 	// It *must* be submitted to this context within the same frame, that is, before swap().
 	// command buffer will also begin renderpass, based on current framebuffer and render area,
 	// and clear the render area based on current clear values.
-
+	::vk::CommandBuffer RenderContext::allocateCommandBuffer(const ::vk::CommandBufferLevel & commandBufferLevel = ::vk::CommandBufferLevel::ePrimary ) const;
 
 	const std::unique_ptr<of::vk::BufferAllocator>& getTransientAllocator() const{
 		return mTransientMemory;
@@ -269,11 +269,8 @@ inline ::vk::BufferCopy RenderContext::stageBufferData( const TransferSrcData& d
 
 // ------------------------------------------------------------
 
-
-// ------------------------------------------------------------
-
 inline ::vk::CommandBuffer RenderContext::allocateCommandBuffer (
-	const ::vk::CommandBufferLevel & commandBufferLevel = ::vk::CommandBufferLevel::ePrimary  ) const {
+	const ::vk::CommandBufferLevel & commandBufferLevel) const {
 	::vk::CommandBuffer cmd;
 
 	::vk::CommandBufferAllocateInfo commandBufferAllocateInfo;

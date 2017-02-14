@@ -5,13 +5,17 @@
 using namespace of::vk;
 
 // ------------------------------------------------------------
+
 RenderBatch::RenderBatch( RenderContext & rc )
 	:mRenderContext( &rc ){
+	mVkCmd = mRenderContext->allocateCommandBuffer( ::vk::CommandBufferLevel::ePrimary );
+	
+
 }
 
 // ------------------------------------------------------------
 
-void RenderBatch::draw( const DrawCommand& dc_ ){
+of::vk::RenderBatch& RenderBatch::draw( const DrawCommand& dc_ ){
 
 	// local copy of draw command.
 	DrawCommand dc = dc_;
@@ -26,56 +30,76 @@ void RenderBatch::draw( const DrawCommand& dc_ ){
 	// a renderpass with all its subpasses.
 	dc.mPipelineState.setRenderPass( mRenderContext->getRenderPass() );
 	
-	// CONSIDER: subpass might change based on rendercontext state 
-	dc.mPipelineState.setSubPass( mRenderContext->getSubpassId() );
+	dc.mPipelineState.setSubPass( mVkSubPassId );
 
 	mDrawCommands.emplace_back( std::move(dc) );
-
+	
+	return *this;
 }
 
 // ----------------------------------------------------------------------
 
-void RenderBatch::submit(){
+void RenderBatch::begin(){
+	mVkCmd.begin( { ::vk::CommandBufferUsageFlagBits::eOneTimeSubmit } );
+
+	{	// begin renderpass
+		//! TODO: get correct clear values, and clear value count
+		std::array<::vk::ClearValue, 2> clearValues;
+		clearValues[0].setColor( reinterpret_cast<const ::vk::ClearColorValue&>( ofFloatColor::black ) );
+		clearValues[1].setDepthStencil( { 1.f, 0 } );
+
+		::vk::RenderPassBeginInfo renderPassBeginInfo;
+		renderPassBeginInfo
+			.setRenderPass( mRenderContext->getRenderPass() )
+			.setFramebuffer( mRenderContext->getFramebuffer() )
+			.setRenderArea( mRenderContext->getRenderArea() )
+			.setClearValueCount( uint32_t( clearValues.size() ) )
+			.setPClearValues( clearValues.data() )
+			;
+
+		mVkCmd.beginRenderPass( renderPassBeginInfo, ::vk::SubpassContents::eInline );
+	}
+
+	// set dynamic viewport
+	// todo: these dynamics belong to the batch state.
+	::vk::Viewport vp;
+	vp.setX( 0 )
+		.setY( 0 )
+		.setWidth( mRenderContext->getRenderArea().extent.width )
+		.setHeight( mRenderContext->getRenderArea().extent.height )
+		.setMinDepth( 0.f )
+		.setMaxDepth( 1.f )
+		;
+	mVkCmd.setViewport( 0, { vp } );
+	mVkCmd.setScissor( 0, { mRenderContext->getRenderArea() } );
+}
+
+// ----------------------------------------------------------------------
+
+void RenderBatch::end(){
 	// submit command buffer to context.
 	// context will submit command buffers batched to queue 
 	// at its own pleasure, but in seqence.
 
-	auto mVkCmd = mRenderContext->requestPrimaryCommandBufferWithRenderpass();
+	processDrawCommands();
 
-	// TODO: if command buffer is secondary, 
-	// we need to begin() it, otherwise it will have been begun.
 	{
-		// set dynamic viewport
-		// todo: these dynamics belong to the batch state.
-		::vk::Viewport vp;
-		vp.setX( 0 )
-			.setY( 0 )
-			.setWidth( mRenderContext->getRenderArea().extent.width )
-			.setHeight( mRenderContext->getRenderArea().extent.height )
-			.setMinDepth( 0.f )
-			.setMaxDepth( 1.f )
-			;
-		mVkCmd.setViewport( 0, { vp } );
-		mVkCmd.setScissor( 0, { mRenderContext->getRenderArea() } );
-
-		processDrawCommands(mVkCmd);
-	}
-
-	{	// end renderpass if command buffer is Primary
+		// end renderpass if Context / CommandBuffer is Primary
 		mVkCmd.endRenderPass();
 	}
 
 	mVkCmd.end();
-
-	mRenderContext->submit(std::move(mVkCmd));
+	
+	// add command buffer to command queue of context.
+	mRenderContext->submit( std::move( mVkCmd ) );
 
 	mVkCmd = nullptr;
 	mDrawCommands.clear();
 }
 
 // ----------------------------------------------------------------------
-// !TODO: move this to renderContext.
-void RenderBatch::processDrawCommands( const ::vk::CommandBuffer& cmd ){
+
+void RenderBatch::processDrawCommands( ){
 
 	// first order draw commands
 
@@ -117,7 +141,7 @@ void RenderBatch::processDrawCommands( const ::vk::CommandBuffer& cmd ){
 				*currentPipeline = boundPipelineState->createPipeline( mRenderContext->mDevice, mRenderContext->mSettings.pipelineCache);
 			}
 
-			cmd.bindPipeline( ::vk::PipelineBindPoint::eGraphics, *currentPipeline );
+			mVkCmd.bindPipeline( ::vk::PipelineBindPoint::eGraphics, *currentPipeline );
 		}
 
 		// ----------| invariant: correct pipeline is bound
@@ -155,7 +179,7 @@ void RenderBatch::processDrawCommands( const ::vk::CommandBuffer& cmd ){
 		// bind dc descriptorsets to current pipeline descriptor sets
 		// make sure dynamic ubos have the correct offsets
 		if ( !boundVkDescriptorSets.empty() ){
-			cmd.bindDescriptorSets(
+			mVkCmd.bindDescriptorSets(
 				::vk::PipelineBindPoint::eGraphics,	                           // use graphics, not compute pipeline
 				*dc.mPipelineState.getShader()->getPipelineLayout(),           // VkPipelineLayout object used to program the bindings.
 				0,                                                             // firstset: first set index (of the above) to bind to - mDescriptorSet[0] will be bound to pipeline layout [firstset]
@@ -193,16 +217,16 @@ void RenderBatch::processDrawCommands( const ::vk::CommandBuffer& cmd ){
 			// See Shader.h for an explanation of how this is mapped to shader attribute locations
 
 			if ( !vertexBuffers.empty() ){
-				cmd.bindVertexBuffers( 0, vertexBuffers, vertexOffsets );
+				mVkCmd.bindVertexBuffers( 0, vertexBuffers, vertexOffsets );
 			}
 
 			if ( !indexBuffer ){
 				// non-indexed draw
-				cmd.draw( uint32_t( dc.getNumVertices() ), 1, 0, 0 ); //last param was 1
+				mVkCmd.draw( uint32_t( dc.getNumVertices() ), 1, 0, 0 ); //last param was 1
 			} else{
 				// indexed draw
-				cmd.bindIndexBuffer( indexBuffer, indexOffset, ::vk::IndexType::eUint32 );
-				cmd.drawIndexed( dc.getNumIndices(), 1, 0, 0, 0 ); // last param was 1
+				mVkCmd.bindIndexBuffer( indexBuffer, indexOffset, ::vk::IndexType::eUint32 );
+				mVkCmd.drawIndexed( dc.getNumIndices(), 1, 0, 0, 0 ); // last param was 1
 			}
 		}
 
