@@ -89,7 +89,7 @@ void GraphicsPipelineState::reset()
 
 	tessellationState = ::vk::PipelineTessellationStateCreateInfo();
 	tessellationState
-		.setPatchControlPoints( 0 )
+		.setPatchControlPoints( 3 )
 		;
 
 	// viewport and scissor are tracked as dynamic states, so this object

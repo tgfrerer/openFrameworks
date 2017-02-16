@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2016 ARM Limited
+ * Copyright 2015-2017 ARM Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -109,6 +109,9 @@ struct BufferRange
 class Compiler
 {
 public:
+	friend class CFG;
+	friend class DominatorBuilder;
+
 	// The constructor takes a buffer of SPIR-V words and parses it.
 	Compiler(std::vector<uint32_t> ir);
 
@@ -135,6 +138,8 @@ public:
 	uint64_t get_decoration_mask(uint32_t id) const;
 
 	// Gets the value for decorations which take arguments.
+	// If the decoration is a boolean (i.e. spv::DecorationNonWritable),
+	// 1 will be returned.
 	// If decoration doesn't exist or decoration is not recognized,
 	// 0 will be returned.
 	uint32_t get_decoration(uint32_t id, spv::Decoration decoration) const;
@@ -145,6 +150,8 @@ public:
 	// Gets the SPIR-V associated with ID.
 	// Mostly used with Resource::type_id and Resource::base_type_id to parse the underlying type of a resource.
 	const SPIRType &get_type(uint32_t id) const;
+
+	const SPIRType &get_type_from_variable(uint32_t id) const;
 
 	// Gets the underlying storage class for an OpVariable.
 	spv::StorageClass get_storage_class(uint32_t id) const;
@@ -165,6 +172,9 @@ public:
 
 	// Sets the member identifier for OpTypeStruct ID, member number "index".
 	void set_member_name(uint32_t id, uint32_t index, const std::string &name);
+
+	// Sets the qualified member identifier for OpTypeStruct ID, member number "index".
+	void set_member_qualified_name(uint32_t id, uint32_t index, const std::string &name);
 
 	// Gets the decoration mask for a member of a struct, similar to get_decoration_mask.
 	uint64_t get_member_decoration_mask(uint32_t id, uint32_t index) const;
@@ -193,11 +203,7 @@ public:
 	// Returns the effective size of a buffer block struct member.
 	virtual size_t get_declared_struct_member_size(const SPIRType &struct_type, uint32_t index) const;
 
-	// Legacy GLSL compatibility method.
-	// Takes a variable with a block interface and flattens it into a T array[N]; array instead.
-	// For this to work, all types in the block must not themselves be composites
-	// (except vectors and matrices), and all types must be the same.
-	// The name of the uniform will be the same as the interface block name.
+	// Legacy GLSL compatibility method. Deprecated in favor of CompilerGLSL::flatten_buffer_block
 	void flatten_interface_block(uint32_t id);
 
 	// Returns a set of all global variables which are statically accessed
@@ -306,6 +312,11 @@ public:
 	SPIRConstant &get_constant(uint32_t id);
 	const SPIRConstant &get_constant(uint32_t id) const;
 
+	uint32_t get_current_id_bound() const
+	{
+		return uint32_t(ids.size());
+	}
+
 protected:
 	const uint32_t *stream(const Instruction &instr) const
 	{
@@ -316,7 +327,7 @@ protected:
 			return nullptr;
 
 		if (instr.offset + instr.length > spirv.size())
-			throw CompilerError("Compiler::stream() out of range.");
+			SPIRV_CROSS_THROW("Compiler::stream() out of range.");
 		return &spirv[instr.offset];
 	}
 	std::vector<uint32_t> spirv;
@@ -394,7 +405,7 @@ protected:
 	std::unordered_set<uint32_t> selection_merge_targets;
 	std::unordered_set<uint32_t> multiselect_merge_targets;
 
-	std::string to_name(uint32_t id, bool allow_alias = true);
+	virtual std::string to_name(uint32_t id, bool allow_alias = true);
 	bool is_builtin_variable(const SPIRVariable &var) const;
 	bool is_hidden_variable(const SPIRVariable &var, bool include_builtins = false) const;
 	bool is_immutable(uint32_t id) const;
@@ -450,6 +461,7 @@ protected:
 
 	uint32_t type_struct_member_offset(const SPIRType &type, uint32_t index) const;
 	uint32_t type_struct_member_array_stride(const SPIRType &type, uint32_t index) const;
+	uint32_t type_struct_member_matrix_stride(const SPIRType &type, uint32_t index) const;
 
 	bool block_is_loop_candidate(const SPIRBlock &block, SPIRBlock::Method method) const;
 
@@ -470,7 +482,9 @@ protected:
 			variable_remap_callback(type, var_name, type_name);
 	}
 
-private:
+	void analyze_variable_scope(SPIRFunction &function);
+
+protected:
 	void parse();
 	void parse(const Instruction &i);
 
@@ -482,6 +496,15 @@ private:
 		// Return true if traversal should continue.
 		// If false, traversal will end immediately.
 		virtual bool handle(spv::Op opcode, const uint32_t *args, uint32_t length) = 0;
+
+		virtual bool follow_function_call(const SPIRFunction &)
+		{
+			return true;
+		}
+
+		virtual void set_current_block(const SPIRBlock &)
+		{
+		}
 
 		virtual bool begin_function_scope(const uint32_t *, uint32_t)
 		{
@@ -556,6 +579,9 @@ private:
 	ShaderResources get_shader_resources(const std::unordered_set<uint32_t> *active_variables) const;
 
 	VariableTypeRemapCallback variable_remap_callback;
+
+	uint64_t get_buffer_block_flags(const SPIRVariable &var);
+	bool get_common_basic_type(const SPIRType &type, SPIRType::BaseType &base_type);
 };
 }
 

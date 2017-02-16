@@ -226,6 +226,7 @@
     <ClInclude Include="..\..\..\openFrameworks\vk\Shader.h" />
     <ClInclude Include="..\..\..\openFrameworks\vk\spirv-cross\include\GLSL.std.450.h" />
     <ClInclude Include="..\..\..\openFrameworks\vk\spirv-cross\include\spirv.hpp" />
+    <ClInclude Include="..\..\..\openFrameworks\vk\spirv-cross\include\spirv_cfg.hpp" />
     <ClInclude Include="..\..\..\openFrameworks\vk\spirv-cross\include\spirv_common.hpp" />
     <ClInclude Include="..\..\..\openFrameworks\vk\spirv-cross\include\spirv_cross.hpp" />
     <ClInclude Include="..\..\..\openFrameworks\vk\spooky\SpookyV2.h" />
@@ -309,6 +310,7 @@
     <ClCompile Include="..\..\..\openFrameworks\vk\RenderBatch.cpp" />
     <ClCompile Include="..\..\..\openFrameworks\vk\RenderContext.cpp" />
     <ClCompile Include="..\..\..\openFrameworks\vk\Shader.cpp" />
+    <ClCompile Include="..\..\..\openFrameworks\vk\spirv-cross\include\spirv_cfg.cpp" />
     <ClCompile Include="..\..\..\openFrameworks\vk\spirv-cross\include\spirv_cross.cpp" />
     <ClCompile Include="..\..\..\openFrameworks\vk\spooky\SpookyV2.cpp" />
     <ClCompile Include="..\..\..\openFrameworks\vk\Swapchain.cpp" />

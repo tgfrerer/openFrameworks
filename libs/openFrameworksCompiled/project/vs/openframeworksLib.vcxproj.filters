@@ -354,6 +354,9 @@
     <ClInclude Include="..\..\..\openFrameworks\vk\ImgSwapchain.h">
       <Filter>libs\openFrameworks\vk</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\..\openFrameworks\vk\spirv-cross\include\spirv_cfg.hpp">
+      <Filter>libs\openFrameworks\vk\spirv-cross</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\openFrameworks\app\ofAppRunner.cpp">
@@ -595,6 +598,9 @@
     </ClCompile>
     <ClCompile Include="..\..\..\openFrameworks\vk\ImgSwapchain.cpp">
       <Filter>libs\openFrameworks\vk</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\openFrameworks\vk\spirv-cross\include\spirv_cfg.cpp">
+      <Filter>libs\openFrameworks\vk\spirv-cross</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
