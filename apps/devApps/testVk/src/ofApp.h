@@ -1,8 +1,13 @@
 #pragma once
 
 #include "ofMain.h"
+#include "vk/DrawCommand.h"
 
 class ofApp : public ofBaseApp{
+
+	of::vk::DrawCommand fullscreenQuad;
+
+	std::shared_ptr<of::vk::Shader> mShaderFullscreen;
 
 	public:
 		void setup();
