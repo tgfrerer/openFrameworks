@@ -138,7 +138,8 @@ public:
 	const ::vk::Semaphore   & getSemaphoreRenderComplete() const ;
 	const ::vk::Framebuffer & getFramebuffer() const;
 	const ::vk::RenderPass  & getRenderPass() const; 
-	
+	const size_t              getNumVirtualFrames() const;
+
 	const uint32_t            getSubpassId() const;
 
 	void setupFrameBufferAttachments( const std::vector<::vk::ImageView> &attachments);
@@ -183,8 +184,6 @@ public:
 	// this is where semaphore synchronisation happens. 
 	void submitToQueue();
 
-	// void submitTransfer();
-
 	void swap();
 
 };
@@ -214,6 +213,10 @@ inline const ::vk::Framebuffer & RenderContext::getFramebuffer() const{
 
 inline const ::vk::RenderPass & RenderContext::getRenderPass() const{
 	return mSettings.renderPass;
+}
+
+inline const size_t RenderContext::getNumVirtualFrames() const{
+	return mVirtualFrames.size();
 }
 
 inline const uint32_t RenderContext::getSubpassId() const{
