@@ -17,8 +17,16 @@ using namespace of::vk;
 
 void DrawCommand::setup(const GraphicsPipelineState& pipelineState){
 	
-	mPipelineState = pipelineState;
 	
+	if ( false == pipelineState.getShader() ){
+		ofLogError() << "Cannot setup draw command without valid shader inside pipeline.";
+		return;
+	}
+
+	// --------| invariant: pipeline has shader
+
+	mPipelineState = pipelineState;
+
 	mDescriptorSetData = mPipelineState.getShader()->getDescriptorSetData();
 	mUniformDictionary = mPipelineState.getShader()->getUniformDictionary();
 
