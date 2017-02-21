@@ -418,7 +418,7 @@ std::vector<BufferRegion> RenderContext::storeBufferDataCmd( const std::vector<T
 
 // ------------------------------------------------------------
 
-std::shared_ptr<::vk::Image> of::vk::RenderContext::storeImageCmd( const ImageTransferSrcData& data, const unique_ptr<ImageAllocator>& targetImageAllocator ){
+std::shared_ptr<::vk::Image> RenderContext::storeImageCmd( const ImageTransferSrcData& data, const unique_ptr<ImageAllocator>& targetImageAllocator ){
 
 	/*
 	
