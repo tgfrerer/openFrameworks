@@ -44,17 +44,14 @@ void RenderBatch::begin(){
 
 	{	// begin renderpass
 		//! TODO: get correct clear values, and clear value count
-		std::array<::vk::ClearValue, 2> clearValues;
-		clearValues[0].setColor( reinterpret_cast<const ::vk::ClearColorValue&>( ofFloatColor::black ) );
-		clearValues[1].setDepthStencil( { 1.f, 0 } );
 
 		::vk::RenderPassBeginInfo renderPassBeginInfo;
 		renderPassBeginInfo
 			.setRenderPass( mRenderContext->getRenderPass() )
 			.setFramebuffer( mRenderContext->getFramebuffer() )
 			.setRenderArea( mRenderContext->getRenderArea() )
-			.setClearValueCount( uint32_t( clearValues.size() ) )
-			.setPClearValues( clearValues.data() )
+			.setClearValueCount( mRenderContext->getClearValues().size() )
+			.setPClearValues( mRenderContext->getClearValues().data() )
 			;
 
 		mVkCmd.beginRenderPass( renderPassBeginInfo, ::vk::SubpassContents::eInline );

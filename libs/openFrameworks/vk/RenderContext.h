@@ -53,6 +53,7 @@ public:
 		BufferAllocator::Settings              transientMemoryAllocatorSettings;
 		std::shared_ptr<::vk::PipelineCache>   pipelineCache;
 		::vk::RenderPass                       renderPass;  // owning
+		std::vector<::vk::ClearValue>          renderPassClearValues; 
 		::vk::Rect2D                           renderArea;
 	};
 
@@ -186,6 +187,8 @@ public:
 	// this is where semaphore synchronisation happens. 
 	void submitToQueue();
 
+	const std::vector<::vk::ClearValue> & getClearValues() const;
+
 
 };
 
@@ -235,6 +238,11 @@ inline const ::vk::Rect2D & RenderContext::getRenderArea() const{
 inline const std::unique_ptr<BufferAllocator> & RenderContext::getAllocator() const{
 	return mTransientMemory;
 }
+
+inline const std::vector<::vk::ClearValue>& RenderContext::getClearValues() const{
+	return mSettings.renderPassClearValues;
+}
+
 
 // ------------------------------------------------------------
 

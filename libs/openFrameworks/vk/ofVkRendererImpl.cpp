@@ -25,6 +25,10 @@ void ofVkRenderer::setup(){
 
 void ofVkRenderer::setupDefaultContext(){
 	
+	std::vector<::vk::ClearValue> clearValues(2);
+	clearValues[0].setColor( reinterpret_cast<const ::vk::ClearColorValue&>( ofFloatColor::black ) );
+	clearValues[1].setDepthStencil( { 1.f, 0 } );
+
 	of::vk::RenderContext::Settings settings;
 	
 	settings.transientMemoryAllocatorSettings.device = mDevice;
@@ -36,7 +40,9 @@ void ofVkRenderer::setupDefaultContext(){
 	settings.pipelineCache = getPipelineCache();
 	settings.renderArea = { 0,0, mSwapchain->getWidth(), mSwapchain->getHeight()};
 	settings.renderPass = generateDefaultRenderPass(mSwapchain->getColorFormat(), mDepthFormat);
-	
+	settings.renderToSwapChain = true;
+	settings.renderPassClearValues = clearValues;
+
 	mDefaultContext = make_shared<of::vk::RenderContext>(std::move(settings));
 	mDefaultContext->setup();
 }
