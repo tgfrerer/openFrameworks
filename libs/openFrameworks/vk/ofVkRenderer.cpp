@@ -99,6 +99,10 @@ ofVkRenderer::~ofVkRenderer()
 
 	destroyDevice();
 
+	// todo: destroy vkSurface 
+	// the surface was created in glfwWindow, so it shoudld be destroyed there, too.
+	// it must be destroyed before the instance is destroyed, meaning at this point.
+
 	destroyDebugLayers();
 	destroyInstance();
 }

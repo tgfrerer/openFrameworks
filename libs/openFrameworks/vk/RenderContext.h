@@ -26,7 +26,7 @@ MISSION:
 	context will accumulate vkCommandbuffers, and will submit them 
 	on submitToQueue.
 
-	A RenderContext is the OWNER of all elements used to draw within 
+	A RenderContext is the OWNER of all resources used to draw within 
 	one thread.
 
 

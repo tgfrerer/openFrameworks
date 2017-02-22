@@ -67,6 +67,14 @@ void RenderContext::setup(){
 void RenderContext::setupFrameBufferAttachments( const std::vector<::vk::ImageView>& attachments ){
 	auto & fb = mVirtualFrames[mCurrentVirtualFrame].frameBuffer;
 
+	// Framebuffers in Vulkan are very light-weight objects, whose main purpose 
+	// is to connect RenderPasses to Image attachments. 
+	//
+	// Since the swapchain might have a different number of images than this context has virtual 
+	// frames, and the swapchain may even acquire images out-of-sequence, we must re-create the 
+	// framebuffer on each frame to make sure we're attaching the renderpass to the correct 
+	// attachments.
+
 	if ( fb ){
 		// destroy pre-existing frame buffer
 		mDevice.destroyFramebuffer( fb );
@@ -83,7 +91,7 @@ void RenderContext::setupFrameBufferAttachments( const std::vector<::vk::ImageVi
 		.setLayers( 1 )
 		;
 
-	// create a framebuffer for the current virtual frame, and link it to the current swapchain images.
+	// Create a framebuffer for the current virtual frame, and link it to the current swapchain images.
 	fb = mDevice.createFramebuffer( frameBufferCreateInfo );
 }
 
@@ -101,7 +109,7 @@ void RenderContext::waitForFence(){
 
 void RenderContext::begin(){
 
-	// move to the next available virtual frame
+	// Move to the next available virtual frame
 	swap();
 
 	// Wait until fence for current virtual frame has been reached by GPU, which 
@@ -158,6 +166,7 @@ void RenderContext::submitToQueue(){
 
 	mSettings.renderer->getQueue().submit( { submitInfo }, getFence() );
 }
+
 
 // ------------------------------------------------------------
 
