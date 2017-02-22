@@ -53,13 +53,21 @@ RenderContext::~RenderContext(){
 
 void RenderContext::setup(){
 	for ( auto &f : mVirtualFrames ){
-		f.semaphorePresentComplete = mDevice.createSemaphore( {} );  // this semaphore should be owned by the swapchain.
+		if ( mSettings.renderToSwapChain ){
+			f.semaphorePresentComplete = mDevice.createSemaphore( {} );  // this semaphore should be owned by the swapchain.
+		} else{
+			f.semaphorePresentComplete = nullptr;
+		}
 		f.semaphoreRenderComplete = mDevice.createSemaphore( {} );
 		f.fence = mDevice.createFence( { ::vk::FenceCreateFlagBits::eSignaled } );	/* Fence starts as "signaled" */
 		f.commandPool = mDevice.createCommandPool( { ::vk::CommandPoolCreateFlagBits::eTransient } );
 	}
 	mTransientMemory->setup();
+	
 	mCurrentVirtualFrame = mVirtualFrames.size() ^ 1;
+	
+	// self-dependency
+	mSourceContext = this;
 }
 
 // ------------------------------------------------------------
@@ -154,9 +162,17 @@ void RenderContext::submitToQueue(){
 
 	auto & frame = mVirtualFrames[mCurrentVirtualFrame];
 
+	const ::vk::Semaphore * sourceContextWaitSemaphore = nullptr;
+
+	if ( mSourceContext->mSettings.renderToSwapChain ){
+		sourceContextWaitSemaphore = &mSourceContext->getSemaphorePresentComplete();
+	} else{
+		sourceContextWaitSemaphore = &mSourceContext->getSemaphoreRenderComplete();
+	}
+
 	submitInfo
-		.setWaitSemaphoreCount( 1 )
-		.setPWaitSemaphores(   &frame.semaphorePresentComplete )
+		.setWaitSemaphoreCount( ( sourceContextWaitSemaphore ? 1 : 0) )  // set to zero if no contextWaitSemaphore was set
+		.setPWaitSemaphores(   sourceContextWaitSemaphore )
 		.setPWaitDstStageMask( &wait_dst_stage_mask )
 		.setCommandBufferCount( frame.commandBuffers.size() )
 		.setPCommandBuffers(    frame.commandBuffers.data() )
@@ -599,6 +615,12 @@ std::shared_ptr<::vk::Image> RenderContext::storeImageCmd( const ImageTransferSr
 	submit( std::move( cmd ) );
 
 	return image;
+}
+
+// ------------------------------------------------------------
+
+void RenderContext::addContextDependency( RenderContext * ctx ){
+	mSourceContext = ctx;
 }
 
 // ------------------------------------------------------------

@@ -55,6 +55,7 @@ public:
 		::vk::RenderPass                       renderPass;  // owning
 		std::vector<::vk::ClearValue>          renderPassClearValues; 
 		::vk::Rect2D                           renderArea;
+		bool                                   renderToSwapChain = false; // whether this rendercontext renders to swapchain
 	};
 
 private:
@@ -69,7 +70,7 @@ private:
 		::vk::Framebuffer                       frameBuffer;
 		std::list<::vk::DescriptorPool>         descriptorPools;
 		std::map<uint64_t, ::vk::DescriptorSet> descriptorSetCache;
-		::vk::Semaphore                         semaphorePresentComplete;
+		::vk::Semaphore                         semaphorePresentComplete;  // only used if renderContext renders to swapchain
 		::vk::Semaphore                         semaphoreRenderComplete;
 		std::vector<::vk::CommandBuffer>        commandBuffers;
 
@@ -135,7 +136,6 @@ public:
 	RenderContext( const Settings&& settings );
 	~RenderContext();
 
-
 	const ::vk::Fence       & getFence() const ;
 	const ::vk::Semaphore   & getSemaphorePresentComplete() const ;
 	const ::vk::Semaphore   & getSemaphoreRenderComplete() const ;
@@ -146,7 +146,6 @@ public:
 	const uint32_t            getSubpassId() const;
 
 	void setupFrameBufferAttachments( const std::vector<::vk::ImageView> &attachments);
-
 
 	// Stages data for copying into targetAllocator's address space
 	// allocates identical memory chunk in local transient allocator and in targetAllocator
@@ -189,6 +188,11 @@ public:
 
 	const std::vector<::vk::ClearValue> & getClearValues() const;
 
+	// context which must be waited upon before this context can render
+	RenderContext* mSourceContext = nullptr ;
+
+	// define this context to be dependent on another context to be finished rendering first
+	void addContextDependency( RenderContext* ctx );
 
 };
 
