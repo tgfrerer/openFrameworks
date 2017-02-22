@@ -126,6 +126,8 @@ private:
 	
 	const std::unique_ptr<BufferAllocator> & getAllocator() const;
 	
+	// move to next virtual frame - called internally in begin() after fence has been cleared.
+	void swap();
 
 public:
 
@@ -184,7 +186,6 @@ public:
 	// this is where semaphore synchronisation happens. 
 	void submitToQueue();
 
-	void swap();
 
 };
 

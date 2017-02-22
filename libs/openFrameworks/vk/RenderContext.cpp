@@ -59,6 +59,7 @@ void RenderContext::setup(){
 		f.commandPool = mDevice.createCommandPool( { ::vk::CommandPoolCreateFlagBits::eTransient } );
 	}
 	mTransientMemory->setup();
+	mCurrentVirtualFrame = mVirtualFrames.size() ^ 1;
 }
 
 // ------------------------------------------------------------
@@ -100,10 +101,13 @@ void RenderContext::waitForFence(){
 
 void RenderContext::begin(){
 
+	// move to the next available virtual frame
+	swap();
+
 	// Wait until fence for current virtual frame has been reached by GPU, which 
 	// indicates that all virtual frame resource access has completed, and that
 	// all resources of this virtual frame may be reset or re-used.
-	
+
 	waitForFence();
 
 	mDevice.resetFences( { getFence() } );

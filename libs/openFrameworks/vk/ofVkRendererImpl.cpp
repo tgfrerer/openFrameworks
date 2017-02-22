@@ -324,8 +324,6 @@ void ofVkRenderer::finishRender(){
 	// present swapchain frame
 	mSwapchain->queuePresent( mQueue, { mDefaultContext->getSemaphoreRenderComplete()} );
 	
-	// swap current frame index inside context
-	mDefaultContext->swap();
 }
 
 // ----------------------------------------------------------------------
