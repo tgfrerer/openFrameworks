@@ -206,14 +206,15 @@ const ::vk::Format & WsiSwapchain::getColorFormat(){
 
 // ----------------------------------------------------------------------
 
-// Acquires the next image in the swap chain
-// Blocks cpu until image has been acquired
+// Acquires the next available image in the swap chain and updates imageIndex with index to image
+// May block CPU==host until image has been acquired
+// Signals semaphorePresentComplete once image has been acquired
 vk::Result WsiSwapchain::acquireNextImage( ::vk::Semaphore semaphorePresentComplete, uint32_t &imageIndex ){
 
 	/*
 
 	Q: What is the semaphore good for? 
-	A: See vk spec pp. 610:
+	A: See Vk Spec 29.6 ff.:
 	
 	"The semaphore must be unsignaled and not have any uncompleted signal or
 wait operations pending. It will become signaled when the application can use the image. Queue operations that access

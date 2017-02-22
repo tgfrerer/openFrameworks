@@ -68,8 +68,8 @@ private:
 		::vk::Framebuffer                       frameBuffer;
 		std::list<::vk::DescriptorPool>         descriptorPools;
 		std::map<uint64_t, ::vk::DescriptorSet> descriptorSetCache;
-		::vk::Semaphore                         semaphorePresentComplete; // TODO: virtual frame should not own these, but borrow from swapchain
-		::vk::Semaphore                         semaphoreRenderComplete;  // TODO: virtual frame should not own these, but borrow from swapchain
+		::vk::Semaphore                         semaphorePresentComplete;
+		::vk::Semaphore                         semaphoreRenderComplete;
 		std::vector<::vk::CommandBuffer>        commandBuffers;
 
 		// The most important element in here is the fence, as it protects 
@@ -78,7 +78,7 @@ private:
 		// it is waited upon in begin(). This ensures all resources for 
 		// this virtual frame are available and the GPU is finished using 
 		// them for rendering / presenting.
-		::vk::Fence                             fence;                    
+		::vk::Fence                             fence;
 	};
 
 	std::vector<VirtualFrame>                   mVirtualFrames;

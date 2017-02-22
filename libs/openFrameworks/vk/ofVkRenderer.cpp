@@ -98,9 +98,7 @@ ofVkRenderer::~ofVkRenderer()
 	// reset command pool and all associated command buffers.
 
 	destroyDevice();
-	// !TODO: destroy surface.
-	// we need to do this in a way which is agnostic of the windowing system
-	// destroySurface();
+
 	destroyDebugLayers();
 	destroyInstance();
 }

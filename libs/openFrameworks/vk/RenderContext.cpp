@@ -140,14 +140,16 @@ void RenderContext::submitToQueue(){
 	// Third, insert a fence into the command stream. This fence will only allow the CPU to continue once it has been 
 	// waited upon 
 
+	auto & frame = mVirtualFrames[mCurrentVirtualFrame];
+
 	submitInfo
 		.setWaitSemaphoreCount( 1 )
-		.setPWaitSemaphores( &getSemaphorePresentComplete() )
+		.setPWaitSemaphores(   &frame.semaphorePresentComplete )
 		.setPWaitDstStageMask( &wait_dst_stage_mask )
-		.setCommandBufferCount( mVirtualFrames[mCurrentVirtualFrame].commandBuffers.size() )
-		.setPCommandBuffers( mVirtualFrames[mCurrentVirtualFrame].commandBuffers.data() )
+		.setCommandBufferCount( frame.commandBuffers.size() )
+		.setPCommandBuffers(    frame.commandBuffers.data() )
 		.setSignalSemaphoreCount( 1 )
-		.setPSignalSemaphores( &getSemaphoreRenderComplete() )
+		.setPSignalSemaphores( &frame.semaphoreRenderComplete )
 		;
 
 	mSettings.renderer->getQueue().submit( { submitInfo }, getFence() );
@@ -331,7 +333,7 @@ void RenderContext::updateDescriptorPool(){
 
 	if ( descriptorPoolSizes.empty() ){
 		return;
-		//!TODO: this needs a fix: happens when method is called for the very first time
+		// TODO: this needs a fix: happens when method is called for the very first time
 		// with no pool sizes known.
 	}
 

@@ -295,8 +295,14 @@ void ofVkRenderer::startRender(){
 
 	uint32_t swapIdx = 0; /*receives index of current swap chain image*/
 
-	// Receive index for next available swapchain image
-	// effectively, this means the renderer is taking ownership of the image away from the swapchain.
+	// Receive index for next available swapchain image.
+	// Effectively, ownership of the image is transferred from the swapchain to the context.
+	//
+	// Ownership is transferred async, only once semaphorePresentComplete was signalled.
+	// The swapchain will signal the semaphore as soon as the image is ready to be written into.
+	//
+	// This means, a queue submission from the context that draws into the image 
+	// must wait for this semaphore.
 	auto err = mSwapchain->acquireNextImage( mDefaultContext->getSemaphorePresentComplete(), swapIdx );
 
 	// ---------| invariant: new swap chain image has been acquired for drawing into.
