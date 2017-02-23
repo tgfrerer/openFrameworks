@@ -24,7 +24,7 @@ MISSION:
 
 	One or more batches may submit into a rendercontext - the render-
 	context will accumulate vkCommandbuffers, and will submit them 
-	on submitToQueue.
+	on end.
 
 	A Context is the OWNER of all resources used to draw within 
 	one thread.
@@ -179,12 +179,12 @@ public:
 	void setup();
 	void begin();
 	
-	// move command buffer to the rendercontext for batched submission
+	// Move command buffer to the rendercontext for batched submission
 	void submit( ::vk::CommandBuffer&& commandBuffer );
 	
 	// submit all accumulated command buffers to vulkan draw queue for rendering
-	// this is where semaphore synchronisation happens. 
-	void submitToQueue();
+	// this is where semaphore synchronisation happens. Must be matched by begin() 
+	void end();
 
 	const std::vector<::vk::ClearValue> & getClearValues() const;
 

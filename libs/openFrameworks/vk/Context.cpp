@@ -148,7 +148,7 @@ void Context::begin(){
 
 // ------------------------------------------------------------
 
-void Context::submitToQueue(){
+void Context::end(){
 
 	// Synchronisation works this way: 
 	// First, we tell the GPU to wait on presentComplete - which means the swapchain has finished presenting

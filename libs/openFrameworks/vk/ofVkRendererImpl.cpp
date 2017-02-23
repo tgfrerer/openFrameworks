@@ -325,7 +325,7 @@ void ofVkRenderer::finishRender(){
 	// TODO: if there are other Contexts flying around on other threads, 
 	// ask them to finish their work for the frame.
 
-	mDefaultContext->submitToQueue();
+	mDefaultContext->end();
 	
 	// present swapchain frame
 	mSwapchain->queuePresent( mQueue, { mDefaultContext->getSemaphoreSignalOnComplete()} );
