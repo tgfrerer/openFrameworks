@@ -42,8 +42,17 @@ of::vk::RenderBatch& RenderBatch::draw( const DrawCommand& dc_ ){
 void RenderBatch::begin(){
 	mVkCmd.begin( { ::vk::CommandBufferUsageFlagBits::eOneTimeSubmit } );
 
-	{	// begin renderpass
-		//! TODO: get correct clear values, and clear value count
+	{	// begin renderpass - 
+
+		// this is only allowed if the context maps a primary renderpass!
+
+		// CONSIDER: can we extract this into a renderpass object?
+		// The goal being that a renderbatch maps to a renderpass, 
+		// but a context may have multiple renderpasses, and may render
+		// to multiple framebuffers.
+		//
+		// Note that secondary command buffers inherit the renderpass 
+		// from their primary.
 
 		::vk::RenderPassBeginInfo renderPassBeginInfo;
 		renderPassBeginInfo

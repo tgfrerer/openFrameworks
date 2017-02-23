@@ -309,7 +309,7 @@ void ofVkRenderer::startRender(){
 	//
 	// This means, a queue submission from the context that draws into the image 
 	// must wait for this semaphore.
-	auto err = mSwapchain->acquireNextImage( mDefaultContext->getSemaphorePresentComplete(), swapIdx );
+	auto err = mSwapchain->acquireNextImage( mDefaultContext->getSemaphoreWait(), swapIdx );
 
 	// ---------| invariant: new swap chain image has been acquired for drawing into.
 
@@ -328,7 +328,7 @@ void ofVkRenderer::finishRender(){
 	mDefaultContext->submitToQueue();
 	
 	// present swapchain frame
-	mSwapchain->queuePresent( mQueue, { mDefaultContext->getSemaphoreRenderComplete()} );
+	mSwapchain->queuePresent( mQueue, { mDefaultContext->getSemaphoreSignalOnComplete()} );
 	
 }
 

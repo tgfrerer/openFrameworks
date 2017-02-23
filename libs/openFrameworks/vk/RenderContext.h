@@ -70,8 +70,8 @@ private:
 		::vk::Framebuffer                       frameBuffer;
 		std::list<::vk::DescriptorPool>         descriptorPools;
 		std::map<uint64_t, ::vk::DescriptorSet> descriptorSetCache;
-		::vk::Semaphore                         semaphorePresentComplete;  // only used if renderContext renders to swapchain
-		::vk::Semaphore                         semaphoreRenderComplete;
+		::vk::Semaphore                         semaphoreWait;   // only used if renderContext renders to swapchain
+		::vk::Semaphore                         semaphoreSignalOnComplete; // semaphore will signal when work complete
 		std::vector<::vk::CommandBuffer>        commandBuffers;
 
 		// The most important element in here is the fence, as it protects 
@@ -137,8 +137,8 @@ public:
 	~RenderContext();
 
 	const ::vk::Fence       & getFence() const ;
-	const ::vk::Semaphore   & getSemaphorePresentComplete() const ;
-	const ::vk::Semaphore   & getSemaphoreRenderComplete() const ;
+	const ::vk::Semaphore   & getSemaphoreWait() const ;
+	const ::vk::Semaphore   & getSemaphoreSignalOnComplete() const ;
 	const ::vk::Framebuffer & getFramebuffer() const;
 	const ::vk::RenderPass  & getRenderPass() const; 
 	const size_t              getNumVirtualFrames() const;
@@ -207,12 +207,12 @@ inline const ::vk::Fence & RenderContext::getFence() const {
 	return mVirtualFrames.at( mCurrentVirtualFrame ).fence;
 }
 
-inline const ::vk::Semaphore & RenderContext::getSemaphorePresentComplete() const {
-	return mVirtualFrames.at( mCurrentVirtualFrame ).semaphorePresentComplete;
+inline const ::vk::Semaphore & RenderContext::getSemaphoreWait() const {
+	return mVirtualFrames.at( mCurrentVirtualFrame ).semaphoreWait;
 }
 
-inline const ::vk::Semaphore & RenderContext::getSemaphoreRenderComplete() const {
-	return mVirtualFrames.at( mCurrentVirtualFrame ).semaphoreRenderComplete;
+inline const ::vk::Semaphore & RenderContext::getSemaphoreSignalOnComplete() const {
+	return mVirtualFrames.at( mCurrentVirtualFrame ).semaphoreSignalOnComplete;
 }
 
 inline const ::vk::Framebuffer & RenderContext::getFramebuffer() const{

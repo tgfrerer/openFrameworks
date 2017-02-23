@@ -27,11 +27,11 @@ RenderContext::~RenderContext(){
 		for ( auto & pool : vf.descriptorPools ){
 			mDevice.destroyDescriptorPool( pool );
 		}
-		if ( vf.semaphorePresentComplete ){
-			mDevice.destroySemaphore( vf.semaphorePresentComplete );
+		if ( vf.semaphoreWait ){
+			mDevice.destroySemaphore( vf.semaphoreWait );
 		}
-		if ( vf.semaphoreRenderComplete ){
-			mDevice.destroySemaphore( vf.semaphoreRenderComplete );
+		if ( vf.semaphoreSignalOnComplete ){
+			mDevice.destroySemaphore( vf.semaphoreSignalOnComplete );
 		}
 		if ( vf.fence ){
 			mDevice.destroyFence( vf.fence );
@@ -54,11 +54,11 @@ RenderContext::~RenderContext(){
 void RenderContext::setup(){
 	for ( auto &f : mVirtualFrames ){
 		if ( mSettings.renderToSwapChain ){
-			f.semaphorePresentComplete = mDevice.createSemaphore( {} );  // this semaphore should be owned by the swapchain.
+			f.semaphoreWait = mDevice.createSemaphore( {} );  // this semaphore should be owned by the swapchain.
 		} else{
-			f.semaphorePresentComplete = nullptr;
+			f.semaphoreWait = nullptr;
 		}
-		f.semaphoreRenderComplete = mDevice.createSemaphore( {} );
+		f.semaphoreSignalOnComplete = mDevice.createSemaphore( {} );
 		f.fence = mDevice.createFence( { ::vk::FenceCreateFlagBits::eSignaled } );	/* Fence starts as "signaled" */
 		f.commandPool = mDevice.createCommandPool( { ::vk::CommandPoolCreateFlagBits::eTransient } );
 	}
@@ -149,8 +149,6 @@ void RenderContext::begin(){
 // ------------------------------------------------------------
 
 void RenderContext::submitToQueue(){
-	::vk::PipelineStageFlags wait_dst_stage_mask = ::vk::PipelineStageFlagBits::eColorAttachmentOutput;
-	::vk::SubmitInfo submitInfo;
 
 	// Synchronisation works this way: 
 	// First, we tell the GPU to wait on presentComplete - which means the swapchain has finished presenting
@@ -160,24 +158,31 @@ void RenderContext::submitToQueue(){
 	// Third, insert a fence into the command stream. This fence will only allow the CPU to continue once it has been 
 	// waited upon 
 
-	auto & frame = mVirtualFrames[mCurrentVirtualFrame];
 
-	const ::vk::Semaphore * sourceContextWaitSemaphore = nullptr;
+	const ::vk::Semaphore * waitSemaphore = nullptr;
 
 	if ( mSourceContext->mSettings.renderToSwapChain ){
-		sourceContextWaitSemaphore = &mSourceContext->getSemaphorePresentComplete();
+		waitSemaphore = &mSourceContext->getSemaphoreWait();
 	} else{
-		sourceContextWaitSemaphore = &mSourceContext->getSemaphoreRenderComplete();
+		waitSemaphore = &mSourceContext->getSemaphoreSignalOnComplete();
 	}
 
+	::vk::SubmitInfo submitInfo;
+	// TODO: the number of array elements must correspond to the number of wait semaphores, as each 
+	//       mask specifies what the semaphore is waiting for.
+	//       It's strange that we get away with it putting forward a temporary object here.
+	std::array<::vk::PipelineStageFlags, 1> wait_dst_stage_mask = { ::vk::PipelineStageFlagBits::eColorAttachmentOutput };
+
+	auto & frame = mVirtualFrames[mCurrentVirtualFrame];
+
 	submitInfo
-		.setWaitSemaphoreCount( ( sourceContextWaitSemaphore ? 1 : 0) )  // set to zero if no contextWaitSemaphore was set
-		.setPWaitSemaphores(   sourceContextWaitSemaphore )
-		.setPWaitDstStageMask( &wait_dst_stage_mask )
+		.setWaitSemaphoreCount( ( waitSemaphore ? 1 : 0) )  // set to zero if waitSemaphore was not set
+		.setPWaitSemaphores(   waitSemaphore )
+		.setPWaitDstStageMask( wait_dst_stage_mask.data() )
 		.setCommandBufferCount( frame.commandBuffers.size() )
 		.setPCommandBuffers(    frame.commandBuffers.data() )
 		.setSignalSemaphoreCount( 1 )
-		.setPSignalSemaphores( &frame.semaphoreRenderComplete )
+		.setPSignalSemaphores( &frame.semaphoreSignalOnComplete )
 		;
 
 	mSettings.renderer->getQueue().submit( { submitInfo }, getFence() );
