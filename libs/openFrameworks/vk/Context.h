@@ -10,7 +10,7 @@
 #include "vk/ComputeCommand.h"
 /*
 
-A RenderContext acts as an accumulator and owner for Renderbatches
+A Context acts as an accumulator and owner for Renderbatches
 it safely manages memory by accumulating commandBuffers and their
 dependent data in virtual frames. 
 
@@ -18,15 +18,15 @@ It abstracts the swapchain.
 
 MISSION: 
 
-	A RenderContext needs to be able to live within its own thread - 
-	A RenderContext needs to have its own pools, 
+	A Context needs to be able to live within its own thread - 
+	A Context needs to have its own pools, 
 	and needs to be thread-safe.
 
 	One or more batches may submit into a rendercontext - the render-
 	context will accumulate vkCommandbuffers, and will submit them 
 	on submitToQueue.
 
-	A RenderContext is the OWNER of all resources used to draw within 
+	A Context is the OWNER of all resources used to draw within 
 	one thread.
 
 
@@ -42,7 +42,7 @@ class ComputeCommand;
 
 // ------------------------------------------------------------
 
-class RenderContext
+class Context
 {
 	friend RenderBatch;
 	friend ComputeCommand;
@@ -133,8 +133,8 @@ private:
 
 public:
 
-	RenderContext( const Settings&& settings );
-	~RenderContext();
+	Context( const Settings&& settings );
+	~Context();
 
 	const ::vk::Fence       & getFence() const ;
 	const ::vk::Semaphore   & getSemaphoreWait() const ;
@@ -163,7 +163,7 @@ public:
 	// It *must* be submitted to this context within the same frame, that is, before swap().
 	// command buffer will also begin renderpass, based on current framebuffer and render area,
 	// and clear the render area based on current clear values.
-	::vk::CommandBuffer RenderContext::allocateCommandBuffer(const ::vk::CommandBufferLevel & commandBufferLevel = ::vk::CommandBufferLevel::ePrimary ) const;
+	::vk::CommandBuffer Context::allocateCommandBuffer(const ::vk::CommandBufferLevel & commandBufferLevel = ::vk::CommandBufferLevel::ePrimary ) const;
 
 	const std::unique_ptr<of::vk::BufferAllocator>& getTransientAllocator() const{
 		return mTransientMemory;
@@ -189,68 +189,68 @@ public:
 	const std::vector<::vk::ClearValue> & getClearValues() const;
 
 	// context which must be waited upon before this context can render
-	RenderContext* mSourceContext = nullptr ;
+	Context* mSourceContext = nullptr ;
 
 	// define this context to be dependent on another context to be finished rendering first
-	void addContextDependency( RenderContext* ctx );
+	void addContextDependency( Context* ctx );
 
 };
 
 // ------------------------------------------------------------
 
-inline void RenderContext::submit(::vk::CommandBuffer && commandBuffer) {
+inline void Context::submit(::vk::CommandBuffer && commandBuffer) {
 	mVirtualFrames.at( mCurrentVirtualFrame ).commandBuffers.emplace_back(std::move(commandBuffer));
 }
 
 
-inline const ::vk::Fence & RenderContext::getFence() const {
+inline const ::vk::Fence & Context::getFence() const {
 	return mVirtualFrames.at( mCurrentVirtualFrame ).fence;
 }
 
-inline const ::vk::Semaphore & RenderContext::getSemaphoreWait() const {
+inline const ::vk::Semaphore & Context::getSemaphoreWait() const {
 	return mVirtualFrames.at( mCurrentVirtualFrame ).semaphoreWait;
 }
 
-inline const ::vk::Semaphore & RenderContext::getSemaphoreSignalOnComplete() const {
+inline const ::vk::Semaphore & Context::getSemaphoreSignalOnComplete() const {
 	return mVirtualFrames.at( mCurrentVirtualFrame ).semaphoreSignalOnComplete;
 }
 
-inline const ::vk::Framebuffer & RenderContext::getFramebuffer() const{
+inline const ::vk::Framebuffer & Context::getFramebuffer() const{
 	return mVirtualFrames[ mCurrentVirtualFrame ].frameBuffer;
 }
 
-inline const ::vk::RenderPass & RenderContext::getRenderPass() const{
+inline const ::vk::RenderPass & Context::getRenderPass() const{
 	return mSettings.renderPass;
 }
 
-inline const size_t RenderContext::getNumVirtualFrames() const{
+inline const size_t Context::getNumVirtualFrames() const{
 	return mVirtualFrames.size();
 }
 
-inline const uint32_t RenderContext::getSubpassId() const{
+inline const uint32_t Context::getSubpassId() const{
 	return mSubpassId;
 }
 
-inline void RenderContext::setRenderArea( const::vk::Rect2D & renderArea_ ){
+inline void Context::setRenderArea( const::vk::Rect2D & renderArea_ ){
 	const_cast<::vk::Rect2D&>( mSettings.renderArea ) = renderArea_;
 }
 
-inline const ::vk::Rect2D & RenderContext::getRenderArea() const{
+inline const ::vk::Rect2D & Context::getRenderArea() const{
 	return mRenderArea;
 }
 
-inline const std::unique_ptr<BufferAllocator> & RenderContext::getAllocator() const{
+inline const std::unique_ptr<BufferAllocator> & Context::getAllocator() const{
 	return mTransientMemory;
 }
 
-inline const std::vector<::vk::ClearValue>& RenderContext::getClearValues() const{
+inline const std::vector<::vk::ClearValue>& Context::getClearValues() const{
 	return mSettings.renderPassClearValues;
 }
 
 
 // ------------------------------------------------------------
 
-inline std::vector<::vk::BufferCopy> RenderContext::stageBufferData( const std::vector<TransferSrcData>& dataVec, const unique_ptr<BufferAllocator>& targetAllocator )
+inline std::vector<::vk::BufferCopy> Context::stageBufferData( const std::vector<TransferSrcData>& dataVec, const unique_ptr<BufferAllocator>& targetAllocator )
 {
 	std::vector<::vk::BufferCopy> regions;
 	regions.reserve( dataVec.size());
@@ -264,7 +264,7 @@ inline std::vector<::vk::BufferCopy> RenderContext::stageBufferData( const std::
 
 // ------------------------------------------------------------
 
-inline ::vk::BufferCopy RenderContext::stageBufferData( const TransferSrcData& data, const unique_ptr<BufferAllocator>& targetAllocator ){
+inline ::vk::BufferCopy Context::stageBufferData( const TransferSrcData& data, const unique_ptr<BufferAllocator>& targetAllocator ){
 	::vk::BufferCopy region{ 0, 0, 0 };
 
 	region.size = data.numBytesPerElement * data.numElements;
@@ -285,7 +285,7 @@ inline ::vk::BufferCopy RenderContext::stageBufferData( const TransferSrcData& d
 
 // ------------------------------------------------------------
 
-inline ::vk::CommandBuffer RenderContext::allocateCommandBuffer (
+inline ::vk::CommandBuffer Context::allocateCommandBuffer (
 	const ::vk::CommandBufferLevel & commandBufferLevel) const {
 	::vk::CommandBuffer cmd;
 

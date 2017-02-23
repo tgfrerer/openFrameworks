@@ -22,7 +22,7 @@ void ofApp::setup(){
 
 		//!TODO: create a generator method to provide us with default settings 
 		// based on the current renderer.
-		of::vk::RenderContext::Settings settings;
+		of::vk::Context::Settings settings;
 
 		settings.transientMemoryAllocatorSettings.device = renderer->getVkDevice();
 		settings.transientMemoryAllocatorSettings.frameCount = renderer->mSettings.numVirtualFrames;
@@ -42,7 +42,7 @@ void ofApp::setup(){
 		settings.renderArea = rect;
 		settings.renderPass = renderer->generateDefaultRenderPass( swapchain->getColorFormat(), renderer->getVkDepthFormat() );
 
-		auto context = make_shared<of::vk::RenderContext>( std::move( settings ) );
+		auto context = make_shared<of::vk::Context>( std::move( settings ) );
 
 		renderer->setDefaultContext(context);
 
@@ -313,7 +313,7 @@ void ofApp::draw(){
 
 //--------------------------------------------------------------
 
-void ofApp::uploadStaticData( of::vk::RenderContext & currentContext ){
+void ofApp::uploadStaticData( of::vk::Context & currentContext ){
 
 	static bool wasUploaded = false;
 

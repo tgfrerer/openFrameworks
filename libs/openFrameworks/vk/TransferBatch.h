@@ -1,7 +1,7 @@
 #pragma once
 
 #include <vulkan/vulkan.hpp>
-#include "vk/RenderContext.h"
+#include "vk/Context.h"
 
 namespace of{
 namespace vk{
@@ -24,15 +24,15 @@ class BufferObject;
 
 class TransferBatch 
 {
-	friend RenderContext;
+	friend Context;
 
-	// These methods may only be called by RenderContext
+	// These methods may only be called by Context
 	void signalTransferComplete();
 
 
 private:
 
-	RenderContext *                    mRenderContext;
+	Context *                    mRenderContext;
 	
 	// batch which accumulates all submitted batches whilst the frame is in flight
 	std::list<std::shared_ptr<BufferObject>> mInflightBatch;
@@ -43,7 +43,7 @@ private:
 
 public:
 	
-	TransferBatch( RenderContext* context_ )
+	TransferBatch( Context* context_ )
 	: mRenderContext(context_)
 	{
 		

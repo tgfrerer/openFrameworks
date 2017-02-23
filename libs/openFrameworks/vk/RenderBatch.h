@@ -5,7 +5,7 @@
 #include "vk/Pipeline.h"
 #include "vk/Allocator.h"
 #include "vk/DrawCommand.h"
-#include "vk/RenderContext.h"
+#include "vk/Context.h"
 
 namespace of {
 namespace vk{
@@ -27,7 +27,7 @@ class RenderBatch
 
 	*/
 
-	RenderContext *  mRenderContext;
+	Context *  mRenderContext;
 	uint32_t               mVkSubPassId = 0;
 	std::list<DrawCommand> mDrawCommands;
 
@@ -39,7 +39,7 @@ class RenderBatch
 
 public:
 
-	RenderBatch( RenderContext& rc );
+	RenderBatch( Context& rc );
 
 	~RenderBatch(){
 		if ( !mDrawCommands.empty() ){

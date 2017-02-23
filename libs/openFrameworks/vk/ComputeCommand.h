@@ -4,13 +4,13 @@
 #include "vk/Pipeline.h"
 #include "vk/HelperTypes.h"
 #include "vk/Texture.h"
-#include "vk/RenderContext.h"
+#include "vk/Context.h"
 
 namespace of{
 namespace vk{
 
 class BufferAllocator;	   // ffdecl.
-class RenderContext;       // ffdecl.
+class Context;       // ffdecl.
 class ComputeCommand
 {
 
@@ -43,12 +43,12 @@ public:
 
 	// store uniform values to staging cpu memory
 	template <class T>
-	of::vk::ComputeCommand & setUniform( const std::string& uniformName, const T& uniformValue_ );
+	ComputeCommand & setUniform( const std::string& uniformName, const T& uniformValue_ );
 
-	of::vk::ComputeCommand & setUniform( const std::string& uniformName, const of::vk::Texture& tex_ );
-	of::vk::ComputeCommand & setStorageBuffer( const std::string& name, const of::vk::BufferRegion& buf_ );
+	ComputeCommand & setUniform( const std::string& uniformName, const of::vk::Texture& tex_ );
+	ComputeCommand & setStorageBuffer( const std::string& name, const of::vk::BufferRegion& buf_ );
 
-	void submit( of::vk::RenderContext& rc_, const glm::uvec3& dims );
+	void submit( of::vk::Context& rc_, const glm::uvec3& dims );
 
 };
 

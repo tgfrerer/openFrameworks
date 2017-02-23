@@ -222,7 +222,7 @@
     <ClInclude Include="..\..\..\openFrameworks\vk\ofVkRenderer.h" />
     <ClInclude Include="..\..\..\openFrameworks\vk\Pipeline.h" />
     <ClInclude Include="..\..\..\openFrameworks\vk\RenderBatch.h" />
-    <ClInclude Include="..\..\..\openFrameworks\vk\RenderContext.h" />
+    <ClInclude Include="..\..\..\openFrameworks\vk\Context.h" />
     <ClInclude Include="..\..\..\openFrameworks\vk\Shader.h" />
     <ClInclude Include="..\..\..\openFrameworks\vk\spirv-cross\include\GLSL.std.450.h" />
     <ClInclude Include="..\..\..\openFrameworks\vk\spirv-cross\include\spirv.hpp" />
@@ -308,7 +308,7 @@
     <ClCompile Include="..\..\..\openFrameworks\vk\ofVkRendererImpl.cpp" />
     <ClCompile Include="..\..\..\openFrameworks\vk\Pipeline.cpp" />
     <ClCompile Include="..\..\..\openFrameworks\vk\RenderBatch.cpp" />
-    <ClCompile Include="..\..\..\openFrameworks\vk\RenderContext.cpp" />
+    <ClCompile Include="..\..\..\openFrameworks\vk\Context.cpp" />
     <ClCompile Include="..\..\..\openFrameworks\vk\Shader.cpp" />
     <ClCompile Include="..\..\..\openFrameworks\vk\spirv-cross\include\spirv_cfg.cpp" />
     <ClCompile Include="..\..\..\openFrameworks\vk\spirv-cross\include\spirv_cross.cpp" />

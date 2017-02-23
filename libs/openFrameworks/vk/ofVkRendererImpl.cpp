@@ -29,7 +29,7 @@ void ofVkRenderer::setupDefaultContext(){
 	clearValues[0].setColor( reinterpret_cast<const ::vk::ClearColorValue&>( ofFloatColor::black ) );
 	clearValues[1].setDepthStencil( { 1.f, 0 } );
 
-	of::vk::RenderContext::Settings settings;
+	of::vk::Context::Settings settings;
 	
 	settings.transientMemoryAllocatorSettings.device = mDevice;
 	settings.transientMemoryAllocatorSettings.frameCount =  mSettings.numVirtualFrames ;
@@ -43,7 +43,7 @@ void ofVkRenderer::setupDefaultContext(){
 	settings.renderToSwapChain = true;
 	settings.renderPassClearValues = clearValues;
 
-	mDefaultContext = make_shared<of::vk::RenderContext>(std::move(settings));
+	mDefaultContext = make_shared<of::vk::Context>(std::move(settings));
 	mDefaultContext->setup();
 }
 

@@ -309,9 +309,6 @@
     <ClInclude Include="..\..\..\openFrameworks\vk\RenderBatch.h">
       <Filter>libs\openFrameworks\vk</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\openFrameworks\vk\RenderContext.h">
-      <Filter>libs\openFrameworks\vk</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\..\openFrameworks\vk\Shader.h">
       <Filter>libs\openFrameworks\vk</Filter>
     </ClInclude>
@@ -356,6 +353,9 @@
     </ClInclude>
     <ClInclude Include="..\..\..\openFrameworks\vk\spirv-cross\include\spirv_cfg.hpp">
       <Filter>libs\openFrameworks\vk\spirv-cross</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\openFrameworks\vk\Context.h">
+      <Filter>libs\openFrameworks\vk</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -566,9 +566,6 @@
     <ClCompile Include="..\..\..\openFrameworks\vk\RenderBatch.cpp">
       <Filter>libs\openFrameworks\vk</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\openFrameworks\vk\RenderContext.cpp">
-      <Filter>libs\openFrameworks\vk</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\openFrameworks\vk\Shader.cpp">
       <Filter>libs\openFrameworks\vk</Filter>
     </ClCompile>
@@ -601,6 +598,9 @@
     </ClCompile>
     <ClCompile Include="..\..\..\openFrameworks\vk\spirv-cross\include\spirv_cfg.cpp">
       <Filter>libs\openFrameworks\vk\spirv-cross</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\openFrameworks\vk\Context.cpp">
+      <Filter>libs\openFrameworks\vk</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

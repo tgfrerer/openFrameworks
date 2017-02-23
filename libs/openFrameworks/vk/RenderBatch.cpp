@@ -6,7 +6,7 @@ using namespace of::vk;
 
 // ------------------------------------------------------------
 
-RenderBatch::RenderBatch( RenderContext & rc )
+RenderBatch::RenderBatch( Context & rc )
 	:mRenderContext( &rc ){
 	mVkCmd = mRenderContext->allocateCommandBuffer( ::vk::CommandBufferLevel::ePrimary );
 	

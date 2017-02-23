@@ -32,7 +32,7 @@ class ofShapeTessellation;
 
 namespace of{
 namespace vk{
-	class RenderContext;
+	class Context;
 	class Shader;
 }	// end namespace of::vk
 };  // end namespace of
@@ -307,7 +307,7 @@ private:
 
 	// The default context
 	// This is the context which will render to the swapchain
-	std::shared_ptr<of::vk::RenderContext> mDefaultContext;
+	std::shared_ptr<of::vk::Context> mDefaultContext;
 
 public:
 
@@ -319,9 +319,9 @@ public:
 
 	::vk::RenderPass generateDefaultRenderPass(::vk::Format colorFormat_, ::vk::Format depthFormat_) const;
 
-	const std::shared_ptr<of::vk::RenderContext> & getDefaultContext();
+	const std::shared_ptr<of::vk::Context> & getDefaultContext();
 
-	void setDefaultContext( std::shared_ptr<of::vk::RenderContext> ctx );
+	void setDefaultContext( std::shared_ptr<of::vk::Context> ctx );
 
 	std::shared_ptr<of::vk::Swapchain> & getSwapchain();
 
@@ -353,11 +353,11 @@ inline const size_t ofVkRenderer::getVirtualFramesCount(){
 	return mSettings.numVirtualFrames;
 }
 
-inline const std::shared_ptr<of::vk::RenderContext>& ofVkRenderer::getDefaultContext(){
+inline const std::shared_ptr<of::vk::Context>& ofVkRenderer::getDefaultContext(){
 	return mDefaultContext;
 }
 
-inline void ofVkRenderer::setDefaultContext( std::shared_ptr<of::vk::RenderContext> ctx ){
+inline void ofVkRenderer::setDefaultContext( std::shared_ptr<of::vk::Context> ctx ){
 	mDefaultContext = ctx;
 }
 

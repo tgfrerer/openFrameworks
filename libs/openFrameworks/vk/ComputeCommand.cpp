@@ -104,7 +104,7 @@ void ComputeCommand::commitUniforms( const std::unique_ptr<BufferAllocator>& all
 
 // ------------------------------------------------------------
 
-void ComputeCommand::submit( RenderContext & context, const glm::uvec3& dims = {256,256,1} ){
+void ComputeCommand::submit( Context & context, const glm::uvec3& dims = {256,256,1} ){
 
 	commitUniforms( context.getTransientAllocator() );
 

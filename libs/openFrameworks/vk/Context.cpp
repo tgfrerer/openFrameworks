@@ -1,11 +1,11 @@
-#include "vk/RenderContext.h"
+#include "vk/Context.h"
 #include "vk/TransferBatch.h"
 #include "vk/ofVkRenderer.h"
 
 using namespace of::vk;
 
 // ------------------------------------------------------------
-RenderContext::RenderContext( const Settings && settings )
+Context::Context( const Settings && settings )
 	: mSettings( settings ){
 	if ( mSettings.renderer == nullptr ){
 		ofLogFatalError() << "You must specify a renderer for a context.";
@@ -19,7 +19,7 @@ RenderContext::RenderContext( const Settings && settings )
 
 // ------------------------------------------------------------
 
-RenderContext::~RenderContext(){
+Context::~Context(){
 	for ( auto & vf : mVirtualFrames ){
 		if ( vf.commandPool ){
 			mDevice.destroyCommandPool( vf.commandPool );
@@ -51,7 +51,7 @@ RenderContext::~RenderContext(){
   
 // ------------------------------------------------------------
 
-void RenderContext::setup(){
+void Context::setup(){
 	for ( auto &f : mVirtualFrames ){
 		if ( mSettings.renderToSwapChain ){
 			f.semaphoreWait = mDevice.createSemaphore( {} );  // this semaphore should be owned by the swapchain.
@@ -72,7 +72,7 @@ void RenderContext::setup(){
 
 // ------------------------------------------------------------
 
-void RenderContext::setupFrameBufferAttachments( const std::vector<::vk::ImageView>& attachments ){
+void Context::setupFrameBufferAttachments( const std::vector<::vk::ImageView>& attachments ){
 	auto & fb = mVirtualFrames[mCurrentVirtualFrame].frameBuffer;
 
 	// Framebuffers in Vulkan are very light-weight objects, whose main purpose 
@@ -105,17 +105,17 @@ void RenderContext::setupFrameBufferAttachments( const std::vector<::vk::ImageVi
 
 // ------------------------------------------------------------
 
-void RenderContext::waitForFence(){
+void Context::waitForFence(){
 	auto fenceWaitResult = mDevice.waitForFences( { getFence() }, VK_TRUE, 100'000'000 );
 
 	if ( fenceWaitResult != ::vk::Result::eSuccess ){
-		ofLogError() << "RenderContext: Waiting for fence takes too long: " << ::vk::to_string( fenceWaitResult );
+		ofLogError() << "Context: Waiting for fence takes too long: " << ::vk::to_string( fenceWaitResult );
 	}
 }
 
 // ------------------------------------------------------------
 
-void RenderContext::begin(){
+void Context::begin(){
 
 	// Move to the next available virtual frame
 	swap();
@@ -148,7 +148,7 @@ void RenderContext::begin(){
 
 // ------------------------------------------------------------
 
-void RenderContext::submitToQueue(){
+void Context::submitToQueue(){
 
 	// Synchronisation works this way: 
 	// First, we tell the GPU to wait on presentComplete - which means the swapchain has finished presenting
@@ -191,14 +191,14 @@ void RenderContext::submitToQueue(){
 
 // ------------------------------------------------------------
 
-void RenderContext::swap(){
+void Context::swap(){
 	mCurrentVirtualFrame = ( mCurrentVirtualFrame + 1 ) % mSettings.transientMemoryAllocatorSettings.frameCount;
 	mTransientMemory->swap();
 }
 
 // ------------------------------------------------------------
 
-const::vk::DescriptorSet RenderContext::getDescriptorSet( uint64_t descriptorSetHash, size_t setId, const ::vk::DescriptorSetLayout & setLayout_, const std::vector<DescriptorSetData_t::DescriptorData_t> & descriptors ){
+const::vk::DescriptorSet Context::getDescriptorSet( uint64_t descriptorSetHash, size_t setId, const ::vk::DescriptorSetLayout & setLayout_, const std::vector<DescriptorSetData_t::DescriptorData_t> & descriptors ){
 
 	auto & currentVirtualFrame = mVirtualFrames[mCurrentVirtualFrame];
 	auto & descriptorSetCache = currentVirtualFrame.descriptorSetCache;
@@ -331,7 +331,7 @@ const::vk::DescriptorSet RenderContext::getDescriptorSet( uint64_t descriptorSet
 
 // ------------------------------------------------------------
 
-void RenderContext::updateDescriptorPool(){
+void Context::updateDescriptorPool(){
 
 	// If current virtual frame descriptorpool is dirty,
 	// re-allocate frame descriptorpool based on total number
@@ -391,7 +391,7 @@ void RenderContext::updateDescriptorPool(){
 
 // ------------------------------------------------------------
 
-std::vector<BufferRegion> RenderContext::storeBufferDataCmd( const std::vector<TransferSrcData>& dataVec, const unique_ptr<BufferAllocator>& targetAllocator ){
+std::vector<BufferRegion> Context::storeBufferDataCmd( const std::vector<TransferSrcData>& dataVec, const unique_ptr<BufferAllocator>& targetAllocator ){
 	std::vector<BufferRegion> resultBuffers;
 
 	auto copyRegions = stageBufferData( dataVec, targetAllocator );
@@ -454,7 +454,7 @@ std::vector<BufferRegion> RenderContext::storeBufferDataCmd( const std::vector<T
 
 // ------------------------------------------------------------
 
-std::shared_ptr<::vk::Image> RenderContext::storeImageCmd( const ImageTransferSrcData& data, const unique_ptr<ImageAllocator>& targetImageAllocator ){
+std::shared_ptr<::vk::Image> Context::storeImageCmd( const ImageTransferSrcData& data, const unique_ptr<ImageAllocator>& targetImageAllocator ){
 
 	/*
 	
@@ -624,7 +624,7 @@ std::shared_ptr<::vk::Image> RenderContext::storeImageCmd( const ImageTransferSr
 
 // ------------------------------------------------------------
 
-void RenderContext::addContextDependency( RenderContext * ctx ){
+void Context::addContextDependency( Context * ctx ){
 	mSourceContext = ctx;
 }
 
