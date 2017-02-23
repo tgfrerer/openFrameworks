@@ -147,7 +147,7 @@ void DrawCommand::commitMeshAttributes( const std::unique_ptr<BufferAllocator>& 
 			allocAndSetAttribute( "inNormal", mesh.getNormals(), alloc );
 		}
 		if ( mesh.hasTexCoords() && mesh.usingTextures() ){
-			allocAndSetAttribute( "inTexCoords", mesh.getTexCoords(), alloc );
+			allocAndSetAttribute( "inTexCoord", mesh.getTexCoords(), alloc );
 		}
 
 		if ( mesh.hasIndices() && mesh.usingIndices() ){
