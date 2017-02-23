@@ -42,7 +42,8 @@ of::vk::RenderBatch& RenderBatch::draw( const DrawCommand& dc_ ){
 void RenderBatch::begin(){
 	mVkCmd.begin( { ::vk::CommandBufferUsageFlagBits::eOneTimeSubmit } );
 
-	{	// begin renderpass - 
+	if ( mRenderContext->getRenderPass() ){	
+		// begin renderpass - 
 
 		// this is only allowed if the context maps a primary renderpass!
 
@@ -89,7 +90,7 @@ void RenderBatch::end(){
 
 	processDrawCommands();
 
-	{
+	if ( mRenderContext->getRenderPass() ){
 		// end renderpass if Context / CommandBuffer is Primary
 		mVkCmd.endRenderPass();
 	}
@@ -214,7 +215,7 @@ void RenderBatch::processDrawCommands( ){
 			////       may be re-used.
 			//storeMesh( mesh_, vertexOffsets, indexOffsets );
 
-			// CONSIDER: cull vertexOffsets which refer to empty vertex attribute data
+			// TODO: cull vertexOffsets which refer to empty vertex attribute data
 			//       make sure that a pipeline with the correct bindings is bound to match the 
 			//       presence or non-presence of mesh data.
 
