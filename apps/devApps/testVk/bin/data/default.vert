@@ -20,10 +20,12 @@ layout (set = 0, binding = 1) uniform Style
 layout (location = 0) in vec3 inPos;
 layout (location = 1) in vec4 inColor;
 layout (location = 2) in vec3 inNormal;
+layout (location = 3) in vec2 inTexCoord;
 
 // outputs 
 layout (location = 0) out vec4 outColor;
 layout (location = 1) out vec3 outNormal;
+layout (location = 2) out vec2 outTexCoord;
 
 // we override the built-in fixed function outputs
 // to have more control over the SPIR-V code created.
@@ -34,7 +36,8 @@ out gl_PerVertex
 
 void main() 
 {
-	outNormal   = (inverse(transpose( viewMatrix * modelMatrix)) * vec4(inNormal, 0.0)).xyz;
-	outColor    = style.globalColor;
-	gl_Position = projectionMatrix * viewMatrix * modelMatrix * vec4(inPos.xyz, 1.0);
+	outNormal    = (inverse(transpose( viewMatrix * modelMatrix)) * vec4(inNormal, 0.0)).xyz;
+	outColor     = style.globalColor;
+	outTexCoord = inTexCoord;
+	gl_Position  = projectionMatrix * viewMatrix * modelMatrix * vec4(inPos.xyz, 1.0);
 }

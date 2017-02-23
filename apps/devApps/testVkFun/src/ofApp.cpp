@@ -41,6 +41,7 @@ void ofApp::setup(){
 
 		settings.renderArea = rect;
 		settings.renderPass = renderer->generateDefaultRenderPass( swapchain->getColorFormat(), renderer->getVkDepthFormat() );
+		settings.renderToSwapChain = true;
 
 		auto context = make_shared<of::vk::Context>( std::move( settings ) );
 
