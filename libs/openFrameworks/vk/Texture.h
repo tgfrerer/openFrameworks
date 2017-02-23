@@ -36,7 +36,7 @@ public:
 		return mImageLayout;
 	}
 
-	~Texture();;
+	~Texture();
 };
 
 } /* namespace vk */
