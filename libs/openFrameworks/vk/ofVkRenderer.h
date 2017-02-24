@@ -18,7 +18,6 @@
 #include "of3dGraphics.h"
 #include "ofBitmapFont.h"
 #include "ofPath.h"
-#include "ofMaterial.h"
 #include "ofMesh.h"
 
 
@@ -56,17 +55,9 @@ class ofVkRenderer : public ofBaseRenderer
 public:
 	static const string TYPE;
 
-	const struct Settings
-	{
-		uint32_t vkVersion = 1 << 22;                                      // target version
-		uint32_t numVirtualFrames = 2;                                     // number of virtual frames to allocate and to produce - set this through vkWindowSettings
-		uint32_t numSwapchainImages = 2;                                   // number of swapchain images to aim for (api gives no guarantee for this.)
-		::vk::PresentModeKHR presentMode = ::vk::PresentModeKHR::eFifo;	   // selected swapchain type (api only guarantees FIFO)
-		bool useDepthStencil = true;
-		bool useDebugLayers = false;                                       // whether to use vulkan debug layers
-	} mSettings;
+	const of::vk::RendererSettings mSettings;
 
-	ofVkRenderer( const ofAppBaseWindow * window, Settings settings ); 
+	ofVkRenderer( const ofAppBaseWindow * window, of::vk::RendererSettings settings ); 
 	
 	void setup();
 	virtual ~ofVkRenderer() override;
@@ -239,7 +230,7 @@ private:
 	::vk::PhysicalDevice                   &mPhysicalDevice                 = mRendererProperties.physicalDevice;
 	::vk::PhysicalDeviceProperties         &mPhysicalDeviceProperties       = mRendererProperties.physicalDeviceProperties;
 	::vk::PhysicalDeviceMemoryProperties   &mPhysicalDeviceMemoryProperties = mRendererProperties.physicalDeviceMemoryProperties;
-	uint32_t                               &mVkGraphicsFamilyIndex          = mRendererProperties.graphicsFamilyIndex;
+	uint32_t                               &mVkGraphicsQueueFamilyIndex     = mRendererProperties.graphicsFamilyIndex;
 
 	std::vector<const char*>               mInstanceLayers;                                // debug layer list for instance
 	std::vector<const char*>               mInstanceExtensions;                            // debug layer list for device
@@ -257,9 +248,6 @@ public:
 	const ::vk::PhysicalDeviceProperties& getVkPhysicalDeviceProperties() const;
 
 	const ::vk::PhysicalDeviceMemoryProperties& getVkPhysicalDeviceMemoryProperties() const;
-
-	// get current draw queue (careful: access is not thread-safe!)
-	const ::vk::Queue& getQueue() const;
 
 	// Return requested number of virtual frames (n.b. that's not swapchain frames) for this renderer
 	// virtual frames are frames that are produced and submitted to the swapchain.
@@ -281,10 +269,10 @@ private:
 	
 	void                     attachSwapChainImages(uint32_t swapchainImageIndex);
 
-
-	// our main (primary) gpu queue. all commandbuffers are submitted to this queue
-	// as are present commands.
-	::vk::Queue	mQueue = nullptr;
+	// vector of queues - the queue index is based on the index of the queue creation request
+	// it is assumed that queue 0 is graphics capable.
+	std::vector<::vk::Queue> mQueues;
+	std::vector<mutex>       mQueueMutex;
 
 	// Depth buffer format
 	// Depth format is selected during Vulkan initialization, in createDevice()
@@ -329,7 +317,7 @@ public:
 
 	const ::vk::Format& getVkDepthFormat();
 
-	// void submit();
+	void submit( size_t queueIndex, ::vk::ArrayProxy<const ::vk::SubmitInfo>&& submits, const ::vk::Fence& fence );
 
 };
 
@@ -373,11 +361,6 @@ inline const::vk::Format & ofVkRenderer::getVkDepthFormat(){
 	return mDepthFormat;
 }
 
-
-
-inline const ::vk::Queue& ofVkRenderer::getQueue() const{
-	return mQueue;
-}
 
 // ----------------------------------------------------------------------
 // clean up macros

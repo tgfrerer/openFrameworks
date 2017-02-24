@@ -164,7 +164,7 @@ ImgSwapchain::~ImgSwapchain(){
 
 // ----------------------------------------------------------------------
 
-::vk::Result ImgSwapchain::queuePresent( ::vk::Queue queue, const std::vector<::vk::Semaphore>& waitSemaphores_ ){
+::vk::Result ImgSwapchain::queuePresent( ::vk::Queue queue, std::mutex & queueMutex, const std::vector<::vk::Semaphore>& waitSemaphores_ ){
 	
 	::vk::PipelineStageFlags wait_dst_stage_mask = ::vk::PipelineStageFlagBits::eColorAttachmentOutput;
 

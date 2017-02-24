@@ -144,6 +144,92 @@ void ofVkRenderer::destroyInstance()
 	vkDestroyInstance(mInstance, VK_NULL_HANDLE);
 	mInstance = VK_NULL_HANDLE;
 }
+
+uint32_t findGraphicsQueueFamilyIndex( const std::vector<vk::QueueFamilyProperties>& props ){
+
+		for ( uint32_t familyIndex = 0; familyIndex != props.size(); familyIndex++ ){
+			if ( props[familyIndex].queueFlags & ::vk::QueueFlagBits::eGraphics ){
+				// first match
+				return familyIndex;
+			}
+		}
+
+		ofLogError() << "VkRenderer: Could not find graphics queue supporting graphics. Quitting.";
+		ofExit( -1 );
+
+	return ~( uint32_t( 0 ) );
+}
+
+
+// ----------------------------------------------------------------------
+
+std::vector<std::tuple<uint32_t, uint32_t>> findBestMatchForRequestedQueues( const std::vector<vk::QueueFamilyProperties>& props, const std::vector<::vk::QueueFlags>& reqProps ){
+	std::vector<std::tuple<uint32_t, uint32_t>> result;
+
+	std::vector<uint32_t> usedQueues( props.size(), ~( uint32_t(0) ) ); // last used queue, per queue family (initialised at -1)
+
+	for ( const auto & flags : reqProps ){
+
+		// best match is a queue which does exclusively what we want
+		bool foundMatch = false;
+		uint32_t foundFamily = 0;
+		uint32_t foundIndex = 0;
+
+		for ( uint32_t familyIndex = 0; familyIndex != props.size(); familyIndex++ ){
+			
+			// 1. Is there a family that matches our requirements exactly?
+			// 2. Is a queue from this family still available?
+			
+			if ( props[familyIndex].queueFlags == flags ){
+				// perfect match
+				if ( usedQueues[familyIndex] + 1 < props[familyIndex].queueCount ){
+					foundMatch = true;
+					foundFamily = familyIndex;
+					foundIndex = usedQueues[familyIndex] + 1;
+					ofLog() << "Found dedicated queue matching: " << ::vk::to_string( flags );
+				} else{
+					ofLogWarning() << "No more dedicated queues available matching: " << ::vk::to_string( flags );
+				}
+				break;
+			}
+		}
+
+		if ( foundMatch == false ){
+
+			// If we haven't found a match, we need to find a versatile queue which might 
+			// be able to fulfill our requirements.
+
+			for ( uint32_t familyIndex = 0; familyIndex != props.size(); familyIndex++ ){
+
+				// 1. Is there a family that has the ability to fulfill our requirements?
+				// 2. Is a queue from this family still available?
+
+				if ( props[familyIndex].queueFlags & flags ){
+					// versatile queue match
+					if ( usedQueues[familyIndex] + 1 < props[familyIndex].queueCount ){
+						foundMatch = true;
+						foundFamily = familyIndex;
+						foundIndex = usedQueues[familyIndex] + 1;
+						ofLog() << "Found versatile queue matching: " << ::vk::to_string( flags );
+					}
+					break;
+				}
+			}
+		}
+
+		if ( foundMatch ){
+			result.emplace_back( foundFamily, foundIndex );
+			usedQueues[foundFamily] = foundIndex; // mark this queue as used
+		} else{
+			ofLogError() << "No available queue matching requirement: " << ::vk::to_string( flags );
+			ofExit( -1 );
+		}
+
+	}
+
+	return result;
+}
+
 // ----------------------------------------------------------------------
 
 void ofVkRenderer::createDevice()
@@ -175,26 +261,12 @@ void ofVkRenderer::createDevice()
 	// let's find out the devices' memory properties
 	mPhysicalDeviceMemoryProperties = mPhysicalDevice.getMemoryProperties();
 
-	// query queue families for the first queue supporting graphics
-	{
-		// query number of queue family properties
-		std::vector<vk::QueueFamilyProperties> queueFamilyPropertyList = mPhysicalDevice.getQueueFamilyProperties();
 
-		bool foundGraphics = false;
-		for ( uint32_t i = 0; i < queueFamilyPropertyList.size(); ++i ){
-			// test queue family against flag bitfields
-			if ( queueFamilyPropertyList[i].queueFlags & vk::QueueFlagBits::eGraphics ){
-				foundGraphics = true;
-				mVkGraphicsFamilyIndex = i;
-				break;
-			}
-		}
-		if ( !foundGraphics ){
-			ofLogError() << "Vulkan error: did not find queue family that supports graphics";
-			ofExit( -1 );
-		}
-	}
+	auto & queueFamilyProperties = mPhysicalDevice.getQueueFamilyProperties();
 
+	std::vector<std::tuple<uint32_t, uint32_t>> queriedQueueFamilyAndIndex;
+	mVkGraphicsQueueFamilyIndex = findGraphicsQueueFamilyIndex( queueFamilyProperties );
+	queriedQueueFamilyAndIndex  = findBestMatchForRequestedQueues( queueFamilyProperties, mSettings.requestedQueues );
 
 	// query debug layers available for instance
 	{
@@ -224,24 +296,33 @@ void ofVkRenderer::createDevice()
 
 	float queuePriority[] = { 1.f };
 
-	vk::DeviceQueueCreateInfo queueCreateInfo;
-	queueCreateInfo
-		.setQueueFamilyIndex ( mVkGraphicsFamilyIndex) /* <-- vkGraphicsFamilyIndex was queried earlier, when we went through all available queues, and selected the first graphcis capable queue. */
-		.setQueueCount       ( 1 )
-		.setPQueuePriorities ( queuePriority )
-		;
+	// Create queues based on queriedQueueFamilyAndIndex
+	std::vector<::vk::DeviceQueueCreateInfo> createInfos;
+	createInfos.reserve( queriedQueueFamilyAndIndex.size() );
 
-	// TODO: check which features must be switched on for 
-	//       default openFrameworks operations.
+	for ( auto & q : queriedQueueFamilyAndIndex ){
+		vk::DeviceQueueCreateInfo queueCreateInfo;
+		queueCreateInfo
+			.setQueueFamilyIndex( std::get<0>(q) )
+			.setQueueCount( 1 )
+			.setPQueuePriorities( queuePriority )
+			;
+		createInfos.emplace_back( std::move( queueCreateInfo ) );
+	}
+
+	// TODO: Check which features must be switched on for default openFrameworks operations.
+	//       For now, we just make sure we can draw with lines.
+	//
+	//       We should put this into the renderer setttings. 
 	vk::PhysicalDeviceFeatures deviceFeatures = mPhysicalDevice.getFeatures();
 	deviceFeatures
-		.setFillModeNonSolid(VK_TRUE); // allow line drawing
-	
+		.setFillModeNonSolid( VK_TRUE ) // allow wireframe drawing
+		;
 
 	vk::DeviceCreateInfo deviceCreateInfo;
 	deviceCreateInfo
-		.setQueueCreateInfoCount      ( 1 )
-		.setPQueueCreateInfos         ( &queueCreateInfo )
+		.setQueueCreateInfoCount      ( createInfos.size() )
+		.setPQueueCreateInfos         ( createInfos.data() )
 		.setEnabledLayerCount         ( mDeviceLayers.size() )
 		.setPpEnabledLayerNames       ( mDeviceLayers.data() )
 		.setEnabledExtensionCount     ( mDeviceExtensions.size() )
@@ -254,8 +335,14 @@ void ofVkRenderer::createDevice()
 
 	ofLogNotice() << "Successfully created Vulkan device";
 
-	// fetch queue handle into mQueue
-	mQueue = mDevice.getQueue( mVkGraphicsFamilyIndex, 0 );
+	// store queues in queue vector, based on queriedQueueFamilyAndIndex
+	for ( auto & q : queriedQueueFamilyAndIndex ){
+		// fetch queue handle into mQueue
+		mQueues.emplace_back( mDevice.getQueue( std::get<0>(q), std::get<1>(q) ) );
+	}
+	
+	// create mutexes to protect each queue
+	mQueueMutex = std::vector<mutex>( mQueues.size() );
 
 	// query possible depth formats, find the 
 	// first format that supports attachment as a depth stencil 

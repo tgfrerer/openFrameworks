@@ -185,7 +185,7 @@ void Context::end(){
 		.setPSignalSemaphores( &frame.semaphoreSignalOnComplete )
 		;
 
-	mSettings.renderer->getQueue().submit( { submitInfo }, getFence() );
+	mSettings.renderer->submit(mSettings.vkQueueIndex, { submitInfo }, getFence() );
 }
 
 

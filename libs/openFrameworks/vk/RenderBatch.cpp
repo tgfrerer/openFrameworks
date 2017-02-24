@@ -9,8 +9,6 @@ using namespace of::vk;
 RenderBatch::RenderBatch( Context & rc )
 	:mRenderContext( &rc ){
 	mVkCmd = mRenderContext->allocateCommandBuffer( ::vk::CommandBufferLevel::ePrimary );
-	
-
 }
 
 // ------------------------------------------------------------

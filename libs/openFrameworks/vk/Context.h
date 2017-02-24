@@ -56,6 +56,7 @@ public:
 		std::vector<::vk::ClearValue>          renderPassClearValues; 
 		::vk::Rect2D                           renderArea;
 		bool                                   renderToSwapChain = false; // whether this rendercontext renders to swapchain
+		size_t                                 vkQueueIndex = 0; // default to 0, as this is presumed a graphics context for a graphics queue
 	};
 
 private:

@@ -31,11 +31,11 @@ void ofVkRenderer::setupDefaultContext(){
 
 	of::vk::Context::Settings settings;
 	
-	settings.transientMemoryAllocatorSettings.device = mDevice;
-	settings.transientMemoryAllocatorSettings.frameCount =  mSettings.numVirtualFrames ;
+	settings.transientMemoryAllocatorSettings.device                         = mDevice;
+	settings.transientMemoryAllocatorSettings.frameCount                     =  mSettings.numVirtualFrames ;
 	settings.transientMemoryAllocatorSettings.physicalDeviceMemoryProperties = mPhysicalDeviceMemoryProperties ;
-	settings.transientMemoryAllocatorSettings.physicalDeviceProperties = mPhysicalDeviceProperties ;
-	settings.transientMemoryAllocatorSettings.size = ( ( 1ULL << 24 ) * mSettings.numVirtualFrames );
+	settings.transientMemoryAllocatorSettings.physicalDeviceProperties       = mPhysicalDeviceProperties ;
+	settings.transientMemoryAllocatorSettings.size                           = ( ( 1ULL << 24 ) * mSettings.numVirtualFrames );
 	settings.renderer = this;
 	settings.pipelineCache = getPipelineCache();
 	settings.renderArea = { 0,0, mSwapchain->getWidth(), mSwapchain->getHeight()};
@@ -328,8 +328,15 @@ void ofVkRenderer::finishRender(){
 	mDefaultContext->end();
 	
 	// present swapchain frame
-	mSwapchain->queuePresent( mQueue, { mDefaultContext->getSemaphoreSignalOnComplete()} );
+	mSwapchain->queuePresent( mQueues[0], mQueueMutex[0], { mDefaultContext->getSemaphoreSignalOnComplete()} );
 	
+}
+
+// ----------------------------------------------------------------------
+
+void ofVkRenderer::submit( size_t queueIndex, ::vk::ArrayProxy<const ::vk::SubmitInfo>&& submits,const ::vk::Fence& fence ){
+	std::lock_guard<std::mutex> lock{ mQueueMutex[queueIndex] };
+	mQueues[queueIndex].submit( submits, fence );
 }
 
 // ----------------------------------------------------------------------

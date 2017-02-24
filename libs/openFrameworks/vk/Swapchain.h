@@ -14,7 +14,7 @@ struct SwapchainSettings
 {
 	uint32_t                width = 0;
 	uint32_t                height = 0;
-	uint32_t                numSwapChainFrames = 0;
+	uint32_t                numSwapchainImages = 0;
 };
 
 // ----------------------------------------------------------------------
@@ -55,7 +55,7 @@ public:
 
 	// Present the current image to the queue
 	// Waits with execution until all waitSemaphores have been signalled
-	virtual ::vk::Result queuePresent( ::vk::Queue queue, const std::vector<::vk::Semaphore>& waitSemaphores_ ) = 0;
+	virtual ::vk::Result queuePresent( ::vk::Queue queue, std::mutex & queueMutex,const std::vector<::vk::Semaphore>& waitSemaphores_ ) = 0;
 
 	// return images vector
 	virtual const std::vector<ImageWithView> & getImages() const = 0 ;
@@ -128,7 +128,7 @@ public:
 	// Present the current image to the queue
 	// Waits with execution until all waitSemaphores have been signalled
 	// Pass renderComplete Semaphores here, so present waits for rendering to be complete.
-	::vk::Result queuePresent( ::vk::Queue queue, const std::vector<::vk::Semaphore>& waitSemaphores_ ) override;
+	::vk::Result queuePresent( ::vk::Queue queue, std::mutex & queueMutex, const std::vector<::vk::Semaphore>& waitSemaphores_ ) override;
 
 	// return images vector
 	const std::vector<ImageWithView> & getImages() const override;

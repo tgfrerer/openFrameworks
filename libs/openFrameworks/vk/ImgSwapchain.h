@@ -19,7 +19,7 @@ class ImgSwapchain : public Swapchain
 {
 	const ImgSwapchainSettings mSettings;
 
-	const uint32_t      &mImageCount = mSettings.numSwapChainFrames;
+	const uint32_t      &mImageCount = mSettings.numSwapchainImages;
 	uint32_t             mImageIndex = 0;
 
 	std::vector<::vk::DeviceMemory> mImageMemory; // TODO: this needs to go, use an image allocator
@@ -50,7 +50,7 @@ public:
 
 	// Present the current image to the queue
 	// Waits with execution until all waitSemaphores have been signalled
-	::vk::Result queuePresent( ::vk::Queue queue, const std::vector<::vk::Semaphore>& waitSemaphores_ ) override;
+	::vk::Result queuePresent( ::vk::Queue queue, std::mutex & queueMutex, const std::vector<::vk::Semaphore>& waitSemaphores_ ) override;
 
 	// return images vector
 	const std::vector<ImageWithView> & getImages() const override;

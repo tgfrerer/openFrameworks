@@ -44,7 +44,7 @@ struct RendererProperties
 	::vk::PhysicalDevice                 physicalDevice                 = nullptr;  // actual GPU
 	::vk::PhysicalDeviceProperties       physicalDeviceProperties       = {};
 	::vk::PhysicalDeviceMemoryProperties physicalDeviceMemoryProperties = {};
-	uint32_t                             graphicsFamilyIndex            = 0;
+	uint32_t                             graphicsFamilyIndex            = ~( uint32_t( 0 ) );
 };
 
 struct TransferSrcData

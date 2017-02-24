@@ -1,5 +1,7 @@
 #include "vk/Swapchain.h"
 #include <vector>
+#include <thread>
+#include <mutex>
 #include "ofLog.h"
 
 using namespace of::vk;
@@ -81,14 +83,18 @@ void WsiSwapchain::setup()
 	// applied successfully.
 	const_cast<::vk::PresentModeKHR&>(mSettings.presentMode) = swapchainPresentMode;
 
-	uint32_t desiredNumberOfSwapchainImages = std::max<uint32_t>( surfCaps.minImageCount, mSettings.numSwapChainFrames );
-	if ( ( surfCaps.maxImageCount > 0 ) && ( desiredNumberOfSwapchainImages > surfCaps.maxImageCount ) ){
-		desiredNumberOfSwapchainImages = surfCaps.maxImageCount;
+	uint32_t requestedNumberOfSwapchainImages = std::max<uint32_t>( surfCaps.minImageCount, mSettings.numSwapchainImages );
+	if ( ( surfCaps.maxImageCount > 0 ) && ( requestedNumberOfSwapchainImages > surfCaps.maxImageCount ) ){
+		requestedNumberOfSwapchainImages = surfCaps.maxImageCount;
+	}
+
+	if ( mSettings.numSwapchainImages != requestedNumberOfSwapchainImages ){
+		ofLogWarning() << "Swapchain: Number of swapchain images was adjusted to: " << requestedNumberOfSwapchainImages;
 	}
 
 	// Write current value back to parameter reference so caller
 	// has a chance to check if values were applied correctly.
-	const_cast<uint32_t&>(mSettings.numSwapChainFrames) = desiredNumberOfSwapchainImages;
+	const_cast<uint32_t&>(mSettings.numSwapchainImages) = requestedNumberOfSwapchainImages;
 
 	::vk::SurfaceTransformFlagBitsKHR preTransform;
 	// Note: this will be interesting for mobile devices
@@ -105,7 +111,7 @@ void WsiSwapchain::setup()
 
 	swapChainCreateInfo
 		.setSurface           ( mSettings.windowSurface )
-		.setMinImageCount     ( desiredNumberOfSwapchainImages)
+		.setMinImageCount     ( requestedNumberOfSwapchainImages)
 		.setImageFormat       ( mWindowColorFormat.format)
 		.setImageColorSpace   ( mWindowColorFormat.colorSpace)
 		.setImageExtent       ( swapchainExtent )
@@ -242,20 +248,26 @@ presentation engine has completed its use of the image."
 
 // ----------------------------------------------------------------------
 
-vk::Result WsiSwapchain::queuePresent( ::vk::Queue queue, const std::vector<::vk::Semaphore>& waitSemaphores_ ){
+vk::Result WsiSwapchain::queuePresent( ::vk::Queue queue, std::mutex & queueMutex, const std::vector<::vk::Semaphore>& waitSemaphores_ ){
 	
 	::vk::PresentInfoKHR presentInfo;
 	presentInfo
 		.setWaitSemaphoreCount( waitSemaphores_.size() )
-		.setPWaitSemaphores( waitSemaphores_.data())
+		.setPWaitSemaphores   ( waitSemaphores_.data() )
 		.setSwapchainCount( 1 )
 		.setPSwapchains( &mVkSwapchain )
 		.setPImageIndices( &mImageIndex)
 		;
 
+	::vk::Result result;
+	{
+		std::lock_guard<std::mutex> lock{ queueMutex };
+		result = queue.presentKHR( presentInfo );
+	}
+
 	// each command wich begins with vkQueue... is appended to the end of the 
 	// queue. this includes presenting.
-	return queue.presentKHR( presentInfo );
+	return result;
 }
 
 // ----------------------------------------------------------------------
