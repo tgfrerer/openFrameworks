@@ -17,15 +17,17 @@ int main(){
 
 	{
 		ofVkWindowSettings settings;
-		settings.setVkVersion( 1, 0, 39 );
-		settings.numSwapchainImages = 3;
-		settings.numVirtualFrames = 3;
-		settings.presentMode = ::vk::PresentModeKHR::eFifo;
+		
+		settings.rendererSettings.setVkVersion( 1, 0, 39 );
+		settings.rendererSettings.numSwapchainImages = 3;
+		settings.rendererSettings.numVirtualFrames = 3;
+		settings.rendererSettings.presentMode = ::vk::PresentModeKHR::eMailbox;
+		
 
 #ifdef NDEBUG
-		settings.useDebugLayers = false;
+		settings.rendererSettings.useDebugLayers = false;
 #else
-		settings.useDebugLayers = true;
+		settings.rendererSettings.useDebugLayers = true;
 #endif
 
 		// Initialise main window, and associated renderer.

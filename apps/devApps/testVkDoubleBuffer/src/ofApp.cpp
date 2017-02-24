@@ -15,7 +15,7 @@ void ofApp::setup(){
 	setupDrawCommands();
 
 	mMeshIco = std::make_shared<ofMesh>();
-	*mMeshIco = ofIcoSpherePrimitive(128,0).getMesh();
+	*mMeshIco = ofBoxPrimitive(100,100,100,1,1,1).getMesh();
 
 	mMeshIco->clearTexCoords();
 
@@ -31,79 +31,26 @@ void ofApp::setupSecondaryRenderContext(){
 
 	auto & device = renderer->getVkDevice();
 
-	of::vk::ImageAllocator::Settings allocatorSettings;
-	allocatorSettings.device = device;
-	allocatorSettings.imageTiling = vk::ImageTiling::eOptimal;
-	allocatorSettings.imageUsageFlags = vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled;
-	allocatorSettings.memFlags = vk::MemoryPropertyFlagBits::eDeviceLocal;
-	allocatorSettings.size = 512 * 256 * 4 * 2 ;
-	allocatorSettings.physicalDeviceMemoryProperties = renderer->getVkPhysicalDeviceMemoryProperties();
-	allocatorSettings.physicalDeviceProperties = renderer->getVkPhysicalDeviceProperties();
-	mImageAllocator = std::make_shared<of::vk::ImageAllocator>(allocatorSettings);
-
-	mImageAllocator->setup();
-
-	::vk::ImageCreateInfo imageCreateInfo;
-	imageCreateInfo
-		.setImageType( ::vk::ImageType::e2D )
-		.setFormat( ::vk::Format::eR8G8B8A8Unorm )
-		.setExtent( {512, 256,1} )
-		.setMipLevels( 1 )
-		.setArrayLayers( 1 )
-		.setSamples(::vk::SampleCountFlagBits::e1 )
-		.setTiling( ::vk::ImageTiling::eOptimal )
-		.setUsage( vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled )
-		.setSharingMode( ::vk::SharingMode::eExclusive )
-		.setQueueFamilyIndexCount( 0)
-		.setPQueueFamilyIndices( nullptr)
-		.setInitialLayout( ::vk::ImageLayout::eUndefined)
-		;
-
-	::vk::ImageViewCreateInfo imageViewCreateInfo;
-
-	// Todo: these elements need to be destroyed when the app quits.
-		for ( size_t i = 0; i != 2; ++i ){
-			auto img = device.createImage( imageCreateInfo );
-			imageViewCreateInfo
-				.setImage( img )
-				.setViewType( ::vk::ImageViewType::e2D )
-				.setFormat( imageCreateInfo.format)
-				.setComponents( {} ) // identity
-				.setSubresourceRange( {::vk::ImageAspectFlagBits::eColor,0,1,0,1} )
-				;
-			::vk::DeviceSize offset;
-
-			mImageAllocator->allocate( 512 * 256 * 4, offset );
-			device.bindImageMemory( img, mImageAllocator->getDeviceMemory(), offset );
-			
-			auto view = device.createImageView( imageViewCreateInfo );
-
-			mTargetImages[i].image = img;
-			mTargetImages[i].view  = view;
-
-			mTexture[i] = std::make_shared<of::vk::Texture>( device, img );
-		}
-
 	// setup a secondary context
 	{
 
 		auto rendererProperties = renderer->getVkRendererProperties();
 
-		of::vk::Context::Settings settings;
+		of::vk::Context::Settings contextSettings;
 
-		settings.transientMemoryAllocatorSettings.device = renderer->getVkDevice();
-		settings.transientMemoryAllocatorSettings.frameCount = 3;
-		settings.transientMemoryAllocatorSettings.physicalDeviceMemoryProperties = rendererProperties.physicalDeviceMemoryProperties;
-		settings.transientMemoryAllocatorSettings.physicalDeviceProperties = rendererProperties.physicalDeviceProperties;
-		settings.transientMemoryAllocatorSettings.size = ( ( 1ULL << 24 ) * renderer->mSettings.numVirtualFrames );
-		settings.renderer = renderer.get();
-		settings.pipelineCache = renderer->getPipelineCache();
+		contextSettings.transientMemoryAllocatorSettings.device = renderer->getVkDevice();
+		contextSettings.transientMemoryAllocatorSettings.frameCount = 3;
+		contextSettings.transientMemoryAllocatorSettings.physicalDeviceMemoryProperties = rendererProperties.physicalDeviceMemoryProperties;
+		contextSettings.transientMemoryAllocatorSettings.physicalDeviceProperties = rendererProperties.physicalDeviceProperties;
+		contextSettings.transientMemoryAllocatorSettings.size = ( ( 1ULL << 24 ) * renderer->mSettings.numVirtualFrames );
+		contextSettings.renderer = renderer.get();
+		contextSettings.pipelineCache = renderer->getPipelineCache();
 
 		vk::Rect2D rect;
 		rect.setExtent( { 512, 256 } );
 		rect.setOffset( { 0, 0 } );
 
-		settings.renderArea = rect;
+		contextSettings.renderArea = rect;
 
 		{
 			std::array<vk::AttachmentDescription, 1> attachments;
@@ -111,7 +58,7 @@ void ofApp::setupSecondaryRenderContext(){
 			attachments[0]		// color attachment
 				.setFormat( ::vk::Format::eR8G8B8A8Unorm )
 				.setSamples( vk::SampleCountFlagBits::e1 )
-				.setLoadOp( vk::AttachmentLoadOp::eLoad )
+				.setLoadOp( vk::AttachmentLoadOp::eClear )
 				.setStoreOp( vk::AttachmentStoreOp::eStore )
 				.setStencilLoadOp( vk::AttachmentLoadOp::eDontCare )
 				.setStencilStoreOp( vk::AttachmentStoreOp::eDontCare )
@@ -166,14 +113,73 @@ void ofApp::setupSecondaryRenderContext(){
 				.setPDependencies( dependencies.data() );
 
 			auto renderPass = device.createRenderPass( renderPassCreateInfo );
-			settings.renderPass = renderPass;
-			//settings.renderPassClearValues = { { reinterpret_cast<const ::vk::ClearColorValue&>( ofFloatColor::pink ) } };
+			contextSettings.renderPass = renderPass;
+			contextSettings.renderPassClearValues = { { reinterpret_cast<const ::vk::ClearColorValue&>( ofFloatColor::pink ) } };
 		}
 
-		mAuxContext = std::make_unique<of::vk::Context>( std::move( settings ) );
+		mAuxContext = std::make_unique<of::vk::Context>( std::move( contextSettings ) );
 
 		mAuxContext->setup();
-		auto & context = renderer->getDefaultContext();
+
+		// ---- allocate imgages for context to render into
+
+		size_t numImages = 2;
+
+		of::vk::ImageAllocator::Settings allocatorSettings;
+		allocatorSettings.device = device;
+		allocatorSettings.imageTiling = vk::ImageTiling::eOptimal;
+		allocatorSettings.imageUsageFlags = vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled;
+		allocatorSettings.memFlags = vk::MemoryPropertyFlagBits::eDeviceLocal;
+		allocatorSettings.size = contextSettings.renderArea.extent.width * contextSettings.renderArea.extent.height * 4 * numImages;
+		allocatorSettings.physicalDeviceMemoryProperties = renderer->getVkPhysicalDeviceMemoryProperties();
+		allocatorSettings.physicalDeviceProperties = renderer->getVkPhysicalDeviceProperties();
+		mImageAllocator = std::make_shared<of::vk::ImageAllocator>( allocatorSettings );
+
+		mImageAllocator->setup();
+
+		::vk::ImageCreateInfo imageCreateInfo;
+		imageCreateInfo
+			.setImageType( ::vk::ImageType::e2D )
+			.setFormat( ::vk::Format::eR8G8B8A8Unorm )
+			.setExtent( { contextSettings.renderArea.extent.width, contextSettings.renderArea.extent.height, 1 } )
+			.setMipLevels( 1 )
+			.setArrayLayers( 1 )
+			.setSamples( ::vk::SampleCountFlagBits::e1 )
+			.setTiling( ::vk::ImageTiling::eOptimal )
+			.setUsage( vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled )
+			.setSharingMode( ::vk::SharingMode::eExclusive )
+			.setQueueFamilyIndexCount( 0 )
+			.setPQueueFamilyIndices( nullptr )
+			.setInitialLayout( ::vk::ImageLayout::eUndefined )
+			;
+
+		::vk::ImageViewCreateInfo imageViewCreateInfo;
+
+		// Todo: these elements need to be destroyed when the app quits.
+		for ( size_t i = 0; i != numImages; ++i ){
+			auto img = device.createImage( imageCreateInfo );
+			imageViewCreateInfo
+				.setImage( img )
+				.setViewType( ::vk::ImageViewType::e2D )
+				.setFormat( imageCreateInfo.format )
+				.setComponents( {} ) // identity
+				.setSubresourceRange( { ::vk::ImageAspectFlagBits::eColor,0,1,0,1 } )
+				;
+			
+			::vk::DeviceSize offset;
+			mImageAllocator->allocate( contextSettings.renderArea.extent.width * contextSettings.renderArea.extent.height * 4, offset );
+			device.bindImageMemory( img, mImageAllocator->getDeviceMemory(), offset );
+
+			auto view = device.createImageView( imageViewCreateInfo );
+
+			mTargetImages[i].image = img;
+			mTargetImages[i].view = view;
+
+			mTexture[i] = std::make_shared<of::vk::Texture>( device, img );
+		}
+
+
+		// ----
 
 		/*
 
@@ -224,6 +230,7 @@ void ofApp::setupSecondaryRenderContext(){
 
 		*/
 
+		auto & context = renderer->getDefaultContext();
 		mAuxContext->addContextDependency( context.get() );
 		context->addContextDependency( mAuxContext.get() );
 	}
@@ -351,23 +358,22 @@ void ofApp::draw(){
 	
 	mAuxContext->begin();
 	{
+		mAuxContext->setupFrameBufferAttachments( { mTargetImages[0].view } );
+
 		auto viewMatrix       = mCamAux.getModelViewMatrix();
 		auto projectionMatrix = clip * mCamAux.getProjectionMatrix( { 0,0,512,256 } );
 
 		ofMatrix4x4 modelMatrix = glm::rotate( float( TWO_PI * ( ( ofGetFrameNum() % 360 ) / 360.f ) ), glm::vec3( { 0.f, 1.f, 1.f } ) );
 
-		// todo: attach the corresponding render buffer
-		mAuxContext->setupFrameBufferAttachments( { mTargetImages[pingPong].view } );
-
 		of::vk::RenderBatch batch{ *mAuxContext };
 		batch.begin();
 		
-		auto tmpDraw = defaultDraw;
+		auto meshDraw = defaultDraw;
 
 		ofFloatColor col = ofColor::white;
 		col.lerp( ofColor::blue, 0.5 + 0.5 * sinf(TWO_PI * (ofGetFrameNum() % 360 ) / 360.f ));
 
-		tmpDraw
+		meshDraw
 			.setUniform( "projectionMatrix", projectionMatrix )
 			.setUniform( "viewMatrix", viewMatrix )
 			.setUniform( "modelMatrix", modelMatrix )
@@ -375,7 +381,7 @@ void ofApp::draw(){
 			.setMesh(mMeshIco)
 			;
 
-		batch.draw( tmpDraw );
+		batch.draw( meshDraw );
 
 		batch.end();
 		
@@ -395,16 +401,15 @@ void ofApp::draw(){
 			.setUniform( "projectionMatrix", projectionMatrix )
 			.setUniform( "viewMatrix", viewMatrix )
 			.setUniform( "modelMatrix", glm::mat4() )
-			.setTexture( "tex_0", *mTexture[(pingPong + 1 ) % 2] )
+			.setTexture( "tex_0", *mTexture[0] )
 			.setMesh(mMeshPlane)
 			;
 
 		of::vk::RenderBatch batch{ *context };
 
 		batch.begin();
-		// todo: draw the aux context into this context 
 		batch.draw( fullscreenQuad );
-		batch.draw( texturedRect );
+		batch.draw( texturedRect );  // draw result from previous render pass onto screen
 		batch.end();
 
 	}
