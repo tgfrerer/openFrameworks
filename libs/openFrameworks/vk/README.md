@@ -144,20 +144,27 @@ Advanced users will probably want to write their own scene graphs, renderer addo
 
 ----------------------------------------------------------------------
 
-## RenderContext
+## Context
 
-A RenderContext is an isolated context for temporary memory objects such as 
-command pools, memory pools, descriptor pools etc. As such, it is used to 
-generate a command buffer, which it owns.
+A Context is an isolated environment where temporary objects and buffer memory can
+be allocated in an optimised way.
 
-There are two types of RenderContext: PRIMARY and SECONDARY. As such they map
-to the two types of CommandBuffers which exist, of the same names. 
+A Context keeps memory isolated per *Virtual Frame*. A Virtual frame is protected by a
+`vk::Fence` which is set on `Context::end()` and waited upon `Context::begin()`. 
+It is therefore safe to assume that a Context is ready for write after `Context::begin()`.
 
-A PRIMARY context is made from a Renderpass which is opened/closed for 
-the duration of the begin()/end() of the context.
+All Context operations are meant to be thread-safe 
+as long as the Context never leaves its home thread. All objects allocated through 
+a context are synchronised using a fence which keeps all objects alife until the 
+frame is re-visited.
 
-A SECONDARY context creates secondary command buffers which must be called 
-from a PRIMARY context to be added to a renderQueue.
+A Context may be initialised using a `vk::Renderpass`. To render using a Context, 
+derive a RenderBatch from the Context, and add DrawCommands into the RenderBatch.
+When the RenderBatch ends, its internal queue of DrawCommands is translated into 
+a single `vk::Commandbuffer`, which is in turn queued inside the Context.
+
+When the Context ends, its internal queue of `vk::CommandBuffer` is submitted 
+to the `vk::Queue` for rendering. 
 
 ----------------------------------------------------------------------
 
@@ -229,7 +236,7 @@ ofMatrix4x4 clip(1.0f,  0.0f, 0.0f, 0.0f,
 
 # Vulkan Resources
 
-* Vulkan spec ([PDF][spec])
+* Khronos Vulkan spec ([HTML][spec])
 * [Awesome Vulkan][awesome] -- A curated collection of links to resources around Vulkan
 
 ----------------------------------------------------------------------
@@ -247,6 +254,8 @@ ofMatrix4x4 clip(1.0f,  0.0f, 0.0f, 0.0f,
 - [ ] Shader: add "#pragma parameter" sugar
 - [X] Shader: auto-recompile from GLSL on change
 - [X] Add Shader manager
+- [X] multi-target rendering (FBOs)
+- [X] compute support
 
 ----------------------------------------------------------------------
 
@@ -261,13 +270,11 @@ ofMatrix4x4 clip(1.0f,  0.0f, 0.0f, 0.0f,
 
 ## Other things that could be worth adding:
 
-+ compute support
 + mip map support
-+ multi-pass rendering
 + text rendering
 + MSAA resolve using renderpass
 
 ----------------------------------------------------------------------
 
-[spec]: https://www.khronos.org/registry/vulkan/specs/1.0-wsi_extensions/pdf/vkspec.pdf
+[spec]: https://www.khronos.org/registry/vulkan/specs/1.0-extensions/html/vkspec.html
 [awesome]: https://github.com/vinjn/awesome-vulkan
