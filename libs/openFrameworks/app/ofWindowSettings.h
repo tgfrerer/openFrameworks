@@ -5,6 +5,7 @@
 
 #if defined (OF_TARGET_API_VULKAN)
 #include <vulkan/vulkan.hpp>
+#include "vk/HelperTypes.h"
 #endif
 
 class ofWindowSettings{
@@ -103,30 +104,11 @@ public:
 		: ofWindowSettings( settings ){
 	};
 
-	void setVkVersion( int major, int minor, int patch ){
-		vkVersion = ( major << 22 ) | ( minor << 12 ) | patch;
-	}
-
-	int getVkVersionMajor(){
-		return ( ( vkVersion >> 22 ) & ( 0x3ff ) ); // 10 bit
-	}
-
-	int getVersionMinor(){
-		return ( ( vkVersion >> 12 ) & ( 0x3ff ) ); // 10 bit
-	}
-
-	int getVersionPatch(){
-		return ( ( vkVersion >> 0 ) & ( 0xfff ) );
-	}
+	of::vk::RendererSettings rendererSettings;
 
 	virtual ~ofVkWindowSettings(){
 	}
 
-	uint32_t vkVersion             = 1 << 22;
-	uint32_t numSwapchainImages    = 2;                               // number of images the swapchain should try to create
-	uint32_t numVirtualFrames      = 3;                               // number of virtual frames to produce to feed swapchain
-	::vk::PresentModeKHR presentMode = ::vk::PresentModeKHR::eFifo; // api only guarantees FIFO to be present.
-	bool useDebugLayers            = true;                            // whether to use debug layers or not (default == true)
 };
 
 #endif

@@ -27,7 +27,7 @@ PFN_vkDestroyDebugReportCallbackEXT fVkDestroyDebugReportCallbackEXT = nullptr;
 
 // ----------------------------------------------------------------------
 
-ofVkRenderer::ofVkRenderer(const ofAppBaseWindow * _window, Settings settings )
+ofVkRenderer::ofVkRenderer(const ofAppBaseWindow * _window, of::vk::RendererSettings settings )
 	: m3dGraphics(this)
 	, mSettings(settings)
 {
@@ -163,7 +163,7 @@ void ofVkRenderer::createDevice()
 	ofLog() << "GPU Type: " << mPhysicalDeviceProperties.deviceName;
 
 	{
-		ofVkWindowSettings tmpSettings;
+		of::vk::RendererSettings tmpSettings;
 		tmpSettings.vkVersion = mPhysicalDeviceProperties.apiVersion;
 		ofLog() << "GPU API Version: " << tmpSettings.getVkVersionMajor() << "."
 			<< tmpSettings.getVersionMinor() << "." << tmpSettings.getVersionPatch();

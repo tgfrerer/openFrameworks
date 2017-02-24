@@ -136,14 +136,7 @@ void ofAppGLFWWindow::setup(const ofGLFWWindowSettings & _settings){
 			exit( 1 );
 		}
 
-		ofVkRenderer::Settings rendererSettings;
-		rendererSettings.numSwapchainImages = _settings.numSwapchainImages;
-		rendererSettings.numVirtualFrames   = _settings.numVirtualFrames;
-		rendererSettings.presentMode        = _settings.presentMode;
-		rendererSettings.vkVersion          = _settings.vkVersion;
-		rendererSettings.useDebugLayers     = _settings.useDebugLayers;
-
-		currentRenderer = shared_ptr<ofBaseRenderer>( new ofVkRenderer( this, rendererSettings ) );
+		currentRenderer = shared_ptr<ofBaseRenderer>( new ofVkRenderer( this, _settings.rendererSettings) );
 		auto vkRenderer = dynamic_pointer_cast<ofVkRenderer>( currentRenderer );
 		// we have a renderer.
 
@@ -153,10 +146,10 @@ void ofAppGLFWWindow::setup(const ofGLFWWindowSettings & _settings){
 		{
 			// create swapchain
 			of::vk::WsiSwapchainSettings swapchainSettings{};
-			swapchainSettings.width = _settings.width;
+			swapchainSettings.width  = _settings.width;
 			swapchainSettings.height = _settings.height;
-			swapchainSettings.numSwapChainFrames = rendererSettings.numSwapchainImages;
-			swapchainSettings.presentMode = rendererSettings.presentMode;
+			swapchainSettings.numSwapchainImages = _settings.rendererSettings.numSwapchainImages;
+			swapchainSettings.presentMode        = _settings.rendererSettings.presentMode;
 			swapchainSettings.windowSurface = getVkSurface();
 			vkRenderer->setSwapchain( std::make_shared<of::vk::WsiSwapchain>( swapchainSettings ) );
 		}

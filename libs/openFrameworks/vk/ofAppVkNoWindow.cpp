@@ -73,16 +73,8 @@ void ofAppVkNoWindow::setup(const ofVkWindowSettings & settings){
 	width = settings.width;
 	height = settings.height;
 
-	ofVkRenderer::Settings rendererSettings;
-
-	rendererSettings.vkVersion          = settings.vkVersion;
-	rendererSettings.numVirtualFrames   = settings.numVirtualFrames;
-	rendererSettings.useDebugLayers     = settings.useDebugLayers;
-	rendererSettings.numSwapchainImages = settings.numSwapchainImages;
-	rendererSettings.presentMode        = settings.presentMode;
-
 	// create renderer as vkRenderer
-	auto vkRenderer = make_shared<ofVkRenderer>( this, rendererSettings );
+	auto vkRenderer = make_shared<ofVkRenderer>( this, settings.rendererSettings );
 
 	// Now create a swapchain
 	{
@@ -91,7 +83,7 @@ void ofAppVkNoWindow::setup(const ofVkWindowSettings & settings){
 		of::vk::ImgSwapchainSettings swapchainSettings{};
 		swapchainSettings.width = settings.width;
 		swapchainSettings.height = settings.height;
-		swapchainSettings.numSwapChainFrames = rendererSettings.numSwapchainImages;
+		swapchainSettings.numSwapchainImages = settings.rendererSettings.numSwapchainImages;
 		swapchainSettings.path = "render/img_";
 		vkRenderer->setSwapchain( std::make_shared<of::vk::ImgSwapchain>( swapchainSettings ) );
 	}

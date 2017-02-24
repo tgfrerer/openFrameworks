@@ -6,6 +6,37 @@
 namespace of{
 namespace vk{
 
+struct RendererSettings
+{
+	uint32_t vkVersion = (1 << 22) | (0 << 12) | (39);                 // target version
+	uint32_t numVirtualFrames = 3;                                     // number of virtual frames to allocate and to produce - set this through vkWindowSettings
+	uint32_t numSwapchainImages = 3;                                   // number of swapchain images to aim for (api gives no guarantee for this.)
+	::vk::PresentModeKHR presentMode = ::vk::PresentModeKHR::eFifo;	   // selected swapchain type (api only guarantees FIFO)
+	std::vector<::vk::QueueFlags> requestedQueues = {                  // queues which will be created for this device, index will be queue index in mQueues
+		::vk::QueueFlagBits::eGraphics | ::vk::QueueFlagBits::eCompute,
+		::vk::QueueFlagBits::eCompute,
+		::vk::QueueFlagBits::eTransfer,
+	};
+	bool useDepthStencil = true;
+	bool useDebugLayers = false;                                       // whether to use vulkan debug layers
+
+	void setVkVersion( int major, int minor, int patch ){
+		vkVersion = ( major << 22 ) | ( minor << 12 ) | patch;
+	}
+
+	int getVkVersionMajor(){
+		return ( ( vkVersion >> 22 ) & ( 0x3ff ) ); // 10 bit
+	}
+
+	int getVersionMinor(){
+		return ( ( vkVersion >> 12 ) & ( 0x3ff ) ); // 10 bit
+	}
+
+	int getVersionPatch(){
+		return ( ( vkVersion >> 0 ) & ( 0xfff ) );
+	}
+};
+
 struct RendererProperties
 {
 	::vk::Instance                       instance                       = nullptr;  // vulkan loader instance
