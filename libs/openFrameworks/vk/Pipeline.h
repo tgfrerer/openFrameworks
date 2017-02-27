@@ -72,8 +72,7 @@ private:
 	int32_t                                mBasePipelineIndex = -1;
 	mutable VkBool32                       mDirty = true;  // whether this pipeline state is dirty.
 
-														   // shader allows us to derive pipeline layout, has public getters and setters.
-	std::shared_ptr<of::vk::Shader>        mShader;
+	std::shared_ptr<of::vk::Shader>        mShader;        // shader allows us to derive pipeline layout, has public getters and setters.
 
 public:
 

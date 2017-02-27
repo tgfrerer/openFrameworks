@@ -230,9 +230,9 @@ void ofApp::setupSecondaryRenderContext(){
 
 		*/
 
-		auto & context = renderer->getDefaultContext();
+		/*auto & context = renderer->getDefaultContext();
 		mAuxContext->addContextDependency( context.get() );
-		context->addContextDependency( mAuxContext.get() );
+		context->addContextDependency( mAuxContext.get() );*/
 	}
 
 	mCamAux.setupPerspective( false, 60, 0.1, 500 );

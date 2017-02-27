@@ -254,53 +254,6 @@ void ofApp::draw(){
 		;
 	batch.end();
 
-	// At end of draw(), context will submit its list of vkCommandBuffers
-	// to the graphics queue in one API call.
-
-	// batch.submit() processes all draw commands into a vk command buffer 
-	// and adds them to the list of vkCommands that a rendercontext accumulates
-	// the rendercontext then submits these commands to the queue in one go.
-	//
-	// The main work batch does here is:
-	//
-	// * create pipelines if necessary (compares against hashmap inside rendercontext)
-	// * bind pipeline
-	// * create descriptorsets if necessary
-	// * bind descriptorsets
-	// * set correct dynamic offsets for dynamic descriptors
-	// * bind vertex data
-	// * bind index data
-
-	/*
-	
-	!TODO: make drawing more explicit
-
-	The idea is to make drawing more explicit - to give you more control over draw commands,
-	and to allow you to insert vulkan commands yourself if need be. the commands you might 
-	want to insert are mostly sync commands i would assume. the draw commands above help
-	you to keep track of volatile memory.
-
-	Q: Why do we need more explicit access to CommandBuffers? Mainly for sync objects, 
-	   such as pipeline barriers. But we can define a lot of dependencies using the renderpass!
-
-	Q: how do we render to a canvas which has different dimensions than our main rendertargets?
-	   We need a separate renderpass for that. Can't use subpasses, since subpasses inherit the
-	   dimension from the main renderpass.
-
-	auto cmd = renderContext->beginPrimaryCommandBuffer()
-
-	renderContext->beginRenderPass(cmd);
-	cmd.setviewport()
-
-	batch.processDrawCommandsInto(cmd);
-
-	cmd.endRenderpass();
-	cmd.end()
-	
-	renderContext.submit(cmd); // this adds cmd to list of cmdbuffers earmarked for execution
-
-	*/
-
 	// submitting the compute command after the batch has been submitted
 	// means it will end up on the queue *after* the draw instructions.
 

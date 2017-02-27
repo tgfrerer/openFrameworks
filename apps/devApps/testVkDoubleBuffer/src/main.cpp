@@ -22,7 +22,7 @@ int main(){
 		settings.rendererSettings.numSwapchainImages = 3;
 		settings.rendererSettings.numVirtualFrames = 3;
 		settings.rendererSettings.presentMode = ::vk::PresentModeKHR::eMailbox;
-		
+		settings.rendererSettings.requestedQueues = { ::vk::QueueFlagBits::eGraphics };
 
 #ifdef NDEBUG
 		settings.rendererSettings.useDebugLayers = false;

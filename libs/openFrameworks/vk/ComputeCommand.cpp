@@ -111,7 +111,7 @@ void ComputeCommand::submit( Context & context, const glm::uvec3& dims = {256,25
 	auto cmd = context.allocateCommandBuffer(::vk::CommandBufferLevel::ePrimary);
 
 
-	// current draw state for building command buffer - this is based on parsing the drawCommand list
+	// current pipeline state for building command buffer - this is based on parsing the drawCommand list
 	std::unique_ptr<ComputePipelineState> boundPipelineState;
 
 		// find out pipeline state needed for this draw command
@@ -179,7 +179,7 @@ void ComputeCommand::submit( Context & context, const glm::uvec3& dims = {256,25
 	// make sure dynamic ubos have the correct offsets
 	if ( !boundVkDescriptorSets.empty() ){
 		cmd.bindDescriptorSets(
-			::vk::PipelineBindPoint::eCompute,	                           // use compute, not graphics pipeline
+			::vk::PipelineBindPoint::eCompute,	                           // use compute pipeline
 			*mPipelineState.getShader()->getPipelineLayout(),              // VkPipelineLayout object used to program the bindings.
 			0,                                                             // firstset: first set index (of the above) to bind to - mDescriptorSet[0] will be bound to pipeline layout [firstset]
 			boundVkDescriptorSets.size(),                                  // setCount: how many sets to bind

@@ -150,30 +150,23 @@ void Context::begin(){
 
 void Context::end(){
 
-	// Synchronisation works this way: 
-	// First, we tell the GPU to wait on presentComplete - which means the swapchain has finished presenting
-	// and the image we want to render into is ready to be drawn into.
-	// Second, we tell the GPU to set a semaphore, and only signal it once rendering 
-	// for this frame is complete.
-	// Third, insert a fence into the command stream. This fence will only allow the CPU to continue once it has been 
-	// waited upon 
-
+	auto & frame = mVirtualFrames[mCurrentVirtualFrame];
 
 	const ::vk::Semaphore * waitSemaphore = nullptr;
+	const ::vk::Semaphore * signalSemaphore = nullptr;
 
-	if ( mSourceContext->mSettings.renderToSwapChain ){
-		waitSemaphore = &mSourceContext->getSemaphoreWait();
+	if ( mSettings.renderToSwapChain ){
+		waitSemaphore   = &frame.semaphoreWait;
+		signalSemaphore = &frame.semaphoreSignalOnComplete;
 	} else{
-		waitSemaphore = &mSourceContext->getSemaphoreSignalOnComplete();
+		// waitSemaphore = &mSourceContext->getSemaphoreSignalOnComplete();
 	}
 
 	::vk::SubmitInfo submitInfo;
 	// TODO: the number of array elements must correspond to the number of wait semaphores, as each 
 	//       mask specifies what the semaphore is waiting for.
-	//       It's strange that we get away with it putting forward a temporary object here.
 	std::array<::vk::PipelineStageFlags, 1> wait_dst_stage_mask = { ::vk::PipelineStageFlagBits::eColorAttachmentOutput };
 
-	auto & frame = mVirtualFrames[mCurrentVirtualFrame];
 
 	submitInfo
 		.setWaitSemaphoreCount( ( waitSemaphore ? 1 : 0) )  // set to zero if waitSemaphore was not set
@@ -181,8 +174,8 @@ void Context::end(){
 		.setPWaitDstStageMask( wait_dst_stage_mask.data() )
 		.setCommandBufferCount( frame.commandBuffers.size() )
 		.setPCommandBuffers(    frame.commandBuffers.data() )
-		.setSignalSemaphoreCount( 1 )
-		.setPSignalSemaphores( &frame.semaphoreSignalOnComplete )
+		.setSignalSemaphoreCount( ( signalSemaphore ? 1 : 0 ) )
+		.setPSignalSemaphores( signalSemaphore )
 		;
 
 	mSettings.renderer->submit(mSettings.vkQueueIndex, { submitInfo }, getFence() );

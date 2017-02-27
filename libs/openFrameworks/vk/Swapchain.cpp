@@ -213,29 +213,12 @@ const ::vk::Format & WsiSwapchain::getColorFormat(){
 // ----------------------------------------------------------------------
 
 // Acquires the next available image in the swap chain and updates imageIndex with index to image
-// May block CPU==host until image has been acquired
 // Signals semaphorePresentComplete once image has been acquired
 vk::Result WsiSwapchain::acquireNextImage( ::vk::Semaphore semaphorePresentComplete, uint32_t &imageIndex ){
 
-	/*
-
-	Q: What is the semaphore good for? 
-	A: See Vk Spec 29.6 ff.:
-	
-	"The semaphore must be unsignaled and not have any uncompleted signal or
-wait operations pending. It will become signaled when the application can use the image. Queue operations that access
-the image contents must wait until the semaphore signals; typically applications should include the semaphore in the
-pWaitSemaphores list for the queue submission that transitions the image away from the VK_IMAGE_LAYOUT_
-PRESENT_SRC_KHR layout. Use of the semaphore allows rendering operations to be recorded and submitted before the
-presentation engine has completed its use of the image."
-	
-	This means, we must make sure not to render into the image before the semaphore signals. 
-	We do this by adding the semaphore to the wait semaphores in the present queue. This also means, that
-	the image only can be rendered into once the semaphore has been signalled.
-
-	*/
-
-	auto err = vkAcquireNextImageKHR( mDevice, mVkSwapchain, UINT64_MAX, semaphorePresentComplete, ( VkFence )nullptr, &imageIndex );
+	// Timeout parameter 0 makes this call a non-blocking operation.
+	// see Vk Spec with extensions: C 2.3.6
+	auto err = vkAcquireNextImageKHR( mDevice, mVkSwapchain, 0, semaphorePresentComplete, ( VkFence )nullptr, &imageIndex );
 	
 	if ( err != VK_SUCCESS ){
 		ofLogWarning() << "Swapchain image acquisition returned: " << err;
@@ -250,6 +233,8 @@ presentation engine has completed its use of the image."
 
 vk::Result WsiSwapchain::queuePresent( ::vk::Queue queue, std::mutex & queueMutex, const std::vector<::vk::Semaphore>& waitSemaphores_ ){
 	
+	// TODO: waitSemaphore is only needed if we wait for an operation from another queue to complete.
+
 	::vk::PresentInfoKHR presentInfo;
 	presentInfo
 		.setWaitSemaphoreCount( waitSemaphores_.size() )
