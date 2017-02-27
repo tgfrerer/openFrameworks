@@ -141,8 +141,7 @@ void ofVkRenderer::createInstance(){
 
 void ofVkRenderer::destroyInstance()
 {
-	vkDestroyInstance(mInstance, VK_NULL_HANDLE);
-	mInstance = VK_NULL_HANDLE;
+	mInstance.destroy();
 }
 
 uint32_t findGraphicsQueueFamilyIndex( const std::vector<vk::QueueFamilyProperties>& props ){
@@ -262,7 +261,7 @@ void ofVkRenderer::createDevice()
 	mPhysicalDeviceMemoryProperties = mPhysicalDevice.getMemoryProperties();
 
 
-	auto & queueFamilyProperties = mPhysicalDevice.getQueueFamilyProperties();
+	const auto & queueFamilyProperties = mPhysicalDevice.getQueueFamilyProperties();
 
 	std::vector<std::tuple<uint32_t, uint32_t>> queriedQueueFamilyAndIndex;
 	mVkGraphicsQueueFamilyIndex = findGraphicsQueueFamilyIndex( queueFamilyProperties );
@@ -310,13 +309,17 @@ void ofVkRenderer::createDevice()
 		createInfos.emplace_back( std::move( queueCreateInfo ) );
 	}
 
-	// TODO: Check which features must be switched on for default openFrameworks operations.
-	//       For now, we just make sure we can draw with lines.
+	// !TODO: We must make sure that familyIndex is unique within createInfos structure
+	// which means, there *must* only be one entry per family.
+
+
+	// Check which features must be switched on for default openFrameworks operations.
+	// For now, we just make sure we can draw with lines.
 	//
-	//       We should put this into the renderer setttings. 
+	// We should put this into the renderer setttings.
 	vk::PhysicalDeviceFeatures deviceFeatures = mPhysicalDevice.getFeatures();
 	deviceFeatures
-		.setFillModeNonSolid( VK_TRUE ) // allow wireframe drawing
+	    .setFillModeNonSolid( VK_TRUE ) // allow wireframe drawing
 		;
 
 	vk::DeviceCreateInfo deviceCreateInfo;
@@ -372,8 +375,7 @@ void ofVkRenderer::createDevice()
 
 void ofVkRenderer::destroyDevice()
 {
-	vkDestroyDevice(mDevice, VK_NULL_HANDLE);
-	mDevice = VK_NULL_HANDLE;
+	mDevice.destroy();
 }
 
 // ----------------------------------------------------------------------
