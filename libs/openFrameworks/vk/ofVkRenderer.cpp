@@ -161,12 +161,17 @@ uint32_t findGraphicsQueueFamilyIndex( const std::vector<vk::QueueFamilyProperti
 
 
 // ----------------------------------------------------------------------
-
-std::vector<std::tuple<uint32_t, uint32_t>> findBestMatchForRequestedQueues( const std::vector<vk::QueueFamilyProperties>& props, const std::vector<::vk::QueueFlags>& reqProps ){
-	std::vector<std::tuple<uint32_t, uint32_t>> result;
+/// \brief find best match for a vector or queues defined by queueFamiliyProperties flags
+/// \note  For each entry in the result vector the tuple values represent:
+///        <0> best matching queue family
+///        <1> index within queue family
+///        <2> index of queue from props vector (used to keep queue indices consistent between requested queues and queues you will render to)
+std::vector<std::tuple<uint32_t, uint32_t, size_t>> findBestMatchForRequestedQueues( const std::vector<vk::QueueFamilyProperties>& props, const std::vector<::vk::QueueFlags>& reqProps ){
+	std::vector<std::tuple<uint32_t, uint32_t, size_t>> result;
 
 	std::vector<uint32_t> usedQueues( props.size(), ~( uint32_t(0) ) ); // last used queue, per queue family (initialised at -1)
 
+	size_t reqIdx = 0; // original index for requested queue
 	for ( const auto & flags : reqProps ){
 
 		// best match is a queue which does exclusively what we want
@@ -217,13 +222,14 @@ std::vector<std::tuple<uint32_t, uint32_t>> findBestMatchForRequestedQueues( con
 		}
 
 		if ( foundMatch ){
-			result.emplace_back( foundFamily, foundIndex );
+			result.emplace_back( foundFamily, foundIndex, reqIdx );
 			usedQueues[foundFamily] = foundIndex; // mark this queue as used
 		} else{
 			ofLogError() << "No available queue matching requirement: " << ::vk::to_string( flags );
 			ofExit( -1 );
 		}
 
+		++reqIdx;
 	}
 
 	return result;
@@ -260,13 +266,6 @@ void ofVkRenderer::createDevice()
 	// let's find out the devices' memory properties
 	mPhysicalDeviceMemoryProperties = mPhysicalDevice.getMemoryProperties();
 
-
-	const auto & queueFamilyProperties = mPhysicalDevice.getQueueFamilyProperties();
-
-	std::vector<std::tuple<uint32_t, uint32_t>> queriedQueueFamilyAndIndex;
-	mVkGraphicsQueueFamilyIndex = findGraphicsQueueFamilyIndex( queueFamilyProperties );
-	queriedQueueFamilyAndIndex  = findBestMatchForRequestedQueues( queueFamilyProperties, mSettings.requestedQueues );
-
 	// query debug layers available for instance
 	{
 		std::ostringstream console;
@@ -293,26 +292,6 @@ void ofVkRenderer::createDevice()
 		ofLog() << console.str();
 	}
 
-	float queuePriority[] = { 1.f };
-
-	// Create queues based on queriedQueueFamilyAndIndex
-	std::vector<::vk::DeviceQueueCreateInfo> createInfos;
-	createInfos.reserve( queriedQueueFamilyAndIndex.size() );
-
-	for ( auto & q : queriedQueueFamilyAndIndex ){
-		vk::DeviceQueueCreateInfo queueCreateInfo;
-		queueCreateInfo
-			.setQueueFamilyIndex( std::get<0>(q) )
-			.setQueueCount( 1 )
-			.setPQueuePriorities( queuePriority )
-			;
-		createInfos.emplace_back( std::move( queueCreateInfo ) );
-	}
-
-	// !TODO: We must make sure that familyIndex is unique within createInfos structure
-	// which means, there *must* only be one entry per family.
-
-
 	// Check which features must be switched on for default openFrameworks operations.
 	// For now, we just make sure we can draw with lines.
 	//
@@ -320,34 +299,80 @@ void ofVkRenderer::createDevice()
 	vk::PhysicalDeviceFeatures deviceFeatures = mPhysicalDevice.getFeatures();
 	deviceFeatures
 	    .setFillModeNonSolid( VK_TRUE ) // allow wireframe drawing
-		;
+	    ;
 
-	vk::DeviceCreateInfo deviceCreateInfo;
-	deviceCreateInfo
-		.setQueueCreateInfoCount      ( createInfos.size() )
-		.setPQueueCreateInfos         ( createInfos.data() )
-		.setEnabledLayerCount         ( mDeviceLayers.size() )
-		.setPpEnabledLayerNames       ( mDeviceLayers.data() )
-		.setEnabledExtensionCount     ( mDeviceExtensions.size() )
-		.setPpEnabledExtensionNames   ( mDeviceExtensions.data() )
-		.setPEnabledFeatures          ( &deviceFeatures )
-		;
+	const auto & queueFamilyProperties = mPhysicalDevice.getQueueFamilyProperties();
 
-	// create device	
-	mDevice = mPhysicalDevice.createDevice( deviceCreateInfo );
+	std::vector<std::tuple<uint32_t, uint32_t, size_t>> queriedQueueFamilyAndIndex;
+	mVkGraphicsQueueFamilyIndex = findGraphicsQueueFamilyIndex( queueFamilyProperties );
+	queriedQueueFamilyAndIndex  = findBestMatchForRequestedQueues( queueFamilyProperties, mSettings.requestedQueues );
+
+	// Consolidate queues by queue family type - this will also sort by queue family type.
+	{
+		std::map<uint32_t, uint32_t> queueCountPerFamily; // queueFamily -> count
+
+		for (const auto & q : queriedQueueFamilyAndIndex){
+			// Attempt to insert family to map
+			auto insertResult = queueCountPerFamily.insert({std::get<0>(q),1});
+			if (false == insertResult.second){
+				// Increment count if family entry already existed in map.
+				insertResult.first->second ++;
+			}
+		}
+
+		// Create queues based on queriedQueueFamilyAndIndex
+		std::vector<::vk::DeviceQueueCreateInfo> createInfos;
+		createInfos.reserve( queriedQueueFamilyAndIndex.size() );
+
+		// We must store this in a map so that the pointer stays
+		// alive until we call the api.
+		std::map<uint32_t, std::vector<float>> prioritiesPerFamily;
+
+		for ( auto & q : queueCountPerFamily ){
+			vk::DeviceQueueCreateInfo queueCreateInfo;
+			const auto & queueFamily = q.first;
+			const auto & queueCount  = q.second;
+			prioritiesPerFamily[queueFamily].resize(queueCount, 1.f); // all queues have the same priority, 1.
+			queueCreateInfo
+			    .setQueueFamilyIndex( queueFamily )
+			    .setQueueCount( queueCount )
+			    .setPQueuePriorities( prioritiesPerFamily[queueFamily].data() )
+			    ;
+			createInfos.emplace_back( std::move( queueCreateInfo ) );
+		}
+
+		vk::DeviceCreateInfo deviceCreateInfo;
+		deviceCreateInfo
+		    .setQueueCreateInfoCount      ( createInfos.size() )
+		    .setPQueueCreateInfos         ( createInfos.data() )
+		    .setEnabledLayerCount         ( mDeviceLayers.size() )
+		    .setPpEnabledLayerNames       ( mDeviceLayers.data() )
+		    .setEnabledExtensionCount     ( mDeviceExtensions.size() )
+		    .setPpEnabledExtensionNames   ( mDeviceExtensions.data() )
+		    .setPEnabledFeatures          ( &deviceFeatures )
+		    ;
+
+		// create device
+		mDevice = mPhysicalDevice.createDevice( deviceCreateInfo );
+
+	}
 
 	ofLogNotice() << "Successfully created Vulkan device";
 
-	// store queues in queue vector, based on queriedQueueFamilyAndIndex
+	mQueues.resize(queriedQueueFamilyAndIndex.size());
+
+	// Fetch queue handle into mQueue, matching indices with the original queue request vector
 	for ( auto & q : queriedQueueFamilyAndIndex ){
-		// fetch queue handle into mQueue
-		mQueues.emplace_back( mDevice.getQueue( std::get<0>(q), std::get<1>(q) ) );
+		const auto & queueFamilyIndex    = std::get<0>(q);
+		const auto & queueIndex          = std::get<1>(q);
+		const auto & requestedQueueIndex = std::get<2>(q);
+		mQueues[requestedQueueIndex] = mDevice.getQueue( queueFamilyIndex, queueIndex ) ;
 	}
 	
-	// create mutexes to protect each queue
+	// Create mutexes to protect each queue
 	mQueueMutex = std::vector<mutex>( mQueues.size() );
 
-	// query possible depth formats, find the 
+	// Query possible depth formats, find the
 	// first format that supports attachment as a depth stencil 
 	//
 	// Since all depth formats may be optional, we need to find a suitable depth format to use
