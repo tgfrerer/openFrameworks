@@ -54,7 +54,7 @@ Module{
                 "openFrameworksCompiled",
             ];
         }else if(platform==="msys2"){
-            return [
+            var exceptions = [
                 "glew",
                 "cairo",
                 "freetype",
@@ -65,6 +65,10 @@ Module{
                 "glfw",
                 "openFrameworksCompiled"
             ];
+            if(Helpers.pkgExists("rtaudio")){
+                exceptions.push("rtAudio")
+            }
+            return exceptions;
         }else if(platform==="osx"){
             var exceptions = [
                 "openFrameworksCompiled",
@@ -107,15 +111,21 @@ Module{
                 "gtk+-3.0",
                 "libmpg123",
                 "glfw3",
-                "openssl",
-                "libcurl",
                 "liburiparser",
+                "libcurl",
             ].concat(pkgConfigs);
 
 
             if(Helpers.pkgExists("rtaudio")){
                 pkgs.push("rtaudio");
             }
+            if(Helpers.pkgExists("libmpg123")){
+                pkgs.push("libmpg123");
+            }
+            if(Helpers.pkgExists("gtk+-3.0")){
+                pkgs.push("gtk+-3.0")
+            }
+
             return pkgs;
         }else if(platform === "msys2"){
             var pkgs = [
@@ -139,7 +149,7 @@ Module{
 
     readonly property stringList ADDITIONAL_LIBS: {
         if(platform === "linux"  || platform === "linux64"){
-            return [
+            var libs = [
                 "glut",
                 "X11",
                 "Xrandr",
@@ -160,18 +170,15 @@ Module{
             if(!Helpers.pkgExists("rtaudio")){
                 libs.push("rtaudio");
             }
-        }else if(platform === "msys2"){
-            var libs = [
-                'opengl32', 'gdi32', 'msimg32', 'glu32', 'dsound', 'winmm', 'strmiids',
-                'uuid', 'ole32', 'oleaut32', 'setupapi', 'wsock32', 'ws2_32', 'Iphlpapi', 'Comdlg32',
-                'freeimage', 'boost_filesystem-mt', 'boost_system-mt', 'freetype', 'cairo','pthread'
-            ];
-
-            if(!Helpers.pkgExists("rtaudio")){
-                libs.push("rtaudio");
-            }
 
             return libs;
+        }else if(platform === "msys2"){
+            return [
+                'opengl32', 'gdi32', 'msimg32', 'glu32', 'winmm', 'strmiids',
+                'uuid', 'oleaut32', 'setupapi', 'wsock32', 'ws2_32', 'Iphlpapi', 'Comdlg32',
+                'freeimage', 'boost_filesystem-mt', 'boost_system-mt', 'freetype', 'pthread',
+                'ksuser', 'ole32', 'dsound',
+            ];
         }else if(platform === "android"){
             return [
                 'OpenSLES', 'z', 'GLESv1_CM', 'GLESv2', 'log'
@@ -232,16 +239,6 @@ Module{
             includes = includes.concat(vk_sdk_includes);
         }
         includes = includes.concat(PKG_CONFIG_INCLUDES);
-        if(platform === "msys2"){
-            includes.push(FileInfo.joinPaths(Helpers.msys2root(),'mingw32/include'));
-            includes.push(FileInfo.joinPaths(Helpers.msys2root(),'mingw32/include/cairo'));
-            includes.push(FileInfo.joinPaths(Helpers.msys2root(),'mingw32/include/glib-2.0'));
-            includes.push(FileInfo.joinPaths(Helpers.msys2root(),'mingw32/lib/glib-2.0/include'));
-            includes.push(FileInfo.joinPaths(Helpers.msys2root(),'mingw32/include/pixman-1'));
-            includes.push(FileInfo.joinPaths(Helpers.msys2root(),'mingw32/include/freetype2'));
-            includes.push(FileInfo.joinPaths(Helpers.msys2root(),'mingw32/include/harfbuzz'));
-            includes.push(FileInfo.joinPaths(Helpers.msys2root(),'mingw32/include/libpng16'));
-        }
 
         return includes;
     }
@@ -270,6 +267,7 @@ Module{
         }
         if(platform === "msys2"){
             ret.push("-L"+FileInfo.joinPaths(Helpers.msys2root(),"mingw32/lib"));
+            //ret.push("-fuse-ld=gold");
         }
         return ret;
     }
@@ -452,7 +450,12 @@ Module{
         var defines = ['GCC_HAS_REGEX'];
 
         if(qbs.targetOS.contains("linux")){
-            defines = defines.concat([ 'OF_USING_GTK', 'OF_USING_MPG123']);
+            if(Helpers.pkgExists("gtk+-3.0")){
+                defines.push("OF_USING_GTK")
+            }
+            if(Helpers.pkgExists("libmpg123")){
+                defines.push("OF_USING_MPG123");
+            }
         }
 
         if(qbs.targetOS.indexOf("windows")>-1){
