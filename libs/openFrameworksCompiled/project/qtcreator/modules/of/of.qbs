@@ -235,7 +235,7 @@ Module{
             }
         }
         if(qbs.targetOS.contains("linux")) {
-            var vk_sdk_includes = qbs.getEnv("VULKAN_SDK") + "/include";
+            var vk_sdk_includes = Helpers.Environment.getEnv("VULKAN_SDK") + "/include";
             includes = includes.concat(vk_sdk_includes);
         }
         includes = includes.concat(PKG_CONFIG_INCLUDES);
@@ -262,7 +262,7 @@ Module{
             }
         }
         if(qbs.targetOS.contains("linux")){
-        	var vk_sdk = qbs.getEnv("VULKAN_SDK");
+        	var vk_sdk = Helpers.Environment.getEnv("VULKAN_SDK");
         	ret.push("-L" + vk_sdk + "/lib");
         }
         if(platform === "msys2"){
