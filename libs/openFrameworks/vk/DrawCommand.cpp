@@ -18,7 +18,7 @@ using namespace of::vk;
 void DrawCommand::setup(const GraphicsPipelineState& pipelineState){
 	
 	
-	if ( false == pipelineState.getShader() ){
+	if ( false == pipelineState.getShader().get() ){
 		ofLogError() << "Cannot setup draw command without valid shader inside pipeline.";
 		return;
 	}

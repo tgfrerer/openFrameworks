@@ -86,11 +86,11 @@ struct DescriptorSetData_t
 	// Type of decriptor decides which values will be used.
 	struct DescriptorData_t
 	{
-		::vk::Sampler        sampler = 0;                                             // |
-		::vk::ImageView      imageView = 0;                                           // | > keep in this order, so we can pass address for sampler as descriptorImageInfo
+		::vk::Sampler        sampler;                                                 // |
+		::vk::ImageView      imageView;                                               // | > keep in this order, so we can pass address for sampler as descriptorImageInfo
 		::vk::ImageLayout    imageLayout = ::vk::ImageLayout::eShaderReadOnlyOptimal; // |
 		::vk::DescriptorType type = ::vk::DescriptorType::eUniformBufferDynamic;
-		::vk::Buffer         buffer = 0;                                              // |
+		::vk::Buffer         buffer;                                                  // |
 		::vk::DeviceSize     offset = 0;                                              // | > keep in this order, as we can cast this to a DescriptorBufferInfo
 		::vk::DeviceSize     range = 0;                                               // |
 		uint32_t             bindingNumber = 0; // <-- may be sparse, may repeat (for arrays of images bound to the same binding), but must increase be monotonically (may only repeat or up over the series inside the samplerBindings vector).

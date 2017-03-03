@@ -75,7 +75,7 @@ struct BufferRegion
 };
 
 // get memory allocation info for best matching memory type that matches any of the type bits and flags
-static bool getMemoryAllocationInfo(
+static inline bool getMemoryAllocationInfo(
 	const ::vk::MemoryRequirements& memReqs,
 	::vk::MemoryPropertyFlags memProps,
 	::vk::PhysicalDeviceMemoryProperties physicalMemProperties,

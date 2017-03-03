@@ -125,7 +125,7 @@ private: // these states must be received through context
 
 	// non-owning - note that renderpass may be inherited from a 
 	// primary command buffer.
-	mutable ::vk::RenderPass  mRenderPass         = 0;
+	mutable ::vk::RenderPass  mRenderPass;
 	mutable uint32_t          mSubpass            = 0;
 
 private:
@@ -181,7 +181,7 @@ public:
 /// \brief  Create a pipeline cache object
 /// \detail Optionally load from disk, if filepath given.
 /// \note  	Ownership: passed on.
-static std::shared_ptr<::vk::PipelineCache> createPipelineCache( const ::vk::Device& device, std::string filePath = "" ){
+static inline std::shared_ptr<::vk::PipelineCache> createPipelineCache( const ::vk::Device& device, std::string filePath = "" ){
 	::vk::PipelineCache cache;
 
 	ofBuffer cacheFileBuffer;

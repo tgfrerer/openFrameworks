@@ -27,7 +27,7 @@ Once virtual frame fence was reached, we can dispose of dynamic data.
 
 // ----------------------------------------------------------------------
 
-bool of::vk::TransferBatch::add( std::shared_ptr<BufferObject>& buffer ){
+bool TransferBatch::add( std::shared_ptr<BufferObject>& buffer ){
 
 	//// check if buffer can be added
 
@@ -53,7 +53,7 @@ bool of::vk::TransferBatch::add( std::shared_ptr<BufferObject>& buffer ){
 
 // ----------------------------------------------------------------------
 
-void of::vk::TransferBatch::submit(){
+void TransferBatch::submit(){
 
 	//if ( mBatch.empty() ){
 	//	return;
