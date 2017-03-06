@@ -414,7 +414,7 @@ void ofApp::draw(){
 
 	}
 
-	// this is a problem: submit happens after this, so the swap will 
+	// check if this is a problem: submit happens after this, so the swap will 
 	// shift the current frame before the frame has been recorded.
 
 	pingPong = ( pingPong + 1) % 2;

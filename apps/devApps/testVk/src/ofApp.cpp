@@ -73,7 +73,7 @@ void ofApp::draw(){
 	// only uses resources which are either global readonly static, 
 	// or resources which are temporarily allocated though the 
 	// context inside the context's thread, this is thread-safe. 
-	// 
+	 
 	of::vk::RenderBatch batch{ *context };
 
 	batch.begin();

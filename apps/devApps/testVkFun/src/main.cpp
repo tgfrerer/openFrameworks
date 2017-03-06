@@ -24,7 +24,7 @@ int main(){
 		settings.rendererSettings.setVkVersion( 1, 0, 42 );
 		settings.rendererSettings.numSwapchainImages = 3;
 		settings.rendererSettings.numVirtualFrames = 3;
-		settings.rendererSettings.presentMode = ::vk::PresentModeKHR::eFifo;
+		settings.rendererSettings.presentMode = ::vk::PresentModeKHR::eMailbox;
 		settings.rendererSettings.requestedQueues = {::vk::QueueFlagBits::eGraphics | ::vk::QueueFlagBits::eCompute, ::vk::QueueFlagBits::eGraphics};
 
 #ifdef NDEBUG
