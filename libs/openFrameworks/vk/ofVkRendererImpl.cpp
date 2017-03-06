@@ -232,7 +232,7 @@ void ofVkRenderer::setupDepthStencil(){
 		.setPDepthStencilAttachment ( &depthReference )
 		;
 
-	// Define 2 dependencies for subpass 0
+	// Define 2 self-dependencies for subpass 0
 
 	std::array<vk::SubpassDependency, 2> dependencies;
 	dependencies[0]
@@ -245,8 +245,8 @@ void ofVkRenderer::setupDepthStencil(){
 		.setDependencyFlags ( vk::DependencyFlagBits::eByRegion )
 		;
 	dependencies[1]
-		.setSrcSubpass      ( VK_SUBPASS_EXTERNAL ) // producer
-		.setDstSubpass      ( 0 )                   // consumer
+		.setSrcSubpass      ( 0 )                                     // producer (last possible subpass)
+		.setDstSubpass      ( VK_SUBPASS_EXTERNAL )                   // consumer
 		.setSrcStageMask    ( vk::PipelineStageFlagBits::eColorAttachmentOutput )
 		.setDstStageMask    ( vk::PipelineStageFlagBits::eBottomOfPipe )
 		.setSrcAccessMask   ( vk::AccessFlagBits::eColorAttachmentWrite )
