@@ -1,8 +1,8 @@
 #pragma once
 #include "vulkan/vulkan.hpp"
+#include "vk/HelperTypes.h"
 #include "vk/Shader.h"
 #include "vk/Pipeline.h"
-#include "vk/HelperTypes.h"
 #include "vk/Texture.h"
 #include "vk/Context.h"
 

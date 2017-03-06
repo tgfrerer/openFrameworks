@@ -1,13 +1,12 @@
 #pragma once
 
 #include <memory>
+#include <vulkan/vulkan.hpp>
 #include "ofLog.h"
-#include "vk/Shader.h"
-#include "vk/Pipeline.h"
 #include "vk/BufferAllocator.h"
 #include "vk/ImageAllocator.h"
 #include "vk/HelperTypes.h"
-#include "vk/ComputeCommand.h"
+
 /*
 
 A Context acts as an accumulator and owner for Renderbatches
