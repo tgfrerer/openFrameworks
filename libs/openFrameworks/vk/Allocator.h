@@ -18,6 +18,7 @@ public:
 		::vk::Device                         device     = nullptr;
 		::vk::DeviceSize                     size       = 0; // how much memory to reserve on hardware for this allocator
 		::vk::MemoryPropertyFlags            memFlags = ( ::vk::MemoryPropertyFlagBits::eHostVisible | ::vk::MemoryPropertyFlagBits::eHostCoherent );
+		std::vector<uint32_t>                queueFamilyIndices;
 	};
 
 

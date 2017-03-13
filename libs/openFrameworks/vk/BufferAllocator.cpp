@@ -27,6 +27,8 @@ void BufferAllocator::setup(){
 		.setSize( mSettings.size)
 		.setUsage( mSettings.bufferUsageFlags )
 		.setSharingMode( ::vk::SharingMode::eExclusive )
+		.setQueueFamilyIndexCount(mSettings.queueFamilyIndices.size())
+		.setPQueueFamilyIndices(mSettings.queueFamilyIndices.data())
 		;
 
 	// allocate physical memory from device

@@ -28,8 +28,8 @@ void ImageAllocator::setup(){
 			.setTiling( mSettings.imageTiling )
 			.setUsage( mSettings.imageUsageFlags )
 			.setSharingMode( ::vk::SharingMode::eExclusive )
-			.setQueueFamilyIndexCount( 0 )
-			.setPQueueFamilyIndices( nullptr )
+			.setQueueFamilyIndexCount( mSettings.queueFamilyIndices.size() )
+			.setPQueueFamilyIndices( mSettings.queueFamilyIndices.data() )
 			.setInitialLayout( ::vk::ImageLayout::eUndefined )
 			;
 
