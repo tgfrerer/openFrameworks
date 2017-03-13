@@ -257,9 +257,9 @@ vk::Result WsiSwapchain::queuePresent( ::vk::Queue queue, std::mutex & queueMute
 
 // ----------------------------------------------------------------------
 // return images vector
-const std::vector<ImageWithView>& WsiSwapchain::getImages() const{
-	return mImages;
-}
+//const std::vector<ImageWithView>& WsiSwapchain::getImages() const{
+//	return mImages;
+//}
 
 // ----------------------------------------------------------------------
 // return image by index

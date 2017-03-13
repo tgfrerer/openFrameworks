@@ -5,6 +5,9 @@
 namespace of{
 namespace vk{
 
+class ImageAllocator; //ffdecl
+class BufferAllocator; //ffdecl
+
 // ----------------------------------------------------------------------
 
 struct ImgSwapchainSettings : public SwapchainSettings
@@ -20,12 +23,25 @@ class ImgSwapchain : public Swapchain
 	const ImgSwapchainSettings mSettings;
 
 	const uint32_t      &mImageCount = mSettings.numSwapchainImages;
-	uint32_t             mImageIndex = 0;
+	uint32_t            mImageIndex = 0;
 
-	std::vector<::vk::DeviceMemory> mImageMemory; // TODO: this needs to go, use an image allocator
-	std::vector<ImageWithView> mImages;  // owning, clients may only borrow
+	std::unique_ptr<ImageAllocator , std::function<void( ImageAllocator*  )>> mImageAllocator;
+	std::unique_ptr<BufferAllocator, std::function<void( BufferAllocator* )>> mBufferAllocator;
 
-	std::vector<::vk::Fence> mImageTransferFence;
+	struct TransferFrame
+	{
+		ImageWithView image;
+		BufferRegion  bufferRegion;
+		void*         bufferReadAddress; // mapped address for host visible buffer memory
+		::vk::Fence   frameFence;
+	};
+
+	std::vector<TransferFrame> mTransferFrames;
+
+	//std::vector<::vk::DeviceMemory> mImageMemory; // TODO: this needs to go, use an image allocator
+	//std::vector<ImageWithView> mImages;  // owning, clients may only borrow
+	//std::vector<BufferRegion>  mBuffers;
+	//std::vector<::vk::Fence> mImageTransferFence;
 
 	RendererProperties      mRendererProperties;
 	const ::vk::Device      &mDevice = mRendererProperties.device;
@@ -53,7 +69,7 @@ public:
 	::vk::Result queuePresent( ::vk::Queue queue, std::mutex & queueMutex, const std::vector<::vk::Semaphore>& waitSemaphores_ ) override;
 
 	// return images vector
-	const std::vector<ImageWithView> & getImages() const override;
+	// const std::vector<ImageWithView> & getImages() const override;
 
 	// return image by index
 	const ImageWithView& getImage( size_t i ) const override;

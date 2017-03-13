@@ -3,9 +3,9 @@
 #include <memory>
 #include <vulkan/vulkan.hpp>
 #include "ofLog.h"
+#include "vk/HelperTypes.h"
 #include "vk/BufferAllocator.h"
 #include "vk/ImageAllocator.h"
-#include "vk/HelperTypes.h"
 
 /*
 

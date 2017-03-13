@@ -58,7 +58,7 @@ public:
 	virtual ::vk::Result queuePresent( ::vk::Queue queue, std::mutex & queueMutex,const std::vector<::vk::Semaphore>& waitSemaphores_ ) = 0;
 
 	// return images vector
-	virtual const std::vector<ImageWithView> & getImages() const = 0 ;
+	// virtual const std::vector<ImageWithView> & getImages() const = 0 ;
 	
 	// return image by index
 	virtual const ImageWithView& getImage( size_t i ) const = 0 ;
@@ -131,7 +131,7 @@ public:
 	::vk::Result queuePresent( ::vk::Queue queue, std::mutex & queueMutex, const std::vector<::vk::Semaphore>& waitSemaphores_ ) override;
 
 	// return images vector
-	const std::vector<ImageWithView> & getImages() const override;
+	//const std::vector<ImageWithView> & getImages() const override;
 
 	// return image by index
 	const ImageWithView& getImage( size_t i ) const override;
