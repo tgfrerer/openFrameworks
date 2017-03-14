@@ -130,9 +130,6 @@ public:
 	// Pass renderComplete Semaphores here, so present waits for rendering to be complete.
 	::vk::Result queuePresent( ::vk::Queue queue, std::mutex & queueMutex, const std::vector<::vk::Semaphore>& waitSemaphores_ ) override;
 
-	// return images vector
-	//const std::vector<ImageWithView> & getImages() const override;
-
 	// return image by index
 	const ImageWithView& getImage( size_t i ) const override;
 

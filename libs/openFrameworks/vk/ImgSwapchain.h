@@ -38,10 +38,6 @@ class ImgSwapchain : public Swapchain
 
 	std::vector<TransferFrame> mTransferFrames;
 
-	//std::vector<::vk::DeviceMemory> mImageMemory; // TODO: this needs to go, use an image allocator
-	//std::vector<ImageWithView> mImages;  // owning, clients may only borrow
-	//std::vector<BufferRegion>  mBuffers;
-	//std::vector<::vk::Fence> mImageTransferFence;
 
 	RendererProperties      mRendererProperties;
 	const ::vk::Device      &mDevice = mRendererProperties.device;
@@ -67,9 +63,6 @@ public:
 	// Present the current image to the queue
 	// Waits with execution until all waitSemaphores have been signalled
 	::vk::Result queuePresent( ::vk::Queue queue, std::mutex & queueMutex, const std::vector<::vk::Semaphore>& waitSemaphores_ ) override;
-
-	// return images vector
-	// const std::vector<ImageWithView> & getImages() const override;
 
 	// return image by index
 	const ImageWithView& getImage( size_t i ) const override;
