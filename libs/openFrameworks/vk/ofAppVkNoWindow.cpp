@@ -85,6 +85,7 @@ void ofAppVkNoWindow::setup(const ofVkWindowSettings & settings){
 		swapchainSettings.height = settings.height;
 		swapchainSettings.numSwapchainImages = settings.rendererSettings.numSwapchainImages;
 		swapchainSettings.path = "render/img_";
+		swapchainSettings.renderer = vkRenderer;
 		vkRenderer->setSwapchain( std::make_shared<of::vk::ImgSwapchain>( swapchainSettings ) );
 	}
 

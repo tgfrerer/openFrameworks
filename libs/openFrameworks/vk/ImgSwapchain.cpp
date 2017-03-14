@@ -1,6 +1,10 @@
 #include "vk/ImgSwapchain.h"
 #include "vk/ImageAllocator.h"
 #include "vk/BufferAllocator.h"
+#include "vk/ofVkRenderer.h"
+#include "ofImage.h"
+#include "ofPixels.h"
+
 
 using namespace of::vk;
 
@@ -18,7 +22,6 @@ void ImgSwapchain::setRendererProperties( const of::vk::RendererProperties & ren
 // ----------------------------------------------------------------------
 
 void ImgSwapchain::setup(){
-
 
 	// create image allocator
 
@@ -50,7 +53,7 @@ void ImgSwapchain::setup(){
 	bufferAllocatorSettings.device                         = mRendererProperties.device;
 	bufferAllocatorSettings.memFlags                       = ::vk::MemoryPropertyFlagBits::eHostCoherent | ::vk::MemoryPropertyFlagBits::eHostVisible;
 	bufferAllocatorSettings.size                           = mSettings.width * mSettings.height * 4 * mSettings.numSwapchainImages;
-	bufferAllocatorSettings.bufferUsageFlags               = ::vk::BufferUsageFlagBits::eTransferDst;
+	bufferAllocatorSettings.bufferUsageFlags               = ::vk::BufferUsageFlagBits::eTransferDst | ::vk::BufferUsageFlagBits::eTransferSrc;
 
 	mBufferAllocator = decltype( mBufferAllocator )( new BufferAllocator( bufferAllocatorSettings ), [](BufferAllocator * lhs){
 		delete lhs;
@@ -58,6 +61,16 @@ void ImgSwapchain::setup(){
 	} );
 
 	mBufferAllocator->setup();
+
+	// Create command pool for internal command buffers.
+	{
+		::vk::CommandPoolCreateInfo createInfo;
+		createInfo
+			.setFlags( ::vk::CommandPoolCreateFlagBits::eResetCommandBuffer )
+			.setQueueFamilyIndex( mRendererProperties.graphicsFamilyIndex ) //< Todo: make sure this has been set properly when renderer/queues were set up.
+			;
+		mCommandPool = mDevice.createCommandPool( createInfo );
+	}
 
 	// Create transfer frames.
 	mTransferFrames.resize( mImageCount );
@@ -75,8 +88,8 @@ void ImgSwapchain::setup(){
 			.setTiling( ::vk::ImageTiling::eOptimal )
 			.setUsage( ::vk::ImageUsageFlagBits::eColorAttachment | ::vk::ImageUsageFlagBits::eTransferSrc )
 			.setSharingMode( ::vk::SharingMode::eExclusive )
-			.setQueueFamilyIndexCount( 0 )
-			.setPQueueFamilyIndices( nullptr )
+			.setQueueFamilyIndexCount( 1 )
+			.setPQueueFamilyIndices( &mRendererProperties.graphicsFamilyIndex )
 			.setInitialLayout( ::vk::ImageLayout::eUndefined )
 			;
 
@@ -114,7 +127,7 @@ void ImgSwapchain::setup(){
 			mBufferAllocator->allocate( mSettings.width * mSettings.height * 4, offset );
 			mTransferFrames[i].bufferRegion.buffer = mBufferAllocator->getBuffer();
 			mTransferFrames[i].bufferRegion.offset = offset;
-			mTransferFrames[i].bufferRegion.range = mSettings.width * mSettings.height * 4;
+			mTransferFrames[i].bufferRegion.range  = mSettings.width * mSettings.height * 4;
 			
 			// map the host-visible ram address for the buffer to the current frame
 			// so information can be read back.
@@ -122,16 +135,106 @@ void ImgSwapchain::setup(){
 			// we swap the allocator since we use one frame per id
 			// and swap tells the allocator to go to the next virtual frame
 			mBufferAllocator->swap(); 
-			
 		}
 
 		mTransferFrames[i].frameFence = mDevice.createFence( { ::vk::FenceCreateFlagBits::eSignaled } );
+
 	}
 
-	// Todo: allocate host-visible memory / buffer which we can use for image readback.
-	// this buffer will be 
+	{
+		::vk::CommandBufferAllocateInfo allocateInfo;
+		allocateInfo
+			.setCommandPool( mCommandPool )
+			.setLevel( ::vk::CommandBufferLevel::ePrimary)
+			.setCommandBufferCount( mTransferFrames.size() * 2 )
+			;
 
-	// pre-set imageIndex so it will start at 0 with first increment.
+		auto cmdBuffers = mDevice.allocateCommandBuffers( allocateInfo );
+		
+		// Todo: fill in commands.
+
+		for ( size_t i = 0; i != mTransferFrames.size(); ++i ){
+			mTransferFrames[i].cmdAcquire = cmdBuffers[i*2];
+			mTransferFrames[i].cmdPresent = cmdBuffers[i*2+1];
+		}
+	}
+
+	for (size_t i = 0; i!=mTransferFrames.size(); ++i ){
+		{
+			::vk::CommandBuffer & cmd = mTransferFrames[i].cmdPresent;
+		// This command buffer must live inside a frame-protected context and must live until the fence is reached.
+		// Should we use a Context?
+
+			cmd.begin( { ::vk::CommandBufferUsageFlags() } );
+
+			::vk::ImageMemoryBarrier imgMemBarrier;
+			imgMemBarrier
+				.setSrcAccessMask( ::vk::AccessFlagBits::eMemoryRead )
+				.setDstAccessMask( ::vk::AccessFlagBits::eTransferRead )
+				.setOldLayout( ::vk::ImageLayout::ePresentSrcKHR )
+				.setNewLayout( ::vk::ImageLayout::eTransferSrcOptimal )
+				.setSrcQueueFamilyIndex( 0 )  // < TODO: queue ownership: graphics -> transfer
+				.setDstQueueFamilyIndex( 0 )	// < TODO: queue ownership: graphics -> transfer
+				.setImage( mTransferFrames[i].image.imageRef )
+				.setSubresourceRange( { ::vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1 } )
+				;
+
+			cmd.pipelineBarrier( ::vk::PipelineStageFlagBits::eAllCommands, ::vk::PipelineStageFlagBits::eTransfer, ::vk::DependencyFlags(), {}, {}, { imgMemBarrier } );
+
+			::vk::ImageSubresourceLayers imgSubResource;
+			imgSubResource
+				.setAspectMask( ::vk::ImageAspectFlagBits::eColor )
+				.setMipLevel( 0 )
+				.setBaseArrayLayer( 0 )
+				.setLayerCount( 1 )
+				;
+
+			::vk::BufferImageCopy imgCopy;
+			imgCopy
+				.setBufferOffset( mTransferFrames[i].bufferRegion.offset )
+				.setBufferRowLength( mSettings.width )
+				.setBufferImageHeight( mSettings.height )
+				.setImageSubresource( imgSubResource )
+				.setImageOffset( { 0 } )
+				.setImageExtent( { mSettings.width, mSettings.height, 1 } )
+				;
+
+			// image must be transferred to a buffer - we can then read from this buffer.
+			cmd.copyImageToBuffer( mTransferFrames[i].image.imageRef, ::vk::ImageLayout::eTransferSrcOptimal, mTransferFrames[i].bufferRegion.buffer, { imgCopy } );
+			cmd.end();
+		}
+
+		{	
+			// move ownership of image back from transfer -> graphics
+
+			::vk::CommandBuffer & cmd = mTransferFrames[i].cmdAcquire;
+
+			cmd.begin( {::vk::CommandBufferUsageFlags()} );
+
+			::vk::ImageMemoryBarrier imgMemBarrier;
+			imgMemBarrier
+				.setSrcAccessMask( ::vk::AccessFlagBits::eTransferWrite )
+				.setDstAccessMask( ::vk::AccessFlagBits::eColorAttachmentWrite )
+				.setOldLayout( ::vk::ImageLayout::eUndefined )
+				.setNewLayout( ::vk::ImageLayout::eColorAttachmentOptimal )
+				.setSrcQueueFamilyIndex(0)  // < TODO: queue ownership: transfer -> graphics
+				.setDstQueueFamilyIndex(0)	 // < TODO: queue ownership: transfer -> graphics
+				.setImage( mTransferFrames[i].image.imageRef )
+				.setSubresourceRange( { ::vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1 } )
+				;
+
+			cmd.pipelineBarrier( ::vk::PipelineStageFlagBits::eAllCommands, ::vk::PipelineStageFlagBits::eTransfer, ::vk::DependencyFlags(), {}, {}, { imgMemBarrier } );
+			
+			cmd.end();
+
+		}
+		// TODO: Fill in actions for command buffer on Acquire:
+		// transferring the image back to 
+
+	}
+	
+
+	// Pre-set imageIndex so it will start at 0 with first increment.
 	mImageIndex = mImageCount - 1;
 
 }
@@ -149,6 +252,8 @@ ImgSwapchain::~ImgSwapchain(){
 			mDevice.destroyFence( f.frameFence );
 		}
 	}
+
+	mDevice.destroyCommandPool( mCommandPool );
 
 	mTransferFrames.clear();
 
@@ -175,9 +280,38 @@ ImgSwapchain::~ImgSwapchain(){
 		ofLogError() << "ImgSwapchain: Waiting for fence takes too long: " << ::vk::to_string( fenceWaitResult );
 	}
 
-	// Invariant: we can assume the image has been transferred, unless it was the very first image,
-
 	mDevice.resetFences( { mTransferFrames[imageIndex].frameFence } );
+	
+	mImageIndex = imageIndex;
+
+
+	static ofPixels    mPixels;
+
+	if ( !mPixels.isAllocated() ){
+		mPixels.allocate( mSettings.width, mSettings.height, ofImageType::OF_IMAGE_COLOR_ALPHA );
+		ofLogNotice() << "Image Swapchain: Allocating pixels.";
+	}
+
+	// static std::vector<uint8_t> rawPixels( mSettings.width * mSettings.height * 4, 0 );
+	memcpy( mPixels.getData(), mTransferFrames[imageIndex].bufferReadAddress, mPixels.size());
+
+	std::array<char, 15> numStr;
+	sprintf( numStr.data(), "%08zd.png", mImageCounter );
+	std::string filename( numStr.data(), numStr.size() );
+
+	ofSaveImage( mPixels, ( mSettings.path + filename ), ofImageQualityType::OF_IMAGE_QUALITY_BEST );
+
+	++mImageCounter;
+
+	/*
+	
+	Invariant: we can assume the image has been transferred into the mapped buffer.
+
+	Now we must write the memory from the mapped buffer to the hard drive.
+	
+	
+	*/
+
 
 	/*
 	
@@ -193,6 +327,23 @@ ImgSwapchain::~ImgSwapchain(){
 	
 	*/
 
+	// The number of array elements must correspond to the number of wait semaphores, as each 
+	// mask specifies what the semaphore is waiting for.
+	std::array<::vk::PipelineStageFlags, 1> wait_dst_stage_mask = { ::vk::PipelineStageFlagBits::eTransfer };
+
+	::vk::SubmitInfo submitInfo;
+	submitInfo
+		.setWaitSemaphoreCount( 0 )
+		.setPWaitSemaphores( nullptr )
+		.setPWaitDstStageMask( nullptr )
+		.setCommandBufferCount( 1 )
+		.setPCommandBuffers( &mTransferFrames[imageIndex].cmdAcquire )
+		.setSignalSemaphoreCount( 1 )
+		.setPSignalSemaphores( &presentCompleteSemaphore )
+		;
+
+	// !TODO: instead of submitting to queue 0, this needs to go to the transfer queue.
+	mSettings.renderer->submit( 0, { submitInfo }, nullptr );
 
 	return ::vk::Result();
 }
@@ -209,59 +360,8 @@ ImgSwapchain::~ImgSwapchain(){
 	We use the transfer fence to make sure that the command buffer has finished executing. 
 
 	Once that's done, we issue another command buffer which will transfer the image back to its preferred layout.
-	
-	-
-	TODO: 
-	
-	+ create transfer command buffers
-	+ execute transfer command buffers on transfer queue
-	+ make sure that ownership of the image is transferred between command buffers.
 
 	*/
-
-	::vk::CommandBuffer cmd;
-	{
-		// This command buffer must live inside a frame-protected context and must live until the fence is reached.
-		// Should we use a Context?
-
-		::vk::ImageMemoryBarrier imgMemBarrier;
-		imgMemBarrier
-			.setSrcAccessMask( ::vk::AccessFlagBits::eMemoryRead )
-			.setDstAccessMask( ::vk::AccessFlagBits::eTransferRead )
-			.setOldLayout( ::vk::ImageLayout::ePresentSrcKHR )
-			.setNewLayout( ::vk::ImageLayout::eTransferSrcOptimal )
-			.setSrcQueueFamilyIndex( mRendererProperties.graphicsFamilyIndex )  // < queue ownership: graphics -> transfer
-			.setDstQueueFamilyIndex( mRendererProperties.transferFamilyIndex )	// < queue ownership: graphics -> transfer
-			.setImage( mTransferFrames[mImageIndex].image.imageRef )
-			.setSubresourceRange( { ::vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1 } )
-			;
-
-		// image must be translated from tiling_optimal to tiling_linear
-		cmd.pipelineBarrier( ::vk::PipelineStageFlagBits::eAllCommands, ::vk::PipelineStageFlagBits::eTransfer, ::vk::DependencyFlags(), {}, {}, { imgMemBarrier } );
-
-		::vk::ImageSubresourceLayers imgSubResource;
-		imgSubResource
-			.setAspectMask( ::vk::ImageAspectFlagBits::eColor )
-			.setMipLevel( 0 )
-			.setBaseArrayLayer( 0 )
-			.setLayerCount( 1 )
-			;
-
-		::vk::BufferImageCopy imgCopy;
-		imgCopy
-			.setBufferOffset( mTransferFrames[mImageIndex].bufferRegion.offset )
-			.setBufferRowLength( mSettings.width )
-			.setBufferImageHeight( mSettings.height )
-			.setImageSubresource( imgSubResource )
-			.setImageOffset( { 0 } )
-			.setImageExtent( {mSettings.width, mSettings.height, 1} )
-			;
-
-		// image must be transferred to a buffer - we can then read from this buffer.
-		cmd.copyImageToBuffer( mTransferFrames[mImageIndex].image.imageRef, ::vk::ImageLayout::eTransferSrcOptimal, mTransferFrames[mImageIndex].bufferRegion.buffer, {imgCopy});
-
-	}
-
 
 	::vk::PipelineStageFlags wait_dst_stage_mask = ::vk::PipelineStageFlagBits::eColorAttachmentOutput;
 
@@ -270,8 +370,8 @@ ImgSwapchain::~ImgSwapchain(){
 		.setWaitSemaphoreCount( waitSemaphores_.size() )
 		.setPWaitSemaphores( waitSemaphores_.data())      // these are the renderComplete semaphores
 		.setPWaitDstStageMask( &wait_dst_stage_mask )
-		.setCommandBufferCount( 0 )           // TODO: set transfer command buffer here.
-		.setPCommandBuffers( nullptr )		  // TODO: set transfer command buffer here.
+		.setCommandBufferCount( 1 )           // TODO: set transfer command buffer here.
+		.setPCommandBuffers( &mTransferFrames[mImageIndex].cmdPresent )		  // TODO: set transfer command buffer here.
 		.setSignalSemaphoreCount( 0 )
 		.setPSignalSemaphores( nullptr ) // once this has been reached, the semaphore for present complete will signal.
 		;
@@ -285,12 +385,6 @@ ImgSwapchain::~ImgSwapchain(){
 
 	return ::vk::Result();
 }
-
-// ----------------------------------------------------------------------
-
-// const std::vector<ImageWithView>& ImgSwapchain::getImages() const{
-//	return mImages;
-//}
 
 // ----------------------------------------------------------------------
 

@@ -2,6 +2,8 @@
 
 #include "vk/Swapchain.h"
 
+class ofVkRenderer; //ffdecl
+
 namespace of{
 namespace vk{
 
@@ -12,8 +14,9 @@ class BufferAllocator; //ffdecl
 
 struct ImgSwapchainSettings : public SwapchainSettings
 {
-	std::string path = "img_";
-	::vk::Format colorFormat = ::vk::Format::eR8G8B8A8Unorm;
+	std::string                   path        = "render/img_";
+	::vk::Format                  colorFormat = ::vk::Format::eR8G8B8A8Unorm;
+	std::shared_ptr<ofVkRenderer> renderer;
 };
 
 // ----------------------------------------------------------------------
@@ -30,19 +33,24 @@ class ImgSwapchain : public Swapchain
 
 	struct TransferFrame
 	{
-		ImageWithView image;
-		BufferRegion  bufferRegion;
-		void*         bufferReadAddress; // mapped address for host visible buffer memory
-		::vk::Fence   frameFence;
+		ImageWithView       image;
+		BufferRegion        bufferRegion;
+		void*               bufferReadAddress; // mapped address for host visible buffer memory
+		::vk::Fence         frameFence;
+		::vk::CommandBuffer cmdPresent;
+		::vk::CommandBuffer cmdAcquire;
 	};
 
-	std::vector<TransferFrame> mTransferFrames;
+	::vk::CommandPool mCommandPool; //< command pool for local command buffers
 
+	std::vector<TransferFrame> mTransferFrames;
 
 	RendererProperties      mRendererProperties;
 	const ::vk::Device      &mDevice = mRendererProperties.device;
 
 	::vk::Queue	mTransferQueue = nullptr;
+
+	size_t mImageCounter = 0; // running image count
 
 public:
 
