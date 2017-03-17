@@ -45,9 +45,12 @@ struct RendererProperties
 	::vk::PhysicalDevice                 physicalDevice                 = nullptr;  // actual GPU
 	::vk::PhysicalDeviceProperties       physicalDeviceProperties       = {};
 	::vk::PhysicalDeviceMemoryProperties physicalDeviceMemoryProperties = {};
+	std::vector<::vk::QueueFlags>        queueFlags;                    // << Flags used for requested queue n
+	std::vector<uint32_t>                queueFamilyIndices;            // << Queue family index for requested queue n
 	uint32_t                             graphicsFamilyIndex            = ~( uint32_t( 0 ) );
-	uint32_t                             transferFamilyIndex            = ~( uint32_t( 0 ) ); //!TODO: set when creating queues
-	uint32_t                             computeFamilyIndex             = ~( uint32_t( 0 ) ); //!TODO: set when creating queues
+	uint32_t                             transferFamilyIndex            = ~( uint32_t( 0 ) );
+	uint32_t                             computeFamilyIndex             = ~( uint32_t( 0 ) );
+	uint32_t                             sparseBindingFamilyIndex       = ~( uint32_t( 0 ) );
 };
 
 struct TransferSrcData

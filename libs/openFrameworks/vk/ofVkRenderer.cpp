@@ -144,18 +144,31 @@ void ofVkRenderer::destroyInstance()
 	mInstance.destroy();
 }
 
-uint32_t findGraphicsQueueFamilyIndex( const std::vector<vk::QueueFamilyProperties>& props ){
+// ----------------------------------------------------------------------
 
-		for ( uint32_t familyIndex = 0; familyIndex != props.size(); familyIndex++ ){
-			if ( props[familyIndex].queueFlags & ::vk::QueueFlagBits::eGraphics ){
-				// first match
-				return familyIndex;
-			}
+uint32_t findQueueFamilyIndex( const std::vector<vk::QueueFamilyProperties>& props, const ::vk::QueueFlags & flags ){
+
+	// Find out the queue family index for a queue best matching the given flags.
+	// We use this to find out the index of the Graphics Queue for example.
+
+	for ( uint32_t familyIndex = 0; familyIndex != props.size(); familyIndex++ ){
+		if ( props[familyIndex].queueFlags == flags ){
+			// First perfect match
+			return familyIndex;
 		}
+	}
 
-		ofLogError() << "VkRenderer: Could not find graphics queue supporting graphics. Quitting.";
-		ofExit( -1 );
+	for ( uint32_t familyIndex = 0; familyIndex != props.size(); familyIndex++ ){
+		if ( props[familyIndex].queueFlags & flags ){
+			// First multi-function queue match
+			return familyIndex;
+		}
+	}
 
+	// ---------| invariant: no queue found
+
+	ofLogWarning() << "VkRenderer: Could not find queue family index matching: " << ::vk::to_string( flags );
+	
 	return ~( uint32_t( 0 ) );
 }
 
@@ -163,9 +176,10 @@ uint32_t findGraphicsQueueFamilyIndex( const std::vector<vk::QueueFamilyProperti
 // ----------------------------------------------------------------------
 /// \brief find best match for a vector or queues defined by queueFamiliyProperties flags
 /// \note  For each entry in the result vector the tuple values represent:
-///        <0> best matching queue family
-///        <1> index within queue family
-///        <2> index of queue from props vector (used to keep queue indices consistent between requested queues and queues you will render to)
+///        0.. best matching queue family
+///        1.. index within queue family
+///        2.. index of queue from props vector (used to keep queue indices 
+//             consistent between requested queues and queues you will render to)
 std::vector<std::tuple<uint32_t, uint32_t, size_t>> findBestMatchForRequestedQueues( const std::vector<vk::QueueFamilyProperties>& props, const std::vector<::vk::QueueFlags>& reqProps ){
 	std::vector<std::tuple<uint32_t, uint32_t, size_t>> result;
 
@@ -301,11 +315,19 @@ void ofVkRenderer::createDevice()
 	    .setFillModeNonSolid( VK_TRUE ) // allow wireframe drawing
 	    ;
 
+	
 	const auto & queueFamilyProperties = mPhysicalDevice.getQueueFamilyProperties();
 
-	std::vector<std::tuple<uint32_t, uint32_t, size_t>> queriedQueueFamilyAndIndex;
-	mVkGraphicsQueueFamilyIndex = findGraphicsQueueFamilyIndex( queueFamilyProperties );
-	queriedQueueFamilyAndIndex  = findBestMatchForRequestedQueues( queueFamilyProperties, mSettings.requestedQueues );
+	// Find out family index for graphics queue
+	mRendererProperties.graphicsFamilyIndex      = findQueueFamilyIndex( queueFamilyProperties, ::vk::QueueFlagBits::eGraphics );
+	mRendererProperties.computeFamilyIndex       = findQueueFamilyIndex( queueFamilyProperties, ::vk::QueueFlagBits::eCompute );
+	mRendererProperties.transferFamilyIndex      = findQueueFamilyIndex( queueFamilyProperties, ::vk::QueueFlagBits::eTransfer );
+	mRendererProperties.sparseBindingFamilyIndex = findQueueFamilyIndex( queueFamilyProperties, ::vk::QueueFlagBits::eSparseBinding );
+
+	// See findBestMatchForRequestedQueues for how this tuple is laid out.
+	auto queriedQueueFamilyAndIndex  = findBestMatchForRequestedQueues( queueFamilyProperties, mSettings.requestedQueues );
+	
+	
 
 	// Consolidate queues by queue family type - this will also sort by queue family type.
 	{
@@ -359,6 +381,12 @@ void ofVkRenderer::createDevice()
 
 	ofLogNotice() << "Successfully created Vulkan device";
 
+
+	// Store queue flags, and queue family index per queue into renderer properties, 
+	// so that queue capabilities and family index may be queried thereafter.
+	mRendererProperties.queueFlags = mSettings.requestedQueues;
+	mRendererProperties.queueFamilyIndices.resize( mSettings.requestedQueues.size() );
+
 	mQueues.resize(queriedQueueFamilyAndIndex.size());
 
 	// Fetch queue handle into mQueue, matching indices with the original queue request vector
@@ -366,7 +394,8 @@ void ofVkRenderer::createDevice()
 		const auto & queueFamilyIndex    = std::get<0>(q);
 		const auto & queueIndex          = std::get<1>(q);
 		const auto & requestedQueueIndex = std::get<2>(q);
-		mQueues[requestedQueueIndex] = mDevice.getQueue( queueFamilyIndex, queueIndex ) ;
+		mQueues[requestedQueueIndex] = mDevice.getQueue( queueFamilyIndex, queueIndex );
+		mRendererProperties.queueFamilyIndices[requestedQueueIndex] = queueFamilyIndex;
 	}
 	
 	// Create mutexes to protect each queue
