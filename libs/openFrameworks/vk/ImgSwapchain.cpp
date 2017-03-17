@@ -51,7 +51,7 @@ void ImgSwapchain::setup(){
 	bufferAllocatorSettings.physicalDeviceProperties       = mRendererProperties.physicalDeviceProperties;
 	bufferAllocatorSettings.frameCount                     = mSettings.numSwapchainImages;
 	bufferAllocatorSettings.device                         = mRendererProperties.device;
-	bufferAllocatorSettings.memFlags                       = ::vk::MemoryPropertyFlagBits::eHostCoherent | ::vk::MemoryPropertyFlagBits::eHostVisible;
+	bufferAllocatorSettings.memFlags                       = ::vk::MemoryPropertyFlagBits::eHostVisible | ::vk::MemoryPropertyFlagBits::eHostCoherent;
 	bufferAllocatorSettings.size                           = mSettings.width * mSettings.height * 4 * mSettings.numSwapchainImages;
 	bufferAllocatorSettings.bufferUsageFlags               = ::vk::BufferUsageFlagBits::eTransferDst | ::vk::BufferUsageFlagBits::eTransferSrc;
 
@@ -161,9 +161,8 @@ void ImgSwapchain::setup(){
 
 	for (size_t i = 0; i!=mTransferFrames.size(); ++i ){
 		{
+			// copy == transfer image to buffer memory
 			::vk::CommandBuffer & cmd = mTransferFrames[i].cmdPresent;
-		// This command buffer must live inside a frame-protected context and must live until the fence is reached.
-		// Should we use a Context?
 
 			cmd.begin( { ::vk::CommandBufferUsageFlags() } );
 
@@ -173,8 +172,8 @@ void ImgSwapchain::setup(){
 				.setDstAccessMask( ::vk::AccessFlagBits::eTransferRead )
 				.setOldLayout( ::vk::ImageLayout::ePresentSrcKHR )
 				.setNewLayout( ::vk::ImageLayout::eTransferSrcOptimal )
-				.setSrcQueueFamilyIndex( 0 )  // < TODO: queue ownership: graphics -> transfer
-				.setDstQueueFamilyIndex( 0 )	// < TODO: queue ownership: graphics -> transfer
+				.setSrcQueueFamilyIndex( mRendererProperties.graphicsFamilyIndex )  // < TODO: queue ownership: graphics -> transfer
+				.setDstQueueFamilyIndex( mRendererProperties.graphicsFamilyIndex )	// < TODO: queue ownership: graphics -> transfer
 				.setImage( mTransferFrames[i].image.imageRef )
 				.setSubresourceRange( { ::vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1 } )
 				;
@@ -205,7 +204,8 @@ void ImgSwapchain::setup(){
 		}
 
 		{	
-			// move ownership of image back from transfer -> graphics
+			// Move ownership of image back from transfer -> graphics
+			// Change image layout back to colorattachment
 
 			::vk::CommandBuffer & cmd = mTransferFrames[i].cmdAcquire;
 
@@ -213,12 +213,12 @@ void ImgSwapchain::setup(){
 
 			::vk::ImageMemoryBarrier imgMemBarrier;
 			imgMemBarrier
-				.setSrcAccessMask( ::vk::AccessFlagBits::eTransferWrite )
+				.setSrcAccessMask( ::vk::AccessFlagBits::eTransferRead )
 				.setDstAccessMask( ::vk::AccessFlagBits::eColorAttachmentWrite )
 				.setOldLayout( ::vk::ImageLayout::eUndefined )
 				.setNewLayout( ::vk::ImageLayout::eColorAttachmentOptimal )
-				.setSrcQueueFamilyIndex(0)  // < TODO: queue ownership: transfer -> graphics
-				.setDstQueueFamilyIndex(0)	 // < TODO: queue ownership: transfer -> graphics
+				.setSrcQueueFamilyIndex( mRendererProperties.graphicsFamilyIndex )  // < TODO: queue ownership: transfer -> graphics
+				.setDstQueueFamilyIndex( mRendererProperties.graphicsFamilyIndex )	 // < TODO: queue ownership: transfer -> graphics
 				.setImage( mTransferFrames[i].image.imageRef )
 				.setSubresourceRange( { ::vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1 } )
 				;
@@ -228,8 +228,6 @@ void ImgSwapchain::setup(){
 			cmd.end();
 
 		}
-		// TODO: Fill in actions for command buffer on Acquire:
-		// transferring the image back to 
 
 	}
 	
@@ -287,45 +285,32 @@ ImgSwapchain::~ImgSwapchain(){
 
 	static ofPixels    mPixels;
 
-	if ( !mPixels.isAllocated() ){
-		mPixels.allocate( mSettings.width, mSettings.height, ofImageType::OF_IMAGE_COLOR_ALPHA );
-		ofLogNotice() << "Image Swapchain: Allocating pixels.";
+	if ( false ){
+		// memcpy into pixels object
+		if ( !mPixels.isAllocated() ){
+			mPixels.allocate( mSettings.width, mSettings.height, ofImageType::OF_IMAGE_COLOR_ALPHA );
+			ofLogNotice() << "Image Swapchain: Allocating pixels.";
+		}
+		memcpy( mPixels.getData(), mTransferFrames[imageIndex].bufferReadAddress, mPixels.size() );
+	} else {
+		// Directly use ofPixels object to wrap memory
+		mPixels.setFromExternalPixels( reinterpret_cast<unsigned char*>( mTransferFrames[imageIndex].bufferReadAddress ),
+			size_t( mSettings.width ), size_t( mSettings.height ), ofPixelFormat::OF_PIXELS_RGBA );
 	}
 
-	// static std::vector<uint8_t> rawPixels( mSettings.width * mSettings.height * 4, 0 );
-	memcpy( mPixels.getData(), mTransferFrames[imageIndex].bufferReadAddress, mPixels.size());
+	// we could use an event here to synchronise host <-> device, meaning 
+	// a command buffer on the device would wait execution until the event signalling that the
+	// copy operation has completed was signalled by the host.
 
 	std::array<char, 15> numStr;
 	sprintf( numStr.data(), "%08zd.png", mImageCounter );
 	std::string filename( numStr.data(), numStr.size() );
 
+	// Invariant: we can assume the image has been transferred into the mapped buffer.
+	// Now we must write the memory from the mapped buffer to the hard drive.
 	ofSaveImage( mPixels, ( mSettings.path + filename ), ofImageQualityType::OF_IMAGE_QUALITY_BEST );
 
 	++mImageCounter;
-
-	/*
-	
-	Invariant: we can assume the image has been transferred into the mapped buffer.
-
-	Now we must write the memory from the mapped buffer to the hard drive.
-	
-	
-	*/
-
-
-	/*
-	
-	TODO:
-
-	The fence signal shows us that the image has been transferred to the buffer, in host-readable memory.
-
-	We now must save the buffer to disk.
-
-	We now must transfer the image to ram. This is done via mapping operations, and memcpy.
-	once this is done, we must transfer the image back to ::vk::ImageLayout::eColorWriteOptimal
-	and signal the semaphore for presentComplete. 
-	
-	*/
 
 	// The number of array elements must correspond to the number of wait semaphores, as each 
 	// mask specifies what the semaphore is waiting for.
@@ -370,7 +355,7 @@ ImgSwapchain::~ImgSwapchain(){
 		.setWaitSemaphoreCount( waitSemaphores_.size() )
 		.setPWaitSemaphores( waitSemaphores_.data())      // these are the renderComplete semaphores
 		.setPWaitDstStageMask( &wait_dst_stage_mask )
-		.setCommandBufferCount( 1 )           // TODO: set transfer command buffer here.
+		.setCommandBufferCount( 1 )                                           // TODO: set transfer command buffer here.
 		.setPCommandBuffers( &mTransferFrames[mImageIndex].cmdPresent )		  // TODO: set transfer command buffer here.
 		.setSignalSemaphoreCount( 0 )
 		.setPSignalSemaphores( nullptr ) // once this has been reached, the semaphore for present complete will signal.
