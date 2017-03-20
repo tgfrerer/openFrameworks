@@ -187,11 +187,11 @@ struct UniformId_t
 		uint64_t id = 0;
 		struct
 		{
-			uint64_t setIndex : 3; // 0 ..             7 (maxBoundDescriptorSets is 8)
-			uint64_t descriptorIndex : 14; // 0 ..        16'383 (index into DescriptorData_t::descriptors, per set)
-			uint64_t dataOffset : 16; // 0 ..        65'536 (offset within range for ubo members, will always be smaller or equal range)
-			uint64_t dataRange : 16; // 0 ..        65'536 (max number of bytes per ubo)
-			uint64_t auxDataIndex : 15; // 0 ..        32'767 (index into helper data vectors per descriptor type per set)
+			uint64_t setIndex        :  3;    // 0 ..      7 (maxBoundDescriptorSets is 8)
+			uint64_t descriptorIndex : 14;    // 0 .. 16'383 (index into DescriptorData_t::descriptors, per set)
+			uint64_t dataOffset      : 16;    // 0 .. 65'536 (offset within range for ubo members, will always be smaller or equal range)
+			uint64_t dataRange       : 16;    // 0 .. 65'536 (max number of bytes per ubo)
+			uint64_t auxDataIndex    : 15;    // 0 .. 32'767 (index into helper data vectors per descriptor type per set)
 		};
 	};
 

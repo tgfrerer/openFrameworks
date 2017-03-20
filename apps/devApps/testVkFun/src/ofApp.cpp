@@ -1,7 +1,7 @@
 #include "ofApp.h"
 
 #define EXAMPLE_TARGET_FRAME_RATE 60
-bool isFrameLocked = true;
+bool isFrameLocked = false;
 
 std::shared_ptr<ofVkRenderer> renderer = nullptr;
 
@@ -22,6 +22,7 @@ void ofApp::setup(){
 
 		//!TODO: create a generator method to provide us with default settings 
 		// based on the current renderer.
+
 		of::vk::Context::Settings settings;
 
 		settings.transientMemoryAllocatorSettings.device = renderer->getVkDevice();
@@ -52,7 +53,7 @@ void ofApp::setup(){
 	}
 
 	ofDisableSetupScreen();
-	ofSetFrameRate( EXAMPLE_TARGET_FRAME_RATE );
+	ofSetFrameRate( isFrameLocked ? EXAMPLE_TARGET_FRAME_RATE : 0 );
 
 	setupStaticAllocators();
 
@@ -195,6 +196,10 @@ void ofApp::update(){
 
 	ofSetWindowTitle( ofToString( ofGetFrameRate(), 2, ' ' ) );
 	
+	//if ( ofGetFrameNum() % 60 == 0){
+	//	ofLog() << "Current fps: " << ofGetFrameRate();
+	//}
+
 }
 
 //--------------------------------------------------------------
@@ -205,11 +210,15 @@ void ofApp::draw(){
 
 	uploadStaticData( currentContext );
 
+	// In Vulkan, screen space has y flipped, 
+	// and z is mapped from -1..1 to 0..1 (scale 0.5, translate 0.5), 
+	
+
 	static const glm::mat4x4 clip ( 
-		1.0f, 0.0f, 0.0f, 0.0f,
+		1.0f,  0.0f, 0.0f, 0.0f,
 		0.0f, -1.0f, 0.0f, 0.0f,
-		0.0f, 0.0f, 0.5f, 0.0f,
-		0.0f, 0.0f, 0.5f, 1.0f 
+		0.0f,  0.0f, 0.5f, 0.0f,
+		0.0f,  0.0f, 0.5f, 1.0f 
 	);
 
 	auto viewMatrix       = mCam.getModelViewMatrix();
@@ -397,8 +406,8 @@ void ofApp::keyPressed(int key){
 void ofApp::keyReleased(int key){
 	if ( key == ' ' ){
 		const_cast<of::vk::DrawCommand&>( drawPhong ).getPipelineState().touchShader();
-		//const_cast<of::vk::DrawCommand&>( drawFullScreenQuad ).getPipelineState().touchShader();
-		//const_cast<of::vk::DrawCommand&>( drawTextured ).getPipelineState().touchShader();
+		// const_cast<of::vk::DrawCommand&>( drawFullScreenQuad ).getPipelineState().touchShader();
+		// const_cast<of::vk::DrawCommand&>( drawTextured ).getPipelineState().touchShader();
 	} else if ( key == 'l' ){
 		isFrameLocked ^= true;
 		ofSetFrameRate( isFrameLocked ? EXAMPLE_TARGET_FRAME_RATE : 0);
