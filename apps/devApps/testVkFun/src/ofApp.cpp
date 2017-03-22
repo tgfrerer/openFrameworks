@@ -196,9 +196,9 @@ void ofApp::update(){
 
 	ofSetWindowTitle( ofToString( ofGetFrameRate(), 2, ' ' ) );
 	
-	//if ( ofGetFrameNum() % 60 == 0){
-	//	ofLog() << "Current fps: " << ofGetFrameRate();
-	//}
+	if ( ofGetFrameNum() % 60 == 0){
+		ofLog() << "Current fps: " << ofGetFrameRate();
+	}
 
 }
 
