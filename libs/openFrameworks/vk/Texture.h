@@ -4,10 +4,6 @@
 namespace of{
 namespace vk{
 
-// TODO: Texture issues commands to the queue, and creates command buffers to do so.
-//       There should be a way to make these operations more transparent. 
-//       Also, transfer from host memory to device memory should be handled more transparently.
-
 class Texture
 {
 private:

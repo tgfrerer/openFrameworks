@@ -123,12 +123,12 @@ void Context::begin(){
 	// Wait until fence for current virtual frame has been reached by GPU, which 
 	// indicates that all virtual frame resource access has completed, and that
 	// all resources of this virtual frame may be reset or re-used.
-
+	//
 	waitForFence();
 
 	mDevice.resetFences( { getFence() } );
 
-	// free old command buffers - this is necessary since otherwise you end up with 
+	// Free old command buffers - this is necessary since otherwise you end up with 
 	// leaking them.
 	if ( !mVirtualFrames[mCurrentVirtualFrame].commandBuffers.empty() ){
 		mDevice.freeCommandBuffers( mVirtualFrames[mCurrentVirtualFrame].commandPool, mVirtualFrames[mCurrentVirtualFrame].commandBuffers );

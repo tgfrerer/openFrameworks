@@ -65,6 +65,8 @@ ofVkRenderer::ofVkRenderer(const ofAppBaseWindow * _window, of::vk::RendererSett
 	// createDevice also initialises the device queue, mQueue
 	createDevice();
 
+	mPipelineCache = of::vk::createPipelineCache( mDevice, "pipelineCache.bin" );
+
 	// up next: create window surface (this happens within glfw)
 }
 
@@ -95,12 +97,12 @@ ofVkRenderer::~ofVkRenderer()
 	mSwapchain.reset();
 	mPipelineCache.reset();
 
-	// reset command pool and all associated command buffers.
+	// Reset command pool and all associated command buffers.
 
 	destroyDevice();
 
-	// todo: destroy vkSurface 
-	// the surface was created in glfwWindow, so it shoudld be destroyed there, too.
+	// Todo: destroy vkSurface 
+	// The surface was created in glfwWindow, so it should be destroyed there, too.
 	// it must be destroyed before the instance is destroyed, meaning at this point.
 
 	destroyDebugLayers();
@@ -174,7 +176,7 @@ uint32_t findQueueFamilyIndex( const std::vector<vk::QueueFamilyProperties>& pro
 
 
 // ----------------------------------------------------------------------
-/// \brief find best match for a vector or queues defined by queueFamiliyProperties flags
+/// \brief Find best match for a vector or queues defined by queueFamiliyProperties flags
 /// \note  For each entry in the result vector the tuple values represent:
 ///        0.. best matching queue family
 ///        1.. index within queue family
@@ -326,8 +328,6 @@ void ofVkRenderer::createDevice()
 
 	// See findBestMatchForRequestedQueues for how this tuple is laid out.
 	auto queriedQueueFamilyAndIndex  = findBestMatchForRequestedQueues( queueFamilyProperties, mSettings.requestedQueues );
-	
-	
 
 	// Consolidate queues by queue family type - this will also sort by queue family type.
 	{
@@ -374,7 +374,7 @@ void ofVkRenderer::createDevice()
 		    .setPEnabledFeatures          ( &deviceFeatures )
 		    ;
 
-		// create device
+		// Create device
 		mDevice = mPhysicalDevice.createDevice( deviceCreateInfo );
 
 	}

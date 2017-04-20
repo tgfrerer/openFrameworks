@@ -14,7 +14,6 @@ void ofVkRenderer::setup(){
 
 	mViewport = { 0.f, 0.f, float( mSwapchain->getWidth() ), float( mSwapchain->getHeight()) };
 
-	mPipelineCache = of::vk::createPipelineCache( mDevice, "pipelineCache.bin" );
 
 	// sets up resources to keep track of production frames
 	setupDefaultContext();
@@ -32,7 +31,7 @@ void ofVkRenderer::setupDefaultContext(){
 	of::vk::Context::Settings settings;
 	
 	settings.transientMemoryAllocatorSettings.device                         = mDevice;
-	settings.transientMemoryAllocatorSettings.frameCount                     =  mSettings.numVirtualFrames ;
+	settings.transientMemoryAllocatorSettings.frameCount                     = mSettings.numVirtualFrames ;
 	settings.transientMemoryAllocatorSettings.physicalDeviceMemoryProperties = mPhysicalDeviceMemoryProperties ;
 	settings.transientMemoryAllocatorSettings.physicalDeviceProperties       = mPhysicalDeviceProperties ;
 	settings.transientMemoryAllocatorSettings.size                           = ( ( 1ULL << 24 ) * mSettings.numVirtualFrames );
