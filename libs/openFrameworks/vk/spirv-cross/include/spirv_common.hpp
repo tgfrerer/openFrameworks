@@ -17,11 +17,21 @@
 #ifndef SPIRV_CROSS_COMMON_HPP
 #define SPIRV_CROSS_COMMON_HPP
 
+#include "spirv.hpp"
+
 #include <cstdio>
 #include <cstring>
 #include <functional>
 #include <locale>
+#include <memory>
 #include <sstream>
+#include <stack>
+#include <stdexcept>
+#include <string>
+#include <unordered_map>
+#include <unordered_set>
+#include <utility>
+#include <vector>
 
 namespace spirv_cross
 {
@@ -53,6 +63,16 @@ public:
 };
 
 #define SPIRV_CROSS_THROW(x) throw CompilerError(x)
+#endif
+
+#if __cplusplus >= 201402l
+#define SPIRV_CROSS_DEPRECATED(reason) [[deprecated(reason)]]
+#elif defined(__GNUC__)
+#define SPIRV_CROSS_DEPRECATED(reason) __attribute__((deprecated))
+#elif defined(_MSC_VER)
+#define SPIRV_CROSS_DEPRECATED(reason) __declspec(deprecated(reason))
+#else
+#define SPIRV_CROSS_DEPRECATED(reason)
 #endif
 
 namespace inner
@@ -282,6 +302,7 @@ struct SPIRExtension : IVariant
 
 	enum Extension
 	{
+		Unsupported,
 		GLSL
 	};
 
