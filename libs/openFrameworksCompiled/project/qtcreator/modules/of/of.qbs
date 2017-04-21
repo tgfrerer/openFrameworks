@@ -3,6 +3,7 @@ import qbs.Process
 import qbs.File
 import qbs.FileInfo
 import qbs.TextFile
+import qbs.Probes
 import "helpers.js" as Helpers
 
 Module{
@@ -36,60 +37,24 @@ Module{
         }
     }
 
-    property stringList addons
-
-    readonly property stringList LIBS_EXCEPTIONS: {
-        if(platform === "linux"  || platform === "linux64"){
-            return [
-                "glew",
-                "cairo",
-                "videoInput",
-                "freetype",
-                "FreeImage",
-                "assimp",
-                "rtAudio",
-                "openssl",
-                "boost",
-                "glfw",
-                "openFrameworksCompiled",
-            ];
-        }else if(platform==="msys2"){
-            var exceptions = [
-                "glew",
-                "cairo",
-                "freetype",
-                "FreeImage",
-                "assimp",
-                "openssl",
-                "boost",
-                "glfw",
-                "openFrameworksCompiled"
-            ];
-            if(Helpers.pkgExists("rtaudio")){
-                exceptions.push("rtAudio")
-            }
-            return exceptions;
-        }else if(platform==="osx"){
-            var exceptions = [
-                "openFrameworksCompiled",
-                "videoInput"
-            ];
-            return exceptions;
-        }else if(platform==="android"){
-            var exceptions =  [
-                "glfw",
-                "fmodex",
-                "glew",
-                "kiss",
-                "rtAudio",
-                "videoInput",
-                "openFrameworksCompiled",
-            ];
-            return exceptions;
-        }
+    Depends{
+        condition: platform === "android"
+        name: "Android.ndk"
     }
 
-    readonly property stringList PKG_CONFIGS: {
+    property string sourceDirectory: project.sourceDirectory
+    property bool isCoreLibrary: product.isCoreLibrary
+
+
+    Probe{
+        id: CORE
+        property stringList includes
+        property stringList cflags
+        property stringList ldflags
+        property stringList system_libs
+        property stringList static_libs
+        configure: {
+            var configs = [];
         if(platform === "linux"  || platform === "linux64"){
             var pkgs = [
                 "cairo",
@@ -126,7 +91,7 @@ Module{
                 pkgs.push("gtk+-3.0")
             }
 
-            return pkgs;
+                configs = pkgs;
         }else if(platform === "msys2"){
             var pkgs = [
                 "cairo",
@@ -141,15 +106,110 @@ Module{
                 pkgs.push("rtaudio");
             }
 
-            return pkgs;
+                configs = pkgs;
+            }
+
+            var libsexceptions = [];
+            if(platform === "linux"  || platform === "linux64"){
+                libsexceptions = [
+                    "glew",
+                    "cairo",
+                    "videoInput",
+                    "freetype",
+                    "FreeImage",
+                    "assimp",
+                    "rtAudio",
+                    "openssl",
+                    "boost",
+                    "glfw",
+                    "openFrameworksCompiled",
+                ];
+            }else if(platform==="msys2"){
+                libsexceptions = [
+                    "glew",
+                    "cairo",
+                    "freetype",
+                    "FreeImage",
+                    "assimp",
+                    "openssl",
+                    "boost",
+                    "glfw",
+                    "openFrameworksCompiled"
+                ];
+                if(Helpers.pkgExists("rtaudio")){
+                    libsexceptions.push("rtAudio")
+                }
+            }else if(platform==="osx"){
+                libsexceptions = [
+                    "openFrameworksCompiled",
+                    "videoInput"
+                ];
+            }else if(platform==="android"){
+               libsexceptions =  [
+                    "glfw",
+                    "fmodex",
+                    "glew",
+                    "kiss",
+                    "rtAudio",
+                    "videoInput",
+                    "openFrameworksCompiled",
+                ];
+            }
+
+            var coreincludes = Helpers.listDirsRecursive(ofRoot + "/libs/openFrameworks");
+            var corelibs = Helpers.listDir(ofRoot + '/libs/');
+            for(var lib in corelibs){
+                if(libsexceptions.indexOf(corelibs[lib])==-1){
+                    var libpath = ofRoot + '/libs/' + corelibs[lib];
+                    var include_path = libpath + "/include"
+                    var include_paths = Helpers.listDirsRecursive(include_path);
+                    coreincludes = coreincludes.concat(include_paths);
+                }
+            }
+
+            if(platform === "linux"  || platform === "linux64" || platform === "msys2"){
+                includes = coreincludes.concat(Helpers.pkgconfig(configs, ["--cflags-only-I"]).map(function(element){
+                    return element.substr(2).trim()
+                }));
+            }
+
+            if(platform === "linux"  || platform === "linux64" || platform === "msys2"){
+                cflags = Helpers.pkgconfig(configs, ["--cflags-only-other"]);
+            }else{
+                cflags = [];
+            }
+
+            if(platform === "linux"  || platform === "linux64" || platform === "msys2"){
+                ldflags = Helpers.pkgconfig(configs, ["--libs-only-L"]);
+                if(platform === "msys2"){
+                    ldflags.push("-L"+FileInfo.joinPaths(Helpers.msys2root(),"mingw32/lib"));
+                    //ldflags.push("-fuse-ld=gold");
+                }
+            }else{
+                ldflags = [];
+            }
+
+            if(platform === "linux"  || platform === "linux64" || platform === "msys2"){
+                var pkgconfiglibs = Helpers.pkgconfig(configs, ["--libs-only-l"]);
+                system_libs = pkgconfiglibs.map(function(lib){
+                    return lib.substr(2);
+                });
         }else{
-            return [];
+                system_libs = [];
+            }
+
+            static_libs = Helpers.findLibsRecursive(ofRoot + "/libs", platform, libsexceptions);
+
+            found = true;
         }
     }
 
-    readonly property stringList ADDITIONAL_LIBS: {
+    Probe {
+        id: ADDITIONAL_LIBS
+        property stringList libs
+        configure: {
         if(platform === "linux"  || platform === "linux64"){
-            var libs = [
+                var libslist = [
                 "glut",
                 "X11",
                 "Xrandr",
@@ -168,114 +228,59 @@ Module{
             ];
 
             if(!Helpers.pkgExists("rtaudio")){
-                libs.push("rtaudio");
+                    libslist.push("rtaudio");
             }
 
-            return libs;
+                libs = libslist;
         }else if(platform === "msys2"){
-            return [
+                libs = [
                 'opengl32', 'gdi32', 'msimg32', 'glu32', 'winmm', 'strmiids',
                 'uuid', 'oleaut32', 'setupapi', 'wsock32', 'ws2_32', 'Iphlpapi', 'Comdlg32',
                 'freeimage', 'boost_filesystem-mt', 'boost_system-mt', 'freetype', 'pthread',
                 'ksuser', 'ole32', 'dsound',
             ];
         }else if(platform === "android"){
-            return [
+                libs = [
                 'OpenSLES', 'z', 'GLESv1_CM', 'GLESv2', 'log'
             ];
-        }else return [];
-    }
-
-    readonly property stringList PKG_CONFIG_INCLUDES: {
-        if(platform === "linux"  || platform === "linux64" || platform === "msys2"){
-            return Helpers.pkgconfig(PKG_CONFIGS,["--cflags-only-I"]).map(function(element){
-                return element.substr(2).trim()
-            });
         }else{
-            return [];
-        }
-    }
-
-    readonly property stringList PKG_CONFIG_CFLAGS: {
-        if(platform === "linux"  || platform === "linux64" || platform === "msys2"){
-            return (Helpers.pkgconfig(PKG_CONFIGS,["--cflags-only-other"]));
-        }else{
-            return [];
-        }
-    }
-
-    readonly property stringList PKG_CONFIG_LDFLAGS: {
-        if(platform === "linux"  || platform === "linux64" || platform === "msys2"){
-            return (Helpers.pkgconfig(PKG_CONFIGS,["--libs-only-L"]));
-        }else{
-            return [];
-        }
-    }
-
-    readonly property stringList PKG_CONFIG_LIBS: {
-        if(platform === "linux"  || platform === "linux64" || platform === "msys2"){
-            var pkgconfiglibs = Helpers.pkgconfig(PKG_CONFIGS,["--libs-only-l"]);
-            return pkgconfiglibs.map(function(lib){
-                return lib.substr(2);
-            });
-        }else{
-            return [];
-        }
-    }
-
-    readonly property pathList INCLUDE_PATHS: {
-        var includes = Helpers.listDirsRecursive(ofRoot + "/libs/openFrameworks");
-        var libs = Helpers.listDir(ofRoot + '/libs/');
-        for(var lib in libs){
-            if(LIBS_EXCEPTIONS.indexOf(libs[lib])==-1){
-                var libpath = ofRoot + '/libs/' + libs[lib];
-                var include_path = libpath + "/include"
-                var include_paths = Helpers.listDirsRecursive(include_path);
-                includes = includes.concat(include_paths);
+                libs = [];
             }
+            found = true;
         }
-        if(qbs.targetOS.contains("linux")) {
-            var vk_sdk_includes = Helpers.Environment.getEnv("VULKAN_SDK") + "/include";
-            includes = includes.concat(vk_sdk_includes);
-        }
-        includes = includes.concat(PKG_CONFIG_INCLUDES);
-
-        return includes;
     }
 
-    Depends{
-        condition: platform === "android"
-        name: "Android.ndk"
+    Probe{
+        condition: !isCoreLibrary
+        id: ADDONS
+        property stringList includes
+        property pathList sources
+        property stringList static_libs
+        property stringList system_libs
+        property stringList frameworks
+        property stringList cflags
+        property stringList ldflags
+
+        configure: {
+            includes = [];
+            sources = [];
+            static_libs = [];
+            system_libs = [];
+            frameworks = [];
+            cflags = [];
+            ldflags = [];
+
+            if(isCoreLibrary){
+                found = false;
+                return;
     }
 
-    readonly property pathList STATIC_LIBS: {
-        var staticLibraries = Helpers.findLibsRecursive(ofRoot + "/libs",platform,LIBS_EXCEPTIONS);
-        return staticLibraries
-    }
-
-    readonly property stringList LDFLAGS: {
-        var ret = PKG_CONFIG_LDFLAGS;
-        for(lib in ADDITIONAL_LIBS){
-            var libname = ADDITIONAL_LIBS[lib].trim();
-            if(libname!=""){
-                ret.push("-l" + libname);
-            }
-        }
-        if(qbs.targetOS.contains("linux")){
-        	var vk_sdk = Helpers.Environment.getEnv("VULKAN_SDK");
-        	ret.push("-L" + vk_sdk + "/lib");
-        }
-        if(platform === "msys2"){
-            ret.push("-L"+FileInfo.joinPaths(Helpers.msys2root(),"mingw32/lib"));
-            //ret.push("-fuse-ld=gold");
-        }
-        return ret;
-    }
-
-    readonly property stringList addonsMake: {
+            // parse list of addons from qbs or addons.make
         var allAddons = [];
+            if(addons===undefined){
+                // Project addons list is undefined parse addons.make instead
         try{
-            var addonsmake = new TextFile(project.sourceDirectory + "/addons.make");
+                    var addonsmake = new TextFile(sourceDirectory + "/addons.make");
             while(!addonsmake.atEof()){
                 var line = addonsmake.readLine().trim();
                 allAddons.push(line);
@@ -284,31 +289,28 @@ Module{
                 allAddons = allAddons.concat(dependencies);
             }
         }catch(e){}
-        return allAddons;
+            }else{
+                allAddons = addons;
     }
 
-    readonly property stringList ADDONS: {
-        var allAddons = [];
-        if(addons===undefined){
-            allAddons = addonsMake;
-        }else{
-            allAddons = addons;
+            if(allAddons === undefined || allAddons.length === 0){
+                found = false;
+                return;
         }
 
-        return Helpers.removeDuplicates(allAddons.map(function(addon){
-            var addonPath = Helpers.normalize(FileInfo.joinPaths(project.sourceDirectory, addon))
+            // map addons list to addons paths
+            allAddons = Helpers.removeDuplicates(allAddons.map(function(addon){
+                var addonPath = Helpers.normalize(FileInfo.joinPaths(sourceDirectory, addon))
             if(File.exists(addonPath)){
                 return addonPath;
             }else{
                 return Helpers.normalize(FileInfo.joinPaths(ofRoot, '/addons/', addon));
             }
         }));
-    }
 
-    readonly property stringList ADDON_INCLUDES: {
-        var includes = [];
-        for(var addon in ADDONS){
-            var addonPath = ADDONS[addon];
+            // includes
+            for(var addon in allAddons){
+                var addonPath = allAddons[addon];
             var addonIncludes = Helpers.addonIncludes(addonPath);
             addonIncludes = Helpers.parseAddonConfig(addonPath, "ADDON_INCLUDES", addonIncludes, platform, addonPath+"/");
             var addonIncludesExcludes = Helpers.parseAddonConfig(addonPath, "ADDON_INCLUDES_EXCLUDE", [], platform, addonPath+"/");
@@ -327,13 +329,10 @@ Module{
             }
             includes = includes.concat(addonIncludes);
         }
-        return includes;
-    }
 
-    readonly property pathList ADDONS_SOURCES: {
-        var sources = [];
-        for(var addon in ADDONS){
-            var addonPath = ADDONS[addon];
+            // sources
+            for(var addon in allAddons){
+                var addonPath = allAddons[addon];
             var addonSources = Helpers.addonSources(addonPath);
             addonSources = Helpers.parseAddonConfig(addonPath, "ADDON_SOURCES", addonSources, platform, addonPath+"/");
             var addonSourcesExcludes = Helpers.parseAddonConfig(addonPath, "ADDON_SOURCES_EXCLUDE", [], platform, addonPath+"/");
@@ -350,19 +349,33 @@ Module{
                     return true;
                 });
             }
+                addonSources = addonSources.map(function(element){
+                    return element.replace("%","*");
+                });
             sources = sources.concat(addonSources);
             var addon_config = FileInfo.joinPaths(addonPath,"addon_config.mk");
             if(File.exists(addon_config)){
                 sources.push(addon_config);
             }
         }
-        return sources;
+
+            // config cflags
+            var config_cflags = [];
+            for(var addon in allAddons){
+                var addonPath = allAddons[addon];
+                config_cflags = config_cflags.concat(Helpers.parseAddonConfig(addonPath, "ADDON_CFLAGS", [], platform))
+            }
+
+            // config ldflags
+            var config_ldflags = [];
+            for(var addon in allAddons){
+                var addonPath = allAddons[addon];
+                config_ldflags = config_ldflags.concat(Helpers.parseAddonConfig(addonPath, "ADDON_LDFLAGS", [], platform))
     }
 
-    readonly property stringList ADDON_LIBS: {
-        var libs = [];
-        for(var addon in ADDONS){
-            var addonPath = ADDONS[addon];
+            // libs
+            for(var addon in allAddons){
+                var addonPath = allAddons[addon];
             var addonLibs = Helpers.findLibsRecursive(addonPath + "/libs", platform, []);
             addonLibs = Helpers.parseAddonConfig(addonPath, "ADDON_LIBS", addonLibs, platform, addonPath+"/");
             var addonLibsExcludes = Helpers.parseAddonConfig(addonPath, "ADDON_LIBS_EXCLUDE", [], platform, addonPath+"/");
@@ -379,90 +392,87 @@ Module{
                     return true;
                 });
             }
-            libs = libs.concat(addonLibs);
+                static_libs = static_libs.concat(addonLibs);
         }
 
-        libs = libs.concat(ADDON_LDFLAGS
+            // separate config flags in libs and flags
+            var config_libs = config_ldflags
             .filter(function(flag){ return flag.startsWith("-l"); })
-            .map(function(flag){ return flag.substr(2); }))
+                .map(function(flag){ return flag.substr(2); });
 
-        return libs;
-    }
+            config_ldflags = config_ldflags
+                .filter(function(flag){ return !flag.startsWith("-l"); })
 
-    readonly property stringList ADDON_FRAMEWORKS: {
-        var frameworks = [];
-        for(var addon in ADDONS){
-            var addonPath = ADDONS[addon];
+            // frameworks
+            for(var addon in allAddons){
+                var addonPath = allAddons[addon];
             var addonFrameworks = [];
             addonFrameworks = Helpers.parseAddonConfig(addonPath, "ADDON_FRAMEWORKS", addonFrameworks, platform, addonPath+"/");
             frameworks = frameworks.concat(addonFrameworks);
         }
-        return frameworks;
-    }
 
-    readonly property stringList ADDON_PKG_CONFIGS: {
+            // pkg_configs
         var pkgconfigs = [];
-        for(var addon in ADDONS){
-            var addonPath = ADDONS[addon];
+            for(var addon in allAddons){
+                var addonPath = allAddons[addon];
             pkgconfigs = pkgconfigs.concat(Helpers.parseAddonConfig(addonPath, "ADDON_PKG_CONFIG_LIBRARIES", [], platform))
         }
-        return pkgconfigs;
-    }
 
-    readonly property stringList ADDON_PKG_CONFIG_INCLUDES: {
-        return Helpers.pkgconfig(ADDON_PKG_CONFIGS,["--cflags-only-I"]).map(function(element){
+            // pkg includes
+            includes = includes.concat(Helpers.pkgconfig(pkgconfigs, ["--cflags-only-I"]).map(function(element){
             return element.substr(2).trim()
-        })
-    }
+            }))
 
-    readonly property stringList ADDON_PKG_CONFIG_CFLAGS: {
-        return Helpers.pkgconfig(ADDON_PKG_CONFIGS,["--cflags-only-other"])
-    }
+            // pkg cflags
+            cflags = Helpers.pkgconfig(pkgconfigs, ["--cflags-only-other"])
+                .concat(config_cflags);
 
-    readonly property stringList ADDON_PKG_CONFIG_LDFLAGS: {
-        return Helpers.pkgconfig(ADDON_PKG_CONFIGS,["--libs-only-L"])
-    }
+            // pkg ldflags
+            ldflags = Helpers.pkgconfig(pkgconfigs, ["--libs-only-L"])
+                .concat(config_ldflags)
 
-    readonly property stringList ADDON_PKG_CONFIG_LIBS: {
-        return Helpers.pkgconfig(ADDON_PKG_CONFIGS,["--libs-only-l"])
+            // pkg config libs
+            system_libs = Helpers.pkgconfig(pkgconfigs, ["--libs-only-l"])
             .map(function(flag){ return flag.substr(2); })
-    }
 
-    readonly property stringList ADDON_CFLAGS: {
-        var cflags = [];
-        for(var addon in ADDONS){
-            var addonPath = ADDONS[addon];
-            cflags = cflags.concat(Helpers.parseAddonConfig(addonPath, "ADDON_CFLAGS", [], platform))
+            system_libs = system_libs.concat(config_libs)
+
+            found = true;
         }
-        return cflags;
     }
 
-    readonly property stringList ADDON_LDFLAGS: {
-        var ldflags = [];
-        for(var addon in ADDONS){
-            var addonPath = ADDONS[addon];
-            ldflags = ldflags.concat(Helpers.parseAddonConfig(addonPath, "ADDON_LDFLAGS", [], platform))
-        }
-        return ldflags;
+    Properties{
+        condition: !of.isCoreLibrary
+        property stringList ADDONS_SOURCES: ADDONS.sources
     }
 
-    readonly property stringList DEFINES: {
-        var defines = ['GCC_HAS_REGEX'];
-
-        if(qbs.targetOS.contains("linux")){
+    Probe{
+        id: DEFINES_LINUX
+        property stringList list
+        configure:{
+            list = ['GCC_HAS_REGEX'];
             if(Helpers.pkgExists("gtk+-3.0")){
-                defines.push("OF_USING_GTK")
+                list.push("OF_USING_GTK")
             }
             if(Helpers.pkgExists("libmpg123")){
-                defines.push("OF_USING_MPG123");
+                list.push("OF_USING_MPG123");
             }
+            found = true
+        }
+    }
+    Properties{
+        condition: qbs.targetOS.contains("linux")
+        DEFINES: DEFINES_LINUX.list
         }
 
-        if(qbs.targetOS.indexOf("windows")>-1){
-            defines = defines.concat(['UNICODE','_UNICODE']);
+    Properties{
+        condition: qbs.targetOS.contains("windows")
+        DEFINES: ['GCC_HAS_REGEX','UNICODE','_UNICODE']
         }
-        
-        return defines;
+
+    Properties{
+        condition: !qbs.targetOS.contains("linux") && !qbs.targetOS.contains("windows")
+        DEFINES: ['GCC_HAS_REGEX']
     }
 
 
@@ -471,26 +481,44 @@ Module{
     }
 
     //cpp.cxxLanguageVersion: "c++14"
+
     coreWarningLevel: 'default'
-    coreCFlags: PKG_CONFIG_CFLAGS
-        .concat(['-Wno-unused-parameter'])
-        .concat(ADDON_PKG_CONFIG_CFLAGS)
-        .concat(ADDON_CFLAGS)
-        .concat(cFlags)
+    coreCFlags: {
+        var flags = CORE.cflags
+            .concat(['-Wno-unused-parameter','-Werror=return-type'])
+            .concat(cFlags);
+
+        if(of.isCoreLibrary){
+            return flags
+        }else{
+            return flags.concat(ADDONS.cflags)
+        }
+
+    }
 
     Properties{
         condition: of.platform === "linux" || of.platform === "linux64" || of.platform === "msys2"
-        coreCxxFlags: PKG_CONFIG_CFLAGS
-            .concat(['-Wno-unused-parameter','-std=gnu++14'])
-            .concat(ADDON_PKG_CONFIG_CFLAGS)
-            .concat(ADDON_CFLAGS)
-            .concat(cxxFlags)
+        coreCxxFlags: {
+            var flags = CORE.cflags
+                .concat(['-Wno-unused-parameter','-Werror=return-type','-std=gnu++14'])
+                .concat(cxxFlags);
+            if(of.isCoreLibrary){
+                return flags
+            }else{
+                return flags.concat(ADDONS.cflags)
+            }
+        }
 
-        coreLinkerFlags:
-            LDFLAGS
-            .concat(ADDON_PKG_CONFIG_LDFLAGS)
-            .concat(ADDON_LDFLAGS)
-            .concat(linkerFlags)
+        coreLinkerFlags: {
+            var flags = CORE.ldflags
+                .concat(linkerFlags);
+
+            if(of.isCoreLibrary){
+                return flags;
+            }else{
+                return flags.concat(ADDONS.ldflags)
+            }
+        }
     }
 
     Properties{
@@ -498,13 +526,20 @@ Module{
         coreCxxLanguageVersion: "c++11"
         coreCxxStandardLibrary: "libc++"
 
-        coreCxxFlags: PKG_CONFIG_CFLAGS
-            .concat(['-Wno-unused-parameter'])
-            .concat(ADDON_PKG_CONFIG_CFLAGS)
-            .concat(ADDON_CFLAGS)
-            .concat(cxxFlags)
+        coreCxxFlags: {
+            var flags = CORE.cflags
+               .concat(['-Wno-unused-parameter','-Werror=return-type'])
+                .concat(cxxFlags);
 
-        coreFrameworks: [
+            if(of.isCoreLibrary){
+                return flags
+            }else{
+                return flags.concat(ADDONS.cflags)
+            }
+        }
+
+        coreFrameworks: {
+            var flags = [
                 'Accelerate',
                 'AGL',
                 'AppKit',
@@ -520,13 +555,24 @@ Module{
                 'IOKit',
                 'OpenGL',
                 'QuartzCore',
-        ].concat(frameworks)
-         .concat(ADDON_FRAMEWORKS)
+            ].concat(frameworks);
 
-        coreLinkerFlags:
-            LDFLAGS
-            .concat(ADDON_LDFLAGS)
+            if(of.isCoreLibrary){
+                return flags;
+            }else{
+                return flags.concat(ADDONS.frameworks);
+            }
+        }
+
+        coreLinkerFlags:{
+            var flags = CORE.ldflags
             .concat(linkerFlags)
+            if(of.isCoreLibrary){
+                return flags;
+            }else{
+                return flags.concat(ADDONS.ldflags)
+            }
+        }
     }
 
     Properties{
@@ -540,8 +586,8 @@ Module{
         //readonly property string toolchainVersion: '4.9'
         readonly property string abiPath: Android.ndk.abi
         coreSysroot: ndk_root + '/platforms/android-19/arch-arm'
-        coreCxxFlags: ['-Wno-unused-parameter','-std=gnu++14']
-            .concat(ADDON_CFLAGS)
+        coreCxxFlags: {
+            var flags = ['-Wno-unused-parameter','-Werror=return-type','-std=gnu++14']
             .concat('-I'+coreSysroot+'/usr/include')
             .concat('-I'+ndk_root+'/sources/android/support/include')
             .concat('-I'+ndk_root+'/sources/cxx-stl/llvm-libc++/libcxx/include')
@@ -551,16 +597,28 @@ Module{
             .concat(['-target','armv7-none-linux-androideabi'])
             .concat(['-gcc-toolchain',ndk_root+'/toolchains/arm-linux-androideabi-4.9/prebuilt/linux-x86_64'])
             .concat('-DANDROID_NDK')
-            .concat(cxxFlags)
+                .concat(cxxFlags);
+            if(of.isCoreLibrary){
+                return flags;
+            }else{
+                return flags.concat(ADDONS.cflags);
+            }
+        }
 
-        coreLinkerFlags:
-            LDFLAGS
-            .concat(ADDON_LDFLAGS)
+        coreLinkerFlags:{
+            var flags = CORE.ldflags
             .concat('-L"'+ndk_root+'/sources/cxx-stl/llvm-libc++/libs/'+abiPath+'"')
             .concat(['-target', 'armv7-none-linux-androideabi'])
             .concat(['-gcc-toolchain', ndk_root+'/toolchains/arm-linux-androideabi-4.9/prebuilt/linux-x86_64'])
             //.concat('-Wl,--as-needed -Wl,--gc-sections -Wl,--exclude-libs,ALL')
-            .concat(linkerFlags)
+                .concat(linkerFlags);
+
+            if(of.isCoreLibrary){
+                return flags;
+            }else{
+                return flags.concat(ADDONS.ldflags);
+            }
+        }
     }
 
     property stringList pkgConfigs: []
@@ -570,18 +628,36 @@ Module{
     property stringList linkerFlags: []
     property stringList defines: []
     property stringList frameworks: []
+    property stringList addons
 
-    coreIncludePaths: INCLUDE_PATHS
-        .concat(ADDON_INCLUDES)
-        .concat(ADDON_PKG_CONFIG_INCLUDES)
-        .concat(includePaths)
+    coreIncludePaths: {
+        var flags = CORE.includes
+            .concat(includePaths);
+        if(of.isCoreLibrary){
+            return flags;
+        }else{
+            return flags.concat(ADDONS.includes)
+        }
+    }
 
-    coreStaticLibs: ADDON_LIBS
-        .concat(ADDON_PKG_CONFIG_LIBS)
-        .concat(STATIC_LIBS)
-        .concat(PKG_CONFIG_LIBS)
-        .concat(ADDITIONAL_LIBS)
+    coreStaticLibs: {
+        if(of.isCoreLibrary){
+            return CORE.static_libs;
+        }else{
+            return ADDONS.static_libs.concat(CORE.static_libs);
+        }
+    }
 
+    coreSystemLibs: {
+        if(of.isCoreLibrary){
+            return CORE.system_libs
+                .concat(ADDITIONAL_LIBS.libs);
+        }else{
+            return ADDONS.system_libs
+                .concat(CORE.system_libs)
+                .concat(ADDITIONAL_LIBS.libs);
+        }
+    }
 
     Properties{
         condition: qbs.buildVariant.contains("debug")
