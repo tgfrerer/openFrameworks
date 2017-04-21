@@ -64,6 +64,14 @@ You might have to log out and back in again, for the variables to take effect.
 
 Run `vulkaninfo` to see which version of the SDK you are running. (It will say it in the fist line.) 
 
+### Install openFrameworks dependencies
+
+For Windows, use the command line to navigate to the `scripts/vs` directory. There, execute:
+
+    powershell -File download_libs.ps1
+    
+This will update and install the latest library dependencies used for openFrameworks, precompiled.
+
 ### Clone apothecary
 
 Apothecary is openFrameworks' dependency tracker and libraries build helper. For openFrameworks-vk it is needed to build the latest versions of `GLFW`, and `shaderc`.
