@@ -224,6 +224,7 @@ bool of::vk::Shader::getSpirV( const ::vk::ShaderStageFlagBits shaderStage, cons
 		
 		assert( success );
 	}
+	return true;
 }
 
 // ----------------------------------------------------------------------
