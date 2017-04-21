@@ -173,6 +173,14 @@ Module{
                 }));
             }
 
+            // Vulkan specific: We grab the vulkan SDK install path from system environment variable 
+            // to be sure to use the latest vulkan SDK.
+            //
+            if (platform === "linux64" || platform == "linux"){
+                var vk_sdk_includes = Helpers.Environment.getEnv("VULKAN_SDK") + "/include";
+                includes = includes.concat(vk_sdk_includes);
+            }
+
             if(platform === "linux"  || platform === "linux64" || platform === "msys2"){
                 cflags = Helpers.pkgconfig(configs, ["--cflags-only-other"]);
             }else{
@@ -510,8 +518,12 @@ Module{
         }
 
         coreLinkerFlags: {
+            // Vulkan specific: we query the vulkan sdk installation directory from 
+            // system ENV to be sure to link against the latest SDK lib
+            var vk_sdk = Helpers.Environment.getEnv("VULKAN_SDK");
             var flags = CORE.ldflags
-                .concat(linkerFlags);
+                .concat(linkerFlags)
+                .concat(['-L' + vk_sdk + '/lib']);
 
             if(of.isCoreLibrary){
                 return flags;
