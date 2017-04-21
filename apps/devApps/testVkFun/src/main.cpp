@@ -13,8 +13,8 @@ int main(){
 	ofSetLoggerChannel( std::shared_ptr<ofBaseLoggerChannel>( consoleLogger, []( ofBaseLoggerChannel * lhs){} ) );
 
 	// Create a new window 
-	// auto mainWindow = std::make_shared<ofAppGLFWWindow>();
-	auto mainWindow = std::make_shared<ofAppVkNoWindow>();
+	auto mainWindow = std::make_shared<ofAppGLFWWindow>();
+	// auto mainWindow = std::make_shared<ofAppVkNoWindow>();
 
 	// Store main window in mainloop
 	ofGetMainLoop()->addWindow( mainWindow );

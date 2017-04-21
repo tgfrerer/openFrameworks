@@ -27,8 +27,7 @@ void ofApp::setup(){
 
 		settings.transientMemoryAllocatorSettings.device = renderer->getVkDevice();
 		settings.transientMemoryAllocatorSettings.frameCount = renderer->mSettings.numVirtualFrames;
-		settings.transientMemoryAllocatorSettings.physicalDeviceMemoryProperties = 
-			rendererProperties.physicalDeviceMemoryProperties;
+		settings.transientMemoryAllocatorSettings.physicalDeviceMemoryProperties = rendererProperties.physicalDeviceMemoryProperties;
 		settings.transientMemoryAllocatorSettings.physicalDeviceProperties = rendererProperties.physicalDeviceProperties;
 		settings.transientMemoryAllocatorSettings.size = ( ( 1ULL << 24 ) * renderer->mSettings.numVirtualFrames );
 		settings.renderer = renderer.get();
@@ -196,9 +195,9 @@ void ofApp::update(){
 
 	ofSetWindowTitle( ofToString( ofGetFrameRate(), 2, ' ' ) );
 	
-	if ( ofGetFrameNum() % 60 == 0){
-		ofLog() << "Current fps: " << ofGetFrameRate();
-	}
+	//if ( ofGetFrameNum() % 60 == 0){
+	//	ofLog() << "Current fps: " << ofGetFrameRate();
+	//}
 
 }
 
@@ -210,9 +209,8 @@ void ofApp::draw(){
 
 	uploadStaticData( currentContext );
 
-	// In Vulkan, screen space has y flipped, 
+	// In Vulkan, clip space has y flipped, 
 	// and z is mapped from -1..1 to 0..1 (scale 0.5, translate 0.5), 
-	
 
 	static const glm::mat4x4 clip ( 
 		1.0f,  0.0f, 0.0f, 0.0f,
@@ -227,13 +225,13 @@ void ofApp::draw(){
 
 	ofMatrix4x4 modelMatrix = glm::rotate( float( TWO_PI * ( ( ofGetFrameNum() % 360 ) / 360.f ) ), glm::vec3( { 0.f, 1.f, 0.f } ) );
 
+
 	// Create a fresh copy of our prototype const draw command
 	auto hero = drawPhong;
 	hero
 		.setUniform( "projectionMatrix", projectionMatrix )
 		.setUniform( "viewMatrix", viewMatrix )
 		.setUniform( "modelMatrix", modelMatrix )
-		//.setUniform( "globalColor", ofFloatColor::white )
 		.setStorageBuffer( "colorLayout", mStaticColourBuffer )
 		.setNumIndices( mStaticMesh.indexBuffer.numElements )
 		.setIndices( mStaticMesh.indexBuffer )

@@ -163,7 +163,7 @@ void ofApp::setupSecondaryRenderContext(){
 				.setViewType( ::vk::ImageViewType::e2D )
 				.setFormat( imageCreateInfo.format )
 				.setComponents( {} ) // identity
-				.setSubresourceRange( { ::vk::ImageAspectFlagBits::eColor,0,1,0,1 } )
+				.setSubresourceRange( { ::vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1 } )
 				;
 			
 			::vk::DeviceSize offset;
