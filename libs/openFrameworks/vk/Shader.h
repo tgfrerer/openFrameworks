@@ -276,6 +276,7 @@ public:
 	const std::map<std::string, UniformId_t>& getUniformDictionary() const{
 		return mUniformDictionary;
 	}
+
 };
 
 // ----------------------------------------------------------------------
@@ -357,7 +358,6 @@ inline const std::shared_ptr<::vk::DescriptorSetLayout>& of::vk::Shader::getDesc
 
 
 // ----------------------------------------------------------------------
-
 
 } // namespace vk
 } // namespace of

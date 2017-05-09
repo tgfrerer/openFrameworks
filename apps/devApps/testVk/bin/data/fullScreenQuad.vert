@@ -6,18 +6,12 @@
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_ARB_shading_language_420pack : enable
 
-// outputs 
-layout (location = 0) out vec2 outTexCoord;
-
-// we override the built-in fixed function outputs
-// to have more control over the SPIR-V code created.
-out gl_PerVertex
-{
-    vec4 gl_Position;
-};
+#include "includes/test.vert"
+#include "includes/test.vert"
 
 void main() 
 {
 	outTexCoord = vec2((gl_VertexIndex << 1) & 2, gl_VertexIndex & 2);
 	gl_Position = vec4(outTexCoord * 2.0f + -1.0f, 0.0f, 1.0f);
+
 }

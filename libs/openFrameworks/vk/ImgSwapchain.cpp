@@ -218,7 +218,7 @@ void ImgSwapchain::setup(){
 				.setOldLayout( ::vk::ImageLayout::eUndefined )
 				.setNewLayout( ::vk::ImageLayout::eColorAttachmentOptimal )
 				.setSrcQueueFamilyIndex( mRendererProperties.graphicsFamilyIndex )  // < TODO: queue ownership: transfer -> graphics
-				.setDstQueueFamilyIndex( mRendererProperties.graphicsFamilyIndex )	 // < TODO: queue ownership: transfer -> graphics
+				.setDstQueueFamilyIndex( mRendererProperties.graphicsFamilyIndex )  // < TODO: queue ownership: transfer -> graphics
 				.setImage( mTransferFrames[i].image.imageRef )
 				.setSubresourceRange( { ::vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1 } )
 				;
