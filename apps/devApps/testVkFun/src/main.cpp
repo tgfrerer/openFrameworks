@@ -21,7 +21,7 @@ int main(){
 	
 	{
 		ofVkWindowSettings settings;
-		settings.rendererSettings.setVkVersion( 1, 0, 42 );
+		settings.rendererSettings.setVkVersion( 1, 0, 46 );
 		settings.rendererSettings.numSwapchainImages = 3;
 		settings.rendererSettings.numVirtualFrames = 3;
 		settings.rendererSettings.presentMode = ::vk::PresentModeKHR::eMailbox;
