@@ -28,7 +28,7 @@ void resetConsoleColor(){
 #endif 
 }
 
-} /*namespace vk*/ 
+} /*namespace utils*/ 
 } /*namespace of*/
 
 
@@ -153,6 +153,8 @@ public:
 
 };
 
+// ----------------------------------------------------------------------
+
 // helper method to return error via shaderc
 shaderc_include_result* shadercMakeErrorIncludeResult( const char* message ){
 	return new shaderc_include_result{ "", 0, message, strlen(message) };
@@ -183,6 +185,7 @@ shaderc_include_result * FileIncluder::GetInclude( const char * requested_source
 		newFileInfo->contents.data(), newFileInfo->contents.size(),
 		newFileInfo };
 }
+
 // ----------------------------------------------------------------------
 
 void FileIncluder::ReleaseInclude( shaderc_include_result * include_result ){
