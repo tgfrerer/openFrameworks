@@ -19,15 +19,14 @@ you should be able to feed an `ofVkWindowSettings` object to
 
 ## Setup 
 
-This has been initially developed on: Windows 10/64bit, NVIDIA GTX 980
-(Vulkan API 1.0.8), Vulkan SDK 1.0.21. Other Vulkan capable
-systems/GPUs are expected to work, most proably requiring some
-modifications. 
+This has been developed and tested on Vulkan SDK 1.0.8 up to Vulkan SDK 1.0.46, on Windows, and Linux (ubuntu 16.06), with NVIDIA drivers. Other Vulkan capable systems/GPUs are expected to work, most proably requiring slight modifications. 
 
 
 ### Install the Vulkan SDK from LunarG
 
 Download the matching SDK for your system from: https://vulkan.lunarg.com
+
+It is recommended that you download an **Vulkan SDK version of 1.0.46 or above**. The Vulkan SDK library search paths have changed somewhere around SDK verions 1.0.42 and above - and the openFrameworks Vulkan renderer expects you're running the latest Vulkan SDK.
 
 #### Windows 
 
@@ -36,7 +35,7 @@ Download the matching SDK for your system from: https://vulkan.lunarg.com
 
 This installer should have automatically installed VulkanRT, which is the Vulkan runtime. If not, check out the toubleshooting section.
 	
-##### Troubleshooting: [windows, sdk 1.0.21.1] 
+##### Troubleshooting: [Windows, sdk 1.0.21.1] 
 
 Check VulkanRT install- I ran into a repeated issue with the powershell script included with the VulkanRT installer failing to execute. This script, `.\ConfigLayersAndVulkanDLL.ps1` is responsible for setting up some registry values to tell the Vulkan loader where to find the validation layers. I found that manually executing the script twice (first run fails) using an Admin Powershell console helped. 
 
@@ -45,6 +44,18 @@ Check VulkanRT install- I ran into a repeated issue with the powershell script i
     # and then again!
     .\ConfigLayersAndVulkanDLL.ps1 1 64
     # this time there should be no errors.
+
+##### Troubleshooting: [Windows, SDK search paths] 
+
+I saw that under windows sometimes the vulkan search paths are not properly set. If your app crashes in debug mode because vulkan layers cannot be found, type 
+
+    echo $VK_SDK_PATH
+
+and 
+
+    echo $VK_LAYER_PATH
+
+To see if these search paths are pointing to where you installed the Vulkan SDK. By default, `VK_LAYER_PATH` should point to a subdirectory of `VK_SDK_PATH`, named `Bin`
 
 #### Linux 
 
@@ -88,7 +99,7 @@ Then, move into the apothecary base directory.
 
 ### Update GLFW dependency using apothecary
   
-For Windows, visual studio 2015, and 64 bit (recommended) do:
+For Windows, visual studio 2015, and 64 bit do:
 
     ./apothecary -a 64 -t vs update glfw
 
@@ -152,24 +163,60 @@ Advanced users will probably want to write their own scene graphs, renderer addo
 
 ----------------------------------------------------------------------
 
-## Context
+## Architecture
 
-A Context is an isolated environment where temporary objects and buffer memory can
+Since Vulkan is not backwards-compatible with OpenGL, the renderer does not have this ambition either, and instead aims at making Vulkan more accessible, with an emphasis on things (shader hot-reloading, etc.) that may be useful for openFrameworks.
+
+Some architectural ideas are borrowed from modern engines and projects such as [bgfx][bgfx] or [regl.party][regl], which I highly suggest studying. 
+
+A key element in these modern approaches is to get away from stateful immediate-mode drawing as in "classic" OpenGL, to a more declarative state-less, data-driven, approach. This makes it possible engine-side to do a lot of optimisations underneath, and fits much better into how Vulkan itself is laid out.
+
+In principle, you first define *how* something will be drawn (what shader, what primitive mode, whether you want to use a depth test), and all these choices become consolidated and compiled into pipeline.
+
+Then, you define *what* to draw, which is the data in data-driven, so to say.
+
+### DrawCommand
+
+In the openFrameworks Vulkan renderer, a `DrawCommand` holds all the data needed to draw using the pipeline the `DrawCommand` was created from: (which mesh to draw, uniform settings for the shader etc). Notice that this broadly maps to the uniforms and attributes, samplers, etc. declared in the GLSL code for the shader you're using to draw.
+
+### RenderBatch
+
+To send a `DrawCommand` through the pipeline, you first need to create a `RenderBatch`. This is an object which helps accumulate multiple draw commands, and forward them down the engine in one go. A `RenderBatch` is a temporary object, and it is created from a `Context`.
+
+----------------------------------------------------------------------
+
+### Context
+
+A `Context` is an isolated environment where temporary objects and buffer memory can
 be allocated in an optimised way.
 
-A Context keeps memory isolated per *Virtual Frame*. A Virtual frame is protected by a
+A `Context` keeps memory isolated per *Virtual Frame*. A Virtual frame is protected by a
 `vk::Fence` which is set on `Context::end()` and waited upon `Context::begin()`. 
 It is therefore safe to assume that a Context is ready for write after `Context::begin()`.
 
-All Context operations are meant to be thread-safe 
-as long as the Context never leaves its home thread. All objects allocated through 
+All `Context` operations are meant to be thread-safe 
+as long as the `Context` never leaves its home thread. All objects allocated through 
 a context are synchronised using a fence which keeps all objects alife until the 
 frame is re-visited.
 
-A Context may be initialised using a `vk::Renderpass`. To render using a Context, 
-derive a RenderBatch from the Context, and add DrawCommands into the RenderBatch.
-When the RenderBatch ends, its internal queue of DrawCommands is translated into 
-a single `vk::Commandbuffer`, which is in turn queued inside the Context.
+A `Context` may be initialised using a `vk::Renderpass`, so it knows where the results of draw operations will be stored. The default `Context` draws to the screen, and you can grab it by calling the `ofVkRenderer`: 
+
+    auto renderer = dynamic_pointer_cast<ofVkRenderer>( ofGetCurrentRenderer() );
+    auto & context = renderer->getDefaultContext()
+
+To render using a `Context`, create a `RenderBatch` from the Context, `.begin()` the RenderBatch, and add `DrawCommand`s into it by calling `.draw(myDrawCommand)`. When you are done drawing, `.end()` the RenderBatch. Renderbatches are there to accumulate draw commands. 
+
+When the RenderBatch ends, its internal queue of DrawCommands is translated into a single `vk::Commandbuffer`, which is in turn queued inside the Context.
+
+	of::vk::RenderBatch batch{ *context };
+
+	batch.begin();
+	batch.draw( myDrawCommand_1 );
+    batch.draw( myDrawCommand_2 );
+    batch.draw( myDrawCommand_3 );
+    // ...
+	batch.end();
+
 
 When the Context ends, its internal queue of `vk::CommandBuffer` is submitted 
 to the `vk::Queue` for rendering. 
@@ -223,6 +270,8 @@ There is a recipe for shaderc included in `https://github.com/openframeworks-vk/
 
 This allows us to ingest shaders as GLSL, and to print out error messages if there was a compilation error. If there was a compilation error, `vk::Shader` will print out the context of the offending line alongside the compilation message. If a previous version of the shader compiled successfully, shader compilation aborts at this point, and the previous shader is used for rendering until the new version compiles successfully. This helps when prototyping. 
 
+The Vulkan renderer uses shaderC to make `#include` statements possible in glsl shader code. Any errors found when compiling includes is printed out with the correct line number of the offending include file, together with some lines of context of where the shader error was found.
+
 ----------------------------------------------------------------------
 
 ## Vulkan Quirks
@@ -249,40 +298,16 @@ ofMatrix4x4 clip(1.0f,  0.0f, 0.0f, 0.0f,
 
 ----------------------------------------------------------------------
 
-# TODO
-
-- [x] Unify transient vertex and index buffers and Context
-- [x] Define default pipeline layout based on default descriptor set layout
-- [x] Take into account usingNormals, usingTexCoords etc. when rendering meshes
-- [x] Add vertex color support
-- [x] Add support for drawing wireframes (part of default pipeline generation)
-- [x] Dynamically derive pipelines from render states such as POLYGON_MODE, BLENDING_MODE etc.
-- [X] Texture support
-- [X] Shader: compile from glsl
-- [ ] Shader: add "#pragma parameter" sugar
-- [X] Shader: auto-recompile from GLSL on change
-- [X] Add Shader manager
-- [X] multi-target rendering (FBOs)
-- [X] compute support
-
-----------------------------------------------------------------------
-
 # Design Principles
 
 1. Make it correct
 3. Make it extensible
-2. Keep it simple
+2. Make it simple(r)
 4. Optimise
-
-----------------------------------------------------------------------
-
-## Other things that could be worth adding:
-
-+ mip map support
-+ text rendering
-+ MSAA resolve using renderpass
 
 ----------------------------------------------------------------------
 
 [spec]: https://www.khronos.org/registry/vulkan/specs/1.0-extensions/html/vkspec.html
 [awesome]: https://github.com/vinjn/awesome-vulkan
+[regl]: http://regl.party/
+[bgfx]: https://github.com/bkaradzic/bgfx
