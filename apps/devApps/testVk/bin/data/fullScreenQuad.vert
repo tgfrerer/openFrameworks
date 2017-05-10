@@ -1,13 +1,20 @@
 #version 450 core
 
-// This shader built after a technique introduced in:
-// http://www.saschawillems.de/?page_id=2122
-
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_ARB_shading_language_420pack : enable
 
-#include "includes/test.vert"
-#include "includes/test.vert"
+// outputs 
+layout (location = 0) out vec2 outTexCoord;
+
+// we override the built-in fixed function outputs
+// to have more control over the SPIR-V code created.
+out gl_PerVertex
+{
+    vec4 gl_Position;
+};
+
+// This shader built after a technique introduced in:
+// http://www.saschawillems.de/?page_id=2122
 
 void main() 
 {
