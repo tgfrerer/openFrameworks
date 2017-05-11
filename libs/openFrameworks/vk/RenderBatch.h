@@ -27,7 +27,7 @@ class RenderBatch
 
 	*/
 
-	Context *  mRenderContext;
+	Context *              mRenderContext;
 	uint32_t               mVkSubPassId = 0;
 	std::list<DrawCommand> mDrawCommands;
 
@@ -49,7 +49,16 @@ public:
 
 	uint32_t nextSubPass();
 	
-	RenderBatch & draw( const DrawCommand& dc );
+	RenderBatch & draw( const DrawCommand& dc);
+
+	// explicit draw - parameters override DrawCommand State
+	RenderBatch & draw( const DrawCommand& dc, uint32_t vertexCount, uint32_t instanceCount, uint32_t firstVertex, uint32_t firstInstance );
+	
+	// explicit indexed draw - parameters override DrawCommand State
+	RenderBatch & draw( const DrawCommand& dc, uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex, int32_t vertexOffset, uint32_t firstInstance );
+
+	//RenderBatch & drawIndirect( const DrawCommand& dc );
+	//RenderBatch & drawIndexedIndirect( const DrawCommand& dc );
 	
 	// Begin command buffer, begin renderpass, 
 	// and also setup default values for scissor and viewport.
@@ -59,11 +68,13 @@ public:
 	// context's command buffer queue.
 	void end();
 
-	// return vulkan command buffer mapped to this batch
+	// Return vulkan command buffer mapped to this batch
+	// n.b. this flushes, i.e. processes all draw commands queued up until this command is called.
 	::vk::CommandBuffer& getVkCommandBuffer();
 
 private:
-	
+
+	void finalizeDrawCommand( of::vk::DrawCommand &dc );
 	void processDrawCommands( );
 
 };

@@ -18,21 +18,68 @@ of::vk::RenderBatch& RenderBatch::draw( const DrawCommand& dc_ ){
 	// local copy of draw command.
 	DrawCommand dc = dc_;
 
+	finalizeDrawCommand( dc );
+
+	mDrawCommands.emplace_back( std::move(dc) );
+	
+	return *this;
+}
+
+// ----------------------------------------------------------------------
+
+RenderBatch & of::vk::RenderBatch::draw( const DrawCommand & dc_, uint32_t vertexCount_, uint32_t instanceCount_, uint32_t firstVertex_, uint32_t firstInstance_ ){
+	
+	// local copy of draw command.
+	DrawCommand dc = dc_;
+
+	finalizeDrawCommand( dc );
+
+	dc.mDrawMethod      = DrawCommand::DrawMethod::eDraw;
+	dc.mNumVertices   = vertexCount_;
+	dc.mInstanceCount = instanceCount_;
+	dc.mFirstVertex   = firstVertex_;
+	dc.mFirstInstance = firstInstance_;
+
+	mDrawCommands.emplace_back( std::move( dc ) );
+
+	return *this;
+}
+
+// ----------------------------------------------------------------------
+
+RenderBatch & of::vk::RenderBatch::draw( const DrawCommand & dc_, uint32_t indexCount_, uint32_t instanceCount_, uint32_t firstIndex_, int32_t vertexOffset_, uint32_t firstInstance_ ){
+
+	// local copy of draw command.
+	DrawCommand dc = dc_;
+
+	finalizeDrawCommand( dc );
+
+	dc.mDrawMethod      = DrawCommand::DrawMethod::eIndexed;
+	dc.mNumIndices    = indexCount_;
+	dc.mInstanceCount = instanceCount_;
+	dc.mFirstIndex    = firstIndex_;
+	dc.mVertexOffset  = vertexOffset_;
+	dc.mFirstInstance = firstInstance_;
+
+	mDrawCommands.emplace_back( std::move( dc ) );
+
+	return *this;
+}
+
+// ----------------------------------------------------------------------
+
+void of::vk::RenderBatch::finalizeDrawCommand( of::vk::DrawCommand &dc ){
 	// Commit draw command memory to gpu
 	// This will update dynamic offsets as a side-effect, 
 	// and will also update the buffer ID for the bindings affected.
 	dc.commitUniforms( mRenderContext->getAllocator() );
 	dc.commitMeshAttributes( mRenderContext->getAllocator() );
-	
+
 	// Renderpass is constant over a context, as a context encapsulates 
 	// a renderpass with all its subpasses.
 	dc.mPipelineState.setRenderPass( mRenderContext->getRenderPass() );
-	
-	dc.mPipelineState.setSubPass( mVkSubPassId );
 
-	mDrawCommands.emplace_back( std::move(dc) );
-	
-	return *this;
+	dc.mPipelineState.setSubPass( mVkSubPassId );
 }
 
 // ----------------------------------------------------------------------
@@ -225,14 +272,24 @@ void RenderBatch::processDrawCommands( ){
 				mVkCmd.bindVertexBuffers( 0, vertexBuffers, vertexOffsets );
 			}
 
-			if ( !indexBuffer ){
+			switch ( dc.mDrawMethod ){
+			case DrawCommand::DrawMethod::eDraw: 
 				// non-indexed draw
-				mVkCmd.draw( uint32_t( dc.getNumVertices() ), 1, 0, 0 ); //last param was 1
-			} else{
+				mVkCmd.draw( dc.mNumVertices, dc.mInstanceCount, dc.mFirstVertex, dc.mFirstInstance );
+				break;
+			case DrawCommand::DrawMethod::eIndexed:
 				// indexed draw
 				mVkCmd.bindIndexBuffer( indexBuffer, indexOffset, ::vk::IndexType::eUint32 );
-				mVkCmd.drawIndexed( dc.getNumIndices(), 1, 0, 0, 0 ); // last param was 1
+				mVkCmd.drawIndexed( dc.mNumIndices, dc.mInstanceCount, dc.mFirstIndex, dc.mVertexOffset, dc.mFirstInstance );
+				break;
+			case DrawCommand::DrawMethod::eIndirect:
+				// TODO: implement
+				break;
+			case DrawCommand::DrawMethod::eIndexedIndirect:
+				// TODO: implement
+				break;
 			}
+
 		}
 
 	}

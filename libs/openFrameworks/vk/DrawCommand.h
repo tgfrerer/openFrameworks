@@ -19,7 +19,17 @@ class BufferAllocator;	   // ffdecl.
 class DrawCommand
 {
 	friend class RenderBatch;
+
+public :
 	
+	// draw mode to be used when submitting DrawCommand
+	enum class DrawMethod : uint32_t
+	{
+		eDraw        = 0, // Default method
+		eIndexed        , // Indexed draw
+		eIndirect       , // todo: implement
+		eIndexedIndirect, // todo: implement
+	};
 
 private:
 
@@ -29,6 +39,7 @@ private:
 private:      /* transient data */
 
 	uint64_t mPipelineHash = 0;
+
 
 	// Bindings data for descriptorSets, (vector index == set number) - retrieved from shader on setup
 	std::vector<DescriptorSetData_t>   mDescriptorSetData;
@@ -47,13 +58,28 @@ private:      /* transient data */
 	// offsets into buffer for index data - this is optional
 	::vk::DeviceSize mIndexOffsets = 0;
 
-	uint32_t mNumIndices = 0;
-	uint32_t mNumVertices = 0;
+	// draw method to be used when submitting DrawCommand
+	DrawMethod mDrawMethod = DrawMethod::eDraw;
+
+	// draw parameters used when submitting DrawCommand
+	uint32_t mNumIndices    = 0;
+	uint32_t mNumVertices   = 0;
+	uint32_t mInstanceCount = 1; 
+	uint32_t mFirstVertex   = 0; 
+	uint32_t mFirstIndex    = 0; 
+	uint32_t mVertexOffset  = 0; 
+	uint32_t mFirstInstance = 0; 
 
 	std::shared_ptr<ofMesh> mMsh; /* optional */
 
 	template <typename T>
 	bool allocAndSetAttribute( const std::string& attrName_, const std::vector<T> & vec, const std::unique_ptr<BufferAllocator>& alloc );
+
+	// set data for upload to ubo - data is stored locally 
+	// until draw command is submitted
+	void commitUniforms( const std::unique_ptr<BufferAllocator>& alloc_ );
+
+	void commitMeshAttributes( const std::unique_ptr<BufferAllocator>& alloc_ );
 
 public:
 
@@ -69,19 +95,30 @@ public:
 	const ::vk::DeviceSize&              getIndexOffsets();
 	const ::vk::Buffer&                  getIndexBuffer();
 	
-	uint32_t                             getNumIndices();
-	of::vk::DrawCommand &                setNumVertices( uint32_t numVertices );
-	
-	uint32_t                             getNumVertices();
-	of::vk::DrawCommand &                setNumIndices( uint32_t numIndices );
+	// Getters and setters for (instanced) draw parameters
+	DrawCommand&  setDrawMethod   ( DrawMethod method );
+	DrawCommand&  setNumIndices   ( uint32_t numVertices );
+	DrawCommand&  setNumVertices  ( uint32_t numVertices );
+	DrawCommand&  setInstanceCount( uint32_t instanceCount );
+	DrawCommand&  setFirstVertex  ( uint32_t firstVertex   );
+	DrawCommand&  setFirstIndex   ( uint32_t firstIndex    );
+	DrawCommand&  setVertexOffset ( uint32_t vertexOffset  );
+	DrawCommand&  setFirstInstance( uint32_t firstInstance );
+				   
+	DrawMethod     getDrawMethod   ();
+	uint32_t       getNumIndices   ();
+	uint32_t       getNumVertices  ();
+	uint32_t       getInstanceCount();
+	uint32_t       getFirstVertex  ();
+	uint32_t       getFirstIndex   ();
+	uint32_t       getVertexOffset ();
+	uint32_t       getFirstInstance();
 
-	// set data for upload to ubo - data is stored locally 
-	// until draw command is submitted
-	void commitUniforms( const std::unique_ptr<BufferAllocator>& alloc_ );
-
-	void commitMeshAttributes( const std::unique_ptr<BufferAllocator>& alloc_ );
-
-	void setMesh( const shared_ptr<ofMesh>& msh_ );
+	// Use ofMesh to draw - this method is here to aid prototyping, and to render dynamic
+	// meshes. The mesh will get uploaded to temporary GPU memory when the DrawCommand
+	// is queued up into a RenderBatch. Use setAttribute and setIndices to render static
+	// meshes, and for more control over how drawing behaves.
+	of::vk::DrawCommand & setMesh( const shared_ptr<ofMesh>& msh_ );
 
 	of::vk::DrawCommand & setAttribute( const std::string& name_, ::vk::Buffer buffer_, ::vk::DeviceSize offset_ );
 	of::vk::DrawCommand & setAttribute( const size_t attribLocation_, ::vk::Buffer buffer, ::vk::DeviceSize offset );
@@ -218,13 +255,67 @@ inline uint32_t of::vk::DrawCommand::getNumVertices(){
 	return mNumVertices;
 }
 
+inline uint32_t of::vk::DrawCommand::getInstanceCount(){
+	return mInstanceCount;
+}
+
+inline uint32_t of::vk::DrawCommand::getFirstVertex(){
+	return mFirstVertex;
+}
+
+inline uint32_t of::vk::DrawCommand::getFirstIndex(){
+	return mFirstIndex;
+}
+
+inline uint32_t of::vk::DrawCommand::getVertexOffset(){
+	return mVertexOffset;
+}
+
+inline uint32_t of::vk::DrawCommand::getFirstInstance(){
+	return mFirstInstance;
+}
+
+inline of::vk::DrawCommand::DrawMethod of::vk::DrawCommand::getDrawMethod(){
+	return mDrawMethod;
+}
+
+inline of::vk::DrawCommand & of::vk::DrawCommand::setNumIndices( uint32_t numIndices ){
+	mNumIndices = numIndices;
+	return *this;
+}
+
 inline of::vk::DrawCommand & of::vk::DrawCommand::setNumVertices( uint32_t numVertices ){
 	mNumVertices = numVertices;
 	return *this;
 }
 
-inline of::vk::DrawCommand & of::vk::DrawCommand::setNumIndices( uint32_t numIndices ){
-	mNumIndices = numIndices;
+inline of::vk::DrawCommand & of::vk::DrawCommand::setInstanceCount( uint32_t instanceCount ){
+	mInstanceCount = instanceCount;
+	return *this;
+}
+
+inline of::vk::DrawCommand & of::vk::DrawCommand::setFirstVertex( uint32_t firstVertex ){
+	mFirstVertex = firstVertex;
+	return *this;
+}
+
+inline of::vk::DrawCommand & of::vk::DrawCommand::setFirstIndex( uint32_t firstIndex ){
+	mFirstIndex = firstIndex;
+	return *this;
+}
+
+inline of::vk::DrawCommand & of::vk::DrawCommand::setVertexOffset( uint32_t vertexOffset ){
+	mVertexOffset = vertexOffset;
+	return *this;
+}
+
+inline of::vk::DrawCommand & of::vk::DrawCommand::setFirstInstance( uint32_t firstInstance ){
+	mFirstInstance = firstInstance;
+	return *this;
+}
+
+inline of::vk::DrawCommand & of::vk::DrawCommand::setDrawMethod( DrawMethod method_ ){
+	mDrawMethod = method_;
 	return *this;
 }
 
@@ -268,14 +359,11 @@ inline of::vk::DrawCommand & of::vk::DrawCommand::setAttribute( const size_t att
 	return *this;
 }
 
-
 // ------------------------------------------------------------
 
 inline of::vk::DrawCommand & of::vk::DrawCommand::setIndices( const of::vk::BufferRegion& bufferRegion_ ){
 	return setIndices( bufferRegion_.buffer, bufferRegion_.offset );
 }
-
-
 
 // ------------------------------------------------------------
 
