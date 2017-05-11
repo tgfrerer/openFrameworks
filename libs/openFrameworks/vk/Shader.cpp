@@ -82,6 +82,7 @@ bool of::vk::Shader::compile(){
 				// !TODO: should we use a default shader, then?
 				ofLogFatalError() << "Shader did not compile: " << filename;
 				ofExit( 1 );
+				return false;
 			}
 		} 
 
@@ -1008,6 +1009,9 @@ void of::vk::Shader::reflectVertexInputs(const spirv_cross::Compiler & compiler,
 		if ( ( 1ull << spv::DecorationLocation ) & compiler.get_decoration_mask( attributeInput.id ) ){
 			location = compiler.get_decoration( attributeInput.id, spv::DecorationLocation );
 		}
+
+		// TODO: figure out what to do if attribute bindings are sparse, i.e. the number of bindings
+		// is less than the highest location reflected from DecorationLocation
 
 		vertexInfo.attributeNames[location] = attributeInput.name;
 
