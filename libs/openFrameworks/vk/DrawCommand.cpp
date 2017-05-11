@@ -162,6 +162,7 @@ void DrawCommand::commitMeshAttributes( const std::unique_ptr<BufferAllocator>& 
 				setIndices( alloc->getBuffer(), offset );
 				mNumIndices = uint32_t(indices.size());
 			}
+
 		} else{
 			mIndexBuffer = nullptr;
 			mIndexOffsets = 0;
@@ -172,8 +173,9 @@ void DrawCommand::commitMeshAttributes( const std::unique_ptr<BufferAllocator>& 
 
 // ------------------------------------------------------------
 
-void DrawCommand::setMesh(const shared_ptr<ofMesh> & msh_ ){
+DrawCommand & DrawCommand::setMesh(const shared_ptr<ofMesh> & msh_ ){
 	mMsh = msh_;
+	return *this;
 }
 
 // ------------------------------------------------------------
@@ -191,7 +193,7 @@ inline bool DrawCommand::allocAndSetAttribute( const std::string & attrName_, co
 		memcpy( dataP, vec.data(), byteSize );
 		setAttribute( attrName_, alloc->getBuffer(), offset );
 		return true;
-	}
+	} 
 	return false;
 }
 
