@@ -151,6 +151,15 @@ void RenderBatch::end(){
 
 // ----------------------------------------------------------------------
 
+::vk::CommandBuffer & RenderBatch::getVkCommandBuffer(){
+	// Flush currently queued up draw commands so that command buffer
+	// is in the right state
+	processDrawCommands();
+	return mVkCmd;
+}
+
+// ----------------------------------------------------------------------
+
 void RenderBatch::processDrawCommands( ){
 
 	// first order draw commands
@@ -293,7 +302,9 @@ void RenderBatch::processDrawCommands( ){
 		}
 
 	}
-
+	
+	// remove processed draw commands from queue
+	mDrawCommands.clear();
 
 }
 

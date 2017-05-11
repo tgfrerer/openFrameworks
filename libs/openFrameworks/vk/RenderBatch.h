@@ -88,11 +88,6 @@ inline uint32_t RenderBatch::nextSubPass(){
 	return ++mVkSubPassId;
 }
 
-// ----------------------------------------------------------------------
-
-inline ::vk::CommandBuffer & of::vk::RenderBatch::getVkCommandBuffer(){
-	return mVkCmd;
-}
 
 // ----------------------------------------------------------------------
 
