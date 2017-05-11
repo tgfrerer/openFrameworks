@@ -294,6 +294,9 @@
     <ClInclude Include="..\..\..\openFrameworks\utils\ofXml.h">
       <Filter>libs\openFrameworks\utils</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\..\openFrameworks\utils\ofJson.h">
+      <Filter>libs\openFrameworks\utils</Filter>
+    </ClInclude>
     <ClInclude Include="..\..\..\openFrameworks\vk\DrawCommand.h">
       <Filter>libs\openFrameworks\vk</Filter>
     </ClInclude>

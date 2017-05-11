@@ -54,61 +54,69 @@ Module{
         property stringList system_libs
         property stringList static_libs
         configure: {
+            includes = [];
+            cflags = [];
+            ldflags = [];
+            system_libs = [];
+            static_libs = [];
+
+            // pkgconfig packages
             var configs = [];
-        if(platform === "linux"  || platform === "linux64"){
-            var pkgs = [
-                "cairo",
-                "gstreamer-1.0",
-                "zlib",
-                "gstreamer-app-1.0",
-                "gstreamer-video-1.0",
-                "gstreamer-base-1.0",
-                "libudev",
-                "freetype2",
-                "fontconfig",
-                "sndfile",
-                "openal",
-                "libpulse-simple",
-                "alsa",
-                "gl",
-                "glu",
-                "glew",
-                "gtk+-3.0",
-                "libmpg123",
-                "glfw3",
-                "liburiparser",
-                "libcurl",
-            ].concat(pkgConfigs);
+            if(platform === "linux"  || platform === "linux64"){
+                var pkgs = [
+                    "cairo",
+                    "gstreamer-1.0",
+                    "zlib",
+                    "gstreamer-app-1.0",
+                    "gstreamer-video-1.0",
+                    "gstreamer-base-1.0",
+                    "libudev",
+                    "freetype2",
+                    "fontconfig",
+                    "sndfile",
+                    "openal",
+                    "libpulse-simple",
+                    "alsa",
+                    "gl",
+                    "glu",
+                    "glew",
+                    "gtk+-3.0",
+                    "libmpg123",
+                    "glfw3",
+                    "liburiparser",
+                    "libcurl",
+                ].concat(pkgConfigs);
 
 
-            if(Helpers.pkgExists("rtaudio")){
-                pkgs.push("rtaudio");
-            }
-            if(Helpers.pkgExists("libmpg123")){
-                pkgs.push("libmpg123");
-            }
-            if(Helpers.pkgExists("gtk+-3.0")){
-                pkgs.push("gtk+-3.0")
-            }
-
-                configs = pkgs;
-        }else if(platform === "msys2"){
-            var pkgs = [
-                "cairo",
-                "zlib",
-                "glew",
-                "glfw3",
-                "libcurl",
-                "openssl",
-            ].concat(pkgConfigs);
-
-            if(Helpers.pkgExists("rtaudio")){
-                pkgs.push("rtaudio");
-            }
+                if(Helpers.pkgExists("rtaudio")){
+                    pkgs.push("rtaudio");
+                }
+                if(Helpers.pkgExists("libmpg123")){
+                    pkgs.push("libmpg123");
+                }
+                if(Helpers.pkgExists("gtk+-3.0")){
+                    pkgs.push("gtk+-3.0")
+                }
 
                 configs = pkgs;
+            }else if(platform === "msys2"){
+                var pkgs = [
+                    "cairo",
+                    "zlib",
+                    "glew",
+                    "glfw3",
+                    "libcurl",
+                    "openssl",
+                ].concat(pkgConfigs);
+
+                if(Helpers.pkgExists("rtaudio")){
+                    pkgs.push("rtaudio");
+                }
+
+                configs = pkgs;
             }
 
+            // library exceptions
             var libsexceptions = [];
             if(platform === "linux"  || platform === "linux64"){
                 libsexceptions = [
@@ -156,6 +164,7 @@ Module{
                 ];
             }
 
+            // parse include search paths from core libraries
             var coreincludes = Helpers.listDirsRecursive(ofRoot + "/libs/openFrameworks");
             var corelibs = Helpers.listDir(ofRoot + '/libs/');
             for(var lib in corelibs){
@@ -166,9 +175,11 @@ Module{
                     coreincludes = coreincludes.concat(include_paths);
                 }
             }
+            includes = coreincludes;
 
+            // add search paths from pkgconfigs;
             if(platform === "linux"  || platform === "linux64" || platform === "msys2"){
-                includes = coreincludes.concat(Helpers.pkgconfig(configs, ["--cflags-only-I"]).map(function(element){
+                includes = includes.concat(Helpers.pkgconfig(configs, ["--cflags-only-I"]).map(function(element){
                     return element.substr(2).trim()
                 }));
             }
@@ -180,13 +191,14 @@ Module{
                 var vk_sdk_includes = Helpers.Environment.getEnv("VULKAN_SDK") + "/include";
                 includes = includes.concat(vk_sdk_includes);
             }
-
+            // cflags from pkgconfigs
             if(platform === "linux"  || platform === "linux64" || platform === "msys2"){
                 cflags = Helpers.pkgconfig(configs, ["--cflags-only-other"]);
             }else{
                 cflags = [];
             }
 
+            // ldflags from pkgconfigs
             if(platform === "linux"  || platform === "linux64" || platform === "msys2"){
                 ldflags = Helpers.pkgconfig(configs, ["--libs-only-L"]);
                 if(platform === "msys2"){
@@ -197,15 +209,17 @@ Module{
                 ldflags = [];
             }
 
+            // libraries from pkgconfigs
             if(platform === "linux"  || platform === "linux64" || platform === "msys2"){
                 var pkgconfiglibs = Helpers.pkgconfig(configs, ["--libs-only-l"]);
                 system_libs = pkgconfiglibs.map(function(lib){
                     return lib.substr(2);
                 });
-        }else{
+            }else{
                 system_libs = [];
             }
 
+            // add static libraries from core directories
             static_libs = Helpers.findLibsRecursive(ofRoot + "/libs", platform, libsexceptions);
 
             found = true;
@@ -216,42 +230,42 @@ Module{
         id: ADDITIONAL_LIBS
         property stringList libs
         configure: {
-        if(platform === "linux"  || platform === "linux64"){
+            if(platform === "linux"  || platform === "linux64"){
                 var libslist = [
-                "glut",
-                "X11",
-                "Xrandr",
-                "Xxf86vm",
-                "Xi",
-                "Xcursor",
-                "Xinerama",
-                "dl",
-                "pthread",
-                "freeimage",
-                "boost_filesystem",
-                "boost_system",
+                    "glut",
+                    "X11",
+                    "Xrandr",
+                    "Xxf86vm",
+                    "Xi",
+                    "Xcursor",
+                    "Xinerama",
+                    "dl",
+                    "pthread",
+                    "freeimage",
+                    "boost_filesystem",
+                    "boost_system",
                 "vulkan",
                 // "glfw3",
-                "pugixml",
-            ];
+                    "pugixml",
+                ];
 
-            if(!Helpers.pkgExists("rtaudio")){
+                if(!Helpers.pkgExists("rtaudio")){
                     libslist.push("rtaudio");
-            }
+                }
 
                 libs = libslist;
-        }else if(platform === "msys2"){
+            }else if(platform === "msys2"){
                 libs = [
-                'opengl32', 'gdi32', 'msimg32', 'glu32', 'winmm', 'strmiids',
-                'uuid', 'oleaut32', 'setupapi', 'wsock32', 'ws2_32', 'Iphlpapi', 'Comdlg32',
-                'freeimage', 'boost_filesystem-mt', 'boost_system-mt', 'freetype', 'pthread',
-                'ksuser', 'ole32', 'dsound',
-            ];
-        }else if(platform === "android"){
+                    'opengl32', 'gdi32', 'msimg32', 'glu32', 'winmm', 'strmiids',
+                    'uuid', 'oleaut32', 'setupapi', 'wsock32', 'ws2_32', 'Iphlpapi', 'Comdlg32',
+                    'freeimage', 'boost_filesystem-mt', 'boost_system-mt', 'freetype', 'pthread',
+                    'ksuser', 'ole32', 'dsound',
+                ];
+            }else if(platform === "android"){
                 libs = [
-                'OpenSLES', 'z', 'GLESv1_CM', 'GLESv2', 'log'
-            ];
-        }else{
+                    'OpenSLES', 'z', 'GLESv1_CM', 'GLESv2', 'log'
+                ];
+            }else{
                 libs = [];
             }
             found = true;
@@ -268,6 +282,7 @@ Module{
         property stringList frameworks
         property stringList cflags
         property stringList ldflags
+        property stringList defines;
 
         configure: {
             includes = [];
@@ -277,95 +292,138 @@ Module{
             frameworks = [];
             cflags = [];
             ldflags = [];
+            defines = [];
 
             if(isCoreLibrary){
                 found = false;
                 return;
-    }
+            }
 
             // parse list of addons from qbs or addons.make
-        var allAddons = [];
+            var allAddons = [];
             if(addons===undefined){
                 // Project addons list is undefined parse addons.make instead
-        try{
+                try{
                     var addonsmake = new TextFile(sourceDirectory + "/addons.make");
-            while(!addonsmake.atEof()){
-                var line = addonsmake.readLine().trim();
-                allAddons.push(line);
-                var addonPath = ofRoot + '/addons/' + line;
-                var dependencies = Helpers.parseAddonConfig(addonPath, "ADDON_DEPENDENCIES", [], platform);
-                allAddons = allAddons.concat(dependencies);
-            }
-        }catch(e){}
+                    while(!addonsmake.atEof()){
+                        var line = addonsmake.readLine().trim();
+                        allAddons.push(line);
+                        var addonPath = ofRoot + '/addons/' + line;
+                    }
+                }catch(e){}
             }else{
                 allAddons = addons;
-    }
+            }
 
             if(allAddons === undefined || allAddons.length === 0){
                 found = false;
                 return;
-        }
+            }
 
             // map addons list to addons paths
-            allAddons = Helpers.removeDuplicates(allAddons.map(function(addon){
+            var addonsPaths = Helpers.removeDuplicates(allAddons.map(function(addon){
                 var addonPath = Helpers.normalize(FileInfo.joinPaths(sourceDirectory, addon))
-            if(File.exists(addonPath)){
-                return addonPath;
-            }else{
-                return Helpers.normalize(FileInfo.joinPaths(ofRoot, '/addons/', addon));
-            }
-        }));
+                if(File.exists(addonPath)){
+                    return addonPath;
+                }else{
+                    return Helpers.normalize(FileInfo.joinPaths(ofRoot, '/addons/', addon));
+                }
+            }));
+
+            // Look for dependencies
+            Object.defineProperties(Array.prototype, {
+                'flatMap': {
+                    value: function (lambda) {
+                        return Array.prototype.concat.apply([], this.map(lambda));
+                    },
+                    writeable: false,
+                    enumerable: false
+                }
+            });
+            var dependencies = addonsPaths.flatMap(function(addonPath){
+                var dependencies = Helpers.parseAddonConfig(addonPath, "ADDON_DEPENDENCIES", [], platform);
+                if(addonPath.startsWith(ofRoot + "/addons")){
+                    return dependencies;
+                }else{
+                    // If it's a local addon try to find dependencies in the same folder
+                    var parentAddonFolder = FileInfo.path(addonPath);
+                    return dependencies.map(function(dependency){
+                        var local = FileInfo.joinPaths(parentAddonFolder, dependency);
+                        if(File.exists(local)){
+                            return local;
+                        }else{
+                            return dependency;
+                        }
+                    })
+                }
+            });
+
+            allAddons = allAddons.concat(dependencies);
+
+            // Finally map all addons and dependencies to paths
+            allAddons = Helpers.removeDuplicates(allAddons.map(function(addon){
+                if(FileInfo.isAbsolutePath(addon) && File.exists(addon)){
+                    return addon;
+                }
+
+                var addonPath = Helpers.normalize(FileInfo.joinPaths(sourceDirectory, addon))
+                if(File.exists(addonPath)){
+                    return addonPath;
+                }else{
+                    return Helpers.normalize(FileInfo.joinPaths(ofRoot, '/addons/', addon));
+                }
+            }));
 
             // includes
             for(var addon in allAddons){
                 var addonPath = allAddons[addon];
-            var addonIncludes = Helpers.addonIncludes(addonPath);
-            addonIncludes = Helpers.parseAddonConfig(addonPath, "ADDON_INCLUDES", addonIncludes, platform, addonPath+"/");
-            var addonIncludesExcludes = Helpers.parseAddonConfig(addonPath, "ADDON_INCLUDES_EXCLUDE", [], platform, addonPath+"/");
-            if(addonIncludesExcludes.length>0){
-                addonIncludes = addonIncludes.filter(function(element){
-                    for(var exclude in addonIncludesExcludes){
-                        var exclude = addonIncludesExcludes[exclude].replace("%",".*");
-                        var patt = new RegExp(exclude);
-                        var match = patt.exec(element);
-                        if(match!=null){
-                            return false;
+                var addonIncludes = Helpers.addonIncludes(addonPath);
+                addonIncludes = Helpers.parseAddonConfig(addonPath, "ADDON_INCLUDES", addonIncludes, platform, addonPath+"/");
+                var addonIncludesExcludes = Helpers.parseAddonConfig(addonPath, "ADDON_INCLUDES_EXCLUDE", [], platform, addonPath+"/");
+                if(addonIncludesExcludes.length>0){
+                    addonIncludes = addonIncludes.filter(function(element){
+                        for(var exclude in addonIncludesExcludes){
+                            var exclude = addonIncludesExcludes[exclude].replace("%",".*");
+                            var patt = new RegExp(exclude);
+                            var match = patt.exec(element);
+                            if(match!=null){
+                                return false;
+                            }
                         }
-                    }
-                    return true;
-                });
+                        return true;
+                    });
+                }
+                includes = includes.concat(addonIncludes);
             }
-            includes = includes.concat(addonIncludes);
-        }
 
             // sources
             for(var addon in allAddons){
                 var addonPath = allAddons[addon];
-            var addonSources = Helpers.addonSources(addonPath);
-            addonSources = Helpers.parseAddonConfig(addonPath, "ADDON_SOURCES", addonSources, platform, addonPath+"/");
-            var addonSourcesExcludes = Helpers.parseAddonConfig(addonPath, "ADDON_SOURCES_EXCLUDE", [], platform, addonPath+"/");
-            if(addonSourcesExcludes.length>0){
-                addonSources = addonSources.filter(function(element){
-                    for(var exclude in addonSourcesExcludes){
-                        var exclude = addonSourcesExcludes[exclude].replace("%",".*");
-                        var patt = new RegExp(exclude);
-                        var match = patt.exec(element);
-                        if(match!=null){
-                            return false;
+                var addonSources = Helpers.addonSources(addonPath);
+                addonSources = Helpers.parseAddonConfig(addonPath, "ADDON_SOURCES", addonSources, platform, addonPath+"/");
+                var addonSourcesExcludes = Helpers.parseAddonConfig(addonPath, "ADDON_SOURCES_EXCLUDE", [], platform, addonPath+"/");
+                if(addonSourcesExcludes.length>0){
+                    addonSources = addonSources.filter(function(element){
+                        for(var exclude in addonSourcesExcludes){
+                            var exclude = addonSourcesExcludes[exclude].replace("%",".*");
+                            var patt = new RegExp(exclude);
+                            var match = patt.exec(element);
+                            if(match!=null){
+                                return false;
+                            }
                         }
-                    }
-                    return true;
-                });
-            }
+                        return true;
+                    });
+                }
                 addonSources = addonSources.map(function(element){
                     return element.replace("%","*");
                 });
-            sources = sources.concat(addonSources);
-            var addon_config = FileInfo.joinPaths(addonPath,"addon_config.mk");
-            if(File.exists(addon_config)){
-                sources.push(addon_config);
+                sources = sources.concat(addonSources);
+                var addon_config = FileInfo.joinPaths(addonPath,"addon_config.mk");
+                if(File.exists(addon_config)){
+                    sources.push(addon_config);
+                }
             }
-        }
 
             // config cflags
             var config_cflags = [];
@@ -379,33 +437,33 @@ Module{
             for(var addon in allAddons){
                 var addonPath = allAddons[addon];
                 config_ldflags = config_ldflags.concat(Helpers.parseAddonConfig(addonPath, "ADDON_LDFLAGS", [], platform))
-    }
+            }
 
             // libs
             for(var addon in allAddons){
                 var addonPath = allAddons[addon];
-            var addonLibs = Helpers.findLibsRecursive(addonPath + "/libs", platform, []);
-            addonLibs = Helpers.parseAddonConfig(addonPath, "ADDON_LIBS", addonLibs, platform, addonPath+"/");
-            var addonLibsExcludes = Helpers.parseAddonConfig(addonPath, "ADDON_LIBS_EXCLUDE", [], platform, addonPath+"/");
-            if(addonLibsExcludes.length>0){
-                addonLibs = addonLibs.filter(function(element){
-                    for(var exclude in addonLibsExcludes){
-                        var exclude = addonLibsExcludes[exclude].replace("%",".*");
-                        var patt = new RegExp(exclude);
-                        var match = patt.exec(element);
-                        if(match!=null){
-                            return false;
+                var addonLibs = Helpers.findLibsRecursive(addonPath + "/libs", platform, []);
+                addonLibs = Helpers.parseAddonConfig(addonPath, "ADDON_LIBS", addonLibs, platform, addonPath+"/");
+                var addonLibsExcludes = Helpers.parseAddonConfig(addonPath, "ADDON_LIBS_EXCLUDE", [], platform, addonPath+"/");
+                if(addonLibsExcludes.length>0){
+                    addonLibs = addonLibs.filter(function(element){
+                        for(var exclude in addonLibsExcludes){
+                            var exclude = addonLibsExcludes[exclude].replace("%",".*");
+                            var patt = new RegExp(exclude);
+                            var match = patt.exec(element);
+                            if(match!=null){
+                                return false;
+                            }
                         }
-                    }
-                    return true;
-                });
-            }
+                        return true;
+                    });
+                }
                 static_libs = static_libs.concat(addonLibs);
-        }
+            }
 
             // separate config flags in libs and flags
             var config_libs = config_ldflags
-            .filter(function(flag){ return flag.startsWith("-l"); })
+                .filter(function(flag){ return flag.startsWith("-l"); })
                 .map(function(flag){ return flag.substr(2); });
 
             config_ldflags = config_ldflags
@@ -414,21 +472,27 @@ Module{
             // frameworks
             for(var addon in allAddons){
                 var addonPath = allAddons[addon];
-            var addonFrameworks = [];
-            addonFrameworks = Helpers.parseAddonConfig(addonPath, "ADDON_FRAMEWORKS", addonFrameworks, platform, addonPath+"/");
-            frameworks = frameworks.concat(addonFrameworks);
-        }
+                var addonFrameworks = [];
+                addonFrameworks = Helpers.parseAddonConfig(addonPath, "ADDON_FRAMEWORKS", addonFrameworks, platform, addonPath+"/");
+                frameworks = frameworks.concat(addonFrameworks);
+            }
 
             // pkg_configs
-        var pkgconfigs = [];
+            var pkgconfigs = [];
             for(var addon in allAddons){
                 var addonPath = allAddons[addon];
-            pkgconfigs = pkgconfigs.concat(Helpers.parseAddonConfig(addonPath, "ADDON_PKG_CONFIG_LIBRARIES", [], platform))
-        }
+                pkgconfigs = pkgconfigs.concat(Helpers.parseAddonConfig(addonPath, "ADDON_PKG_CONFIG_LIBRARIES", [], platform))
+            }
+
+            // addon defines
+            for(var addon in allAddons){
+                var addonPath = allAddons[addon];
+                defines = defines.concat(Helpers.parseAddonConfig(addonPath, "ADDON_DEFINES", [], platform))
+            }
 
             // pkg includes
             includes = includes.concat(Helpers.pkgconfig(pkgconfigs, ["--cflags-only-I"]).map(function(element){
-            return element.substr(2).trim()
+                return element.substr(2).trim()
             }))
 
             // pkg cflags
@@ -441,7 +505,7 @@ Module{
 
             // pkg config libs
             system_libs = Helpers.pkgconfig(pkgconfigs, ["--libs-only-l"])
-            .map(function(flag){ return flag.substr(2); })
+                .map(function(flag){ return flag.substr(2); })
 
             system_libs = system_libs.concat(config_libs)
 
@@ -452,6 +516,11 @@ Module{
     Properties{
         condition: !of.isCoreLibrary
         property stringList ADDONS_SOURCES: ADDONS.sources
+    }
+
+    Properties{
+        condition: !of.isCoreLibrary
+        property stringList ADDONS_DEFINES: ADDONS.defines
     }
 
     Probe{
@@ -471,12 +540,12 @@ Module{
     Properties{
         condition: qbs.targetOS.contains("linux")
         DEFINES: DEFINES_LINUX.list
-        }
+    }
 
     Properties{
         condition: qbs.targetOS.contains("windows")
         DEFINES: ['GCC_HAS_REGEX','UNICODE','_UNICODE']
-        }
+    }
 
     Properties{
         condition: !qbs.targetOS.contains("linux") && !qbs.targetOS.contains("windows")
@@ -578,7 +647,7 @@ Module{
 
         coreLinkerFlags:{
             var flags = CORE.ldflags
-            .concat(linkerFlags)
+                .concat(linkerFlags)
             if(of.isCoreLibrary){
                 return flags;
             }else{
@@ -600,15 +669,15 @@ Module{
         coreSysroot: ndk_root + '/platforms/android-19/arch-arm'
         coreCxxFlags: {
             var flags = ['-Wno-unused-parameter','-Werror=return-type','-std=gnu++14']
-            .concat('-I'+coreSysroot+'/usr/include')
-            .concat('-I'+ndk_root+'/sources/android/support/include')
-            .concat('-I'+ndk_root+'/sources/cxx-stl/llvm-libc++/libcxx/include')
-            .concat('-I'+ndk_root+'/libs/glu/include_android')
-            .concat('-I'+of_root+'/addons/ofxAndroid/src')
-            .concat('-Wformat')
-            .concat(['-target','armv7-none-linux-androideabi'])
-            .concat(['-gcc-toolchain',ndk_root+'/toolchains/arm-linux-androideabi-4.9/prebuilt/linux-x86_64'])
-            .concat('-DANDROID_NDK')
+                .concat('-I'+coreSysroot+'/usr/include')
+                .concat('-I'+ndk_root+'/sources/android/support/include')
+                .concat('-I'+ndk_root+'/sources/cxx-stl/llvm-libc++/libcxx/include')
+                .concat('-I'+ndk_root+'/libs/glu/include_android')
+                .concat('-I'+of_root+'/addons/ofxAndroid/src')
+                .concat('-Wformat')
+                .concat(['-target','armv7-none-linux-androideabi'])
+                .concat(['-gcc-toolchain',ndk_root+'/toolchains/arm-linux-androideabi-4.9/prebuilt/linux-x86_64'])
+                .concat('-DANDROID_NDK')
                 .concat(cxxFlags);
             if(of.isCoreLibrary){
                 return flags;
@@ -619,10 +688,10 @@ Module{
 
         coreLinkerFlags:{
             var flags = CORE.ldflags
-            .concat('-L"'+ndk_root+'/sources/cxx-stl/llvm-libc++/libs/'+abiPath+'"')
-            .concat(['-target', 'armv7-none-linux-androideabi'])
-            .concat(['-gcc-toolchain', ndk_root+'/toolchains/arm-linux-androideabi-4.9/prebuilt/linux-x86_64'])
-            //.concat('-Wl,--as-needed -Wl,--gc-sections -Wl,--exclude-libs,ALL')
+                .concat('-L"'+ndk_root+'/sources/cxx-stl/llvm-libc++/libs/'+abiPath+'"')
+                .concat(['-target', 'armv7-none-linux-androideabi'])
+                .concat(['-gcc-toolchain', ndk_root+'/toolchains/arm-linux-androideabi-4.9/prebuilt/linux-x86_64'])
+                //.concat('-Wl,--as-needed -Wl,--gc-sections -Wl,--exclude-libs,ALL')
                 .concat(linkerFlags);
 
             if(of.isCoreLibrary){
@@ -634,7 +703,7 @@ Module{
     }
 
     property stringList pkgConfigs: []
-    property pathList includePaths: []
+    property pathList   includePaths: []
     property stringList cFlags: []
     property stringList cxxFlags: []
     property stringList linkerFlags: []
