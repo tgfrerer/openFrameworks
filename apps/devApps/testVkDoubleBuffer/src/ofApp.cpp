@@ -379,6 +379,7 @@ void ofApp::draw(){
 			.setUniform( "modelMatrix", modelMatrix )
 			.setUniform( "globalColor", col )
 			.setMesh(mMeshIco)
+			.setDrawMethod( of::vk::DrawCommand::DrawMethod::eIndexed )
 			;
 
 		batch.draw( meshDraw );
@@ -403,6 +404,7 @@ void ofApp::draw(){
 			.setUniform( "modelMatrix", glm::mat4() )
 			.setTexture( "tex_0", *mTexture[0] )
 			.setMesh(mMeshPlane)
+			.setDrawMethod(of::vk::DrawCommand::DrawMethod::eIndexed)
 			;
 
 		of::vk::RenderBatch batch{ *context };

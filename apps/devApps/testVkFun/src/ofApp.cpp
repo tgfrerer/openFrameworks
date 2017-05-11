@@ -223,18 +223,19 @@ void ofApp::draw(){
 	auto projectionMatrix = clip * mCam.getProjectionMatrix( ofGetCurrentViewport() );
 
 
-	ofMatrix4x4 modelMatrix = glm::rotate( float( TWO_PI * ( ( ofGetFrameNum() % 360 ) / 360.f ) ), glm::vec3( { 0.f, 1.f, 0.f } ) );
+	auto modelMatrix = glm::rotate( float( TWO_PI * ( ( ofGetFrameNum() % 360 ) / 360.f ) ), glm::vec3( { 0.f, 1.f, 0.f } ) );
 
 
-	// Create a fresh copy of our prototype const draw command
+	// Create a fresh copy of our prototype phong draw command
 	auto hero = drawPhong;
 	hero
 		.setUniform( "projectionMatrix", projectionMatrix )
 		.setUniform( "viewMatrix", viewMatrix )
 		.setUniform( "modelMatrix", modelMatrix )
 		.setStorageBuffer( "colorLayout", mStaticColourBuffer )
-		.setNumIndices( mStaticMesh.indexBuffer.numElements )
 		.setIndices( mStaticMesh.indexBuffer )
+		.setNumIndices( mStaticMesh.indexBuffer.numElements )
+		.setDrawMethod(of::vk::DrawCommand::DrawMethod::eIndexed)
 		.setAttribute( 0, mStaticMesh.posBuffer )
 		.setAttribute( 1, mStaticMesh.normalBuffer )
 		;
@@ -245,8 +246,9 @@ void ofApp::draw(){
 		.setUniform( "viewMatrix", viewMatrix )
 		.setUniform( "modelMatrix", glm::mat4() )
 		.setTexture( "tex_0", *mTexture )
-		.setNumIndices( mRectangleData.indexBuffer.numElements )
 		.setIndices( mRectangleData.indexBuffer )
+		.setNumIndices(mRectangleData.indexBuffer.numElements)
+		.setDrawMethod(of::vk::DrawCommand::DrawMethod::eIndexed)
 		.setAttribute( 0, mRectangleData.posBuffer )
 		.setAttribute( 1, mRectangleData.texCoordBuffer )
 		;
@@ -257,7 +259,7 @@ void ofApp::draw(){
 	batch
 		.draw( drawFullScreenQuad )
 		.draw( hero )
-		.draw( texturedRect )
+		.draw( texturedRect);
 		;
 	batch.end();
 
