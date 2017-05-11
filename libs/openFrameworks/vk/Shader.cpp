@@ -268,7 +268,7 @@ bool of::vk::Shader::getSpirV( const ::vk::ShaderStageFlagBits shaderStage, cons
 			ofLogError() << errorMessage;
 			of::utils::resetConsoleColor();
 
-			std::string errorFileName(255,'\0');  // Will contain the name of the file wich contains the error
+			std::string errorFileName(255,'\0');  // Will contain the name of the file which contains the error
 			uint32_t    lineNumber = 0;           // Will contain error line number after successful parse
 
 			// Error string will has the form:  "triangle.frag:28: error: '' :  syntax error"
@@ -902,6 +902,23 @@ bool of::vk::Shader::createSetLayouts(){
 				log << std::endl;
 			}
 		}
+
+		// Print Attribute Inputs
+		{
+			size_t numAttributes = mVertexInfo.attribute.size();
+			
+			log << "Attribute Inputs:" << std::endl;
+
+			for ( size_t i = 0; i != numAttributes; ++i ){
+				log << "binding : " << std::setw( 2 ) << mVertexInfo.attribute[i].binding << " : "
+					<< "(location = " << std::setw(2) << mVertexInfo.attribute[i].location << ") : "
+					<< std::right << std::setw( 30 ) << ::vk::to_string(mVertexInfo.attribute[i].format) << " : "
+					<< mVertexInfo.attributeNames[i] 
+					<< std::endl;
+			}
+
+		}
+
 		ofLogNotice() << log.str();
 	}
 
