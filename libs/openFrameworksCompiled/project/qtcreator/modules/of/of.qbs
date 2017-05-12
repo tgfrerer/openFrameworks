@@ -244,8 +244,7 @@ Module{
                     "freeimage",
                     "boost_filesystem",
                     "boost_system",
-                "vulkan",
-                // "glfw3",
+                    "vulkan",
                     "pugixml",
                 ];
 
