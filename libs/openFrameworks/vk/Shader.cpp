@@ -12,33 +12,42 @@ namespace of{
 namespace utils{
 
 enum class ConsoleColor : uint32_t {
-#if defined( TARGET_WIN32 )
-	eDefault =  7,
-	eCyan    = 11,
-	eRed     = 12,
-	eYellow  = 14,
-#elif defined ( TARGET_LINUX )
-	eDefault = 39,
-	eRed     = 31,
-	eYellow  = 33,
-	eCyan    = 36,
+#if defined( TARGET_WIN32 ) || defined ( TARGET_LINUX )
+	eDefault       = 39,
+	eBrightRed     = 91,
+	eBrightYellow  = 93,
+	eBrightCyan    = 96,
+	//eRed    = 31,
+	//eYellow = 33,
+	//eCyan   = 36,
 #else
 	eDefault,
 	eRed,
 	eYellow,
 	eTeal,
 #endif
-
 };
 
-
-// static utility method : no-op on non-WIN32 system. 
+// set console colour
 std::string setConsoleColor( of::utils::ConsoleColor colour ){
-#ifdef WIN32
-	static HANDLE hConsole = GetStdHandle( STD_OUTPUT_HANDLE );
-	SetConsoleTextAttribute( hConsole, colour + 0 * 16 );
-	return "";
-#elif defined (TARGET_LINUX)
+#if defined( TARGET_WIN32 )
+	// On Windows, we need to enable processing of ANSI color sequences.
+	// We only need to do this the very first time, as the setting
+	// should stick until the console is closed.
+	//
+	static bool needsConsoleModeSetup = true;
+	if ( needsConsoleModeSetup ){
+		HANDLE hConsole = GetStdHandle( STD_OUTPUT_HANDLE );
+		// 0x0004 == ENABLE_VIRTUAL_TERMINAL_PROCESSING, see: 
+		// https://msdn.microsoft.com/en-us/library/windows/desktop/ms686033(v=vs.85).aspx
+		DWORD consoleFlags;
+		GetConsoleMode( hConsole, &consoleFlags );
+		consoleFlags |= 0x0004;
+		SetConsoleMode( hConsole, consoleFlags );
+		needsConsoleModeSetup = false;
+	}
+#endif
+#if defined (TARGET_LINUX) || defined (TARGET_WIN32)
 	 std::ostringstream tmp;
 	 tmp << "\033[" << reinterpret_cast<uint32_t&>(colour) << "m";
 	 return tmp.str();
@@ -47,8 +56,7 @@ std::string setConsoleColor( of::utils::ConsoleColor colour ){
 #endif
 }
 
-// reset console color
-// static utility method : no-op on non-WIN32 system. 
+// reset console colour
 std::string resetConsoleColor(){
 	return setConsoleColor(of::utils::ConsoleColor::eDefault);
 }
@@ -289,8 +297,7 @@ bool of::vk::Shader::getSpirV( const ::vk::ShaderStageFlagBits shaderStage, cons
 
 			ofLogError() << "Shader compile failed for: " << fileName;
 
-			;
-			ofLogError() << of::utils::setConsoleColor(  of::utils::ConsoleColor::eRed )
+			ofLogError() << of::utils::setConsoleColor(  of::utils::ConsoleColor::eBrightRed )
 			             << errorMessage
 			             << of::utils::resetConsoleColor();
 
@@ -322,7 +329,7 @@ bool of::vk::Shader::getSpirV( const ::vk::ShaderStageFlagBits shaderStage, cons
 							const auto shaderSourceCodeLine = wasLineMarker ? "#include \"" + lastFilename + "\"" : lineIt.asString();
 
 							if ( currentLine == lineNumber ) {
-								sourceContext << of::utils::setConsoleColor( of::utils::ConsoleColor::eCyan );
+								sourceContext << of::utils::setConsoleColor( of::utils::ConsoleColor::eBrightCyan );
 							}
 
 							sourceContext << std::right << std::setw( 4 ) << currentLine << " | " << shaderSourceCodeLine;
@@ -494,7 +501,7 @@ bool of::vk::Shader::reflectUBOs( const spirv_cross::Compiler & compiler, const 
 
 		if ( tmpUniform.uboRange.storageSize > maxRange ){
 			;
-			ofLogWarning() << of::utils::setConsoleColor( of::utils::ConsoleColor::eYellow )
+			ofLogWarning() << of::utils::setConsoleColor( of::utils::ConsoleColor::eBrightYellow )
 			               << "Ubo '" << ubo.name << "' is too large. Consider splitting it up. Size: " << tmpUniform.uboRange.storageSize
 			               << of::utils::resetConsoleColor();
 		}
@@ -531,7 +538,7 @@ bool of::vk::Shader::reflectUBOs( const spirv_cross::Compiler & compiler, const 
 			if ( storedUniform.uboRange.storageSize != tmpUniform.uboRange.storageSize ){
 
 				ofLogWarning()
-				        << of::utils::setConsoleColor( of::utils::ConsoleColor::eRed )
+				        << of::utils::setConsoleColor( of::utils::ConsoleColor::eBrightRed )
 				        << "Ubo: '" << ubo.name << "' re-defined with incompatible storage size."
 				        << of::utils::resetConsoleColor();
 
@@ -541,7 +548,7 @@ bool of::vk::Shader::reflectUBOs( const spirv_cross::Compiler & compiler, const 
 				|| storedUniform.layoutBinding.binding != tmpUniform.layoutBinding.binding ){
 
 				ofLogWarning()
-				        << of::utils::setConsoleColor( of::utils::ConsoleColor::eYellow )
+				        << of::utils::setConsoleColor( of::utils::ConsoleColor::eBrightYellow )
 				        << "Ubo: '" << ubo.name << "' re-defined with inconsistent set/binding numbers."
 				        << of::utils::resetConsoleColor();
 			} else {
@@ -553,7 +560,7 @@ bool of::vk::Shader::reflectUBOs( const spirv_cross::Compiler & compiler, const 
 
 					// member ranges overlap: print diagnostic message
 					ofLogWarning()
-					        << of::utils::setConsoleColor( of::utils::ConsoleColor::eYellow)
+					        << of::utils::setConsoleColor( of::utils::ConsoleColor::eBrightYellow)
 					        << "Inconsistency found parsing UBO: '" << ubo.name << "': " << std::endl << overlapMsg.str()
 					        << of::utils::resetConsoleColor();
 				}
@@ -586,7 +593,7 @@ bool of::vk::Shader::reflectStorageBuffers( const spirv_cross::Compiler & compil
 
 		if ( tmpUniform.uboRange.storageSize > maxRange ){
 
-			ofLogWarning() << of::utils::setConsoleColor( of::utils::ConsoleColor::eYellow )
+			ofLogWarning() << of::utils::setConsoleColor( of::utils::ConsoleColor::eBrightYellow )
 			               << "Ubo '" << buffer.name << "' is too large. Consider splitting it up. Size: " << tmpUniform.uboRange.storageSize
 			               << of::utils::resetConsoleColor();
 		}
@@ -618,7 +625,7 @@ bool of::vk::Shader::reflectStorageBuffers( const spirv_cross::Compiler & compil
 				|| storedUniform.layoutBinding.binding != tmpUniform.layoutBinding.binding ){
 
 				ofLogWarning()
-				        << of::utils::setConsoleColor( of::utils::ConsoleColor::eYellow )
+				        << of::utils::setConsoleColor( of::utils::ConsoleColor::eBrightYellow )
 				        << "Buffer: '" << buffer.name << "' re-defined with inconsistent set/binding numbers."
 				        << of::utils::resetConsoleColor();
 			} else{
@@ -664,7 +671,7 @@ bool of::vk::Shader::reflectSamplers( const spirv_cross::Compiler & compiler, co
 			if ( storedUniform.layoutBinding.binding != tmpUniform.layoutBinding.binding
 				|| storedUniform.setNumber != tmpUniform.setNumber ){
 
-				ofLogWarning() << of::utils::setConsoleColor( of::utils::ConsoleColor::eYellow )
+				ofLogWarning() << of::utils::setConsoleColor( of::utils::ConsoleColor::eBrightYellow )
 				               << "Combined image sampler: '" << sampledImage.name << "' is declared multiple times, but with inconsistent binding/set number."
 				               << of::utils::resetConsoleColor();
 				return false;
@@ -755,7 +762,7 @@ bool of::vk::Shader::createSetLayouts(){
 				auto insertionResult = bindings.insert( { i, placeHolderUniform } );
 				if ( insertionResult.second == true ){
 
-					ofLogWarning() << of::utils::setConsoleColor( of::utils::ConsoleColor::eYellow )
+					ofLogWarning() << of::utils::setConsoleColor( of::utils::ConsoleColor::eBrightYellow )
 					               << "Detected sparse bindings: gap at set: " << setNumber << ", binding: " << i << ". This could slow the GPU down."
 					               << of::utils::resetConsoleColor();
 				} 
@@ -823,7 +830,7 @@ bool of::vk::Shader::createSetLayouts(){
 
 						if ( insertionResult.second == false ){
 							ofLogWarning()
-							        << of::utils::setConsoleColor( of::utils::ConsoleColor::eYellow )
+							        << of::utils::setConsoleColor( of::utils::ConsoleColor::eBrightYellow )
 							        << "Uniform Ubo member name not uniqe: '" << memberName << "'."
 							        << of::utils::resetConsoleColor();
 						}
@@ -1100,7 +1107,7 @@ void of::vk::Shader::reflectVertexInputs(const spirv_cross::Compiler & compiler,
 			break;
 		default:
 			ofLogWarning()
-			        << of::utils::setConsoleColor( of::utils::ConsoleColor::eYellow )
+			        << of::utils::setConsoleColor( of::utils::ConsoleColor::eBrightYellow )
 			        << "Could not determine vertex attribute type for: " << attributeInput.name
 			        << of::utils::resetConsoleColor();
 			break;
