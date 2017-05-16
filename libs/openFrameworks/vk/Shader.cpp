@@ -11,21 +11,54 @@
 namespace of{ 
 namespace utils{
 
-// static utility method : no-op on non-WIN32 system. 
-void setConsoleColor( uint32_t colour = 12 ){
-#ifdef WIN32
-	static HANDLE hConsole = GetStdHandle( STD_OUTPUT_HANDLE );
-	SetConsoleTextAttribute( hConsole, colour + 0 * 16 );
-#endif 
+enum class ConsoleColor : uint32_t {
+#if defined( TARGET_WIN32 ) || defined ( TARGET_LINUX )
+	eDefault       = 39,
+	eBrightRed     = 91,
+	eBrightYellow  = 93,
+	eBrightCyan    = 96,
+	eRed    = 31,
+	eYellow = 33,
+	eCyan   = 36,
+#else
+	eDefault,
+	eRed,
+	eYellow,
+	eTeal,
+#endif
+};
+
+// set console colour
+std::string setConsoleColor( of::utils::ConsoleColor colour ){
+#if defined( TARGET_WIN32 )
+	// On Windows, we need to enable processing of ANSI color sequences.
+	// We only need to do this the very first time, as the setting
+	// should stick until the console is closed.
+	//
+	static bool needsConsoleModeSetup = true;
+	if ( needsConsoleModeSetup ){
+		HANDLE hConsole = GetStdHandle( STD_OUTPUT_HANDLE );
+		// 0x0004 == ENABLE_VIRTUAL_TERMINAL_PROCESSING, see: 
+		// https://msdn.microsoft.com/en-us/library/windows/desktop/ms686033(v=vs.85).aspx
+		DWORD consoleFlags;
+		GetConsoleMode( hConsole, &consoleFlags );
+		consoleFlags |= 0x0004;
+		SetConsoleMode( hConsole, consoleFlags );
+		needsConsoleModeSetup = false;
+	}
+#endif
+#if defined (TARGET_LINUX) || defined (TARGET_WIN32)
+	 std::ostringstream tmp;
+	 tmp << "\033[" << reinterpret_cast<uint32_t&>(colour) << "m";
+	 return tmp.str();
+#else
+	return "";
+#endif
 }
 
-// reset console color
-// static utility method : no-op on non-WIN32 system. 
-void resetConsoleColor(){
-#ifdef WIN32
-	static HANDLE hConsole = GetStdHandle( STD_OUTPUT_HANDLE );
-	SetConsoleTextAttribute( hConsole, 7 + 0 * 16 );
-#endif 
+// reset console colour
+std::string resetConsoleColor(){
+	return setConsoleColor(of::utils::ConsoleColor::eDefault);
 }
 
 } /*namespace utils*/ 
@@ -264,11 +297,11 @@ bool of::vk::Shader::getSpirV( const ::vk::ShaderStageFlagBits shaderStage, cons
 
 			ofLogError() << "Shader compile failed for: " << fileName;
 
-			of::utils::setConsoleColor( 12 /* red */ );
-			ofLogError() << errorMessage;
-			of::utils::resetConsoleColor();
+			ofLogError() << of::utils::setConsoleColor(  of::utils::ConsoleColor::eBrightRed )
+			             << errorMessage
+			             << of::utils::resetConsoleColor();
 
-			std::string errorFileName(255,'\0');  // Will contain the name of the file wich contains the error
+			std::string errorFileName(255,'\0');  // Will contain the name of the file which contains the error
 			uint32_t    lineNumber = 0;           // Will contain error line number after successful parse
 
 			// Error string will has the form:  "triangle.frag:28: error: '' :  syntax error"
@@ -294,11 +327,18 @@ bool of::vk::Shader::getSpirV( const ::vk::ShaderStageFlagBits shaderStage, cons
 						if ( currentLine >= lineNumber - 3 ){
 							ostringstream sourceContext;
 							const auto shaderSourceCodeLine = wasLineMarker ? "#include \"" + lastFilename + "\"" : lineIt.asString();
+
+							if ( currentLine == lineNumber ) {
+								sourceContext << of::utils::setConsoleColor( of::utils::ConsoleColor::eBrightCyan );
+							}
+
 							sourceContext << std::right << std::setw( 4 ) << currentLine << " | " << shaderSourceCodeLine;
 
-							if ( currentLine == lineNumber ) of::utils::setConsoleColor( 11 );
+							if ( currentLine == lineNumber ) {
+								sourceContext << of::utils::resetConsoleColor();
+							}
+
 							ofLogError() << sourceContext.str();
-							if ( currentLine == lineNumber ) of::utils::resetConsoleColor();
 						}
 
 						if ( currentLine >= lineNumber + 2 ){
@@ -460,9 +500,10 @@ bool of::vk::Shader::reflectUBOs( const spirv_cross::Compiler & compiler, const 
 		tmpUniform.uboRange.storageSize = compiler.get_declared_struct_size( compiler.get_type( ubo.type_id ) );
 
 		if ( tmpUniform.uboRange.storageSize > maxRange ){
-			of::utils::setConsoleColor( 14 /* yellow */ );
-			ofLogWarning() << "Ubo '" << ubo.name << "' is too large. Consider splitting it up. Size: " << tmpUniform.uboRange.storageSize;
-			of::utils::resetConsoleColor();
+			;
+			ofLogWarning() << of::utils::setConsoleColor( of::utils::ConsoleColor::eBrightYellow )
+			               << "Ubo '" << ubo.name << "' is too large. Consider splitting it up. Size: " << tmpUniform.uboRange.storageSize
+			               << of::utils::resetConsoleColor();
 		}
 
 
@@ -495,26 +536,33 @@ bool of::vk::Shader::reflectUBOs( const spirv_cross::Compiler & compiler, const 
 			auto & storedUniform = insertion.first->second;
 
 			if ( storedUniform.uboRange.storageSize != tmpUniform.uboRange.storageSize ){
-				of::utils::setConsoleColor( 12 /* red */ );
-				ofLogWarning() << "Ubo: '" << ubo.name << "' re-defined with incompatible storage size.";
-				of::utils::resetConsoleColor();
+
+				ofLogWarning()
+				        << of::utils::setConsoleColor( of::utils::ConsoleColor::eBrightRed )
+				        << "Ubo: '" << ubo.name << "' re-defined with incompatible storage size."
+				        << of::utils::resetConsoleColor();
+
 				// !TODO: try to recover.
 				return false;
 			} else if ( storedUniform.setNumber != tmpUniform.setNumber
 				|| storedUniform.layoutBinding.binding != tmpUniform.layoutBinding.binding ){
-				of::utils::setConsoleColor( 14 /* yellow */ );
-				ofLogWarning() << "Ubo: '" << ubo.name << "' re-defined with inconsistent set/binding numbers.";
-				of::utils::resetConsoleColor();
+
+				ofLogWarning()
+				        << of::utils::setConsoleColor( of::utils::ConsoleColor::eBrightYellow )
+				        << "Ubo: '" << ubo.name << "' re-defined with inconsistent set/binding numbers."
+				        << of::utils::resetConsoleColor();
 			} else {
 				// Merge stage flags
 				storedUniform.layoutBinding.stageFlags |= tmpUniform.layoutBinding.stageFlags;
 				// Merge memberRanges
 				ostringstream overlapMsg;
 				if ( checkMemberRangesOverlap( storedUniform.uboRange.subranges, tmpUniform.uboRange.subranges, overlapMsg ) ){
-					of::utils::setConsoleColor( 14 /* yellow */ );
+
 					// member ranges overlap: print diagnostic message
-					ofLogWarning() << "Inconsistency found parsing UBO: '" << ubo.name << "': " << std::endl << overlapMsg.str();
-					of::utils::resetConsoleColor();
+					ofLogWarning()
+					        << of::utils::setConsoleColor( of::utils::ConsoleColor::eBrightYellow)
+					        << "Inconsistency found parsing UBO: '" << ubo.name << "': " << std::endl << overlapMsg.str()
+					        << of::utils::resetConsoleColor();
 				}
 				// insert any new subranges if necesary.
 				storedUniform.uboRange.subranges.insert( tmpUniform.uboRange.subranges.begin(), tmpUniform.uboRange.subranges.end() );
@@ -544,9 +592,10 @@ bool of::vk::Shader::reflectStorageBuffers( const spirv_cross::Compiler & compil
 		tmpUniform.uboRange.storageSize = compiler.get_declared_struct_size( compiler.get_type( buffer.type_id ) );
 
 		if ( tmpUniform.uboRange.storageSize > maxRange ){
-			of::utils::setConsoleColor( 14 /* yellow */ );
-			ofLogWarning() << "Ubo '" << buffer.name << "' is too large. Consider splitting it up. Size: " << tmpUniform.uboRange.storageSize;
-			of::utils::resetConsoleColor();
+
+			ofLogWarning() << of::utils::setConsoleColor( of::utils::ConsoleColor::eBrightYellow )
+			               << "Ubo '" << buffer.name << "' is too large. Consider splitting it up. Size: " << tmpUniform.uboRange.storageSize
+			               << of::utils::resetConsoleColor();
 		}
 
 		tmpUniform.layoutBinding
@@ -574,9 +623,11 @@ bool of::vk::Shader::reflectStorageBuffers( const spirv_cross::Compiler & compil
 			// Uniform with this key already existed, nothing was inserted.
 			if ( storedUniform.setNumber != tmpUniform.setNumber
 				|| storedUniform.layoutBinding.binding != tmpUniform.layoutBinding.binding ){
-				of::utils::setConsoleColor( 14 /* yellow */ );
-				ofLogWarning() << "Buffer: '" << buffer.name << "' re-defined with inconsistent set/binding numbers.";
-				of::utils::resetConsoleColor();
+
+				ofLogWarning()
+				        << of::utils::setConsoleColor( of::utils::ConsoleColor::eBrightYellow )
+				        << "Buffer: '" << buffer.name << "' re-defined with inconsistent set/binding numbers."
+				        << of::utils::resetConsoleColor();
 			} else{
 				// Merge stage flags
 				storedUniform.layoutBinding.stageFlags |= tmpUniform.layoutBinding.stageFlags;
@@ -619,9 +670,10 @@ bool of::vk::Shader::reflectSamplers( const spirv_cross::Compiler & compiler, co
 			// otherwise print a warning and return false.
 			if ( storedUniform.layoutBinding.binding != tmpUniform.layoutBinding.binding
 				|| storedUniform.setNumber != tmpUniform.setNumber ){
-				of::utils::setConsoleColor( 14 /* yellow */ );
-				ofLogWarning() << "Combined image sampler: '" << sampledImage.name << "' is declared multiple times, but with inconsistent binding/set number.";
-				of::utils::resetConsoleColor();
+
+				ofLogWarning() << of::utils::setConsoleColor( of::utils::ConsoleColor::eBrightYellow )
+				               << "Combined image sampler: '" << sampledImage.name << "' is declared multiple times, but with inconsistent binding/set number."
+				               << of::utils::resetConsoleColor();
 				return false;
 			} else{
 				// Merge stage flags
@@ -709,9 +761,10 @@ bool of::vk::Shader::createSetLayouts(){
 				placeHolderUniform.layoutBinding.binding = i;
 				auto insertionResult = bindings.insert( { i, placeHolderUniform } );
 				if ( insertionResult.second == true ){
-					of::utils::setConsoleColor( 14 /* yellow */ );
-					ofLogWarning() << "Detected sparse bindings: gap at set: " << setNumber << ", binding: " << i << ". This could slow the GPU down.";
-					of::utils::resetConsoleColor();
+
+					ofLogWarning() << of::utils::setConsoleColor( of::utils::ConsoleColor::eBrightYellow )
+					               << "Detected sparse bindings: gap at set: " << setNumber << ", binding: " << i << ". This could slow the GPU down."
+					               << of::utils::resetConsoleColor();
 				} 
 			}
 		}
@@ -776,9 +829,10 @@ bool of::vk::Shader::createSetLayouts(){
 						auto insertionResult = mUniformDictionary.insert( { memberName, uboMemberUniformId } );
 
 						if ( insertionResult.second == false ){
-							of::utils::setConsoleColor( 14 /* yellow */ );
-							ofLogWarning() << "Uniform Ubo member name not uniqe: '" << memberName << "'.";
-							of::utils::resetConsoleColor();
+							ofLogWarning()
+							        << of::utils::setConsoleColor( of::utils::ConsoleColor::eBrightYellow )
+							        << "Uniform Ubo member name not uniqe: '" << memberName << "'."
+							        << of::utils::resetConsoleColor();
 						}
 						
 					}
@@ -902,6 +956,23 @@ bool of::vk::Shader::createSetLayouts(){
 				log << std::endl;
 			}
 		}
+
+		// Print Attribute Inputs
+		{
+			size_t numAttributes = mVertexInfo.attribute.size();
+			
+			log << "Attribute Inputs:" << std::endl;
+
+			for ( size_t i = 0; i != numAttributes; ++i ){
+				log << "binding : " << std::setw( 2 ) << mVertexInfo.attribute[i].binding << " : "
+					<< "(location = " << std::setw(2) << mVertexInfo.attribute[i].location << ") : "
+					<< std::right << std::setw( 30 ) << ::vk::to_string(mVertexInfo.attribute[i].format) << " : "
+					<< mVertexInfo.attributeNames[i] 
+					<< std::endl;
+			}
+
+		}
+
 		ofLogNotice() << log.str();
 	}
 
@@ -1035,9 +1106,10 @@ void of::vk::Shader::reflectVertexInputs(const spirv_cross::Compiler & compiler,
 			vertexInfo.attribute[location].format = ::vk::Format::eR32G32B32A32Sfloat;	 // 4-part float
 			break;
 		default:
-			of::utils::setConsoleColor( 14 /* yellow */ );
-			ofLogWarning() << "Could not determine vertex attribute type for: " << attributeInput.name;
-			of::utils::resetConsoleColor();
+			ofLogWarning()
+			        << of::utils::setConsoleColor( of::utils::ConsoleColor::eBrightYellow )
+			        << "Could not determine vertex attribute type for: " << attributeInput.name
+			        << of::utils::resetConsoleColor();
 			break;
 		}
 	}

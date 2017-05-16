@@ -17,7 +17,6 @@ using namespace of::vk;
 
 void DrawCommand::setup(const GraphicsPipelineState& pipelineState){
 	
-	
 	if ( false == pipelineState.getShader().get() ){
 		ofLogError() << "Cannot setup draw command without valid shader inside pipeline.";
 		return;
@@ -39,9 +38,6 @@ void DrawCommand::setup(const GraphicsPipelineState& pipelineState){
 	mVertexBuffers.resize( numAttributes, nullptr );
 	mVertexOffsets.resize( numAttributes, 0 );
 
-	for ( size_t i = 0; i != numAttributes; ++i ){
-		ofLog() << std::setw( 4 ) << i << ":" << vertexInfo.attributeNames[i];
-	}
 }
 
 // ------------------------------------------------------------

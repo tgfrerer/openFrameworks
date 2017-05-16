@@ -1532,11 +1532,13 @@ void ofAppGLFWWindow::exit_cb(GLFWwindow* windowP_){
 
 //------------------------------------------------------------
 void ofAppGLFWWindow::setVerticalSync(bool bVerticalSync){
+#if !defined( OF_TARGET_API_VULKAN )
 	if(bVerticalSync){
 		glfwSwapInterval( 1);
 	}else{
 		glfwSwapInterval(0);
 	}
+#endif // !defined( OF_TARGET_API_VULKAN )
 }
 
 //------------------------------------------------------------
