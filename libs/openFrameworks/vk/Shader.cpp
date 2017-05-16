@@ -17,9 +17,9 @@ enum class ConsoleColor : uint32_t {
 	eBrightRed     = 91,
 	eBrightYellow  = 93,
 	eBrightCyan    = 96,
-	//eRed    = 31,
-	//eYellow = 33,
-	//eCyan   = 36,
+	eRed    = 31,
+	eYellow = 33,
+	eCyan   = 36,
 #else
 	eDefault,
 	eRed,
