@@ -17,16 +17,15 @@ void ofVkRenderer::setup(){
 
 	// sets up resources to keep track of production frames
 	setupDefaultContext();
-
+	if ( !mDefaultRenderPass){
+		mDefaultRenderPass = generateDefaultRenderPass( mSwapchain->getColorFormat(), mDepthFormat );
+	}
 }
 
 // ----------------------------------------------------------------------
 
 void ofVkRenderer::setupDefaultContext(){
 	
-	std::vector<::vk::ClearValue> clearValues(2);
-	clearValues[0].setColor( reinterpret_cast<const ::vk::ClearColorValue&>( ofFloatColor::black ) );
-	clearValues[1].setDepthStencil( { 1.f, 0 } );
 
 	of::vk::Context::Settings settings;
 	
@@ -37,10 +36,7 @@ void ofVkRenderer::setupDefaultContext(){
 	settings.transientMemoryAllocatorSettings.size                           = ( ( 1ULL << 24 ) * mSettings.numVirtualFrames );
 	settings.renderer = this;
 	settings.pipelineCache = getPipelineCache();
-	settings.renderArea = { 0,0, mSwapchain->getWidth(), mSwapchain->getHeight()};
-	settings.renderPass = generateDefaultRenderPass(mSwapchain->getColorFormat(), mDepthFormat);
 	settings.renderToSwapChain = true;
-	settings.renderPassClearValues = clearValues;
 
 	mDefaultContext = make_shared<of::vk::Context>(std::move(settings));
 	mDefaultContext->setup();
@@ -76,10 +72,6 @@ void ofVkRenderer::resizeScreen( int w, int h ){
 	
 	mViewport.setWidth( mSwapchain->getWidth() );
 	mViewport.setHeight( mSwapchain->getHeight() );
-
-	if ( mDefaultContext ){
-		mDefaultContext->setRenderArea( { { 0, 0 }, { mSwapchain->getWidth() ,  mSwapchain->getHeight() } } );
-	}
 
 	ofLogVerbose() << "Screen resize complete";
 }
@@ -181,9 +173,7 @@ void ofVkRenderer::setupDepthStencil(){
 
 // ----------------------------------------------------------------------
 
-::vk::RenderPass ofVkRenderer::generateDefaultRenderPass(::vk::Format colorFormat_, ::vk::Format depthFormat_) const {
-
-	::vk::RenderPass result = nullptr;
+std::shared_ptr<::vk::RenderPass> ofVkRenderer::generateDefaultRenderPass(::vk::Format colorFormat_, ::vk::Format depthFormat_) const {
 
 	// Note that we keep initialLayout of the color attachment eUndefined ==
 	// `VK_IMAGE_LAYOUT_UNDEFINED` -- we do this to say we effectively don't care
@@ -264,28 +254,14 @@ void ofVkRenderer::setupDepthStencil(){
 		.setDependencyCount ( dependencies.size() )
 		.setPDependencies   ( dependencies.data() );
 
-	result = mDevice.createRenderPass( renderPassCreateInfo );
+	std::shared_ptr<::vk::RenderPass> renderPassPtr = 
+		std::shared_ptr<::vk::RenderPass>( new ::vk::RenderPass(mDevice.createRenderPass( renderPassCreateInfo )), 
+			[device=mDevice] (::vk::RenderPass * lhs){
+		device.destroyRenderPass( *lhs );
+		delete lhs;
+	} );
 
-	return result;
-}
-
-// ----------------------------------------------------------------------
-
-void ofVkRenderer::attachSwapChainImages( uint32_t swapchainImageIndex ){
-	
-	// Connect the framebuffer with the presentable image buffer
-	// which is handled by the swapchain.
-
-	std::vector<vk::ImageView> attachments(2, nullptr);
-	
-	// Attachment0 is the image view for the image buffer to the corresponding swapchain image view
-	attachments[0] = mSwapchain->getImage( swapchainImageIndex ).view;
-	
-	// Attachment1 is the image view for the depthStencil buffer
-	attachments[1] = mDepthStencil->view;
-
-	mDefaultContext->setupFrameBufferAttachments(attachments);
-
+	return renderPassPtr;
 }
 
 // ----------------------------------------------------------------------
@@ -313,7 +289,7 @@ void ofVkRenderer::startRender(){
 	// ---------| invariant: new swap chain image has been acquired for drawing into.
 
 	// connect default context frame buffer to swapchain image, and depth stencil image
-	attachSwapChainImages( swapIdx ); 
+	mDefaultContext->setSwapchainImageView( mSwapchain->getImage( swapIdx ).view );
 
 }
 

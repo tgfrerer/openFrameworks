@@ -36,14 +36,13 @@ Context::~Context(){
 		if ( vf.fence ){
 			mDevice.destroyFence( vf.fence );
 		}
-		if ( vf.frameBuffer ){
-			mDevice.destroyFramebuffer( vf.frameBuffer );
+		if ( !vf.frameBuffers.empty() ){
+			for ( auto& fb : vf.frameBuffers ){
+				mDevice.destroyFramebuffer( fb );
+			}
 		}
 	}
 
-	if ( mSettings.renderPass ){
-		mDevice.destroyRenderPass( mSettings.renderPass );
-	}
 
 	mVirtualFrames.clear();
 	mTransientMemory->reset();
@@ -72,35 +71,15 @@ void Context::setup(){
 
 // ------------------------------------------------------------
 
-void Context::setupFrameBufferAttachments( const std::vector<::vk::ImageView>& attachments ){
-	auto & fb = mVirtualFrames[mCurrentVirtualFrame].frameBuffer;
-
-	// Framebuffers in Vulkan are very light-weight objects, whose main purpose 
-	// is to connect RenderPasses to Image attachments. 
-	//
-	// Since the swapchain might have a different number of images than this context has virtual 
-	// frames, and the swapchain may even acquire images out-of-sequence, we must re-create the 
-	// framebuffer on each frame to make sure we're attaching the renderpass to the correct 
-	// attachments.
-
-	if ( fb ){
-		// destroy pre-existing frame buffer
-		mDevice.destroyFramebuffer( fb );
-		fb = nullptr;
-	}
-
-	::vk::FramebufferCreateInfo frameBufferCreateInfo;
-	frameBufferCreateInfo
-		.setRenderPass( getRenderPass() )
-		.setAttachmentCount( attachments.size() )
-		.setPAttachments( attachments.data() )
-		.setWidth( mRenderArea.extent.width )
-		.setHeight( mRenderArea.extent.height )
-		.setLayers( 1 )
-		;
+const ::vk::Framebuffer& Context::createFramebuffer( const ::vk::FramebufferCreateInfo& createInfo ){
+	auto & fbos = mVirtualFrames[mCurrentVirtualFrame].frameBuffers;
 
 	// Create a framebuffer for the current virtual frame, and link it to the current swapchain images.
-	fb = mDevice.createFramebuffer( frameBufferCreateInfo );
+	auto fb = mDevice.createFramebuffer( createInfo );
+
+	mVirtualFrames[mCurrentVirtualFrame].frameBuffers.emplace_back( fb );
+
+	return mVirtualFrames[mCurrentVirtualFrame].frameBuffers.back();
 }
 
 // ------------------------------------------------------------
@@ -139,11 +118,16 @@ void Context::begin(){
 
 	mTransientMemory->free();
 
+	// clear old frame buffer attachments
+	for ( auto & fb : mVirtualFrames[mCurrentVirtualFrame].frameBuffers ){
+		mDevice.destroyFramebuffer( fb );
+	}
+	mVirtualFrames[mCurrentVirtualFrame].frameBuffers.clear();
+
 	// re-create descriptor pool for current virtual frame if necessary
 	updateDescriptorPool();
 	
 	// reset subpass id state
-	mSubpassId = 0;
 }
 
 // ------------------------------------------------------------

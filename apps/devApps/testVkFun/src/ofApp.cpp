@@ -11,45 +11,45 @@ void ofApp::setup(){
 
 	renderer = dynamic_pointer_cast<ofVkRenderer>( ofGetCurrentRenderer() );
 
-	if ( false )
-	{
-		//!TODO: this will unlink the current context and all its allocations will be in vain.
-		// Much better to not even setup this context if we're redefining the context in setup.
-		// this needs somehow to be caught by the renderer.
+	//if ( false )
+	//{
+	//	//!TODO: this will unlink the current context and all its allocations will be in vain.
+	//	// Much better to not even setup this context if we're redefining the context in setup.
+	//	// this needs somehow to be caught by the renderer.
 
-		auto rendererProperties = renderer->getVkRendererProperties();
-		auto swapchain = renderer->getSwapchain();
+	//	auto rendererProperties = renderer->getVkRendererProperties();
+	//	auto swapchain = renderer->getSwapchain();
 
-		//!TODO: create a generator method to provide us with default settings 
-		// based on the current renderer.
+	//	//!TODO: create a generator method to provide us with default settings 
+	//	// based on the current renderer.
 
-		of::vk::Context::Settings settings;
+	//	of::vk::Context::Settings settings;
 
-		settings.transientMemoryAllocatorSettings.device = renderer->getVkDevice();
-		settings.transientMemoryAllocatorSettings.frameCount = renderer->mSettings.numVirtualFrames;
-		settings.transientMemoryAllocatorSettings.physicalDeviceMemoryProperties = rendererProperties.physicalDeviceMemoryProperties;
-		settings.transientMemoryAllocatorSettings.physicalDeviceProperties = rendererProperties.physicalDeviceProperties;
-		settings.transientMemoryAllocatorSettings.size = ( ( 1ULL << 24 ) * renderer->mSettings.numVirtualFrames );
-		settings.renderer = renderer.get();
-		settings.pipelineCache = renderer->getPipelineCache();
+	//	settings.transientMemoryAllocatorSettings.device = renderer->getVkDevice();
+	//	settings.transientMemoryAllocatorSettings.frameCount = renderer->mSettings.numVirtualFrames;
+	//	settings.transientMemoryAllocatorSettings.physicalDeviceMemoryProperties = rendererProperties.physicalDeviceMemoryProperties;
+	//	settings.transientMemoryAllocatorSettings.physicalDeviceProperties = rendererProperties.physicalDeviceProperties;
+	//	settings.transientMemoryAllocatorSettings.size = ( ( 1ULL << 24 ) * renderer->mSettings.numVirtualFrames );
+	//	settings.renderer = renderer.get();
+	//	settings.pipelineCache = renderer->getPipelineCache();
 
-		auto vp = renderer->getNativeViewport();
+	//	auto vp = renderer->getNativeViewport();
 
-		vk::Rect2D rect;
-		rect.setExtent( { uint32_t( vp.width/2 ), uint32_t( vp.height/2 ) } );
-		rect.setOffset( { int32_t( vp.x ),     int32_t( vp.y ) } );
+	//	vk::Rect2D rect;
+	//	rect.setExtent( { uint32_t( vp.width/2 ), uint32_t( vp.height/2 ) } );
+	//	rect.setOffset( { int32_t( vp.x ),     int32_t( vp.y ) } );
 
-		settings.renderArea = rect;
-		settings.renderPass = renderer->generateDefaultRenderPass( swapchain->getColorFormat(), renderer->getVkDepthFormat() );
-		settings.renderToSwapChain = true;
+	//	//settings.renderArea = rect;
+	//	//settings.renderPass = renderer->generateDefaultRenderPass( swapchain->getColorFormat(), renderer->getVkDepthFormat() );
+	//	settings.renderToSwapChain = true;
 
-		auto context = make_shared<of::vk::Context>( std::move( settings ) );
+	//	auto context = make_shared<of::vk::Context>( std::move( settings ) );
 
-		renderer->setDefaultContext(context);
+	//	renderer->setDefaultContext(context);
 
-		context->setup();
+	//	context->setup();
 
-	}
+	//}
 
 	ofDisableSetupScreen();
 	ofSetFrameRate( isFrameLocked ? EXAMPLE_TARGET_FRAME_RATE : 0 );
@@ -253,8 +253,23 @@ void ofApp::draw(){
 		.setAttribute( 1, mRectangleData.texCoordBuffer )
 		;
 
-	of::vk::RenderBatch batch{ currentContext };
+	std::vector<::vk::ClearValue> clearValues( 2 );
+	clearValues[0].setColor( reinterpret_cast<const ::vk::ClearColorValue&>( ofFloatColor::black ) );
+	clearValues[1].setDepthStencil( { 1.f, 0 } );
 
+	of::vk::RenderBatch::Settings settings;
+	settings.clearValues = clearValues;
+	settings.context = renderer->getDefaultContext().get();
+	settings.framebufferAttachmentHeight = renderer->getSwapchain()->getHeight();
+	settings.framebufferAttachmentWidth = renderer->getSwapchain()->getWidth();
+	settings.renderArea = ::vk::Rect2D( {}, { uint32_t(renderer->getViewportWidth()), uint32_t(renderer->getViewportHeight()) } );
+	settings.renderPass = *renderer->getDefaultRenderpass();
+	settings.framebufferAttachments = { 
+		renderer->getDefaultContext()->getSwapchainImageView(),  
+		renderer->getDepthStencilImageView() 
+	};
+	of::vk::RenderBatch batch{ settings };
+	
 	batch.begin();
 	batch
 		.draw( drawFullScreenQuad )

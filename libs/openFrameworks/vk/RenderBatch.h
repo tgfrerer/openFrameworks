@@ -14,9 +14,23 @@ namespace vk{
 
 class RenderBatch
 {
+public:
+	struct Settings
+	{
+		Context *                     context = nullptr;
+		::vk::RenderPass              renderPass;
+		std::vector<::vk::ImageView>  framebufferAttachments;
+		uint32_t                      framebufferAttachmentWidth  = 0;
+		uint32_t                      framebufferAttachmentHeight = 0;
+		::vk::Rect2D                  renderArea;
+		std::vector<::vk::ClearValue> clearValues; // clear values for each attachment
+	};
+
+private:
 	/*
 	
-	A Batch maps to a Primary Command buffer which begins and ends a RenderPass
+	A Batch maps to a Primary Command buffer which begins and ends a RenderPass -
+	as such, it also maps to a framebuffer.
 
 	Batch is an object which processes draw instructions
 	received through draw command objects.
@@ -27,7 +41,10 @@ class RenderBatch
 
 	*/
 
-	Context *              mRenderContext;
+	const Settings         mSettings;
+
+	::vk::Framebuffer      mFramebuffer;
+
 	uint32_t               mVkSubPassId = 0;
 	std::list<DrawCommand> mDrawCommands;
 
@@ -39,7 +56,7 @@ class RenderBatch
 
 public:
 
-	RenderBatch( Context& rc );
+	RenderBatch( RenderBatch::Settings& settings );
 
 	~RenderBatch(){
 		if ( !mDrawCommands.empty() ){

@@ -51,9 +51,6 @@ public:
 		ofVkRenderer *                         renderer = nullptr;
 		BufferAllocator::Settings              transientMemoryAllocatorSettings;
 		std::shared_ptr<::vk::PipelineCache>   pipelineCache;
-		::vk::RenderPass                       renderPass;  // owning
-		std::vector<::vk::ClearValue>          renderPassClearValues; 
-		::vk::Rect2D                           renderArea;
 		bool                                   renderToSwapChain = false; // whether this rendercontext renders to swapchain
 		size_t                                 vkQueueIndex = 0; // default to 0, as this is presumed a graphics context for a graphics queue
 	};
@@ -65,14 +62,16 @@ private:
 
 	struct VirtualFrame
 	{
-		::vk::CommandPool                       commandPool;
 		::vk::QueryPool                         queryPool;
-		::vk::Framebuffer                       frameBuffer;
+		::vk::CommandPool                       commandPool;
+		std::vector<::vk::CommandBuffer>        commandBuffers;
+		std::list<::vk::Framebuffer>            frameBuffers;
+		::vk::ImageView                         swapchainImageView;       // image attachment to render to swapchain
 		std::list<::vk::DescriptorPool>         descriptorPools;
 		std::map<uint64_t, ::vk::DescriptorSet> descriptorSetCache;
-		::vk::Semaphore                         semaphoreWait;   // only used if renderContext renders to swapchain
+		
+		::vk::Semaphore                         semaphoreWait;             // only used if renderContext renders to swapchain
 		::vk::Semaphore                         semaphoreSignalOnComplete; // semaphore will signal when work complete
-		std::vector<::vk::CommandBuffer>        commandBuffers;
 
 		// The most important element in here is the fence, as it protects 
 		// all resources above from being overwritten while still in flight.
@@ -86,10 +85,6 @@ private:
 	std::vector<VirtualFrame>                   mVirtualFrames;
 	size_t                                      mCurrentVirtualFrame = 0;
 	
-	// Renderpass with subpasses for this context. from which framebuffers are derived.
-	// each context has their own renderpass object, from which framebuffers are partly derived.
-	const ::vk::RenderPass &                    mRenderPass = mSettings.renderPass; 
-	uint32_t                                    mSubpassId  = 0;
 
 	std::unique_ptr<of::vk::BufferAllocator>    mTransientMemory;
 
@@ -118,7 +113,7 @@ private:
 	// cache for all pipelines ever used within this context
 	std::map<uint64_t, std::shared_ptr<::vk::Pipeline>>    mPipelineCache;
 	
-	const ::vk::Rect2D&                mRenderArea = mSettings.renderArea;
+	//const ::vk::Rect2D&                mRenderArea = mSettings.renderArea;
 	
 	void waitForFence();
 
@@ -139,13 +134,12 @@ public:
 	const ::vk::Fence       & getFence() const ;
 	const ::vk::Semaphore   & getSemaphoreWait() const ;
 	const ::vk::Semaphore   & getSemaphoreSignalOnComplete() const ;
-	const ::vk::Framebuffer & getFramebuffer() const;
-	const ::vk::RenderPass  & getRenderPass() const; 
+	
 	const size_t              getNumVirtualFrames() const;
 
-	const uint32_t            getSubpassId() const;
-
-	void setupFrameBufferAttachments( const std::vector<::vk::ImageView> &attachments);
+	
+	// creates and returns a reference to a temporary framebuffer based on createInfo
+	const::vk::Framebuffer & createFramebuffer( const::vk::FramebufferCreateInfo & createInfo );
 
 	// Stages data for copying into targetAllocator's address space
 	// allocates identical memory chunk in local transient allocator and in targetAllocator
@@ -173,8 +167,11 @@ public:
 		return mDevice;
 	};
 
-	void setRenderArea( const ::vk::Rect2D& renderArea );
-	const ::vk::Rect2D & getRenderArea() const;
+	// stores the image view of the current swapchain image into the current virtual frame
+	void setSwapchainImageView( const ::vk::ImageView& view_ );
+
+	// return the image view which represents the current swapchain image
+	const::vk::ImageView & getSwapchainImageView();
 
 	void setup();
 	void begin();
@@ -186,7 +183,6 @@ public:
 	// this is where semaphore synchronisation happens. Must be matched by begin() 
 	void end();
 
-	const std::vector<::vk::ClearValue> & getClearValues() const;
 
 	// context which must be waited upon before this context can render
 	Context* mSourceContext = nullptr ;
@@ -215,38 +211,22 @@ inline const ::vk::Semaphore & Context::getSemaphoreSignalOnComplete() const {
 	return mVirtualFrames.at( mCurrentVirtualFrame ).semaphoreSignalOnComplete;
 }
 
-inline const ::vk::Framebuffer & Context::getFramebuffer() const{
-	return mVirtualFrames[ mCurrentVirtualFrame ].frameBuffer;
-}
-
-inline const ::vk::RenderPass & Context::getRenderPass() const{
-	return mSettings.renderPass;
-}
-
 inline const size_t Context::getNumVirtualFrames() const{
 	return mVirtualFrames.size();
 }
 
-inline const uint32_t Context::getSubpassId() const{
-	return mSubpassId;
-}
-
-inline void Context::setRenderArea( const::vk::Rect2D & renderArea_ ){
-	const_cast<::vk::Rect2D&>( mSettings.renderArea ) = renderArea_;
-}
-
-inline const ::vk::Rect2D & Context::getRenderArea() const{
-	return mRenderArea;
-}
 
 inline const std::unique_ptr<BufferAllocator> & Context::getAllocator() const{
 	return mTransientMemory;
 }
 
-inline const std::vector<::vk::ClearValue>& Context::getClearValues() const{
-	return mSettings.renderPassClearValues;
+inline void Context::setSwapchainImageView( const::vk::ImageView & view_ ){
+	mVirtualFrames[mCurrentVirtualFrame].swapchainImageView = view_;
 }
 
+inline const::vk::ImageView & Context::getSwapchainImageView(){
+	return mVirtualFrames[mCurrentVirtualFrame].swapchainImageView ;
+}
 
 // ------------------------------------------------------------
 

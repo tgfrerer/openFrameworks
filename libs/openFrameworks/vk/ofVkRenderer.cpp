@@ -97,6 +97,8 @@ ofVkRenderer::~ofVkRenderer()
 	mSwapchain.reset();
 	mPipelineCache.reset();
 
+	mDefaultRenderPass.reset();
+
 	// Reset command pool and all associated command buffers.
 
 	destroyDevice();

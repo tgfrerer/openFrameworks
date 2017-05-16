@@ -257,6 +257,9 @@ public:
 
 	const std::shared_ptr<::vk::PipelineCache>& getPipelineCache();
 
+	// return default renderpass - a renderpass which has one color buffer and one depth buffer
+	const std::shared_ptr<::vk::RenderPass>& getDefaultRenderpass();
+
 private:
 
 	ofRectangle mViewport;
@@ -267,7 +270,6 @@ private:
 	void                     setupDepthStencil();
 	void                     setupDefaultContext();
 	
-	void                     attachSwapChainImages(uint32_t swapchainImageIndex);
 
 	// vector of queues - the queue index is based on the index of the queue creation request
 	// it is assumed that queue 0 is graphics capable.
@@ -297,6 +299,9 @@ private:
 	// This is the context which will render to the swapchain
 	std::shared_ptr<of::vk::Context> mDefaultContext;
 
+	// default render pass - 
+	std::shared_ptr<::vk::RenderPass> mDefaultRenderPass;
+
 public:
 
 	const ::vk::Instance& getInstance();
@@ -305,7 +310,7 @@ public:
 		mSwapchain = swapchain_;
 	};
 
-	::vk::RenderPass generateDefaultRenderPass(::vk::Format colorFormat_, ::vk::Format depthFormat_) const;
+	std::shared_ptr<::vk::RenderPass> generateDefaultRenderPass(::vk::Format colorFormat_, ::vk::Format depthFormat_) const;
 
 	const std::shared_ptr<of::vk::Context> & getDefaultContext();
 
@@ -318,6 +323,8 @@ public:
 	const ::vk::Format& getVkDepthFormat();
 
 	void submit( size_t queueIndex, ::vk::ArrayProxy<const ::vk::SubmitInfo>&& submits, const ::vk::Fence& fence );
+
+	const ::vk::ImageView& getDepthStencilImageView();
 
 };
 
@@ -359,6 +366,14 @@ inline const of::vk::RendererProperties & ofVkRenderer::getVkRendererProperties(
 
 inline const::vk::Format & ofVkRenderer::getVkDepthFormat(){
 	return mDepthFormat;
+}
+
+inline const std::shared_ptr<::vk::RenderPass>& ofVkRenderer::getDefaultRenderpass(){
+	return mDefaultRenderPass;
+}
+
+inline const ::vk::ImageView & ofVkRenderer::getDepthStencilImageView(){
+	return mDepthStencil->view;
 }
 
 

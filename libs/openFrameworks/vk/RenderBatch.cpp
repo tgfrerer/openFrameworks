@@ -6,9 +6,9 @@ using namespace of::vk;
 
 // ------------------------------------------------------------
 
-RenderBatch::RenderBatch( Context & rc )
-	:mRenderContext( &rc ){
-	mVkCmd = mRenderContext->allocateCommandBuffer( ::vk::CommandBufferLevel::ePrimary );
+RenderBatch::RenderBatch( RenderBatch::Settings& settings )
+	: mSettings( settings )
+{
 }
 
 // ------------------------------------------------------------
@@ -72,22 +72,54 @@ void of::vk::RenderBatch::finalizeDrawCommand( of::vk::DrawCommand &dc ){
 	// Commit draw command memory to gpu
 	// This will update dynamic offsets as a side-effect, 
 	// and will also update the buffer ID for the bindings affected.
-	dc.commitUniforms( mRenderContext->getAllocator() );
-	dc.commitMeshAttributes( mRenderContext->getAllocator() );
+	dc.commitUniforms( mSettings.context->getAllocator() );
+	dc.commitMeshAttributes( mSettings.context->getAllocator() );
 
-	// Renderpass is constant over a context, as a context encapsulates 
+	// Renderpass is constant over a RenderBatch, as a RenderBatch encapsulates 
 	// a renderpass with all its subpasses.
-	dc.mPipelineState.setRenderPass( mRenderContext->getRenderPass() );
-
+	dc.mPipelineState.setRenderPass( mSettings.renderPass );
 	dc.mPipelineState.setSubPass( mVkSubPassId );
 }
 
 // ----------------------------------------------------------------------
 
 void RenderBatch::begin(){
+	
+	// TODO: check for state: cannot begin when not ended, or not initial
+
+	auto & context = *mSettings.context;
+
+	// allocate a new command buffer for this batch.
+	mVkCmd = context.allocateCommandBuffer( ::vk::CommandBufferLevel::ePrimary );
+
+	// Create a new Framebuffer. The framebuffer connects RenderPass with
+	// ImageViews where results of this renderpass will be stored.
+	//
+	::vk::FramebufferCreateInfo framebufferCreateInfo;
+	framebufferCreateInfo
+		.setRenderPass( mSettings.renderPass)
+		.setAttachmentCount( mSettings.framebufferAttachments.size() )
+		.setPAttachments( mSettings.framebufferAttachments.data() )
+		.setWidth( mSettings.framebufferAttachmentWidth)
+		.setHeight( mSettings.framebufferAttachmentHeight )
+		.setLayers( 1 )
+		;
+
+	// Framebuffers in Vulkan are very light-weight objects, whose main purpose 
+	// is to connect RenderPasses to Image attachments. 
+	//
+	// Since the swapchain might have a different number of images than this context has virtual 
+	// frames, and the swapchain may even acquire images out-of-sequence, we must re-create the 
+	// framebuffer on each frame to make sure we're attaching the renderpass to the correct 
+	// attachments.
+	//
+	// We create framebuffers through the context, so that the context
+	// can free all old framebuffers once the frame has been processed.
+	mFramebuffer = context.createFramebuffer( framebufferCreateInfo );
+
 	mVkCmd.begin( { ::vk::CommandBufferUsageFlagBits::eOneTimeSubmit } );
 
-	if ( mRenderContext->getRenderPass() ){	
+	if ( mSettings.renderPass ){	
 		// begin renderpass - 
 
 		// this is only allowed if the context maps a primary renderpass!
@@ -102,11 +134,11 @@ void RenderBatch::begin(){
 
 		::vk::RenderPassBeginInfo renderPassBeginInfo;
 		renderPassBeginInfo
-			.setRenderPass( mRenderContext->getRenderPass() )
-			.setFramebuffer( mRenderContext->getFramebuffer() )
-			.setRenderArea( mRenderContext->getRenderArea() )
-			.setClearValueCount( mRenderContext->getClearValues().size() )
-			.setPClearValues( mRenderContext->getClearValues().data() )
+			.setRenderPass( mSettings.renderPass )
+			.setFramebuffer( mFramebuffer )
+			.setRenderArea( mSettings.renderArea )
+			.setClearValueCount( mSettings.clearValues.size() )
+			.setPClearValues( mSettings.clearValues.data() )
 			;
 
 		mVkCmd.beginRenderPass( renderPassBeginInfo, ::vk::SubpassContents::eInline );
@@ -117,13 +149,13 @@ void RenderBatch::begin(){
 	::vk::Viewport vp;
 	vp.setX( 0 )
 		.setY( 0 )
-		.setWidth( mRenderContext->getRenderArea().extent.width )
-		.setHeight( mRenderContext->getRenderArea().extent.height )
+		.setWidth(  mSettings.renderArea.extent.width )
+		.setHeight( mSettings.renderArea.extent.height )
 		.setMinDepth( 0.f )
 		.setMaxDepth( 1.f )
 		;
 	mVkCmd.setViewport( 0, { vp } );
-	mVkCmd.setScissor( 0, { mRenderContext->getRenderArea() } );
+	mVkCmd.setScissor( 0, { mSettings.renderArea } );
 }
 
 // ----------------------------------------------------------------------
@@ -135,15 +167,17 @@ void RenderBatch::end(){
 
 	processDrawCommands();
 
-	if ( mRenderContext->getRenderPass() ){
+	if ( mSettings.renderPass ){
 		// end renderpass if Context / CommandBuffer is Primary
 		mVkCmd.endRenderPass();
 	}
 
 	mVkCmd.end();
 	
+	auto & context = const_cast<Context&>( *mSettings.context );
+
 	// add command buffer to command queue of context.
-	mRenderContext->submit( std::move( mVkCmd ) );
+	context.submit( std::move( mVkCmd ) );
 
 	mVkCmd = nullptr;
 	mDrawCommands.clear();
@@ -161,6 +195,8 @@ void RenderBatch::end(){
 // ----------------------------------------------------------------------
 
 void RenderBatch::processDrawCommands( ){
+	
+	auto & context = const_cast<Context&>( *mSettings.context );
 
 	// first order draw commands
 
@@ -174,7 +210,6 @@ void RenderBatch::processDrawCommands( ){
 	// current draw state for building command buffer - this is based on parsing the drawCommand list
 	std::unique_ptr<GraphicsPipelineState> boundPipelineState;
 
-
 	for ( auto & dc : mDrawCommands ){
 
 		// find out pipeline state needed for this draw command
@@ -187,19 +222,19 @@ void RenderBatch::processDrawCommands( ){
 
 			uint64_t pipelineStateHash = boundPipelineState->calculateHash();
 
-			auto & currentPipeline = mRenderContext->borrowPipeline( pipelineStateHash );
+			auto & currentPipeline = context.borrowPipeline( pipelineStateHash );
 
 			if ( currentPipeline.get() == nullptr ){
 				currentPipeline  =
 					std::shared_ptr<::vk::Pipeline>( ( new ::vk::Pipeline ),
-						[device = mRenderContext->mDevice]( ::vk::Pipeline*rhs ){
+						[device = context.mDevice]( ::vk::Pipeline*rhs ){
 					if ( rhs ){
 						device.destroyPipeline( *rhs );
 					}
 					delete rhs;
 				} );
 
-				*currentPipeline = boundPipelineState->createPipeline( mRenderContext->mDevice, mRenderContext->mSettings.pipelineCache);
+				*currentPipeline = boundPipelineState->createPipeline( context.mDevice, context.mSettings.pipelineCache);
 			}
 
 			mVkCmd.bindPipeline( ::vk::PipelineBindPoint::eGraphics, *currentPipeline );
@@ -224,7 +259,7 @@ void RenderBatch::processDrawCommands( ){
 
 			// Receive a descriptorSet from the renderContext's cache.
 			// The renderContext will allocate and initialise a DescriptorSet if none has been found.
-			const ::vk::DescriptorSet& descriptorSet = mRenderContext->getDescriptorSet( descriptorSetHash, setId, *descriptorSetLayout , descriptors );
+			const ::vk::DescriptorSet& descriptorSet = context.getDescriptorSet( descriptorSetHash, setId, *descriptorSetLayout , descriptors );
 
 			boundVkDescriptorSets.emplace_back( descriptorSet );
 
