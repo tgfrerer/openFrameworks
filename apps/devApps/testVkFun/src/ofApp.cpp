@@ -268,6 +268,7 @@ void ofApp::draw(){
 		renderer->getDefaultContext()->getSwapchainImageView(),  
 		renderer->getDepthStencilImageView() 
 	};
+
 	of::vk::RenderBatch batch{ settings };
 	
 	batch.begin();

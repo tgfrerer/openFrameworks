@@ -85,11 +85,11 @@ void of::vk::RenderBatch::finalizeDrawCommand( of::vk::DrawCommand &dc ){
 
 void RenderBatch::begin(){
 	
-	// TODO: check for state: cannot begin when not ended, or not initial
+	// TODO: When runing in debug, check for RenderBatch state: cannot begin when not ended, or not initial
 
 	auto & context = *mSettings.context;
 
-	// allocate a new command buffer for this batch.
+	// Allocate a new command buffer for this batch.
 	mVkCmd = context.allocateCommandBuffer( ::vk::CommandBufferLevel::ePrimary );
 
 	// Create a new Framebuffer. The framebuffer connects RenderPass with
@@ -120,15 +120,9 @@ void RenderBatch::begin(){
 	mVkCmd.begin( { ::vk::CommandBufferUsageFlagBits::eOneTimeSubmit } );
 
 	if ( mSettings.renderPass ){	
-		// begin renderpass - 
+		// Begin Renderpass - 
+		// This is only allowed if the context maps a primary renderpass!
 
-		// this is only allowed if the context maps a primary renderpass!
-
-		// CONSIDER: can we extract this into a renderpass object?
-		// The goal being that a renderbatch maps to a renderpass, 
-		// but a context may have multiple renderpasses, and may render
-		// to multiple framebuffers.
-		//
 		// Note that secondary command buffers inherit the renderpass 
 		// from their primary.
 
@@ -144,8 +138,8 @@ void RenderBatch::begin(){
 		mVkCmd.beginRenderPass( renderPassBeginInfo, ::vk::SubpassContents::eInline );
 	}
 
-	// set dynamic viewport
-	// todo: these dynamics belong to the batch state.
+	// Set dynamic viewport
+	// TODO: these dynamics may belong to the draw command
 	::vk::Viewport vp;
 	vp.setX( 0 )
 		.setY( 0 )
