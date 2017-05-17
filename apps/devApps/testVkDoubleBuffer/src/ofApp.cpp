@@ -5,13 +5,21 @@
 // fetch it anew every time we need it.
 shared_ptr<ofVkRenderer> renderer;
 
+const glm::mat4x4 cClipMatrix {
+	1.0f, 0.0f, 0.0f, 0.0f,
+	0.0f, -1.0f, 0.0f, 0.0f,
+	0.0f, 0.0f, 0.5f, 0.0f,
+	0.0f, 0.0f, 0.5f, 1.0f
+};
+
+
 //--------------------------------------------------------------
 
 void ofApp::setup(){
 	ofDisableSetupScreen();
 
 	renderer = dynamic_pointer_cast<ofVkRenderer>( ofGetCurrentRenderer() );
-	setupSecondaryRenderContext();
+	setupPrepass();
 	setupDrawCommands();
 
 	mMeshIco = std::make_shared<ofMesh>();
@@ -27,101 +35,91 @@ void ofApp::setup(){
 
 //--------------------------------------------------------------
 
-void ofApp::setupSecondaryRenderContext(){
+void ofApp::setupPrepass(){
 
 	auto & device = renderer->getVkDevice();
 
-	// setup a secondary context
+	// set dimensions for aux render target
+	mPrepassRect.setExtent( { 512, 256 } );
+	mPrepassRect.setOffset( { 0, 0 } );
+
+	// Create a Renderpass which defines dependencies,
+	// attachments, initialisation behaviour, and colour 
+	// formats for the subpass.
 	{
+		std::array<vk::AttachmentDescription, 1> attachments;
 
-		auto rendererProperties = renderer->getVkRendererProperties();
+		attachments[0]		// color attachment
+			.setFormat( ::vk::Format::eR8G8B8A8Unorm )
+			.setSamples( ::vk::SampleCountFlagBits::e1 )
+			.setLoadOp( ::vk::AttachmentLoadOp::eClear )  // <-- try setting this to  vk::AttachmentLoadOp::eDontCare and see what happens!
+			.setStoreOp( ::vk::AttachmentStoreOp::eStore )
+			.setStencilLoadOp( ::vk::AttachmentLoadOp::eDontCare )
+			.setStencilStoreOp( ::vk::AttachmentStoreOp::eDontCare )
+			.setInitialLayout( ::vk::ImageLayout::eUndefined )
+			.setFinalLayout( ::vk::ImageLayout::eShaderReadOnlyOptimal )
+			;
 
-		of::vk::Context::Settings contextSettings;
+		// Define 2 attachments, and tell us what layout to expect these to be in.
+		// Index references attachments from above.
 
-		contextSettings.transientMemoryAllocatorSettings.device = renderer->getVkDevice();
-		contextSettings.transientMemoryAllocatorSettings.frameCount = 3;
-		contextSettings.transientMemoryAllocatorSettings.physicalDeviceMemoryProperties = rendererProperties.physicalDeviceMemoryProperties;
-		contextSettings.transientMemoryAllocatorSettings.physicalDeviceProperties = rendererProperties.physicalDeviceProperties;
-		contextSettings.transientMemoryAllocatorSettings.size = ( ( 1ULL << 24 ) * renderer->mSettings.numVirtualFrames );
-		contextSettings.renderer = renderer.get();
-		contextSettings.pipelineCache = renderer->getPipelineCache();
+		vk::AttachmentReference colorReference{ 0, ::vk::ImageLayout::eColorAttachmentOptimal };
 
-		vk::Rect2D rect;
-		rect.setExtent( { 512, 256 } );
-		rect.setOffset( { 0, 0 } );
+		vk::SubpassDescription subpassDescription;
+		subpassDescription
+			.setPipelineBindPoint( ::vk::PipelineBindPoint::eGraphics )
+			.setColorAttachmentCount( 1 )
+			.setPColorAttachments( &colorReference )
+			.setPDepthStencilAttachment( nullptr )
+			;
 
-		contextSettings.renderArea = rect;
+		// Define 2 dependencies for subpass 0
 
-		{
-			std::array<vk::AttachmentDescription, 1> attachments;
+		std::array<vk::SubpassDependency, 2> dependencies;
+		dependencies[0]
+			.setSrcSubpass( VK_SUBPASS_EXTERNAL ) // producer
+			.setDstSubpass( 0 )                   // consumer
+			.setSrcStageMask( ::vk::PipelineStageFlagBits::eBottomOfPipe )
+			.setDstStageMask( ::vk::PipelineStageFlagBits::eColorAttachmentOutput )
+			.setSrcAccessMask( ::vk::AccessFlagBits::eMemoryRead )
+			.setDstAccessMask( ::vk::AccessFlagBits::eColorAttachmentWrite )
+			.setDependencyFlags( ::vk::DependencyFlagBits::eByRegion )
+			;
+		dependencies[1]
+			.setSrcSubpass( 0 )                   // producer
+			.setDstSubpass( VK_SUBPASS_EXTERNAL ) // consumer
+			.setSrcStageMask( ::vk::PipelineStageFlagBits::eColorAttachmentOutput )
+			.setDstStageMask( ::vk::PipelineStageFlagBits::eTopOfPipe )
+			.setSrcAccessMask( ::vk::AccessFlagBits::eColorAttachmentWrite )
+			.setDstAccessMask( ::vk::AccessFlagBits::eMemoryRead )
+			.setDependencyFlags( vk::DependencyFlagBits::eByRegion )
+			;
 
-			attachments[0]		// color attachment
-				.setFormat( ::vk::Format::eR8G8B8A8Unorm )
-				.setSamples( vk::SampleCountFlagBits::e1 )
-				.setLoadOp( vk::AttachmentLoadOp::eClear )
-				.setStoreOp( vk::AttachmentStoreOp::eStore )
-				.setStencilLoadOp( vk::AttachmentLoadOp::eDontCare )
-				.setStencilStoreOp( vk::AttachmentStoreOp::eDontCare )
-				.setInitialLayout( vk::ImageLayout::eUndefined)
-				.setFinalLayout( vk::ImageLayout::eShaderReadOnlyOptimal )
-				;
+		// Define 1 renderpass with 1 subpass
 
-			// Define 2 attachments, and tell us what layout to expect these to be in.
-			// Index references attachments from above.
+		vk::RenderPassCreateInfo renderPassCreateInfo;
+		renderPassCreateInfo
+			.setAttachmentCount( attachments.size() )
+			.setPAttachments( attachments.data() )
+			.setSubpassCount( 1 )
+			.setPSubpasses( &subpassDescription )
+			.setDependencyCount( dependencies.size() )
+			.setPDependencies( dependencies.data() );
 
-			vk::AttachmentReference colorReference{ 0, vk::ImageLayout::eColorAttachmentOptimal };
+		auto renderPass = device.createRenderPass( renderPassCreateInfo );
 
-			vk::SubpassDescription subpassDescription;
-			subpassDescription
-				.setPipelineBindPoint( vk::PipelineBindPoint::eGraphics )
-				.setColorAttachmentCount( 1 )
-				.setPColorAttachments( &colorReference )
-				.setPDepthStencilAttachment( nullptr )
-				;
+		// We put renderpass into a shared_ptr so we can be sure it will get destroyed on app teardown
+		mPrepassRenderPass = std::shared_ptr<::vk::RenderPass>( new ::vk::RenderPass( renderPass ), [d = device]( ::vk::RenderPass* rp ){
+			d.destroyRenderPass( *rp );
+			delete rp;
+		} );
+	}
 
-			// Define 2 dependencies for subpass 0
-
-			std::array<vk::SubpassDependency, 2> dependencies;
-			dependencies[0]
-				.setSrcSubpass( VK_SUBPASS_EXTERNAL ) // producer
-				.setDstSubpass( 0 )                   // consumer
-				.setSrcStageMask( vk::PipelineStageFlagBits::eBottomOfPipe )
-				.setDstStageMask( vk::PipelineStageFlagBits::eColorAttachmentOutput )
-				.setSrcAccessMask( vk::AccessFlagBits::eMemoryRead )
-				.setDstAccessMask( vk::AccessFlagBits::eColorAttachmentWrite )
-				.setDependencyFlags( vk::DependencyFlagBits::eByRegion )
-				;
-			dependencies[1]
-				.setSrcSubpass( 0 ) // producer
-				.setDstSubpass( VK_SUBPASS_EXTERNAL )                   // consumer
-				.setSrcStageMask( vk::PipelineStageFlagBits::eColorAttachmentOutput )
-				.setDstStageMask( vk::PipelineStageFlagBits::eTopOfPipe )
-				.setSrcAccessMask( vk::AccessFlagBits::eColorAttachmentWrite )
-				.setDstAccessMask( vk::AccessFlagBits::eMemoryRead )
-				.setDependencyFlags( vk::DependencyFlagBits::eByRegion )
-				;
-
-			// Define 1 renderpass with 1 subpass
-
-			vk::RenderPassCreateInfo renderPassCreateInfo;
-			renderPassCreateInfo
-				.setAttachmentCount( attachments.size() )
-				.setPAttachments( attachments.data() )
-				.setSubpassCount( 1 )
-				.setPSubpasses( &subpassDescription )
-				.setDependencyCount( dependencies.size() )
-				.setPDependencies( dependencies.data() );
-
-			auto renderPass = device.createRenderPass( renderPassCreateInfo );
-			contextSettings.renderPass = renderPass;
-			contextSettings.renderPassClearValues = { { reinterpret_cast<const ::vk::ClearColorValue&>( ofFloatColor::pink ) } };
-		}
-
-		mAuxContext = std::make_unique<of::vk::Context>( std::move( contextSettings ) );
-
-		mAuxContext->setup();
-
-		// ---- allocate imgages for context to render into
+	// ---- Allocate imgages for context to render into
+	{
+		// we allocate 2 images, so that we could ping-pong between
+		// rendertargets. In this example, we're not really 
+		// making full use of this, to keep things simple.
 
 		size_t numImages = 2;
 
@@ -130,7 +128,7 @@ void ofApp::setupSecondaryRenderContext(){
 		allocatorSettings.imageTiling = vk::ImageTiling::eOptimal;
 		allocatorSettings.imageUsageFlags = vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled;
 		allocatorSettings.memFlags = vk::MemoryPropertyFlagBits::eDeviceLocal;
-		allocatorSettings.size = contextSettings.renderArea.extent.width * contextSettings.renderArea.extent.height * 4 * numImages;
+		allocatorSettings.size = mPrepassRect.extent.width * mPrepassRect.extent.height * 4 * numImages;
 		allocatorSettings.physicalDeviceMemoryProperties = renderer->getVkPhysicalDeviceMemoryProperties();
 		allocatorSettings.physicalDeviceProperties = renderer->getVkPhysicalDeviceProperties();
 		mImageAllocator = std::make_shared<of::vk::ImageAllocator>( allocatorSettings );
@@ -141,12 +139,12 @@ void ofApp::setupSecondaryRenderContext(){
 		imageCreateInfo
 			.setImageType( ::vk::ImageType::e2D )
 			.setFormat( ::vk::Format::eR8G8B8A8Unorm )
-			.setExtent( { contextSettings.renderArea.extent.width, contextSettings.renderArea.extent.height, 1 } )
+			.setExtent( { mPrepassRect.extent.width, mPrepassRect.extent.height, 1 } )
 			.setMipLevels( 1 )
 			.setArrayLayers( 1 )
 			.setSamples( ::vk::SampleCountFlagBits::e1 )
 			.setTiling( ::vk::ImageTiling::eOptimal )
-			.setUsage( vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled )
+			.setUsage( ::vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled )
 			.setSharingMode( ::vk::SharingMode::eExclusive )
 			.setQueueFamilyIndexCount( 0 )
 			.setPQueueFamilyIndices( nullptr )
@@ -165,9 +163,9 @@ void ofApp::setupSecondaryRenderContext(){
 				.setComponents( {} ) // identity
 				.setSubresourceRange( { ::vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1 } )
 				;
-			
+
 			::vk::DeviceSize offset;
-			mImageAllocator->allocate( contextSettings.renderArea.extent.width * contextSettings.renderArea.extent.height * 4, offset );
+			mImageAllocator->allocate( mPrepassRect.extent.width * mPrepassRect.extent.height * 4, offset );
 			device.bindImageMemory( img, mImageAllocator->getDeviceMemory(), offset );
 
 			auto view = device.createImageView( imageViewCreateInfo );
@@ -177,67 +175,12 @@ void ofApp::setupSecondaryRenderContext(){
 
 			mTexture[i] = std::make_shared<of::vk::Texture>( device, img );
 		}
-
-
-		// ----
-
-		/*
-
-		This is how we make sure that contexts (which boil down to individual
-		queue) are properly synchronised: We use semaphores.
-		
-		Whenever a context is submitted, there is a semaphore to wait for before
-		work is being done on the device, and then there is a semaphore to signal
-		when the work has been completed. 
-
-		These semaphores get chained, so represent linear dependency.
-
-		We probably don't need these semaphores, as there should be implicit 
-		synchronisation based on the order of submissions to the queue, but 
-		in case we're submitting to more than one queue, these semaphores are
-		very important. You might want multiple queues when using compute.
-
-		There is a minimum of two semaphores which we must use in case we're rendering
-		to a KHR swapchain, as the swapchain will wait for renderComplete before presenting, 
-		and will signal presentComplete when presentation for an image is complete. 
-
-		/     ***** FENCE *****
-		|     
-		|     
-		|     ===== submit to queue =====
-		|     
-		|     - presentComplete // wait    | submit A
-		|     - renderA         // signal  | submit A
-		|     
-		|     - renderA         // wait    | submit B
-		|     - renderB         // signal  | submit B
-		|     
-		|     
-		|     - renderB         // wait    | submit default
-		|     - renderComplete  // signal  | submit default
-		|     
-		|     ===== swapchain internal ======
-		|     
-		|     swapchain.present()          | swapchain present
-		|     - renderComplete  // wait    |
-		|     
-		|     ------ the following will be wrapped around usually, i.e. acquire() 
-		|            happens straight after the fence, before anything else.
-		|     
-		|     swapchain.acquire()          | swapchain acquire
-		\     - presentComplete // signal  |
-
-
-		*/
-
-		/*auto & context = renderer->getDefaultContext();
-		mAuxContext->addContextDependency( context.get() );
-		context->addContextDependency( mAuxContext.get() );*/
 	}
 
-	mCamAux.setupPerspective( false, 60, 0.1, 500 );
-	mCamAux.setGlobalPosition( 0, 0, mCam.getImagePlaneDistance( { 0,0,512,256 } ) );
-	mCamAux.lookAt( { 0,0,0 }, { 0,1,0 } );
+
+	mCamPrepass.setupPerspective( false, 60, 0.1, 500 );
+	mCamPrepass.setGlobalPosition( 0, 0, mCam.getImagePlaneDistance( { 0,0,512,256 } ) );
+	mCamPrepass.lookAt( { 0,0,0 }, { 0,1,0 } );
 
 	mCam.setupPerspective( false, 60 );
 	mCam.setPosition( { 0,0, mCam.getImagePlaneDistance() } );
@@ -274,7 +217,6 @@ void ofApp::setupDrawCommands(){
 		// This command uses the vertex shader to emit vertices, so 
 		// doesn't need any geometry to render. 
 
-
 		of::vk::GraphicsPipelineState pipeline;
 		pipeline.setShader( mShaderFullscreen );
 
@@ -300,7 +242,9 @@ void ofApp::setupDrawCommands(){
 		const_cast<of::vk::DrawCommand&>( fullscreenQuad).setNumVertices( 3 );
 	}
 
-	{
+	{   
+		// Draw Command which draws geometry as outlines
+
 		of::vk::GraphicsPipelineState pipeline;
 		pipeline.setShader( mShaderDefault );
 
@@ -315,10 +259,12 @@ void ofApp::setupDrawCommands(){
 			.setBlendEnable( VK_TRUE )
 			;
 
-		const_cast<of::vk::DrawCommand&>( defaultDraw).setup( pipeline );
+		const_cast<of::vk::DrawCommand&>( outlinesDraw ).setup( pipeline );
 	}
 
 	{
+		// Draw command which draws textured geometry
+
 		of::vk::GraphicsPipelineState pipeline;
 		pipeline.setShader( mShaderTextured );
 
@@ -328,7 +274,8 @@ void ofApp::setupDrawCommands(){
 			.setDepthTestEnable( VK_TRUE )
 			.setDepthWriteEnable( VK_TRUE )
 			;
-		pipeline.blendAttachmentStates[0].blendEnable = VK_TRUE;
+		pipeline.blendAttachmentStates[0]
+			.setBlendEnable(VK_TRUE);
 
 		const_cast<of::vk::DrawCommand&>( drawTextured ).setup( pipeline );
 	}
@@ -345,30 +292,34 @@ void ofApp::update(){
 void ofApp::draw(){
 
 	static uint32_t pingPong = 0;
+	auto & context = renderer->getDefaultContext();
 
-	// sync: we have waited for the main context fence here. 
+	{   // prepass 
 
-	static const glm::mat4x4 clip(
-		1.0f, 0.0f, 0.0f, 0.0f,
-		0.0f, -1.0f, 0.0f, 0.0f,
-		0.0f, 0.0f, 0.5f, 0.0f,
-		0.0f, 0.0f, 0.5f, 1.0f
-	);
+		// setup the prepass renderbatch
+		//
+		std::vector<::vk::ClearValue> clearValues( 1 );
+		clearValues[0].setColor( ( ::vk::ClearColorValue& )ofFloatColor::bisque );
 
-	
-	mAuxContext->begin();
-	{
-		mAuxContext->setupFrameBufferAttachments( { mTargetImages[0].view } );
+		of::vk::RenderBatch::Settings settings;
+		settings.clearValues = clearValues;
+		settings.context = renderer->getDefaultContext().get();
+		settings.framebufferAttachmentHeight = mPrepassRect.extent.height;
+		settings.framebufferAttachmentWidth = mPrepassRect.extent.width;
+		settings.renderArea = mPrepassRect;
+		settings.renderPass = *mPrepassRenderPass;
+		settings.framebufferAttachments = {
+			mTargetImages[pingPong].view,    // << this image is where the result of our prepass will be stored
+		};
 
-		auto viewMatrix       = mCamAux.getModelViewMatrix();
-		auto projectionMatrix = clip * mCamAux.getProjectionMatrix( { 0,0,512,256 } );
+		of::vk::RenderBatch prepass{ settings };
+
+		auto viewMatrix = mCamPrepass.getModelViewMatrix();
+		auto projectionMatrix = cClipMatrix * mCamPrepass.getProjectionMatrix( { 0, 0, float( mPrepassRect.extent.width ), float( mPrepassRect.extent.height ) } );
 
 		ofMatrix4x4 modelMatrix = glm::rotate( float( TWO_PI * ( ( ofGetFrameNum() % 360 ) / 360.f ) ), glm::vec3( { 0.f, 1.f, 1.f } ) );
 
-		of::vk::RenderBatch batch{ *mAuxContext };
-		batch.begin();
-		
-		auto meshDraw = defaultDraw;
+		auto meshDraw = outlinesDraw;
 
 		ofFloatColor col = ofColor::white;
 		col.lerp( ofColor::blue, 0.5 + 0.5 * sinf(TWO_PI * (ofGetFrameNum() % 360 ) / 360.f ));
@@ -382,43 +333,60 @@ void ofApp::draw(){
 			.setDrawMethod( of::vk::DrawCommand::DrawMethod::eIndexed )
 			;
 
-		batch.draw( meshDraw );
-
-		batch.end();
+		prepass.begin();
+		prepass.draw( meshDraw );
+		prepass.end();
 		
 	}
-	mAuxContext->end();
 
-	// ---
+	{   // main pass
 
-	auto & context = renderer->getDefaultContext();
-	
-	{
+		// setup the main pass renderbatch
+		//
+		std::vector<::vk::ClearValue> clearValues( 2 );
+		clearValues[0].setColor( ( ::vk::ClearColorValue& )ofFloatColor::blueSteel );
+		clearValues[1].setDepthStencil( { 1.f, 0 } );
+
+		of::vk::RenderBatch::Settings settings;
+		settings.clearValues = clearValues;
+		settings.context = renderer->getDefaultContext().get();
+		settings.framebufferAttachmentHeight = renderer->getSwapchain()->getHeight();
+		settings.framebufferAttachmentWidth = renderer->getSwapchain()->getWidth();
+		settings.renderArea = ::vk::Rect2D( {}, { uint32_t( renderer->getViewportWidth() ), uint32_t( renderer->getViewportHeight() ) } );
+		settings.renderPass = *renderer->getDefaultRenderpass();
+		settings.framebufferAttachments = {
+			context->getSwapchainImageView(),
+			renderer->getDepthStencilImageView()
+		};
+
+		of::vk::RenderBatch batch{ settings };
+
 		auto viewMatrix = mCam.getModelViewMatrix();
-		auto projectionMatrix = clip * mCam.getProjectionMatrix( );
+		auto projectionMatrix = cClipMatrix * mCam.getProjectionMatrix();
 
 		auto texturedRect = drawTextured;
 		texturedRect
 			.setUniform( "projectionMatrix", projectionMatrix )
 			.setUniform( "viewMatrix", viewMatrix )
 			.setUniform( "modelMatrix", glm::mat4() )
-			.setTexture( "tex_0", *mTexture[0] )
-			.setMesh(mMeshPlane)
-			.setDrawMethod(of::vk::DrawCommand::DrawMethod::eIndexed)
+			.setTexture( "tex_0", *mTexture[(pingPong + 1 ) % 2] )
+			.setMesh( mMeshPlane )
+			.setDrawMethod( of::vk::DrawCommand::DrawMethod::eIndexed )
 			;
 
-		of::vk::RenderBatch batch{ *context };
-
 		batch.begin();
-		batch.draw( fullscreenQuad );
-		batch.draw( texturedRect );  // draw result from previous render pass onto screen
+		batch
+			.draw( fullscreenQuad )
+			.draw( texturedRect )    // draw result from previous render pass onto screen
+			;
 		batch.end();
 
 	}
 
-	// check if this is a problem: submit happens after this, so the swap will 
-	// shift the current frame before the frame has been recorded.
-
+	// Note that ping-pong in this case doesn't really do anything, 
+	// as the way we have setup our renderpasses, their dependencies (outside writes 
+	// must have finished before reading inside the renderpass) warrant that
+	// the result of our prepass is available for the main pass to draw. 
 	pingPong = ( pingPong + 1) % 2;
 }
 

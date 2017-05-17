@@ -73,8 +73,26 @@ void ofApp::draw(){
 	// only uses resources which are either global readonly static, 
 	// or resources which are temporarily allocated though the 
 	// context inside the context's thread, this is thread-safe. 
-	 
-	of::vk::RenderBatch batch{ *context };
+	
+	// setup the main pass renderbatch
+	//
+	std::vector<::vk::ClearValue> clearValues( 2 );
+	clearValues[0].setColor( ( ::vk::ClearColorValue& )ofFloatColor::blueSteel );
+	clearValues[1].setDepthStencil( { 1.f, 0 } );
+
+	of::vk::RenderBatch::Settings settings;
+	settings.clearValues = clearValues;
+	settings.context = context.get();
+	settings.framebufferAttachmentHeight = renderer->getSwapchain()->getHeight();
+	settings.framebufferAttachmentWidth  = renderer->getSwapchain()->getWidth();
+	settings.renderArea = ::vk::Rect2D( {}, { uint32_t( renderer->getViewportWidth() ), uint32_t( renderer->getViewportHeight() ) } );
+	settings.renderPass = *renderer->getDefaultRenderpass();
+	settings.framebufferAttachments = {
+		context->getSwapchainImageView(),
+		renderer->getDepthStencilImageView()
+	};
+
+	of::vk::RenderBatch batch{ settings };
 
 	batch.begin();
 	batch.draw( fullscreenQuad );

@@ -9,7 +9,7 @@
 class ofApp : public ofBaseApp{
 
 	const of::vk::DrawCommand fullscreenQuad;
-	const of::vk::DrawCommand defaultDraw;
+	const of::vk::DrawCommand outlinesDraw;
 	const of::vk::DrawCommand drawTextured;
 
 	std::shared_ptr<of::vk::Shader> mShaderFullscreen;
@@ -24,20 +24,23 @@ class ofApp : public ofBaseApp{
 	std::array<ImageWithView, 2> mTargetImages;
 	std::array<std::shared_ptr<of::vk::Texture>, 2> mTexture;
 
-	std::unique_ptr<of::vk::Context> mAuxContext;
-
 	ofEasyCam  mCam;
-	ofCamera   mCamAux;
+	ofCamera   mCamPrepass;
+
 	std::shared_ptr<ofMesh> mMeshIco;
 	std::shared_ptr<ofMesh> mMeshPlane;
 	std::shared_ptr<ofMesh> mMeshL;
-	public:
+	
+	std::shared_ptr<::vk::RenderPass> mPrepassRenderPass;
+	vk::Rect2D mPrepassRect; // dimensions for prepass render targets 
+
+public:
 		void setup();
 		void update();
 		void draw();
 		void exit() override;
 
-		void setupSecondaryRenderContext();
+		void setupPrepass();
 		void setupDrawCommands();
 
 		void keyPressed(int key);
