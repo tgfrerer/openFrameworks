@@ -89,12 +89,21 @@ public:
 	// n.b. this flushes, i.e. processes all draw commands queued up until this command is called.
 	::vk::CommandBuffer& getVkCommandBuffer();
 
+	// return context associated with this batch
+	Context* getContext();
+
 private:
 
 	void finalizeDrawCommand( of::vk::DrawCommand &dc );
 	void processDrawCommands( );
 
 };
+
+// ----------------------------------------------------------------------
+
+inline Context * RenderBatch::getContext(){
+	return mSettings.context;
+}
 
 
 // ----------------------------------------------------------------------
