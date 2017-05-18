@@ -72,8 +72,6 @@ private:      /* transient data */
 
 	std::shared_ptr<ofMesh> mMsh; /* optional */
 
-	template <typename T>
-	bool allocAndSetAttribute( const std::string& attrName_, const std::vector<T> & vec, const std::unique_ptr<BufferAllocator>& alloc );
 
 	// set data for upload to ubo - data is stored locally 
 	// until draw command is submitted
@@ -119,6 +117,24 @@ public:
 	// is queued up into a RenderBatch. Use setAttribute and setIndices to render static
 	// meshes, and for more control over how drawing behaves.
 	of::vk::DrawCommand & setMesh( const shared_ptr<ofMesh>& msh_ );
+
+	// allocate, and store attribute data in gpu memory
+	template <typename T>
+	of::vk::DrawCommand & allocAndSetAttribute( const std::string& attrName_, const std::vector<T> & vec, const std::unique_ptr<BufferAllocator>& alloc );
+
+	// allocate, and store attribute data in gpu memory
+	template <typename T>
+	of::vk::DrawCommand & allocAndSetAttribute( const std::string& attrName_, const T* data, size_t numBytes, const std::unique_ptr<BufferAllocator>& alloc );
+
+	// allocate, and store attribute data in gpu memory
+	template <typename T>
+	of::vk::DrawCommand & allocAndSetAttribute( const size_t& attribLocation_, const std::vector<T> & vec, const std::unique_ptr<BufferAllocator>& alloc );
+
+	// allocate, and store attribute data in gpu memory
+	of::vk::DrawCommand & allocAndSetAttribute( const size_t& attribLocation_, const void* data, size_t numBytes, const std::unique_ptr<BufferAllocator>& alloc );
+
+	of::vk::DrawCommand & allocAndSetIndices( const ofIndexType* data, size_t numBytes, const std::unique_ptr<BufferAllocator>& alloc );
+
 
 	of::vk::DrawCommand & setAttribute( const std::string& name_, ::vk::Buffer buffer_, ::vk::DeviceSize offset_ );
 	of::vk::DrawCommand & setAttribute( const size_t attribLocation_, ::vk::Buffer buffer, ::vk::DeviceSize offset );
@@ -329,7 +345,7 @@ inline of::vk::DrawCommand & of::vk::DrawCommand::setAttribute( const size_t att
 
 inline of::vk::DrawCommand & of::vk::DrawCommand::setAttribute( const std::string& name_, ::vk::Buffer buffer_, ::vk::DeviceSize offset_ ){
 	size_t index = 0;
-	if ( mPipelineState.getShader()->getAttributeIndex( name_, index ) ){
+	if ( mPipelineState.getShader()->getAttributeBinding( name_, index ) ){
 		setAttribute( index, buffer_, offset_ );
 		return *this;
 	}
