@@ -186,6 +186,7 @@ void RenderBatch::end(){
 	return mVkCmd;
 }
 
+
 // ----------------------------------------------------------------------
 
 void RenderBatch::processDrawCommands( ){

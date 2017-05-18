@@ -105,7 +105,6 @@ inline uint32_t RenderBatch::nextSubPass(){
 	return ++mVkSubPassId;
 }
 
-
 // ----------------------------------------------------------------------
 
 } // end namespce of::vk

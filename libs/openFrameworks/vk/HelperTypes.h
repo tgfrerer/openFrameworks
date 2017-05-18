@@ -62,7 +62,7 @@ struct TransferSrcData
 
 struct ImageTransferSrcData 
 {
-	void * pData;
+	void * pData;             //< pointer to pixel data
 	::vk::DeviceSize          numBytes;
 	::vk::ImageType           imageType   { ::vk::ImageType::e2D };
 	::vk::Format              format      { ::vk::Format::eR8G8B8A8Unorm };
@@ -181,7 +181,7 @@ struct UniformId_t
 
 	union
 	{
-		// this is currently tightly packed to span 64 bits, but it should be possible to 
+		// This is currently tightly packed to span 64 bits, but it should be possible to 
 		// make it span 128 bits if necessary.
 
 		uint64_t id = 0;
