@@ -264,11 +264,12 @@ private:
 
 	ofRectangle mViewport;
 
-
+	void postSetup( ofEventArgs & args );
 	
 	void                     setupSwapChain();
 	void                     setupDepthStencil();
 	void                     setupDefaultContext();
+	void                     setupStagingContext();
 	
 
 	// vector of queues - the queue index is based on the index of the queue creation request
@@ -299,6 +300,12 @@ private:
 	// This is the context which will render to the swapchain
 	std::shared_ptr<of::vk::Context> mDefaultContext;
 
+	// The staging context
+	// This Context is used to stage resources such as texture data so that it can be 
+	// transferred to device local memory - note that staging context will get submitted before first draw.
+	std::shared_ptr<of::vk::Context> mStagingContext;
+
+
 	// default render pass - 
 	std::shared_ptr<::vk::RenderPass> mDefaultRenderPass;
 
@@ -313,6 +320,8 @@ public:
 	std::shared_ptr<::vk::RenderPass> generateDefaultRenderPass(::vk::Format colorFormat_, ::vk::Format depthFormat_) const;
 
 	const std::shared_ptr<of::vk::Context> & getDefaultContext();
+
+	const std::shared_ptr<of::vk::Context> & getStagingContext();
 
 	void setDefaultContext( std::shared_ptr<of::vk::Context> ctx );
 
@@ -350,6 +359,10 @@ inline const size_t ofVkRenderer::getVirtualFramesCount(){
 
 inline const std::shared_ptr<of::vk::Context>& ofVkRenderer::getDefaultContext(){
 	return mDefaultContext;
+}
+
+inline const std::shared_ptr<of::vk::Context>& ofVkRenderer::getStagingContext(){
+	return mStagingContext;
 }
 
 inline void ofVkRenderer::setDefaultContext( std::shared_ptr<of::vk::Context> ctx ){

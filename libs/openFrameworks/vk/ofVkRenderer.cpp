@@ -67,7 +67,20 @@ ofVkRenderer::ofVkRenderer(const ofAppBaseWindow * _window, of::vk::RendererSett
 
 	mPipelineCache = of::vk::createPipelineCache( mDevice, "pipelineCache.bin" );
 
-	// up next: create window surface (this happens within glfw)
+	// We add an event listener for after app setup, so that we may submit any 
+	// transfer command buffers which may have been issued during app setup.
+	ofAddListener( ofEvents().setup, this, &ofVkRenderer::postSetup, ofEventOrder::OF_EVENT_ORDER_AFTER_APP );
+
+	// setup transfer context - this context is used to stage
+	setupStagingContext();
+
+	mStagingContext->begin();
+	// Up next: create window surface (this happens within glfw)
+}
+// ----------------------------------------------------------------------
+
+void ofVkRenderer::postSetup( ofEventArgs & args ){
+	mStagingContext->end();
 }
 
 // ----------------------------------------------------------------------
@@ -91,6 +104,7 @@ ofVkRenderer::~ofVkRenderer()
 	mDevice.waitIdle();
 
 	mDefaultContext.reset();
+	mStagingContext.reset();
 
 	mDepthStencil.reset();
 
@@ -647,34 +661,3 @@ glm::mat4x4 ofVkRenderer::getCurrentViewMatrix() const{
 glm::mat4x4 ofVkRenderer::getCurrentNormalMatrix() const{
 	return glm::mat4x4();
 }
-
-// ----------------------------------------------------------------------
-
-//void ofVkRenderer::bind( const ofCamera & camera, const ofRectangle & viewport ){
-//	
-//	if ( mDefaultContext ){
-//		mDefaultContext->pushMatrix();
-//		mDefaultContext->setViewMatrix( camera.getModelViewMatrix() );
-//
-//		// Clip space transform:
-//
-//		// Vulkan has inverted y 
-//		// and half-width z.
-//
-//		static const glm::mat4x4 clip( 1.0f, 0.0f, 0.0f, 0.0f,
-//			0.0f, -1.0f, 0.0f, 0.0f,
-//			0.0f, 0.0f, 0.5f, 0.0f,
-//			0.0f, 0.0f, 0.5f, 1.0f );
-//
-//		mDefaultContext->setProjectionMatrix( clip * camera.getProjectionMatrix( viewport ) );
-//	}
-//}
-
-// ----------------------------------------------------------------------
-
-//void ofVkRenderer::unbind( const ofCamera& camera ){
-//	if ( mDefaultContext )
-//		mDefaultContext->popMatrix();
-//}
-
-

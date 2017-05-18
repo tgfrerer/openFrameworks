@@ -17,9 +17,30 @@ void ofVkRenderer::setup(){
 
 	// sets up resources to keep track of production frames
 	setupDefaultContext();
+
 	if ( !mDefaultRenderPass){
 		mDefaultRenderPass = generateDefaultRenderPass( mSwapchain->getColorFormat(), mDepthFormat );
 	}
+
+}
+
+// ----------------------------------------------------------------------
+
+void ofVkRenderer::setupStagingContext(){
+
+	of::vk::Context::Settings settings;
+
+	settings.transientMemoryAllocatorSettings.device = mDevice;
+	settings.transientMemoryAllocatorSettings.frameCount = mSettings.numVirtualFrames;
+	settings.transientMemoryAllocatorSettings.physicalDeviceMemoryProperties = mPhysicalDeviceMemoryProperties;
+	settings.transientMemoryAllocatorSettings.physicalDeviceProperties = mPhysicalDeviceProperties;
+	settings.transientMemoryAllocatorSettings.size = ( ( 1ULL << 24 ) * mSettings.numVirtualFrames );
+	settings.renderer = this;
+	settings.pipelineCache = nullptr;
+	settings.renderToSwapChain = false;
+
+	mStagingContext = make_shared<of::vk::Context>( std::move( settings ) );
+	mStagingContext->setup();
 }
 
 // ----------------------------------------------------------------------
@@ -43,6 +64,7 @@ void ofVkRenderer::setupDefaultContext(){
 }
 
 // ----------------------------------------------------------------------
+
 
 void ofVkRenderer::setupSwapChain(){
 
@@ -269,7 +291,7 @@ std::shared_ptr<::vk::RenderPass> ofVkRenderer::generateDefaultRenderPass(::vk::
 void ofVkRenderer::startRender(){
 
 	// start of new frame
-
+	mStagingContext->begin();
 	mDefaultContext->begin();
 
 	// ----------| invariant: last frame has finished rendering. 
@@ -299,7 +321,7 @@ void ofVkRenderer::finishRender(){
 
 	// TODO: if there are other Contexts flying around on other threads, 
 	// ask them to finish their work for the frame.
-
+	mStagingContext->end();
 	mDefaultContext->end();
 	
 	// present swapchain frame
