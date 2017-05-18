@@ -128,7 +128,7 @@ private:
 
 public:
 
-	Context( const Settings&& settings );
+	Context( const Settings& settings );
 	~Context();
 
 	const ::vk::Fence       & getFence() const ;

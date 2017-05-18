@@ -5,7 +5,7 @@
 using namespace of::vk;
 
 // ------------------------------------------------------------
-Context::Context( const Settings && settings )
+Context::Context( const Settings & settings )
 	: mSettings( settings ){
 	if ( mSettings.renderer == nullptr ){
 		ofLogFatalError() << "You must specify a renderer for a context.";
@@ -54,10 +54,10 @@ void Context::setup(){
 	for ( auto &f : mVirtualFrames ){
 		if ( mSettings.renderToSwapChain ){
 			f.semaphoreWait = mDevice.createSemaphore( {} );  // this semaphore should be owned by the swapchain.
+			f.semaphoreSignalOnComplete = mDevice.createSemaphore( {} );
 		} else{
 			f.semaphoreWait = nullptr;
 		}
-		f.semaphoreSignalOnComplete = mDevice.createSemaphore( {} );
 		f.fence = mDevice.createFence( { ::vk::FenceCreateFlagBits::eSignaled } );	/* Fence starts as "signaled" */
 		f.commandPool = mDevice.createCommandPool( { ::vk::CommandPoolCreateFlagBits::eTransient } );
 	}
