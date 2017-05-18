@@ -3,23 +3,8 @@
 
 using namespace of::vk;
 
-// ----------------------------------------------------------------------
-
-Texture::Texture( const ::vk::Device & device_, const ::vk::Image & image_ )
-	: mDevice(device_)
-{
-	
-	::vk::ImageViewCreateInfo imageViewCreateInfo;
-	imageViewCreateInfo
-		.setImage( image_ )
-		.setViewType( ::vk::ImageViewType::e2D )
-		.setFormat( ::vk::Format::eR8G8B8A8Unorm )
-		.setComponents( {::vk::ComponentSwizzle::eR, ::vk::ComponentSwizzle::eG, ::vk::ComponentSwizzle::eB, ::vk::ComponentSwizzle::eA} )
-		.setSubresourceRange( { ::vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1 } )
-		;
-
-	const_cast<::vk::ImageView&>(mImageView) = mDevice.createImageView( imageViewCreateInfo );
-
+::vk::SamplerCreateInfo samplerCreateInfoPreset(){
+	// default sampler create info
 	::vk::SamplerCreateInfo samplerInfo;
 	samplerInfo
 		.setMagFilter( ::vk::Filter::eLinear )
@@ -35,11 +20,48 @@ Texture::Texture( const ::vk::Device & device_, const ::vk::Image & image_ )
 		.setCompareOp( ::vk::CompareOp::eLess )
 		.setMinLod( 0.f )
 		.setMaxLod( 1.f )
-		.setBorderColor( ::vk::BorderColor::eFloatTransparentBlack)
+		.setBorderColor( ::vk::BorderColor::eFloatTransparentBlack )
 		.setUnnormalizedCoordinates( VK_FALSE )
 		;
+	return samplerInfo;
+}
 
-	const_cast<::vk::Sampler&>(mSampler) = mDevice.createSampler( samplerInfo );
+const ::vk::SamplerCreateInfo& of::vk::Texture::getDefaultSamplerCreateInfo(){
+	static const ::vk::SamplerCreateInfo info = samplerCreateInfoPreset();
+	return info;
+}
+
+// ----------------------------------------------------------------------
+
+Texture::Texture( const ::vk::Device & device_, const ::vk::Image & image_, const ::vk::SamplerCreateInfo& samplerInfo_)
+	: mDevice(device_)
+{
+	
+	init( image_, samplerInfo_ );
+}
+
+// ----------------------------------------------------------------------
+
+Texture::Texture( const ::vk::Device & device_, const ::vk::Image & image_ )
+	: mDevice( device_ )
+{
+	init( image_, getDefaultSamplerCreateInfo() );
+}
+
+// ----------------------------------------------------------------------
+
+void of::vk::Texture::init( const ::vk::Image & image_, const ::vk::SamplerCreateInfo & samplerInfo_ ){
+	::vk::ImageViewCreateInfo imageViewCreateInfo;
+	imageViewCreateInfo
+		.setImage( image_ )
+		.setViewType( ::vk::ImageViewType::e2D )
+		.setFormat( ::vk::Format::eR8G8B8A8Unorm )
+		.setComponents( { ::vk::ComponentSwizzle::eR, ::vk::ComponentSwizzle::eG, ::vk::ComponentSwizzle::eB, ::vk::ComponentSwizzle::eA } )
+		.setSubresourceRange( { ::vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1 } )
+		;
+
+	const_cast<::vk::ImageView&>( mImageView ) = mDevice.createImageView( imageViewCreateInfo );
+	const_cast<::vk::Sampler&>( mSampler ) = mDevice.createSampler( samplerInfo_ );
 
 }
 
