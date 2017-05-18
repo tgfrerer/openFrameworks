@@ -89,10 +89,25 @@ class Shader
 {
 public:
 
+	struct DescriptorSetLayoutInfo
+	{
+		uint64_t hash;	// hash for this descriptor set layout.
+		std::vector<::vk::DescriptorSetLayoutBinding> bindings;
+	};
+
+	struct VertexInfo
+	{
+		std::vector<std::string>                           attributeNames;		  // attribute names sorted by location
+		std::vector<::vk::VertexInputBindingDescription>   bindingDescription;	  // describes data input parameters for pipeline slots
+		std::vector<::vk::VertexInputAttributeDescription> attribute;	          // mapping of attribute locations to pipeline slots
+		::vk::PipelineVertexInputStateCreateInfo vi;
+	};
+
 	const struct Settings
 	{
 		::vk::Device device;
 		std::map<::vk::ShaderStageFlagBits, std::string> sources;
+		std::shared_ptr<VertexInfo> vertexInfo; // set this if you want to override vertex info - and don't want to reflect it.
 		bool printDebugInfo = false;
 	} mSettings;
 
@@ -126,21 +141,6 @@ public:
 		UboRange                         uboRange;
 	};
 
-public: 
-
-	struct DescriptorSetLayoutInfo
-	{
-		uint64_t hash;	// hash for this descriptor set layout.
-		std::vector<::vk::DescriptorSetLayoutBinding> bindings;
-	};
-
-	struct VertexInfo
-	{
-		std::vector<std::string>                           attributeNames;		  // attribute names sorted by location
-		std::vector<::vk::VertexInputBindingDescription>   bindingDescription;	  // describes data input parameters for pipeline slots
-		std::vector<::vk::VertexInputAttributeDescription> attribute;	          // mapping of attribute locations to pipeline slots
-		::vk::PipelineVertexInputStateCreateInfo vi;
-	};
 
 private:
 
@@ -160,8 +160,8 @@ private:
 	// vector of descriptor set binding information (index is descriptor set number)
 	std::vector<DescriptorSetLayoutInfo> mDescriptorSetsInfo;
 	
-	// attribute indices, indexed by attribute name
-	std::unordered_map<std::string, size_t> mAttributeIndices;
+	// attribute binding numbers, indexed by attribute name
+	std::unordered_map<std::string, size_t> mAttributeBindingNumbers;
 
 	// vector of just the descriptor set layout keys - this needs to be kept in sync 
 	// with mDescriptorSetsInfo
@@ -192,7 +192,7 @@ private:
 	// all this data helps us to create descriptors, and also to create layouts fit
 	// for our pipelines.
 	void reflect( const std::map<::vk::ShaderStageFlagBits, std::shared_ptr<spirv_cross::Compiler>>& compilers, VertexInfo& vertexInfo );
-	//static void reflectUniformBuffers( const spirv_cross::Compiler & compiler, const VkShaderStageFlagBits & shaderStage, std::map<std::string, BindingInfo>& uniformInfo );
+	
 	static void reflectVertexInputs( const spirv_cross::Compiler & compiler, of::vk::Shader::VertexInfo& vertexInfo );
 
 	bool reflectUBOs( const spirv_cross::Compiler & compiler, const ::vk::ShaderStageFlagBits & shaderStage );
@@ -265,7 +265,8 @@ public:
 
 	const std::vector<std::string> & getAttributeNames();
 	
-	bool getAttributeIndex( const std::string& name, size_t& index ) const;
+	// TOOD: rename to vertexBindingNumber, as the index refers to the binding number rather than the location
+	bool getAttributeBinding( const std::string& name, size_t& index ) const;
 
 	const VertexInfo& getVertexInfo();
 
@@ -313,10 +314,10 @@ inline const std::vector<std::string> & of::vk::Shader::getAttributeNames(){
 
 // ----------------------------------------------------------------------
 
-inline bool of::vk::Shader::getAttributeIndex( const std::string &name, size_t &index ) const{
-	auto result = mAttributeIndices.find( name );
+inline bool of::vk::Shader::getAttributeBinding( const std::string &name, size_t &index ) const{
+	auto result = mAttributeBindingNumbers.find( name );
 	
-	if ( result == mAttributeIndices.end() ){
+	if ( result == mAttributeBindingNumbers.end() ){
 		return false;
 	} else{
 		index = result->second;

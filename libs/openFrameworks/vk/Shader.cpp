@@ -447,15 +447,34 @@ void of::vk::Shader::reflect(
 
 		// --- vertex inputs ---
 		if ( shaderStage == ::vk::ShaderStageFlagBits::eVertex ){
-			reflectVertexInputs(compiler, vertexInfo );
+			
+			if ( mSettings.vertexInfo.get() == nullptr ){
+				// we only reflect vertex inputs if they haven't been set externally.
+				reflectVertexInputs( compiler, vertexInfo );
+			} else{
+				vertexInfo = *mSettings.vertexInfo;
+			}
+
+			::vk::PipelineVertexInputStateCreateInfo vertexInputStateCreateInfo = ::vk::PipelineVertexInputStateCreateInfo();
+			vertexInputStateCreateInfo
+				.setVertexBindingDescriptionCount( vertexInfo.bindingDescription.size() )
+				.setPVertexBindingDescriptions( vertexInfo.bindingDescription.data() )
+				.setVertexAttributeDescriptionCount( vertexInfo.attribute.size() )
+				.setPVertexAttributeDescriptions( vertexInfo.attribute.data() )
+				;
+
+			vertexInfo.vi = std::move( vertexInputStateCreateInfo );
 		} 
 		
 	}  
 
-	mAttributeIndices.clear();
-
+	mAttributeBindingNumbers.clear();
+	// Create lookup table attribute name -> attibute binding number
+	// Note that multiple locations may share the same binding.
+	// Attribute binding number specifies which bound buffer to read data from for this particular attribute
 	for ( size_t i = 0; i != mVertexInfo.attributeNames.size(); ++i ){
-		mAttributeIndices[mVertexInfo.attributeNames[i]] = mVertexInfo.bindingDescription[i].binding;
+		// assume attributeNames are sorted by location
+		mAttributeBindingNumbers[mVertexInfo.attributeNames[i]] = mVertexInfo.attribute[i].binding;
 	}
 
 
@@ -961,12 +980,14 @@ bool of::vk::Shader::createSetLayouts(){
 		{
 			size_t numAttributes = mVertexInfo.attribute.size();
 			
-			log << "Attribute Inputs:" << std::endl;
+			log << std::endl << "Attribute Inputs:" << std::endl;
 
 			for ( size_t i = 0; i != numAttributes; ++i ){
-				log << "binding : " << std::setw( 2 ) << mVertexInfo.attribute[i].binding << " : "
-					<< "(location = " << std::setw(2) << mVertexInfo.attribute[i].location << ") : "
-					<< std::right << std::setw( 30 ) << ::vk::to_string(mVertexInfo.attribute[i].format) << " : "
+				log  
+					<< "\t(location = " << std::setw(2) << mVertexInfo.attribute[i].location << ") : "
+					<< "binding : "   << std::setw( 2 ) << mVertexInfo.attribute[i].binding << " : "
+					<< "offset : "    << std::setw( 4 ) << mVertexInfo.attribute[i].offset << "B : "
+					<< std::right << std::setw( 15 ) << ::vk::to_string(mVertexInfo.attribute[i].format) << " : "
 					<< mVertexInfo.attributeNames[i] 
 					<< std::endl;
 			}
@@ -1081,7 +1102,7 @@ void of::vk::Shader::reflectVertexInputs(const spirv_cross::Compiler & compiler,
 			location = compiler.get_decoration( attributeInput.id, spv::DecorationLocation );
 		}
 
-		// TODO: figure out what to do if attribute bindings are sparse, i.e. the number of bindings
+		// TODO: figure out what to do if attribute bindings are sparse, i.e. the number of locations
 		// is less than the highest location reflected from DecorationLocation
 
 		vertexInfo.attributeNames[location] = attributeInput.name;
@@ -1090,10 +1111,12 @@ void of::vk::Shader::reflectVertexInputs(const spirv_cross::Compiler & compiler,
 		vertexInfo.bindingDescription[location].binding = location;  // which binding number we are describing
 		vertexInfo.bindingDescription[location].stride = ( attributeType.width / 8 ) * attributeType.vecsize * attributeType.columns;
 		vertexInfo.bindingDescription[location].inputRate = ::vk::VertexInputRate::eVertex;
+		
 
 		// Attribute description: Map shader location to pipeline binding number
 		vertexInfo.attribute[location].location = location;   // .location == which shader attribute location
-		vertexInfo.attribute[location].binding = location;    // .binding  == pipeline binding number == where attribute takes data from
+		vertexInfo.attribute[location].binding = location;    // .binding  == pipeline binding number == which index of bound buffer where data is read from
+		vertexInfo.attribute[location].offset = 0;            //TODO: allow interleaved vertex inputs
 
 		switch ( attributeType.vecsize ){
 		case 2:
@@ -1114,15 +1137,7 @@ void of::vk::Shader::reflectVertexInputs(const spirv_cross::Compiler & compiler,
 		}
 	}
 
-	::vk::PipelineVertexInputStateCreateInfo vertexInputStateCreateInfo = ::vk::PipelineVertexInputStateCreateInfo(); 
-	vertexInputStateCreateInfo
-		.setVertexBindingDescriptionCount( vertexInfo.bindingDescription.size() )
-		.setPVertexBindingDescriptions( vertexInfo.bindingDescription.data() )
-		.setVertexAttributeDescriptionCount( vertexInfo.attribute.size() )
-		.setPVertexAttributeDescriptions( vertexInfo.attribute.data() )
-		;
 
-	vertexInfo.vi = std::move( vertexInputStateCreateInfo );
 }
 
 // ----------------------------------------------------------------------
