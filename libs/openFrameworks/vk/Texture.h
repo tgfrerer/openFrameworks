@@ -38,7 +38,7 @@ public:
 	~Texture();
 
 	// helper method
-	static const ::vk::SamplerCreateInfo& Texture::getDefaultSamplerCreateInfo();
+	static const ::vk::SamplerCreateInfo& getDefaultSamplerCreateInfo();
 };
 
 } /* namespace vk */
