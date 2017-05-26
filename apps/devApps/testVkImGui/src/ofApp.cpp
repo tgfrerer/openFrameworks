@@ -218,6 +218,9 @@ void ofApp::keyReleased(int key){
 		// associated pipelines.
 		mShaderFullscreen->compile();
 	}
+	else if ( key == 'f' ){
+		ofToggleFullscreen();
+	}
 }
 
 //--------------------------------------------------------------

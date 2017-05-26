@@ -216,3 +216,4 @@ inline const std::shared_ptr<of::vk::Shader> of::vk::GraphicsPipelineState::getS
 inline const std::shared_ptr<of::vk::Shader> of::vk::ComputePipelineState::getShader() const{
 	return mShader;
 }
+

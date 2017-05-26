@@ -193,14 +193,12 @@ void RenderBatch::processDrawCommands( ){
 	
 	auto & context = const_cast<Context&>( *mSettings.context );
 
-	// first order draw commands
-
-	// order them by 
+	// CONSIDER: Order draw commands
+	// Order by (using radix-sort)
 	// 1) subpass id, 
 	// 2) pipeline,
 	// 3) descriptor set usage
 
-	// then process draw commands
 	
 	// current draw state for building command buffer - this is based on parsing the drawCommand list
 	std::unique_ptr<GraphicsPipelineState> boundPipelineState;
@@ -250,9 +248,10 @@ void RenderBatch::processDrawCommands( ){
 			auto & descriptors = dc.getDescriptorSetData( setId ).descriptors;
 			const auto descriptorSetLayout = dc.mPipelineState.getShader()->getDescriptorSetLayout( setId );
 			// calculate hash of descriptorset, combined with descriptor set sampler state
+			// TODO: can we accelerate this by caching descriptorSet hash inside shader/draw command?
 			uint64_t descriptorSetHash = SpookyHash::Hash64( descriptors.data(), descriptors.size() * sizeof( DescriptorSetData_t::DescriptorData_t ), setLayoutKey );
 
-			// Receive a descriptorSet from the renderContext's cache.
+			// Receive a DescriptorSet from the RenderContext's cache.
 			// The renderContext will allocate and initialise a DescriptorSet if none has been found.
 			const ::vk::DescriptorSet& descriptorSet = context.getDescriptorSet( descriptorSetHash, setId, *descriptorSetLayout , descriptors );
 
@@ -265,10 +264,10 @@ void RenderBatch::processDrawCommands( ){
 
 		}
 
-		// We always bind the full descriptor set.
+		// Bind uniforms
 
-		// bind dc descriptorsets to current pipeline descriptor sets
-		// make sure dynamic ubos have the correct offsets
+		// Bind dc DescriptorSets to current pipeline descriptor sets
+		// make sure dynamic UBOs have the correct offsets
 		if ( !boundVkDescriptorSets.empty() ){
 			mVkCmd.bindDescriptorSets(
 				::vk::PipelineBindPoint::eGraphics,	                           // use graphics, not compute pipeline
@@ -281,7 +280,7 @@ void RenderBatch::processDrawCommands( ){
 			);
 		}
 
-
+		// Bind attributes, and draw
 		{
 
 			const auto & vertexOffsets = dc.getVertexOffsets();
@@ -289,15 +288,6 @@ void RenderBatch::processDrawCommands( ){
 
 			const auto & vertexBuffers = dc.getVertexBuffers();
 			const auto & indexBuffer   = dc.getIndexBuffer();
-
-			//// Store vertex data using Context.
-			//// - this uses Allocator to store mesh data in the current frame' s dynamic memory
-			//// Context will return memory offsets into vertices, indices, based on current context memory buffer
-			//// 
-			// CONSIDER: check if it made sense to cache already stored meshes, 
-			////       so that meshes which have already been stored this frame 
-			////       may be re-used.
-			//storeMesh( mesh_, vertexOffsets, indexOffsets );
 
 			// TODO: cull vertexOffsets which refer to empty vertex attribute data
 			//       make sure that a pipeline with the correct bindings is bound to match the 

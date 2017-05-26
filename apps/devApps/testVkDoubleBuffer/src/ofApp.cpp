@@ -99,11 +99,11 @@ void ofApp::setupPrepass(){
 
 		vk::RenderPassCreateInfo renderPassCreateInfo;
 		renderPassCreateInfo
-			.setAttachmentCount( attachments.size() )
+			.setAttachmentCount( (uint32_t)attachments.size() )
 			.setPAttachments( attachments.data() )
 			.setSubpassCount( 1 )
 			.setPSubpasses( &subpassDescription )
-			.setDependencyCount( dependencies.size() )
+			.setDependencyCount( (uint32_t)dependencies.size() )
 			.setPDependencies( dependencies.data() );
 
 		auto renderPass = device.createRenderPass( renderPassCreateInfo );
@@ -296,7 +296,7 @@ void ofApp::draw(){
 
 	{   // prepass 
 
-		// setup the prepass renderbatch
+		// setup renderbatch for pre-pass
 		//
 		std::vector<::vk::ClearValue> clearValues( 1 );
 		clearValues[0].setColor( ( ::vk::ClearColorValue& )ofFloatColor::bisque );
@@ -341,7 +341,7 @@ void ofApp::draw(){
 
 	{   // main pass
 
-		// setup the main pass renderbatch
+		// renderbatch for main pass
 		//
 		std::vector<::vk::ClearValue> clearValues( 2 );
 		clearValues[0].setColor( ( ::vk::ClearColorValue& )ofFloatColor::blueSteel );

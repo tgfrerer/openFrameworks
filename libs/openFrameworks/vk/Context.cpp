@@ -126,8 +126,7 @@ void Context::begin(){
 
 	// re-create descriptor pool for current virtual frame if necessary
 	updateDescriptorPool();
-	
-	// reset subpass id state
+
 }
 
 // ------------------------------------------------------------

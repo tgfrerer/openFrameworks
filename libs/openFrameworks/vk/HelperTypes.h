@@ -124,7 +124,7 @@ struct DescriptorSetData_t
 		::vk::Buffer         buffer;                                                  // |
 		::vk::DeviceSize     offset = 0;                                              // | > keep in this order, as we can cast this to a DescriptorBufferInfo
 		::vk::DeviceSize     range = 0;                                               // |
-		uint32_t             bindingNumber = 0; // <-- may be sparse, may repeat (for arrays of images bound to the same binding), but must increase be monotonically (may only repeat or up over the series inside the samplerBindings vector).
+		uint32_t             bindingNumber = 0; // <-- may be sparse, may repeat (for arrays of images bound to the same binding), but must increase monotonically (may only repeat or up over the series inside the samplerBindings vector).
 		uint32_t             arrayIndex = 0;    // <-- must be in sequence for array elements of same binding
 	};
 

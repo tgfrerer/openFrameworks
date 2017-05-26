@@ -9,6 +9,7 @@ int main(){
 	//auto consoleLogger = new ofConsoleLoggerChannel();
 	//ofSetLoggerChannel( std::shared_ptr<ofBaseLoggerChannel>( consoleLogger, []( ofBaseLoggerChannel * lhs){ } ) );
 
+	// set the logger to imgui - this will allow imgui to use its own logger.
 	auto imGuiLogger = new ofxImGui::LoggerChannel();
 	ofSetLoggerChannel( std::shared_ptr<ofBaseLoggerChannel>( imGuiLogger, []( ofBaseLoggerChannel * lhs ){} ) );
 
