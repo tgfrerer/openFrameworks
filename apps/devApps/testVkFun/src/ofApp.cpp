@@ -11,50 +11,8 @@ void ofApp::setup(){
 
 	renderer = dynamic_pointer_cast<ofVkRenderer>( ofGetCurrentRenderer() );
 
-	//if ( false )
-	//{
-	//	//!TODO: this will unlink the current context and all its allocations will be in vain.
-	//	// Much better to not even setup this context if we're redefining the context in setup.
-	//	// this needs somehow to be caught by the renderer.
-
-	//	auto rendererProperties = renderer->getVkRendererProperties();
-	//	auto swapchain = renderer->getSwapchain();
-
-	//	//!TODO: create a generator method to provide us with default settings 
-	//	// based on the current renderer.
-
-	//	of::vk::Context::Settings settings;
-
-	//	settings.transientMemoryAllocatorSettings.device = renderer->getVkDevice();
-	//	settings.transientMemoryAllocatorSettings.frameCount = renderer->mSettings.numVirtualFrames;
-	//	settings.transientMemoryAllocatorSettings.physicalDeviceMemoryProperties = rendererProperties.physicalDeviceMemoryProperties;
-	//	settings.transientMemoryAllocatorSettings.physicalDeviceProperties = rendererProperties.physicalDeviceProperties;
-	//	settings.transientMemoryAllocatorSettings.size = ( ( 1ULL << 24 ) * renderer->mSettings.numVirtualFrames );
-	//	settings.renderer = renderer.get();
-	//	settings.pipelineCache = renderer->getPipelineCache();
-
-	//	auto vp = renderer->getNativeViewport();
-
-	//	vk::Rect2D rect;
-	//	rect.setExtent( { uint32_t( vp.width/2 ), uint32_t( vp.height/2 ) } );
-	//	rect.setOffset( { int32_t( vp.x ),     int32_t( vp.y ) } );
-
-	//	//settings.renderArea = rect;
-	//	//settings.renderPass = renderer->generateDefaultRenderPass( swapchain->getColorFormat(), renderer->getVkDepthFormat() );
-	//	settings.renderToSwapChain = true;
-
-	//	auto context = make_shared<of::vk::Context>( std::move( settings ) );
-
-	//	renderer->setDefaultContext(context);
-
-	//	context->setup();
-
-	//}
-
 	ofDisableSetupScreen();
 	ofSetFrameRate( isFrameLocked ? EXAMPLE_TARGET_FRAME_RATE : 0 );
-
-	setupStaticAllocators();
 
 	setupDrawCommands();
 
@@ -62,6 +20,9 @@ void ofApp::setup(){
 
 	mMeshPly = std::make_shared<ofMesh>();
 	mMeshPly->load( "ico-m.ply" );
+	
+	setupStaticAllocators();
+	uploadStaticData( *renderer->getStagingContext() );
 
 	mCam.setupPerspective( false, 60, 0.f, 5000 );
 	mCam.setPosition( { 0,0, mCam.getImagePlaneDistance() } );
@@ -207,7 +168,7 @@ void ofApp::draw(){
 
 	auto & currentContext = *renderer->getDefaultContext();
 
-	uploadStaticData( currentContext );
+	
 
 	// In Vulkan, clip space has y flipped, 
 	// and z is mapped from -1..1 to 0..1 (scale 0.5, translate 0.5), 
@@ -292,13 +253,7 @@ void ofApp::draw(){
 
 //--------------------------------------------------------------
 
-void ofApp::uploadStaticData( of::vk::Context & currentContext ){
-
-	static bool wasUploaded = false;
-
-	if ( wasUploaded ){
-		return;
-	}
+void ofApp::uploadStaticData( of::vk::Context & stagingContext ){
 
 	ofMesh meshPlane = ofMesh::plane( 1024 / 2, 768 / 2, 2, 2, OF_PRIMITIVE_TRIANGLES );
 
@@ -380,7 +335,7 @@ void ofApp::uploadStaticData( of::vk::Context & currentContext ){
 
 	const auto & staticBuffer = mStaticAllocator->getBuffer();
 
-	std::vector<of::vk::BufferRegion> bufferRegions = currentContext.storeBufferDataCmd( srcDataVec, mStaticAllocator );
+	std::vector<of::vk::BufferRegion> bufferRegions = stagingContext.storeBufferDataCmd( srcDataVec, mStaticAllocator );
 
 	if ( bufferRegions.size() == 8 ) {
 		mStaticMesh.indexBuffer       = bufferRegions[0];
@@ -404,11 +359,10 @@ void ofApp::uploadStaticData( of::vk::Context & currentContext ){
 	imgData.extent.width  = pix.getWidth();
 	imgData.extent.height = pix.getHeight();
 
-	mImage = currentContext.storeImageCmd( imgData, mImageAllocator );
+	mImage = stagingContext.storeImageCmd( imgData, mImageAllocator );
 
 	mTexture = std::make_shared<of::vk::Texture>( renderer->getVkDevice(), *mImage );
 
-	wasUploaded = true;
 }
 
 //--------------------------------------------------------------
