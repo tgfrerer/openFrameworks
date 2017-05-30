@@ -170,7 +170,8 @@ void ofApp::draw(){
 	// command buffer lives on the same thread as the context, and 
 	// only uses resources which are either global readonly static, 
 	// or resources which are temporarily allocated though the 
-	// context inside the context's thread, this is thread-safe. 
+	// context inside the context's thread, this is considered 
+	// thread-safe. 
 	
 	// setup the main pass renderbatch
 	//
@@ -200,8 +201,6 @@ void ofApp::draw(){
 		mGui.end(); // renders imgui into current batch
 	}
 	batch.end();
-
-	
 
 }
 

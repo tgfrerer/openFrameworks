@@ -134,6 +134,9 @@ private:
 	// shader allows us to derive pipeline layout, has public getters and setters.
 	std::shared_ptr<of::vk::Shader>        mShader;
 
+	// whether this pipeline state is dirty.
+	mutable VkBool32          mDirty = true;
+
 public:
 	
 	GraphicsPipelineState();
@@ -142,8 +145,6 @@ public:
 
 	uint64_t calculateHash() const;
 
-	// whether this pipeline state is dirty.
-	mutable VkBool32          mDirty              = true;
 
 	const std::shared_ptr<Shader> getShader() const;
 	void                          setShader( const std::shared_ptr<Shader> & shader );

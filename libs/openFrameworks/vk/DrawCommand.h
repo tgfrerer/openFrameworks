@@ -46,19 +46,19 @@ private:      /* transient data */
 	// Lookup table for uniform name-> desciptorSetData - retrieved from shader on setup
 	std::map<std::string, UniformId_t> mUniformDictionary;
 
-	// vector of buffers holding vertex attribute data
+	// Vector of buffers holding vertex attribute data
 	std::vector<::vk::Buffer> mVertexBuffers;
 
-	// offsets into buffer for vertex attribute data
+	// Offsets into buffer for vertex attribute data
 	std::vector<::vk::DeviceSize> mVertexOffsets;
 
 	// 1-or-0 element buffer of indices for this draw command
 	::vk::Buffer mIndexBuffer = nullptr;
 
-	// offsets into buffer for index data - this is optional
+	// Offsets into buffer for index data - this is optional
 	::vk::DeviceSize mIndexOffsets = 0;
 
-	// draw method to be used when submitting DrawCommand
+	// Draw method to be used when submitting DrawCommand
 	DrawMethod mDrawMethod = DrawMethod::eDraw;
 
 	// draw parameters used when submitting DrawCommand
@@ -72,8 +72,7 @@ private:      /* transient data */
 
 	std::shared_ptr<ofMesh> mMsh; /* optional */
 
-
-	// set data for upload to ubo - data is stored locally 
+	// Set data for upload to ubo - data is stored locally 
 	// until draw command is submitted
 	void commitUniforms( const std::unique_ptr<BufferAllocator>& alloc_ );
 
@@ -118,21 +117,22 @@ public:
 	// meshes, and for more control over how drawing behaves.
 	of::vk::DrawCommand & setMesh( const shared_ptr<ofMesh>& msh_ );
 
-	// allocate, and store attribute data in gpu memory
+	// Allocate, and store attribute data in gpu memory
 	template <typename T>
 	of::vk::DrawCommand & allocAndSetAttribute( const std::string& attrName_, const std::vector<T> & vec, const std::unique_ptr<BufferAllocator>& alloc );
 
-	// allocate, and store attribute data in gpu memory
+	// Allocate, and store attribute data in gpu memory
 	template <typename T>
 	of::vk::DrawCommand & allocAndSetAttribute( const std::string& attrName_, const T* data, size_t numBytes, const std::unique_ptr<BufferAllocator>& alloc );
 
-	// allocate, and store attribute data in gpu memory
+	// Allocate, and store attribute data in gpu memory
 	template <typename T>
 	of::vk::DrawCommand & allocAndSetAttribute( const size_t& attribLocation_, const std::vector<T> & vec, const std::unique_ptr<BufferAllocator>& alloc );
 
-	// allocate, and store attribute data in gpu memory
+	// Allocate, and store attribute data in gpu memory
 	of::vk::DrawCommand & allocAndSetAttribute( const size_t& attribLocation_, const void* data, size_t numBytes, const std::unique_ptr<BufferAllocator>& alloc );
 
+	// Allocate, and store index data in gpu memory
 	of::vk::DrawCommand & allocAndSetIndices( const ofIndexType* data, size_t numBytes, const std::unique_ptr<BufferAllocator>& alloc );
 
 
@@ -143,7 +143,7 @@ public:
 	of::vk::DrawCommand & setIndices( ::vk::Buffer buffer, ::vk::DeviceSize offset );
 	of::vk::DrawCommand & setIndices( const of::vk::BufferRegion& bufferRegion_ );
 
-	// store uniform values to staging cpu memory
+	// Store uniform values to staging cpu memory
 	template <class T>
 	of::vk::DrawCommand & setUniform( const std::string& uniformName, const T& uniformValue_ );
 
