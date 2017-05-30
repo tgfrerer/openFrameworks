@@ -43,8 +43,9 @@ private:      /* transient data */
 
 	// Bindings data for descriptorSets, (vector index == set number) - retrieved from shader on setup
 	std::vector<DescriptorSetData_t>   mDescriptorSetData;
-	// Lookup table for uniform name-> desciptorSetData - retrieved from shader on setup
-	std::map<std::string, UniformId_t> mUniformDictionary;
+	
+	// Pointer to lookup table for uniform name-> desciptorSetData - retrieved from shader on setup
+	const std::map<std::string, UniformId_t>* mUniformDictionary;
 
 	// Vector of buffers holding vertex attribute data
 	std::vector<::vk::Buffer> mVertexBuffers;
@@ -157,9 +158,9 @@ public:
 template<class T>
 inline DrawCommand& DrawCommand::setUniform( const std::string & uniformName, const T & uniformValue_ ){
 
-	auto uniformInfoIt = mUniformDictionary.find( uniformName );
+	auto uniformInfoIt = mUniformDictionary->find( uniformName );
 	
-	if ( uniformInfoIt == mUniformDictionary.end() ){
+	if ( uniformInfoIt == mUniformDictionary->end() ){
 		ofLogWarning() << "Could not set Uniform '" << uniformName << "': Uniform name not found in shader";
 		return *this;
 	}
@@ -191,9 +192,9 @@ inline DrawCommand& DrawCommand::setUniform( const std::string & uniformName, co
 
 inline of::vk::DrawCommand & of::vk::DrawCommand::setTexture( const std::string & uniformName, const of::vk::Texture& tex_ ){
 	
-	auto uniformInfoIt = mUniformDictionary.find( uniformName );
+	auto uniformInfoIt = mUniformDictionary->find( uniformName );
 
-	if ( uniformInfoIt == mUniformDictionary.end() ){
+	if ( uniformInfoIt == mUniformDictionary->end() ){
 		ofLogWarning() << "Could not set Texture '" << uniformName << "': Uniform name not found in shader";
 		return *this;
 	}
@@ -215,9 +216,9 @@ inline of::vk::DrawCommand & of::vk::DrawCommand::setTexture( const std::string 
 
 inline of::vk::DrawCommand & of::vk::DrawCommand::setStorageBuffer( const std::string & uniformName, const of::vk::BufferRegion& buf_ ){
 
-	auto uniformInfoIt = mUniformDictionary.find( uniformName );
+	auto uniformInfoIt = mUniformDictionary->find( uniformName );
 
-	if ( uniformInfoIt == mUniformDictionary.end() ){
+	if ( uniformInfoIt == mUniformDictionary->end() ){
 		ofLogWarning() << "Could not set Storage Buffer '" << uniformName << "': Uniform name not found in shader";
 		return *this;
 	}

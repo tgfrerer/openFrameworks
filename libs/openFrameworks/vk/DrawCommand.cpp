@@ -27,7 +27,7 @@ void DrawCommand::setup( const GraphicsPipelineState& pipelineState ){
 	mPipelineState = pipelineState;
 
 	mDescriptorSetData = mPipelineState.getShader()->getDescriptorSetData();
-	mUniformDictionary = mPipelineState.getShader()->getUniformDictionary();
+	mUniformDictionary = &mPipelineState.getShader()->getUniformDictionary();
 
 	// parse shader info to find out how many buffers to reserve for vertex attributes.
 
