@@ -12,7 +12,7 @@ int main(){
 	// Create a new window 
 	auto mainWindow = std::make_shared<ofAppGLFWWindow>();
 	
-	// use this instead to render using the image swapchain
+	// Use this instead to render using the image swapchain
 	// auto mainWindow = std::make_shared<ofAppVkNoWindow>();
 
 	// Store main window in mainloop
@@ -20,21 +20,21 @@ int main(){
 
 	{
 		ofVkWindowSettings settings;
-		settings.setVkVersion( 1, 0, 46 );
-		settings.numSwapchainImages = 3;
-		settings.numVirtualFrames = 3;
-		settings.presentMode = ::vk::PresentModeKHR::eMailbox;
+		settings.rendererSettings.setVkVersion( 1, 0, 46 );
+		settings.rendererSettings.numSwapchainImages = 3;
+		settings.rendererSettings.numVirtualFrames = 3;
+		settings.rendererSettings.presentMode = ::vk::PresentModeKHR::eMailbox;
 
 		// Only load debug layers if app is compiled in Debug mode
 #ifdef NDEBUG
-		settings.useDebugLayers = false;
+		settings.rendererSettings.useDebugLayers = false;
 #else
-		settings.useDebugLayers = true;
+		settings.rendererSettings.useDebugLayers = true;
 #endif
 
 		// Initialise main window, and associated renderer.
 		mainWindow->setup( settings );
-}
+	}
 
 	// Initialise and start application
 	ofRunApp( new ofApp() );

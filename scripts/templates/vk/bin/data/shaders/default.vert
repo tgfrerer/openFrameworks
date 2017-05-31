@@ -17,9 +17,9 @@ layout (set = 0, binding = 1) uniform Style
 } style;
 
 // inputs (vertex attributes)
-layout (location = 0) in vec3 inPos;
-layout (location = 1) in vec4 inColor;
-layout (location = 2) in vec3 inNormal;
+layout ( location = 0) in vec3 inPos;
+layout ( location = 1) in vec3 inNormal;
+layout ( location = 2) in vec2 inTexCoord;
 
 // outputs 
 layout (location = 0) out vec4 outColor;
