@@ -19,7 +19,7 @@ you should be able to feed an `ofVkWindowSettings` object to
 
 ## Setup 
 
-This has been developed and tested on Vulkan SDK 1.0.8 up to Vulkan SDK 1.0.46, on Windows, and Linux (ubuntu 16.06), with NVIDIA drivers. Other Vulkan capable systems/GPUs are expected to work, most proably requiring slight modifications. 
+This has been developed and tested on Vulkan SDK 1.0.8 up to Vulkan SDK 1.0.46, on Windows, and Linux (ubuntu 16.06, and 17), with NVIDIA drivers. Other Vulkan capable systems/GPUs are expected to work, most proably requiring slight modifications.
 
 
 ### Install the Vulkan SDK from LunarG
@@ -99,6 +99,8 @@ Then, move into the apothecary base directory.
 
 ### Update GLFW dependency using apothecary
   
+You might be fine running the latest version of GLFW which comes bundled with openFrameworks. In case you need a more recent version of GLFW, you can use apothecary to compile it for you.
+
 For Windows, visual studio 2015, and 64 bit do:
 
     ./apothecary -a 64 -t vs update glfw
@@ -109,6 +111,8 @@ For Linux do:
 
 ### Update/Create shaderc dependency using apothecary
 
+ShaderC is the shader compiler which we use to compile GLSL shader code to Vulkan's SPIR-V intermediate shader language. 
+
 If you are on windows, you might want to check if apothecary has access to python. Python is required to build shaderc. In a mingw terminal, issue: 
 
     python --version
@@ -118,6 +122,10 @@ If python is installed, you should see a version number, otherwise, install pyth
 To compile shaderc, for Windows, visual studio 2015, and 64 bit (recommended) do:
 
     ./apothecary -a 64 -t vs update shaderc
+
+To compile shaderc on linux do:
+
+    ./apothecary -a 64 update shaderc
 
 If compiling fails for any reason, delete the build folder in apothecary, read over the instructions again, and see if something might have been missed, then issue the above command again. I found that on Windows, with the ConEmu terminal manager, the PATH for python was not set correctly, and that running apothecary from the default "git for windows" console worked flawlessly.
  
@@ -136,7 +144,7 @@ when asked, select "replace" to overwrite the old libraries in-place.
 
 ### Open Test Project 
 
-In apps/devApps you'll find a project called `testVk`, that's the current example for Vulkan.
+In apps/devApps you'll find a project called `vkDemoFlag`, that's an example made for Vulkan. There are some more in the same directory, with 'vk' in their name.
 
 ----------------------------------------------------------------------
 
@@ -145,7 +153,7 @@ In apps/devApps you'll find a project called `testVk`, that's the current exampl
 This renderer adds Vulkan support to openFrameworks. 
 
 Since Vulkan is a much more explicit API than OpenGL and a rather
-fundamental architectural shift, this Renderer does not aim to be a
+fundamental architectural shift, this Renderer does not aim to be a 
 replacement for OpenGL, but a modern middle layer for rendering, processing & tinkering with Vulkan within an openFrameworks environment.
 
 Vulkan assumes that you know what you are doing. It also assumes that
@@ -169,11 +177,11 @@ Since Vulkan is not backwards-compatible with OpenGL, the renderer does not have
 
 Some architectural ideas are borrowed from modern engines and projects such as [bgfx][bgfx] or [regl.party][regl], which I highly suggest studying. 
 
-A key element in these modern approaches is to get away from stateful immediate-mode drawing as in "classic" OpenGL, to a more declarative state-less, data-driven, approach. This makes it possible engine-side to do a lot of optimisations underneath, and fits much better into how Vulkan itself is laid out.
+A key element in these modern approaches is to get away from stateful immediate-mode drawing as in "classic" OpenGL, to a more declarative state-less, data-driven, approach. This makes it possible engine-side to do optimisations underneath, and fits much better into how Vulkan and the GPU itself is laid out.
 
 In principle, you first define *how* something will be drawn (what shader, what primitive mode, whether you want to use a depth test), and all these choices become consolidated and compiled into pipeline.
 
-Then, you define *what* to draw, which is the data in data-driven, so to say.
+Then, you define *what* to draw, which is the "data" in "data"-driven, so to say.
 
 ### DrawCommand
 
@@ -181,7 +189,7 @@ In the openFrameworks Vulkan renderer, a `DrawCommand` holds all the data needed
 
 ### RenderBatch
 
-To send a `DrawCommand` through the pipeline, you first need to create a `RenderBatch`. This is an object which helps accumulate multiple draw commands, and forward them down the engine in one go. A `RenderBatch` is a temporary object, and it is created from a `Context`.
+To send a `DrawCommand` through the pipeline, you first need to create a `RenderBatch`. This is an object which helps accumulate multiple draw commands, and forward them down the engine in one go. A `RenderBatch` is a temporary object, and it is created from a `Context`, it also encapsulates a vulkan Renderpass, and is translated by the engine into a single vulkan CommandBuffer.
 
 ----------------------------------------------------------------------
 
@@ -195,31 +203,32 @@ A `Context` keeps memory isolated per *Virtual Frame*. A Virtual frame is protec
 It is therefore safe to assume that a Context is ready for write after `Context::begin()`.
 
 All `Context` operations are meant to be thread-safe 
-as long as the `Context` never leaves its home thread. All objects allocated through 
+as long as the `Context` and its dependents never leaves its home thread. All objects allocated through 
 a context are synchronised using a fence which keeps all objects alife until the 
 frame is re-visited.
 
-A `Context` may be initialised using a `vk::Renderpass`, so it knows where the results of draw operations will be stored. The default `Context` draws to the screen, and you can grab it by calling the `ofVkRenderer`: 
+The default `Context` draws to the screen, and you can grab it by calling the `ofVkRenderer`: 
 
     auto renderer = dynamic_pointer_cast<ofVkRenderer>( ofGetCurrentRenderer() );
     auto & context = renderer->getDefaultContext()
 
-To render using a `Context`, create a `RenderBatch` from the Context, `.begin()` the RenderBatch, and add `DrawCommand`s into it by calling `.draw(myDrawCommand)`. When you are done drawing, `.end()` the RenderBatch. Renderbatches are there to accumulate draw commands. 
+To render using a `Context`, create a `RenderBatch` from the Context, `.begin()` the RenderBatch, and add `DrawCommand`s into it by calling `.draw(myDrawCommand)`. When you are done drawing, `.end()` the RenderBatch.
 
 When the RenderBatch ends, its internal queue of DrawCommands is translated into a single `vk::Commandbuffer`, which is in turn queued inside the Context.
 
-	of::vk::RenderBatch batch{ *context };
+    of::vk::RenderBatch batch{ batchSettings };
 
-	batch.begin();
-	batch.draw( myDrawCommand_1 );
-    batch.draw( myDrawCommand_2 );
-    batch.draw( myDrawCommand_3 );
+    batch.begin();
+    batch
+        .draw( myDrawCommand_1 )
+        .draw( myDrawCommand_2 )
+        .draw( myDrawCommand_3 )
+        ;
     // ...
 	batch.end();
 
 
-When the Context ends, its internal queue of `vk::CommandBuffer` is submitted 
-to the `vk::Queue` for rendering. 
+When the Context ends, its internal queue of `vk::CommandBuffer`s is submitted to the graphics `vk::Queue` for rendering. 
 
 ----------------------------------------------------------------------
 
@@ -300,10 +309,10 @@ ofMatrix4x4 clip(1.0f,  0.0f, 0.0f, 0.0f,
 
 # Design Principles
 
-1. Make it correct
-3. Make it extensible
-2. Make it simple(r)
-4. Optimise
+1. Make it work
+2. Make it correct
+3. Make it fast
+4. Make it simple
 
 ----------------------------------------------------------------------
 
