@@ -739,8 +739,11 @@ bool of::vk::Shader::createSetLayouts(){
 		// if there was already a set at this position, append to this set
 			auto bindingInsertion = setInsertion.first->second.insert( uniformBinding );
 			if ( bindingInsertion.second == false ){
-				ofLogError() << "Could not insert binding - it appears that there is already a binding a this position, set: " << uniform.second.setNumber 
-					<< ", binding number: " << uniform.second.layoutBinding.binding;
+				ofLogError()
+					<< of::utils::setConsoleColor( of::utils::ConsoleColor::eBrightRed )
+					<< "Could not insert binding - it appears that there is already a binding a this position, set: " << uniform.second.setNumber
+					<< ", binding number: " << uniform.second.layoutBinding.binding
+					<< of::utils::setConsoleColor( of::utils::ConsoleColor::eDefault );
 				return false;
 			}
 		}
@@ -749,7 +752,9 @@ bool of::vk::Shader::createSetLayouts(){
 	
 	// assert set numbers are not sparse.
 	if ( uniformSetLayouts.size() != ( uniformSetLayouts.rbegin()->first + 1 ) ){
-		ofLogError() << "Descriptor sets may not be sparse";
+		ofLogError() << of::utils::setConsoleColor( of::utils::ConsoleColor::eBrightRed ) 
+			<< "Descriptor sets may not be sparse"
+			<< of::utils::setConsoleColor( of::utils::ConsoleColor::eDefault );
 		return  false;
 	}
 
