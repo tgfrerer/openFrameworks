@@ -40,7 +40,6 @@ private:      /* transient data */
 
 	uint64_t mPipelineHash = 0;
 
-
 	// Bindings data for descriptorSets, (vector index == set number) - retrieved from shader on setup
 	std::vector<DescriptorSetData_t>   mDescriptorSetData;
 	
