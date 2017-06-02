@@ -26,31 +26,10 @@ using namespace of::vk;
 	return samplerInfo;
 }
 
-const ::vk::SamplerCreateInfo& of::vk::Texture::getDefaultSamplerCreateInfo(){
-	static const ::vk::SamplerCreateInfo info = samplerCreateInfoPreset();
-	return info;
-}
-
 // ----------------------------------------------------------------------
 
-Texture::Texture( const ::vk::Device & device_, const ::vk::Image & image_, const ::vk::SamplerCreateInfo& samplerInfo_)
-	: mDevice(device_)
-{
-	
-	init( image_, samplerInfo_ );
-}
-
-// ----------------------------------------------------------------------
-
-Texture::Texture( const ::vk::Device & device_, const ::vk::Image & image_ )
-	: mDevice( device_ )
-{
-	init( image_, getDefaultSamplerCreateInfo() );
-}
-
-// ----------------------------------------------------------------------
-
-void of::vk::Texture::init( const ::vk::Image & image_, const ::vk::SamplerCreateInfo & samplerInfo_ ){
+::vk::ImageViewCreateInfo imageViewCreateInfoPreset( const ::vk::Image & image_ ){
+	// default image view create info
 	::vk::ImageViewCreateInfo imageViewCreateInfo;
 	imageViewCreateInfo
 		.setImage( image_ )
@@ -59,8 +38,44 @@ void of::vk::Texture::init( const ::vk::Image & image_, const ::vk::SamplerCreat
 		.setComponents( { ::vk::ComponentSwizzle::eR, ::vk::ComponentSwizzle::eG, ::vk::ComponentSwizzle::eB, ::vk::ComponentSwizzle::eA } )
 		.setSubresourceRange( { ::vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1 } )
 		;
+	return imageViewCreateInfo;
+}
+// ----------------------------------------------------------------------
 
-	const_cast<::vk::ImageView&>( mImageView ) = mDevice.createImageView( imageViewCreateInfo );
+
+::vk::SamplerCreateInfo of::vk::Texture::getDefaultSamplerCreateInfo(){
+	auto info = samplerCreateInfoPreset();
+	return info;
+}
+
+// ----------------------------------------------------------------------
+
+::vk::ImageViewCreateInfo of::vk::Texture::getDefaultImageViewCreateInfo(const ::vk::Image& image_){
+	auto info = imageViewCreateInfoPreset(image_);
+	return info;
+}
+
+// ----------------------------------------------------------------------
+
+Texture::Texture( const ::vk::Device & device_, const ::vk::SamplerCreateInfo& samplerInfo_, const ::vk::ImageViewCreateInfo& imageViewInfo_ )
+	: mDevice(device_)
+{
+	init( samplerInfo_, imageViewInfo_ );
+}
+
+// ----------------------------------------------------------------------
+
+Texture::Texture( const ::vk::Device & device_, const ::vk::Image & image_ )
+	: mDevice( device_ )
+{
+	init( getDefaultSamplerCreateInfo(), getDefaultImageViewCreateInfo(image_) );
+}
+
+// ----------------------------------------------------------------------
+
+void of::vk::Texture::init( const ::vk::SamplerCreateInfo & samplerInfo_, const ::vk::ImageViewCreateInfo& imageViewInfo_){
+
+	const_cast<::vk::ImageView&>( mImageView ) = mDevice.createImageView( imageViewInfo_ );
 	const_cast<::vk::Sampler&>( mSampler ) = mDevice.createSampler( samplerInfo_ );
 
 }

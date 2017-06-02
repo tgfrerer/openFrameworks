@@ -7,7 +7,7 @@ namespace vk{
 class Texture
 {
 private:
-	void init( const ::vk::Image & image_, const ::vk::SamplerCreateInfo & samplerInfo_ );
+	void init( const ::vk::SamplerCreateInfo & samplerInfo_, const ::vk::ImageViewCreateInfo& imageViewInfo_ );
 	
 	const ::vk::Sampler     mSampler     = nullptr;
 	const ::vk::ImageView   mImageView   = nullptr;
@@ -20,8 +20,7 @@ private:
 public:
 
 	Texture( const ::vk::Device& device_, const ::vk::Image & image_ );
-	Texture( const ::vk::Device& device_, const ::vk::Image & image_, const ::vk::SamplerCreateInfo& samplerInfo_ );
-
+	Texture( const ::vk::Device& device_, const ::vk::SamplerCreateInfo& samplerInfo_, const ::vk::ImageViewCreateInfo& imageViewInfo_ );
 	
 	const ::vk::Sampler& getSampler() const{
 		return mSampler;
@@ -38,7 +37,8 @@ public:
 	~Texture();
 
 	// helper method
-	static const ::vk::SamplerCreateInfo& getDefaultSamplerCreateInfo();
+	static ::vk::SamplerCreateInfo getDefaultSamplerCreateInfo();
+	static ::vk::ImageViewCreateInfo getDefaultImageViewCreateInfo( const ::vk::Image& image_ );
 };
 
 } /* namespace vk */
