@@ -252,6 +252,13 @@ Module{
                     libslist.push("rtaudio");
                 }
 
+                if(cpp.compilerName=='gcc' && cpp.compilerVersionMajor>=6){
+                    libslist.push('stdc++fs');
+                }else{
+                    libslist.push("boost_filesystem");
+                    libslist.push("boost_system");
+                }
+
                 libs = libslist;
             }else if(platform === "msys2"){
                 libs = [
@@ -528,12 +535,15 @@ Module{
         configure:{
             list = ['GCC_HAS_REGEX'];
             if(Helpers.pkgExists("gtk+-3.0")){
-                list.push("OF_USING_GTK")
+                list.push("OF_USING_GTK=1")
             }
             if(Helpers.pkgExists("libmpg123")){
-                list.push("OF_USING_MPG123");
+                list.push("OF_USING_MPG123=1");
             }
-            found = true
+            if(cpp.compilerName=='gcc' && cpp.compilerVersionMajor>=6){
+                list.push('OF_USING_STD_FS=1');
+            }
+            found = true;
         }
     }
     Properties{
@@ -708,6 +718,8 @@ Module{
     property stringList linkerFlags: []
     property stringList defines: []
     property stringList frameworks: []
+    property stringList staticLibraries: []
+    property stringList dynamicLibraries: []
     property stringList addons
 
     coreIncludePaths: {
