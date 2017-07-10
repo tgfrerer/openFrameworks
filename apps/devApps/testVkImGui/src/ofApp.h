@@ -4,6 +4,8 @@
 #include "vk/DrawCommand.h"
 #include "ofxImGui.h"
 
+#include "ofxImGuiLoggerChannel.h"
+
 class ofApp : public ofBaseApp{
 
 	of::vk::DrawCommand fullscreenQuad;
