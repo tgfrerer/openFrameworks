@@ -32,7 +32,7 @@ public:
 
 	struct Settings : public AbstractAllocator::Settings
 	{
-		uint32_t                             frameCount = 1; // number of frames to reserve within this allocator
+		uint32_t frameCount = 1; // number of frames to reserve within this allocator
 
 		::vk::BufferUsageFlags bufferUsageFlags = (
 			::vk::BufferUsageFlagBits::eIndexBuffer

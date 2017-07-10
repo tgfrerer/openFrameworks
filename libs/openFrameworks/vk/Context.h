@@ -110,10 +110,8 @@ private:
 	// Fetch descriptor either from cache - or allocate and initialise a descriptor based on DescriptorSetData.
 	const ::vk::DescriptorSet getDescriptorSet( uint64_t descriptorSetHash, size_t setId, const ::vk::DescriptorSetLayout & setLayout_, const std::vector<of::vk::DescriptorSetData_t::DescriptorData_t> & descriptors );
 
-	// cache for all pipelines ever used within this context
+	// Cache for all pipelines ever used within this context
 	std::map<uint64_t, std::shared_ptr<::vk::Pipeline>>    mPipelineCache;
-	
-	//const ::vk::Rect2D&                mRenderArea = mSettings.renderArea;
 	
 	void waitForFence();
 
@@ -123,7 +121,7 @@ private:
 	
 	const std::unique_ptr<BufferAllocator> & getAllocator() const;
 	
-	// move to next virtual frame - called internally in begin() after fence has been cleared.
+	// Move to next virtual frame - called internally in begin() after fence has been cleared.
 	void swap();
 
 public:
@@ -138,7 +136,7 @@ public:
 	const size_t              getNumVirtualFrames() const;
 
 	
-	// creates and returns a reference to a temporary framebuffer based on createInfo
+	// Creates and returns a reference to a temporary framebuffer based on createInfo
 	const::vk::Framebuffer & createFramebuffer( const::vk::FramebufferCreateInfo & createInfo );
 
 	// Stages data for copying into targetAllocator's address space
@@ -236,7 +234,7 @@ inline std::vector<::vk::BufferCopy> Context::stageBufferData( const std::vector
 	regions.reserve( dataVec.size());
 	
 	for (const auto & data : dataVec ){
-		regions.push_back(stageBufferData( data, targetAllocator ));
+		regions.emplace_back(stageBufferData( data, targetAllocator ));
 	}
 
 	return regions;
@@ -258,7 +256,7 @@ inline ::vk::BufferCopy Context::stageBufferData( const TransferSrcData& data, c
 		memcpy( pData, data.pData, region.size );
 
 	} else{
-		ofLogError() << "StageData: alloc error";
+		ofLogError() << "StageBufferData: Alloc error";
 	}
 	return region;
 }

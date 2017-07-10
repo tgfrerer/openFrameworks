@@ -265,7 +265,6 @@ public:
 
 	const std::vector<std::string> & getAttributeNames();
 	
-	// TOOD: rename to vertexBindingNumber, as the index refers to the binding number rather than the location
 	bool getAttributeBinding( const std::string& name, size_t& index ) const;
 
 	const VertexInfo& getVertexInfo();

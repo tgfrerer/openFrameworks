@@ -1,6 +1,14 @@
 #pragma once
 #include "vulkan/vulkan.hpp"
 
+/*
+
+An of::vk::Texture combines a vulkan Image, ImageView and Sampler. 
+This is mostly for convenience. Note that while the ImageView and 
+Sampler are owned by of::vk::Texture, the Image itself is not.
+
+*/
+
 namespace of{
 namespace vk{
 

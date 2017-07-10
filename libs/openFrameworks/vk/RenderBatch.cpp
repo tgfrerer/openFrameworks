@@ -34,7 +34,7 @@ RenderBatch & of::vk::RenderBatch::draw( const DrawCommand & dc_, uint32_t verte
 
 	finalizeDrawCommand( dc );
 
-	dc.mDrawMethod      = DrawCommand::DrawMethod::eDraw;
+	dc.mDrawMethod    = DrawCommand::DrawMethod::eDraw;
 	dc.mNumVertices   = vertexCount_;
 	dc.mInstanceCount = instanceCount_;
 	dc.mFirstVertex   = firstVertex_;
@@ -54,7 +54,7 @@ RenderBatch & of::vk::RenderBatch::draw( const DrawCommand & dc_, uint32_t index
 
 	finalizeDrawCommand( dc );
 
-	dc.mDrawMethod      = DrawCommand::DrawMethod::eIndexed;
+	dc.mDrawMethod    = DrawCommand::DrawMethod::eIndexed;
 	dc.mNumIndices    = indexCount_;
 	dc.mInstanceCount = instanceCount_;
 	dc.mFirstIndex    = firstIndex_;
@@ -241,6 +241,9 @@ void RenderBatch::processDrawCommands( ){
 		std::vector<uint32_t> dynamicBindingOffsets;
 
 		const std::vector<uint64_t> & setLayoutKeys = dc.mPipelineState.getShader()->getDescriptorSetLayoutKeys();
+		
+		dynamicBindingOffsets.reserve( setLayoutKeys.size() );
+		boundVkDescriptorSets.reserve( setLayoutKeys.size() );
 
 		for ( size_t setId = 0; setId != setLayoutKeys.size(); ++setId ){
 
