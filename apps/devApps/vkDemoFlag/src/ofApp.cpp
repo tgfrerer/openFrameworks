@@ -56,16 +56,16 @@ void ofApp::setup(){
 
 void ofApp::setupDrawCommands(){
 	
+	of::vk::Shader::Settings shaderSettings;
+	shaderSettings.device = renderer->getVkDevice();
+	shaderSettings.printDebugInfo = true;
 
 		{
-			of::vk::Shader::Settings shaderSettings;
-			shaderSettings.device = renderer->getVkDevice();
-			shaderSettings.printDebugInfo = true;
 
-			shaderSettings.setSource( ::vk::ShaderStageFlagBits::eVertex, "shaders/flag.vert" );
+			shaderSettings.setSource( ::vk::ShaderStageFlagBits::eVertex  , "shaders/flag.vert" );
 			shaderSettings.setSource( ::vk::ShaderStageFlagBits::eFragment, "shaders/flag.frag" );
 
-			// Initialise default shader with settings above
+			// Shader which will draw animated and textured flag
 			mFlagShader = std::make_shared<of::vk::Shader>( shaderSettings );
 
 			// Define pipeline state to use with draw command
@@ -78,16 +78,13 @@ void ofApp::setupDrawCommands(){
 				.setCullMode( ::vk::CullModeFlagBits::eNone )
 				.setFrontFace( ::vk::FrontFace::eCounterClockwise )
 				;
-
 			pipeline.inputAssemblyState
 				.setTopology( ::vk::PrimitiveTopology::eTriangleStrip )
 				;
-			
 			pipeline.depthStencilState
 				.setDepthTestEnable( VK_TRUE )
 				.setDepthWriteEnable( VK_TRUE )
 				;
-
 			pipeline.blendAttachmentStates[0].blendEnable = VK_TRUE;
 
 			// Setup draw command using pipeline state above
@@ -95,12 +92,11 @@ void ofApp::setupDrawCommands(){
 		}
 		
 		{
-			of::vk::Shader::Settings shaderSettings;
-			shaderSettings.device = renderer->getVkDevice();
-			shaderSettings.printDebugInfo = true;
-
-			shaderSettings.setSource( ::vk::ShaderStageFlagBits::eVertex, "shaders/background.vert" );
+			shaderSettings.clearSources();
+			shaderSettings.setSource( ::vk::ShaderStageFlagBits::eVertex  , "shaders/background.vert" );
 			shaderSettings.setSource( ::vk::ShaderStageFlagBits::eFragment, "shaders/background.frag" );
+			
+			// Shader which draws a full screen quad without need for geometry input
 			mBgShader = std::make_shared<of::vk::Shader>( shaderSettings );
 
 			// Set up a Draw Command which draws a full screen quad.
@@ -131,14 +127,12 @@ void ofApp::setupDrawCommands(){
 		}
 
 		{
-			of::vk::Shader::Settings shaderSettings;
-			shaderSettings.device = renderer->getVkDevice();
-			shaderSettings.printDebugInfo = true;
+			shaderSettings.clearSources();
 
-			// Shader which draws using global color, and "lambert" shading
-
-			shaderSettings.setSource( ::vk::ShaderStageFlagBits::eVertex, "shaders/lambert.vert" );
+			shaderSettings.setSource( ::vk::ShaderStageFlagBits::eVertex  , "shaders/lambert.vert" );
 			shaderSettings.setSource( ::vk::ShaderStageFlagBits::eFragment, "shaders/lambert.frag" );
+			
+			// Shader which draws using global color, and "lambert" shading
 			mLambertShader = std::make_shared<of::vk::Shader>( shaderSettings );
 
 			of::vk::GraphicsPipelineState pipeline;
@@ -149,16 +143,13 @@ void ofApp::setupDrawCommands(){
 				.setCullMode( ::vk::CullModeFlagBits::eBack )
 				.setFrontFace( ::vk::FrontFace::eClockwise )
 				;
-
 			pipeline.inputAssemblyState
 				.setTopology( ::vk::PrimitiveTopology::eTriangleStrip )
 				;
-
 			pipeline.depthStencilState
 				.setDepthTestEnable( VK_TRUE )
 				.setDepthWriteEnable( VK_TRUE )
 				;
-
 			pipeline.blendAttachmentStates[0].blendEnable = VK_TRUE;
 
 			lambertDraw.setup( pipeline );
@@ -171,17 +162,17 @@ void ofApp::setupDrawCommands(){
 void ofApp::setupTextureData(){
 	{
 		of::vk::ImageAllocator::Settings allocatorSettings;
-		allocatorSettings.device = renderer->getVkDevice();
-		allocatorSettings.size = ( 1 << 24UL ); // 16 MB
-		allocatorSettings.memFlags = ::vk::MemoryPropertyFlagBits::eDeviceLocal;
-		allocatorSettings.physicalDeviceMemoryProperties = renderer->getVkPhysicalDeviceMemoryProperties();
-		allocatorSettings.physicalDeviceProperties = renderer->getVkPhysicalDeviceProperties();
+		allocatorSettings
+			.setRendererProperties( renderer->getVkRendererProperties() )
+			.setSize( 1 << 24UL ) // 16 MB
+			.setMemFlags( ::vk::MemoryPropertyFlagBits::eDeviceLocal )
+			;
 
 		mImageAllocator = std::make_unique<of::vk::ImageAllocator>( allocatorSettings );
 		mImageAllocator->setup();
 	}
 
-	// Grab staging context to place pixel data here for upload to device local image memory
+	// Grab staging context to place pixel data there for upload to device local image memory
 	auto & stagingContext = renderer->getStagingContext();
 
 	ofPixels tmpPix;
@@ -197,7 +188,18 @@ void ofApp::setupTextureData(){
 	imgTransferData.extent.width = tmpPix.getWidth();
 	imgTransferData.extent.height = tmpPix.getHeight();
 
-	// Queue pixel data for upload to device local memory via image allocator
+	// Queue pixel data for upload to device local memory via image allocator -
+	//
+	// This copies the image data immediately into the staging context's device and host visible memory area, 
+	// and queues up a transfer command in the staging context.
+	//
+	// Which means that, since the staging context's memory is coherent, the transfer 
+	// to staging memory has completed by the time the staging context begins executing 
+	// its commands.
+	//
+	// The transfer command queued up earlier is then executed, and this command 
+	// does the heavy lifting of transferring the image from staging memory to 
+	// device-only target memory ownded by mImageAllocator
 	mFlagImage = stagingContext->storeImageCmd( imgTransferData, mImageAllocator );
 
 	// Create a Texture (which is a combination of ImageView+Sampler) using vk image
@@ -321,21 +323,17 @@ void ofApp::draw(){
 		;
 
 	// Setup the main pass RenderBatch
-	std::vector<::vk::ClearValue> clearValues( 2 );
-	clearValues[0].setColor( ( ::vk::ClearColorValue& )ofFloatColor::white );
-	clearValues[1].setDepthStencil( { 1.f, 0 } );
-
 	of::vk::RenderBatch::Settings settings;
-	settings.clearValues = clearValues;
-	settings.context = context.get();
-	settings.framebufferAttachmentHeight = renderer->getSwapchain()->getHeight();
-	settings.framebufferAttachmentWidth = renderer->getSwapchain()->getWidth();
-	settings.renderArea = ::vk::Rect2D( {}, { uint32_t( renderer->getViewportWidth() ), uint32_t( renderer->getViewportHeight() ) } );
-	settings.renderPass = *renderer->getDefaultRenderpass();
-	settings.framebufferAttachments = {
-		context->getSwapchainImageView(),
-		renderer->getDepthStencilImageView()
-	};
+	settings
+		.setContext( context.get() )
+		.setFramebufferAttachmentsExtent( renderer->getSwapchain()->getWidth(), renderer->getSwapchain()->getHeight() )
+		.setRenderAreaExtent(  uint32_t( renderer->getViewportWidth() ), uint32_t( renderer->getViewportHeight() )  )
+		.setRenderPass( *renderer->getDefaultRenderpass() )
+		.addFramebufferAttachment( context->getSwapchainImageView() )
+		.addClearColorValue( ofFloatColor::white )
+		.addFramebufferAttachment( renderer->getDepthStencilImageView() )
+		.addClearDepthStencilValue({1.f,0})
+		;
 
 	of::vk::RenderBatch batch{ settings };
 	{

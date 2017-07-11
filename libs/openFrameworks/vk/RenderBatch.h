@@ -22,7 +22,7 @@ public:
 		std::vector<::vk::ImageView>  framebufferAttachments;
 		uint32_t                      framebufferAttachmentsWidth  = 0;
 		uint32_t                      framebufferAttachmentsHeight = 0;
-		::vk::Rect2D                  renderArea;
+		::vk::Rect2D                  renderArea {};
 		std::vector<::vk::ClearValue> clearValues; // clear values for each attachment
 
 		Settings& setContext( Context* ctx ){
@@ -54,12 +54,36 @@ public:
 			renderArea = renderArea_;
 			return *this;
 		}
+		Settings& setRenderAreaOffset( const ::vk::Offset2D & offset_ ){
+			renderArea.setOffset( offset_ );
+			return *this;
+		}
+		Settings& setRenderAreaExtent( const ::vk::Extent2D & extent_ ){
+			renderArea.setExtent( extent_ );
+			return *this;
+		}
+		Settings& setRenderAreaExtent( uint32_t width_, uint32_t height_ ){
+			renderArea.setExtent( { width_, height_ } );
+			return *this;
+		}
 		Settings& setClearValues( const std::vector<::vk::ClearValue>& clearValues_ ){
 			clearValues = clearValues_;
 			return *this;
 		}
 		Settings& addFramebufferAttachment( const ::vk::ImageView& imageView ){
 			framebufferAttachments.push_back( imageView );
+			return *this;
+		}
+		Settings& addClearColorValue( const ::vk::ClearColorValue& color_ ){
+			clearValues.emplace_back( color_ );
+			return *this;
+		}
+		Settings& addClearColorValue( const ofFloatColor& color_ ){
+			clearValues.emplace_back( reinterpret_cast<const ::vk::ClearColorValue&>( color_ ) );
+			return *this;
+		}
+		Settings& addClearDepthStencilValue( const ::vk::ClearDepthStencilValue depthStencilValue_ ){
+			clearValues.emplace_back( depthStencilValue_ );
 			return *this;
 		}
 	};

@@ -124,15 +124,16 @@ void ofApp::setupPrepass(){
 		size_t numImages = 2;
 
 		of::vk::ImageAllocator::Settings allocatorSettings;
-		allocatorSettings.device = device;
-		allocatorSettings.imageTiling = vk::ImageTiling::eOptimal;
-		allocatorSettings.imageUsageFlags = vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled;
-		allocatorSettings.memFlags = vk::MemoryPropertyFlagBits::eDeviceLocal;
-		allocatorSettings.size = mPrepassRect.extent.width * mPrepassRect.extent.height * 4 * numImages;
-		allocatorSettings.physicalDeviceMemoryProperties = renderer->getVkPhysicalDeviceMemoryProperties();
-		allocatorSettings.physicalDeviceProperties = renderer->getVkPhysicalDeviceProperties();
-		mImageAllocator = std::make_shared<of::vk::ImageAllocator>( allocatorSettings );
 
+		allocatorSettings
+			.setRendererProperties( renderer->getVkRendererProperties() )
+			.setImageTiling( vk::ImageTiling::eOptimal )
+			.setImageUsageFlags( vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled )
+			.setMemFlags( vk::MemoryPropertyFlagBits::eDeviceLocal )
+			.setSize( mPrepassRect.extent.width * mPrepassRect.extent.height * 4 * numImages )
+			;
+
+		mImageAllocator = std::make_shared<of::vk::ImageAllocator>( allocatorSettings );
 		mImageAllocator->setup();
 
 		::vk::ImageCreateInfo imageCreateInfo;
@@ -198,19 +199,18 @@ void ofApp::setupDrawCommands(){
 	shaderSettings.device = renderer->getVkDevice();
 	shaderSettings.printDebugInfo = true;
 
-	shaderSettings.sources[::vk::ShaderStageFlagBits::eVertex  ] = "fullScreenQuad.vert";
-	shaderSettings.sources[::vk::ShaderStageFlagBits::eFragment] = "fullScreenQuad.frag";
+	shaderSettings.setSource( ::vk::ShaderStageFlagBits::eVertex, "fullScreenQuad.vert" );
+	shaderSettings.setSource( ::vk::ShaderStageFlagBits::eFragment, "fullScreenQuad.frag" );
 	mShaderFullscreen = std::make_shared<of::vk::Shader>( shaderSettings );
 
-	shaderSettings.sources[::vk::ShaderStageFlagBits::eVertex  ] = "default.vert";
-	shaderSettings.sources[::vk::ShaderStageFlagBits::eFragment] = "default.frag";
+	shaderSettings.setSource( ::vk::ShaderStageFlagBits::eVertex, "default.vert" );
+	shaderSettings.setSource( ::vk::ShaderStageFlagBits::eFragment, "default.frag" );
 	auto mShaderDefault = std::make_shared<of::vk::Shader>( shaderSettings );
 
-	shaderSettings.sources[::vk::ShaderStageFlagBits::eVertex  ] = "textured.vert";
-	shaderSettings.sources[::vk::ShaderStageFlagBits::eFragment] = "textured.frag";
+	shaderSettings.setSource(::vk::ShaderStageFlagBits::eVertex  , "textured.vert");
+	shaderSettings.setSource(::vk::ShaderStageFlagBits::eFragment, "textured.frag");
 	auto mShaderTextured = std::make_shared<of::vk::Shader>( shaderSettings );
-
-	
+		
 	{
 		// Set up a Draw Command which draws a full screen quad.
 		//
@@ -298,19 +298,18 @@ void ofApp::draw(){
 
 		// setup renderbatch for pre-pass
 		//
-		std::vector<::vk::ClearValue> clearValues( 1 );
-		clearValues[0].setColor( ( ::vk::ClearColorValue& )ofFloatColor::bisque );
+		//std::vector<::vk::ClearValue> clearValues( 1 );
+		//clearValues[0].setColor( ( ::vk::ClearColorValue& )ofFloatColor::bisque );
 
 		of::vk::RenderBatch::Settings settings;
-		settings.clearValues = clearValues;
-		settings.context = renderer->getDefaultContext().get();
-		settings.framebufferAttachmentHeight = mPrepassRect.extent.height;
-		settings.framebufferAttachmentWidth = mPrepassRect.extent.width;
-		settings.renderArea = mPrepassRect;
-		settings.renderPass = *mPrepassRenderPass;
-		settings.framebufferAttachments = {
-			mTargetImages[pingPong].view,    // << this image is where the result of our prepass will be stored
-		};
+		settings
+			.setContext(renderer->getDefaultContext().get())
+			.setFramebufferAttachmentsExtent(mPrepassRect.extent.width, mPrepassRect.extent.height)
+			.setRenderArea(mPrepassRect)
+			.setRenderPass(*mPrepassRenderPass)
+			.addFramebufferAttachment(mTargetImages[pingPong].view)               // << this image is where the result of our prepass will be stored
+			.addClearColorValue( (::vk::ClearColorValue& )ofFloatColor::bisque )  // add a clear value for the framebuffer attachment
+			;
 
 		of::vk::RenderBatch prepass{ settings };
 
@@ -343,21 +342,17 @@ void ofApp::draw(){
 
 		// renderbatch for main pass
 		//
-		std::vector<::vk::ClearValue> clearValues( 2 );
-		clearValues[0].setColor( ( ::vk::ClearColorValue& )ofFloatColor::blueSteel );
-		clearValues[1].setDepthStencil( { 1.f, 0 } );
-
 		of::vk::RenderBatch::Settings settings;
-		settings.clearValues = clearValues;
-		settings.context = renderer->getDefaultContext().get();
-		settings.framebufferAttachmentHeight = renderer->getSwapchain()->getHeight();
-		settings.framebufferAttachmentWidth = renderer->getSwapchain()->getWidth();
-		settings.renderArea = ::vk::Rect2D( {}, { uint32_t( renderer->getViewportWidth() ), uint32_t( renderer->getViewportHeight() ) } );
-		settings.renderPass = *renderer->getDefaultRenderpass();
-		settings.framebufferAttachments = {
-			context->getSwapchainImageView(),
-			renderer->getDepthStencilImageView()
-		};
+		settings
+			.setContext(renderer->getDefaultContext().get())
+			.setFramebufferAttachmentsExtent(renderer->getSwapchain()->getWidth(), renderer->getSwapchain()->getHeight())
+			.setRenderArea(::vk::Rect2D( {}, { uint32_t( renderer->getViewportWidth() ), uint32_t( renderer->getViewportHeight() ) } ))
+			.setRenderPass(*renderer->getDefaultRenderpass())
+			.addFramebufferAttachment( context->getSwapchainImageView() )              // image attachment
+			.addClearColorValue( ( ::vk::ClearColorValue& )ofFloatColor::blueSteel )   // clear color for image
+			.addFramebufferAttachment( renderer->getDepthStencilImageView() )          // depth stencil attachment
+			.addClearDepthStencilValue( {1.f,0} )                                      // clear value for depth stencil
+			;
 
 		of::vk::RenderBatch batch{ settings };
 
