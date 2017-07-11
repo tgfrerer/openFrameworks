@@ -185,6 +185,7 @@ bool of::vk::Shader::compile(){
 		auto & shaderStage  = source.first;
 		auto & shaderSource = source.second;
 
+
 		bool success = getSpirV( shaderStage, shaderSource);	/* load or compiles into spirCode */
 
 		if ( !success){
@@ -197,18 +198,17 @@ bool of::vk::Shader::compile(){
 				// Using a default fail shader would be not without peril: 
 				// Inputs and outputs will most certainly not match whatever 
 				// the user specified for their original shader.
-				ofLogFatalError() << "Shader did not compile: " << shaderSource.getName();
+				ofLogFatalError() << "Shader did not compile: " << getName() << " : " << shaderSource.getName();
 				ofExit( 1 );
 				return false;
 			}
-		} 
+		}
 
 		uint64_t spirvHash = SpookyHash::Hash64( reinterpret_cast<char*>( shaderSource.spirvCode.data() ), shaderSource.spirvCode.size() * sizeof( uint32_t ), 0 );
 
 		bool spirCodeDirty = isSpirCodeDirty( shaderStage, spirvHash );
 
 		if ( spirCodeDirty ){
-			ofLog() << "Building shader module: " << shaderSource.getName();
 			createVkShaderModule( shaderStage, shaderSource.spirvCode);
 			// store hash in map so it does not appear dirty
 			mSpvHash[shaderStage] = spirvHash;
@@ -272,7 +272,7 @@ inline bool of::vk::Shader::checkForLineNumberModifier( const std::string& line,
 
 inline void of::vk::Shader::printError( const std::string& fileName, std::string& errorMessage, std::vector<char>& sourceCode ) {
 
-	ofLogError() << "Shader compile failed for: " << fileName;
+	ofLogError() << "ERR \tShader compile: " << fileName;
 
 	ofLogError() << of::utils::setConsoleColor( of::utils::ConsoleColor::eBrightRed )
 		<< errorMessage
@@ -368,18 +368,17 @@ inline bool of::vk::Shader::compileGLSLtoSpirV(
 		auto msg = module.GetErrorMessage();
 		printError( fileName, msg, sourceCode );
 		return false;
-	} else{
+	} else {
 		spirCode.clear();
 		spirCode.assign( module.cbegin(), module.cend() );
-		ofLogNotice() << "OK \tShader compile: " << fileName;
 		return true;
 	}
 }
 
 // ----------------------------------------------------------------------
 
-std::string of::vk::Shader::getName(){
-	return mName;
+const std::string& of::vk::Shader::getName(){
+	return mSettings.name;
 }
 
 // ----------------------------------------------------------------------
@@ -404,6 +403,12 @@ bool of::vk::Shader::getSpirV( const ::vk::ShaderStageFlagBits shaderStage, Sour
 
 		// ---------| invariant: File exists.
 
+		if ( mSettings.name == "" && shaderStage == ::vk::ShaderStageFlagBits::eVertex ){
+			// if name has not been set explicitly, infer shader name from 
+			// baseName of vertex shader file.
+			const_cast<std::string&>(mSettings.name) = f.getBaseName();
+		}
+
 		auto fExt = f.getExtension();
 		ofBuffer fileBuf = ofBufferFromFile( shaderSource.filePath, true );
 		
@@ -422,12 +427,18 @@ bool of::vk::Shader::getSpirV( const ::vk::ShaderStageFlagBits shaderStage, Sour
 		// ----------| invariant: File does not have ".spv" extension
 
 		success = compileGLSLtoSpirV( shaderStage, fileBuf.getText(), shaderSource.filePath.string(), shaderSource.spirvCode, shaderSource.defines);
+		if ( success && mSettings.printDebugInfo ){
+			ofLogNotice() << "OK \tShader compile: " << shaderSource.filePath.string();
+		}
 		break;
 	}
 	case Source::Type::eGLSLSourceInline:
 	{
 		std::string sourceText = shaderSource.glslSourceInline;
-		success = compileGLSLtoSpirV( shaderStage, sourceText, "<<Inline GLSL>>", shaderSource.spirvCode, shaderSource.defines);
+		success = compileGLSLtoSpirV( shaderStage, sourceText, getName() + " (Inline GLSL)", shaderSource.spirvCode, shaderSource.defines);
+		if ( success && mSettings.printDebugInfo ){
+			ofLogNotice() << "OK \tShader compile: [" << to_string(shaderStage) << "] " << getName() + " (Inline GLSL)";
+		}
 		break;
 	}
 	default:

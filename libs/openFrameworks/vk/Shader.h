@@ -191,7 +191,8 @@ public:
 		bool                                        printDebugInfo = false;
 		::vk::Device                                device;
 		std::shared_ptr<VertexInfo>                 vertexInfo;              // Set this if you want to override vertex info generated through shader reflection
-		mutable std::map<::vk::ShaderStageFlagBits, Source> sources;         // specify source file for each shader stage - if file extension is '.spv' no compilation occurs, otherwise file is loaded and compiled using shaderc
+		mutable std::map<::vk::ShaderStageFlagBits, Source> sources;         // specify source object for each shader stage - if source is of type eFilePath, file extension is '.spv' no compilation occurs, otherwise file is loaded and compiled using shaderc
+		std::string                                 name;                    // Debug name for shader - by default and if possible this is set to name of vertex shader file, less extension
 		
 		Settings& setPrintDebugInfo( bool shouldPrint_ ){
 			printDebugInfo = shouldPrint_;
@@ -201,7 +202,14 @@ public:
 			device = device_;
 			return *this;
 		}
-		Settings& setSource( ::vk::ShaderStageFlagBits shaderType_, Source&& src_ ){
+		
+		Settings& setSource( ::vk::ShaderStageFlagBits shaderType_, const Source& src_ ){
+			// We first erase at key position in case this source was set before
+			// in case there was no entry with this key, this will do nothing
+			sources.erase( shaderType_ );
+			// We use emplace, as this uses a templated constructor, which will 
+			// construct the element in place, allowing Shader::Source
+			// to find the most matching specialised constructor.
 			sources.emplace( shaderType_, src_ );
 			return *this;
 		}
@@ -209,14 +217,19 @@ public:
 			vertexInfo = info_;
 			return *this;
 		}
+		Settings& setName( const std::string& name_ ){
+			name = name_;
+			return *this;
+		}
+		Settings& clearSources(){
+			sources.clear();
+			return *this;
+		}
 	};
 
 private:
 
 	const Settings mSettings;
-
-	// debug name for shader - by default and if possible this is set to name of vertex shader file, less extension
-	std::string mName;
 
 	// default template for descriptor set data
 	std::vector<DescriptorSetData_t>   mDescriptorSetData;
@@ -363,7 +376,7 @@ public:
 	static bool compileGLSLtoSpirV( const ::vk::ShaderStageFlagBits shaderStage, std::string & sourceText, std::string fileName, std::vector<uint32_t>& spirCode, const std::map<std::string, std::string>& defines_ = {});
 
 	// shader name is debug name for shader
-	std::string getName();
+	const std::string& getName();
 };
 
 // ----------------------------------------------------------------------
