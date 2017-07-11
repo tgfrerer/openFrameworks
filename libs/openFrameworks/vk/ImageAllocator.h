@@ -1,6 +1,7 @@
 #pragma once
 
 #include "vk/Allocator.h"
+#include "vk/HelperTypes.h"
 
 namespace of{
 namespace vk{
@@ -38,6 +39,32 @@ public:
 			);
 
 		::vk::ImageTiling imageTiling = ::vk::ImageTiling::eOptimal;
+		Settings & setSize( ::vk::DeviceSize size_ ){
+			AbstractAllocator::Settings::size = size_;
+			return *this;
+		}
+		Settings & setMemFlags( ::vk::MemoryPropertyFlags flags_ ){
+			AbstractAllocator::Settings::memFlags = flags_;
+			return *this;
+		}
+		Settings & setQueueFamilyIndices( const std::vector<uint32_t> indices_ ){
+			AbstractAllocator::Settings::queueFamilyIndices = indices_;
+			return *this;
+		}
+		Settings & setRendererProperties( const of::vk::RendererProperties& props ){
+			AbstractAllocator::Settings::device = props.device;
+			AbstractAllocator::Settings::physicalDeviceMemoryProperties = props.physicalDeviceMemoryProperties;
+			AbstractAllocator::Settings::physicalDeviceProperties = props.physicalDeviceProperties;
+			return *this;
+		}
+		Settings & setImageUsageFlags( const ::vk::ImageUsageFlags& flags_ ){
+			imageUsageFlags = flags_;
+			return *this;
+		}
+		Settings & setImageTiling( const ::vk::ImageTiling & tiling_ ){
+			imageTiling = tiling_;
+			return *this;
+		}
 	};
 
 	ImageAllocator( const ImageAllocator::Settings& settings )

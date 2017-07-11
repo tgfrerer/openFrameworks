@@ -186,19 +186,37 @@ public:
 		friend class Shader;
 	};
 
-	const struct Settings
+	struct Settings
 	{
 		bool                                        printDebugInfo = false;
 		::vk::Device                                device;
 		std::shared_ptr<VertexInfo>                 vertexInfo;              // Set this if you want to override vertex info generated through shader reflection
 		mutable std::map<::vk::ShaderStageFlagBits, Source> sources;         // specify source file for each shader stage - if file extension is '.spv' no compilation occurs, otherwise file is loaded and compiled using shaderc
 		
-		void setSource( ::vk::ShaderStageFlagBits shaderType_, Source&& src_ ){
+		Settings& setPrintDebugInfo( bool shouldPrint_ ){
+			printDebugInfo = shouldPrint_;
+			return *this;
+		}
+		Settings& setDevice( const ::vk::Device& device_ ){
+			device = device_;
+			return *this;
+		}
+		Settings& setSource( ::vk::ShaderStageFlagBits shaderType_, Source&& src_ ){
 			sources.emplace( shaderType_, src_ );
-		};
-	} mSettings;
+			return *this;
+		}
+		Settings& setVertexInfo( std::shared_ptr<VertexInfo> info_ ){
+			vertexInfo = info_;
+			return *this;
+		}
+	};
 
 private:
+
+	const Settings mSettings;
+
+	// debug name for shader - by default and if possible this is set to name of vertex shader file, less extension
+	std::string mName;
 
 	// default template for descriptor set data
 	std::vector<DescriptorSetData_t>   mDescriptorSetData;
@@ -258,7 +276,7 @@ private:
 	bool createSetLayouts();
 	void createVkPipelineLayout();
 
-	// based on file name ending, read either spirv or glsl file and fill vector of spirV words
+	// based on shader source type, read /compile either spirv or glsl file and fill vector of spirV words
 	bool getSpirV( const ::vk::ShaderStageFlagBits shaderType, of::vk::Shader::Source& shaderSource );
 	
 	// find out if module is dirty
@@ -274,8 +292,16 @@ private:
 
 	static void getSetAndBindingNumber( const spirv_cross::Compiler & compiler, const spirv_cross::Resource & resource, uint32_t &descriptor_set, uint32_t &bindingNumber );
 
-public:
 
+	// Utility method for finding line number modifiers when compiling using shaderc 
+	// line number modifiers are lines which the preprocessor inserts to mark line 
+	// number offsets for included files.
+	static bool checkForLineNumberModifier( const std::string& line, uint32_t& lineNumber, std::string& currentFilename, std::string& lastFilename );
+	
+	// Utility method for printing errors when compiling using shaderc
+	static void of::vk::Shader::printError( const std::string& fileName, std::string& errorMessage, std::vector<char>& sourceCode );
+
+public:
 
 	// ----------------------------------------------------------------------
 
@@ -333,8 +359,11 @@ public:
 		return mUniformDictionary;
 	}
 
+	// Compile source text and store result in vector of SPIR-V words 
 	static bool compileGLSLtoSpirV( const ::vk::ShaderStageFlagBits shaderStage, std::string & sourceText, std::string fileName, std::vector<uint32_t>& spirCode, const std::map<std::string, std::string>& defines_ = {});
 
+	// shader name is debug name for shader
+	std::string getName();
 };
 
 // ----------------------------------------------------------------------
@@ -413,7 +442,6 @@ inline const std::vector<std::shared_ptr<::vk::DescriptorSetLayout>>& of::vk::Sh
 inline const std::shared_ptr<::vk::DescriptorSetLayout>& of::vk::Shader::getDescriptorSetLayout( size_t setId ) const{
 	return mDescriptorSetLayouts.at( setId );
 }
-
 
 // ----------------------------------------------------------------------
 

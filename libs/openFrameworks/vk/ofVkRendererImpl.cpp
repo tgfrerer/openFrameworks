@@ -46,10 +46,9 @@ void ofVkRenderer::setupStagingContext(){
 // ----------------------------------------------------------------------
 
 void ofVkRenderer::setupDefaultContext(){
-	
 
 	of::vk::Context::Settings settings;
-	
+
 	settings.transientMemoryAllocatorSettings.device                         = mDevice;
 	settings.transientMemoryAllocatorSettings.frameCount                     = mSettings.numVirtualFrames ;
 	settings.transientMemoryAllocatorSettings.physicalDeviceMemoryProperties = mPhysicalDeviceMemoryProperties ;

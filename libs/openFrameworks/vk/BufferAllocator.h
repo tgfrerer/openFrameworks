@@ -1,7 +1,7 @@
 #pragma once
 
 #include "vk/Allocator.h"
-
+#include "vk/HelperTypes.h"
 namespace of{
 namespace vk{
 
@@ -40,6 +40,33 @@ public:
 			| ::vk::BufferUsageFlagBits::eVertexBuffer
 			| ::vk::BufferUsageFlagBits::eTransferSrc
 			| ::vk::BufferUsageFlagBits::eTransferDst );
+
+		Settings & setSize( ::vk::DeviceSize size_ ){
+			AbstractAllocator::Settings::size = size_;
+			return *this;
+		}
+		Settings & setMemFlags( ::vk::MemoryPropertyFlags flags_ ){
+			AbstractAllocator::Settings::memFlags = flags_;
+			return *this;
+		}
+		Settings & setQueueFamilyIndices( const std::vector<uint32_t> indices_ ){
+			AbstractAllocator::Settings::queueFamilyIndices = indices_;
+			return *this;
+		}
+		Settings & setRendererProperties( const of::vk::RendererProperties& props ){
+			AbstractAllocator::Settings::device = props.device;
+			AbstractAllocator::Settings::physicalDeviceMemoryProperties = props.physicalDeviceMemoryProperties;
+			AbstractAllocator::Settings::physicalDeviceProperties = props.physicalDeviceProperties;
+			return *this;
+		}
+		Settings & setBufferUsageFlags( const ::vk::BufferUsageFlags& flags ){
+			bufferUsageFlags = flags;
+			return *this;
+		}
+		Settings & setFrameCount( uint32_t count_ ){
+			frameCount = count_;
+			return *this;
+		}
 	};
 
 	BufferAllocator( const BufferAllocator::Settings& settings )

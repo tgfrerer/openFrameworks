@@ -16,7 +16,7 @@ struct ImgSwapchainSettings : public SwapchainSettings
 {
 	std::string                   path        = "render/img_";
 	::vk::Format                  colorFormat = ::vk::Format::eR8G8B8A8Unorm;
-	std::shared_ptr<ofVkRenderer> renderer;
+	std::shared_ptr<::ofVkRenderer> renderer;
 };
 
 // ----------------------------------------------------------------------

@@ -354,7 +354,7 @@ inline of::vk::DrawCommand & of::vk::DrawCommand::setAttribute( const std::strin
 
 	ofLogWarning() 
 		<< "Attribute '" << name_ << "' could not be found in shader: " 
-		<< mPipelineState.getShader()->mSettings.sources.at( ::vk::ShaderStageFlagBits::eVertex ).getName();
+		<< mPipelineState.getShader()->getName();
 	return *this;
 }
 

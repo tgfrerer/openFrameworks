@@ -223,7 +223,7 @@ private:
 	void                                   createDebugLayers();
 	void                                   destroyDebugLayers();
 
-	of::vk::RendererProperties mRendererProperties;
+	of::vk::RendererProperties             mRendererProperties;
 	
 	::vk::Instance                         &mInstance                       = mRendererProperties.instance;
 	::vk::Device                           &mDevice                         = mRendererProperties.device;

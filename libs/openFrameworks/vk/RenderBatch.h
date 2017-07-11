@@ -20,10 +20,48 @@ public:
 		Context *                     context = nullptr;
 		::vk::RenderPass              renderPass;
 		std::vector<::vk::ImageView>  framebufferAttachments;
-		uint32_t                      framebufferAttachmentWidth  = 0;
-		uint32_t                      framebufferAttachmentHeight = 0;
+		uint32_t                      framebufferAttachmentsWidth  = 0;
+		uint32_t                      framebufferAttachmentsHeight = 0;
 		::vk::Rect2D                  renderArea;
 		std::vector<::vk::ClearValue> clearValues; // clear values for each attachment
+
+		Settings& setContext( Context* ctx ){
+			context = ctx;
+			return *this;
+		}
+		Settings& setRenderPass( const ::vk::RenderPass & renderPass_ ){
+			renderPass = renderPass_;
+			return *this;
+		}
+		Settings& setFramebufferAttachments( const std::vector<::vk::ImageView>& framebufferAttachments_ ){
+			framebufferAttachments = framebufferAttachments_;
+			return *this;
+		}
+		Settings& setFramebufferAttachmentsWidth( uint32_t width_ ){
+			framebufferAttachmentsWidth = width_;
+			return *this;
+		}
+		Settings& setFramebufferAttachmentsHeight( uint32_t height_ ){
+			framebufferAttachmentsHeight = height_;
+			return *this;
+		}
+		Settings& setFramebufferAttachmentsExtent( uint32_t width_, uint32_t height_ ){
+			framebufferAttachmentsWidth  = width_;
+			framebufferAttachmentsHeight = height_;
+			return *this;
+		}
+		Settings& setRenderArea( const ::vk::Rect2D& renderArea_ ){
+			renderArea = renderArea_;
+			return *this;
+		}
+		Settings& setClearValues( const std::vector<::vk::ClearValue>& clearValues_ ){
+			clearValues = clearValues_;
+			return *this;
+		}
+		Settings& addFramebufferAttachment( const ::vk::ImageView& imageView ){
+			framebufferAttachments.push_back( imageView );
+			return *this;
+		}
 	};
 
 private:

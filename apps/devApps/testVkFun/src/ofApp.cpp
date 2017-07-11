@@ -35,25 +35,25 @@ void ofApp::setup(){
 void ofApp::setupStaticAllocators(){
 
 	{
+
 		of::vk::BufferAllocator::Settings allocatorSettings;
-		allocatorSettings.device = renderer->getVkDevice();
-		allocatorSettings.size = ( 1 << 24UL ); // 16 MB
-		allocatorSettings.frameCount = 1;
-		allocatorSettings.memFlags = ::vk::MemoryPropertyFlagBits::eDeviceLocal;
-		allocatorSettings.physicalDeviceMemoryProperties = renderer->getVkPhysicalDeviceMemoryProperties();
-		allocatorSettings.physicalDeviceProperties = renderer->getVkPhysicalDeviceProperties();
-		allocatorSettings.bufferUsageFlags = allocatorSettings.bufferUsageFlags | ::vk::BufferUsageFlagBits::eStorageBuffer;
+		allocatorSettings
+			.setRendererProperties( renderer->getVkRendererProperties() )
+			.setSize( 1 << 24UL ) // 16 MB
+			.setFrameCount( 1 )
+			.setMemFlags( ::vk::MemoryPropertyFlagBits::eDeviceLocal )
+			.setBufferUsageFlags( allocatorSettings.bufferUsageFlags | ::vk::BufferUsageFlagBits::eStorageBuffer )
+			;
 		mStaticAllocator = std::make_unique<of::vk::BufferAllocator>( allocatorSettings );
 		mStaticAllocator->setup();
 	}
 	{
 		of::vk::ImageAllocator::Settings allocatorSettings;
-		allocatorSettings.device = renderer->getVkDevice();
-		allocatorSettings.size = ( 1 << 24UL ); // 16 MB
-		allocatorSettings.memFlags = ::vk::MemoryPropertyFlagBits::eDeviceLocal;
-		allocatorSettings.physicalDeviceMemoryProperties = renderer->getVkPhysicalDeviceMemoryProperties();
-		allocatorSettings.physicalDeviceProperties = renderer->getVkPhysicalDeviceProperties();
-
+		allocatorSettings
+			.setRendererProperties( renderer->getVkRendererProperties() )
+			.setSize( 1 << 24UL ) // 16 MB
+			.setMemFlags( ::vk::MemoryPropertyFlagBits::eDeviceLocal )
+			;
 		mImageAllocator = std::make_unique<of::vk::ImageAllocator>( allocatorSettings );
 		mImageAllocator->setup();
 	}
@@ -65,9 +65,11 @@ void ofApp::setupDrawCommands(){
 	
 	{
 		of::vk::Shader::Settings shaderSettings;
-		shaderSettings.device = renderer->getVkDevice();
-		shaderSettings.sources[::vk::ShaderStageFlagBits::eCompute] = "compute.glsl";
-		shaderSettings.printDebugInfo = true;
+		shaderSettings
+			.setDevice(renderer->getVkDevice())
+			.setSource( ::vk::ShaderStageFlagBits::eCompute, "compute.glsl" )
+			.setPrintDebugInfo(true)
+		;
 
 		auto shaderCompute = std::make_shared<of::vk::Shader>( shaderSettings );
 
@@ -78,10 +80,12 @@ void ofApp::setupDrawCommands(){
 
 	{
 		of::vk::Shader::Settings shaderSettings;
-		shaderSettings.device = renderer->getVkDevice();
-		shaderSettings.sources[::vk::ShaderStageFlagBits::eVertex]   = "default.vert";
-		shaderSettings.sources[::vk::ShaderStageFlagBits::eFragment] = "default.frag";
-		shaderSettings.printDebugInfo = true;
+		shaderSettings
+			.setDevice(renderer->getVkDevice())
+			.setSource(::vk::ShaderStageFlagBits::eVertex  , "default.vert")
+			.setSource(::vk::ShaderStageFlagBits::eFragment, "default.frag")
+			.setPrintDebugInfo( true )
+			;
 
 		auto mShaderDefault = std::make_shared<of::vk::Shader>( shaderSettings );
 
@@ -104,10 +108,12 @@ void ofApp::setupDrawCommands(){
 
 	{
 		of::vk::Shader::Settings shaderSettings;
-		shaderSettings.device = renderer->getVkDevice();
-		shaderSettings.sources[::vk::ShaderStageFlagBits::eVertex]   = "fullScreenQuad.vert";
-		shaderSettings.sources[::vk::ShaderStageFlagBits::eFragment] = "fullScreenQuad.frag";
-		shaderSettings.printDebugInfo = true;
+		shaderSettings
+			.setDevice( renderer->getVkDevice() )
+			.setSource( ::vk::ShaderStageFlagBits::eVertex  , "fullScreenQuad.vert" )
+			.setSource( ::vk::ShaderStageFlagBits::eFragment, "fullScreenQuad.frag" )
+			.setPrintDebugInfo( true )
+			;
 
 		auto mShaderFullScreenQuad = std::make_shared<of::vk::Shader>( shaderSettings );
 		
@@ -128,10 +134,12 @@ void ofApp::setupDrawCommands(){
 
 	{
 		of::vk::Shader::Settings shaderSettings;
-		shaderSettings.device = renderer->getVkDevice();
-		shaderSettings.sources[::vk::ShaderStageFlagBits::eVertex]   = "textured.vert";
-		shaderSettings.sources[::vk::ShaderStageFlagBits::eFragment] = "textured.frag";
-		shaderSettings.printDebugInfo = true;
+		shaderSettings
+			.setDevice(renderer->getVkDevice())
+			.setSource( ::vk::ShaderStageFlagBits::eVertex  , "textured.vert" )
+			.setSource( ::vk::ShaderStageFlagBits::eFragment, "textured.frag" )
+			.setPrintDebugInfo( true )
+			;
 
 		auto mShaderTextured = std::make_shared<of::vk::Shader>( shaderSettings );
 
@@ -219,16 +227,14 @@ void ofApp::draw(){
 	clearValues[1].setDepthStencil( { 1.f, 0 } );
 
 	of::vk::RenderBatch::Settings settings;
-	settings.clearValues = clearValues;
-	settings.context = renderer->getDefaultContext().get();
-	settings.framebufferAttachmentHeight = renderer->getSwapchain()->getHeight();
-	settings.framebufferAttachmentWidth = renderer->getSwapchain()->getWidth();
-	settings.renderArea = ::vk::Rect2D( {}, { uint32_t(renderer->getViewportWidth()), uint32_t(renderer->getViewportHeight()) } );
-	settings.renderPass = *renderer->getDefaultRenderpass();
-	settings.framebufferAttachments = { 
-		renderer->getDefaultContext()->getSwapchainImageView(),  
-		renderer->getDepthStencilImageView() 
-	};
+	settings.setClearValues(clearValues)
+		.setContext( renderer->getDefaultContext().get() )
+		.setRenderArea( ::vk::Rect2D( {}, { uint32_t( renderer->getViewportWidth() ), uint32_t( renderer->getViewportHeight() ) } ) )
+		.setRenderPass( *renderer->getDefaultRenderpass() )
+		.setFramebufferAttachmentsExtent( renderer->getSwapchain()->getWidth(), renderer->getSwapchain()->getHeight() )
+		.addFramebufferAttachment( renderer->getDefaultContext()->getSwapchainImageView() )
+		.addFramebufferAttachment( renderer->getDepthStencilImageView() )
+		;
 
 	of::vk::RenderBatch batch{ settings };
 	

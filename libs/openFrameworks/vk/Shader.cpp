@@ -125,6 +125,34 @@ void FileIncluder::ReleaseInclude( shaderc_include_result * include_result ){
 }
 
 // ----------------------------------------------------------------------
+// Helper mapping vk shader stage to shaderc shader kind
+static shaderc_shader_kind getShaderCKind( const vk::ShaderStageFlagBits &shaderStage ){
+	shaderc_shader_kind shaderKind = shaderc_shader_kind::shaderc_glsl_infer_from_source;
+	switch ( shaderStage ){
+	case ::vk::ShaderStageFlagBits::eVertex:
+		shaderKind = shaderc_shader_kind::shaderc_glsl_default_vertex_shader;
+		break;
+	case ::vk::ShaderStageFlagBits::eTessellationControl:
+		shaderKind = shaderc_shader_kind::shaderc_glsl_default_tess_control_shader;
+		break;
+	case ::vk::ShaderStageFlagBits::eTessellationEvaluation:
+		shaderKind = shaderc_shader_kind::shaderc_glsl_default_tess_evaluation_shader;
+		break;
+	case ::vk::ShaderStageFlagBits::eFragment:
+		shaderKind = shaderc_shader_kind::shaderc_glsl_default_fragment_shader;
+		break;
+	case ::vk::ShaderStageFlagBits::eCompute:
+		shaderKind = shaderc_shader_kind::shaderc_glsl_default_compute_shader;
+		break;
+	case ::vk::ShaderStageFlagBits::eGeometry:
+		shaderKind = shaderc_shader_kind::shaderc_glsl_default_geometry_shader;
+		break;
+	default:
+		break;
+	}
+	return shaderKind;
+}
+// ----------------------------------------------------------------------
 
 of::vk::Shader::Shader( const of::vk::Shader::Settings& settings_ )
 	: mSettings( settings_ )
@@ -157,7 +185,7 @@ bool of::vk::Shader::compile(){
 		auto & shaderStage  = source.first;
 		auto & shaderSource = source.second;
 
-		bool success = getSpirV( shaderStage, shaderSource);	/* load or compiles code into spirCode */
+		bool success = getSpirV( shaderStage, shaderSource);	/* load or compiles into spirCode */
 
 		if ( !success){
 			if (!mShaderStages.empty()){
@@ -218,126 +246,111 @@ bool of::vk::Shader::isSpirCodeDirty( const ::vk::ShaderStageFlagBits shaderStag
 }
 
 // ----------------------------------------------------------------------
+inline bool of::vk::Shader::checkForLineNumberModifier( const std::string& line, uint32_t& lineNumber, std::string& currentFilename, std::string& lastFilename ) 
+{
 
-inline bool of::vk::Shader::compileGLSLtoSpirV( const::vk::ShaderStageFlagBits shaderStage, std::string & sourceText, std::string fileName, std::vector<uint32_t>& spirCode, const std::map<std::string, string>& defines_){
+	if ( line.find( "#line", 0 ) != 0 )
+		return false;
 
-	shaderc_shader_kind shaderType = shaderc_shader_kind::shaderc_glsl_infer_from_source;
+	// --------| invariant: current line is a line number marker
 
-	switch ( shaderStage ){
-	case ::vk::ShaderStageFlagBits::eVertex:
-		shaderType = shaderc_shader_kind::shaderc_glsl_default_vertex_shader;
-		break;
-	case ::vk::ShaderStageFlagBits::eTessellationControl:
-		shaderType = shaderc_shader_kind::shaderc_glsl_default_tess_control_shader;
-		break;
-	case ::vk::ShaderStageFlagBits::eTessellationEvaluation:
-		shaderType = shaderc_shader_kind::shaderc_glsl_default_tess_evaluation_shader;
-		break;
-	case ::vk::ShaderStageFlagBits::eFragment:
-		shaderType = shaderc_shader_kind::shaderc_glsl_default_fragment_shader;
-		break;
-	case ::vk::ShaderStageFlagBits::eCompute:
-		shaderType = shaderc_shader_kind::shaderc_glsl_default_compute_shader;
-		break;
-	case ::vk::ShaderStageFlagBits::eGeometry:
-		shaderType = shaderc_shader_kind::shaderc_glsl_geometry_shader;
-		break;
-	default:
-		break;
+	istringstream is( line );
+
+	// ignore until first whitespace, then parse linenumber, then parse filename
+	std::string quotedFileName;
+	is.ignore( numeric_limits<streamsize>::max(), ' ' ) >> lineNumber >> quotedFileName;
+	// decrease line number by one, as marker line is not counted
+	--lineNumber;
+	// store last filename when change occurs
+	std::swap( lastFilename, currentFilename );
+	// remove double quotes around filename, if any
+	currentFilename.assign( quotedFileName.begin() + quotedFileName.find_first_not_of( '"' ), quotedFileName.begin() + quotedFileName.find_last_not_of( '"' ) + 1 );
+	return true;
+}
+
+// ----------------------------------------------------------------------
+
+inline void of::vk::Shader::printError( const std::string& fileName, std::string& errorMessage, std::vector<char>& sourceCode ) {
+
+	ofLogError() << "Shader compile failed for: " << fileName;
+
+	ofLogError() << of::utils::setConsoleColor( of::utils::ConsoleColor::eBrightRed )
+		<< errorMessage
+		<< of::utils::resetConsoleColor();
+
+	std::string errorFileName( 255, '\0' );  // Will contain the name of the file which contains the error
+	uint32_t    lineNumber = 0;              // Will contain error line number after successful parse
+
+	// Error string will has the form:  "triangle.frag:28: error: '' :  syntax error"
+	auto scanResult = sscanf( errorMessage.c_str(), "%[^:]:%d:", errorFileName.data(), &lineNumber );
+	errorFileName.shrink_to_fit();
+
+	ofBuffer::Lines lines( sourceCode.begin(), sourceCode.end() );
+
+	if ( scanResult != std::char_traits<wchar_t>::eof() ){
+		auto lineIt = lines.begin();
+
+		uint32_t    currentLine = 1; /* Line numbers start counting at 1 */
+		std::string currentFilename = fileName;
+		std::string lastFilename = fileName;
+
+		while ( lineIt != lines.end() ){
+
+			// Check for lines inserted by the preprocessor which hold line numbers for included files
+			// Such lines have the pattern: '#line 21 "path/to/include.frag"' (without single quotation marks)
+			auto wasLineMarker = checkForLineNumberModifier( cref( lineIt.asString() ), ref( currentLine ), ref( currentFilename ), ref( lastFilename ) );
+
+			if ( 0 == strcmp( errorFileName.c_str(), currentFilename.c_str() ) ){
+				if ( currentLine >= lineNumber - 3 ){
+					ostringstream sourceContext;
+					const auto shaderSourceCodeLine = wasLineMarker ? "#include \"" + lastFilename + "\"" : lineIt.asString();
+
+					if ( currentLine == lineNumber ){
+						sourceContext << of::utils::setConsoleColor( of::utils::ConsoleColor::eBrightCyan );
+					}
+
+					sourceContext << std::right << std::setw( 4 ) << currentLine << " | " << shaderSourceCodeLine;
+
+					if ( currentLine == lineNumber ){
+						sourceContext << of::utils::resetConsoleColor();
+					}
+
+					ofLogError() << sourceContext.str();
+				}
+
+				if ( currentLine >= lineNumber + 2 ){
+					ofLogError(); // add empty for better readability
+					break;
+				}
+			}
+			++lineIt;
+			++currentLine;
+		}
 	}
+};
 
-	bool success = true;
+// ----------------------------------------------------------------------
+
+inline bool of::vk::Shader::compileGLSLtoSpirV( 
+	const::vk::ShaderStageFlagBits shaderStage, 
+	std::string & sourceText, 
+	std::string fileName, 
+	std::vector<uint32_t>& spirCode, 
+	const std::map<std::string, string>& defines_
+){
+
+	shaderc_shader_kind shaderType = getShaderCKind( shaderStage );
 
 	shaderc::Compiler compiler;
 	shaderc::CompileOptions options;
 
 	// Set any #defines requested 
 	for ( auto& d : defines_ ){
-		options.AddMacroDefinition( d.first, d.second ); 		// Like -DMY_DEFINE=1
+		options.AddMacroDefinition( d.first, d.second ); // Like -DMY_DEFINE=1
 	}
 
 	// Create a temporary callback object which deals with include preprocessor directives
-	std::unique_ptr<FileIncluder> includer( new FileIncluder );
-	options.SetIncluder( std::move( includer ) );
-
-	auto checkForLineNumberModifier = []( const std::string& line, uint32_t& lineNumber, std::string& currentFilename, std::string& lastFilename ) -> bool {
-		if ( line.find( "#line", 0 ) != 0 )
-			return false;
-
-		// --------| invariant: current line is a line number marker
-
-		istringstream is( line );
-
-		// ignore until first whitespace, then parse linenumber, then parse filename
-		std::string quotedFileName;
-		is.ignore( numeric_limits<streamsize>::max(), ' ' ) >> lineNumber >> quotedFileName;
-		// decrease line number by one, as marker line is not counted
-		--lineNumber;
-		// store last filename when change occurs
-		std::swap( lastFilename, currentFilename );
-		// remove double quotes around filename, if any
-		currentFilename.assign( quotedFileName.begin() + quotedFileName.find_first_not_of( '"' ), quotedFileName.begin() + quotedFileName.find_last_not_of( '"' ) + 1 );
-		return true;
-	};
-
-	auto printError = [&]( const std::string& errorMessage, std::vector<char>& sourceCode ){
-
-		ofLogError() << "Shader compile failed for: " << fileName;
-
-		ofLogError() << of::utils::setConsoleColor( of::utils::ConsoleColor::eBrightRed )
-			<< errorMessage
-			<< of::utils::resetConsoleColor();
-
-		std::string errorFileName( 255, '\0' );  // Will contain the name of the file which contains the error
-		uint32_t    lineNumber = 0;           // Will contain error line number after successful parse
-
-											  // Error string will has the form:  "triangle.frag:28: error: '' :  syntax error"
-		auto scanResult = sscanf( errorMessage.c_str(), "%[^:]:%d:", errorFileName.data(), &lineNumber );
-		errorFileName.shrink_to_fit();
-
-		ofBuffer::Lines lines( sourceCode.begin(), sourceCode.end() );
-
-		if ( scanResult != std::char_traits<wchar_t>::eof() ){
-			auto lineIt = lines.begin();
-
-			uint32_t    currentLine = 1; /* Line numbers start counting at 1 */
-			std::string currentFilename = fileName;
-			std::string lastFilename = fileName;
-
-			while ( lineIt != lines.end() ){
-
-				// Check for lines inserted by the preprocessor which hold line numbers for included files
-				// Such lines have the pattern: '#line 21 "path/to/include.frag"' (without single quotation marks)
-				auto wasLineMarker = checkForLineNumberModifier( cref( lineIt.asString() ), ref( currentLine ), ref( currentFilename ), ref( lastFilename ) );
-
-				if ( 0 == strcmp( errorFileName.c_str(), currentFilename.c_str() ) ){
-					if ( currentLine >= lineNumber - 3 ){
-						ostringstream sourceContext;
-						const auto shaderSourceCodeLine = wasLineMarker ? "#include \"" + lastFilename + "\"" : lineIt.asString();
-
-						if ( currentLine == lineNumber ){
-							sourceContext << of::utils::setConsoleColor( of::utils::ConsoleColor::eBrightCyan );
-						}
-
-						sourceContext << std::right << std::setw( 4 ) << currentLine << " | " << shaderSourceCodeLine;
-
-						if ( currentLine == lineNumber ){
-							sourceContext << of::utils::resetConsoleColor();
-						}
-
-						ofLogError() << sourceContext.str();
-					}
-
-					if ( currentLine >= lineNumber + 2 ){
-						ofLogError(); // add empty for better readability
-						break;
-					}
-				}
-				++lineIt;
-				++currentLine;
-			}
-		}
-	};
+	options.SetIncluder( std::make_unique<FileIncluder>() );
 
 	auto preprocessorResult = compiler.PreprocessGlsl( sourceText, shaderType, fileName.c_str(), options );
 
@@ -345,7 +358,7 @@ inline bool of::vk::Shader::compileGLSLtoSpirV( const::vk::ShaderStageFlagBits s
 
 	if ( preprocessorResult.GetCompilationStatus() != shaderc_compilation_status_success ){
 		auto msg = preprocessorResult.GetErrorMessage();
-		printError( cref( msg ), sourceCode );
+		printError( fileName, msg , sourceCode );
 		return  false;
 	}
 
@@ -353,7 +366,7 @@ inline bool of::vk::Shader::compileGLSLtoSpirV( const::vk::ShaderStageFlagBits s
 
 	if ( module.GetCompilationStatus() != shaderc_compilation_status_success ){
 		auto msg = module.GetErrorMessage();
-		printError( cref( msg ), sourceCode );
+		printError( fileName, msg, sourceCode );
 		return false;
 	} else{
 		spirCode.clear();
@@ -361,10 +374,14 @@ inline bool of::vk::Shader::compileGLSLtoSpirV( const::vk::ShaderStageFlagBits s
 		ofLogNotice() << "OK \tShader compile: " << fileName;
 		return true;
 	}
-
-	assert( success );
-
 }
+
+// ----------------------------------------------------------------------
+
+std::string of::vk::Shader::getName(){
+	return mName;
+}
+
 // ----------------------------------------------------------------------
 
 bool of::vk::Shader::getSpirV( const ::vk::ShaderStageFlagBits shaderStage, Source& shaderSource ){
@@ -417,8 +434,7 @@ bool of::vk::Shader::getSpirV( const ::vk::ShaderStageFlagBits shaderStage, Sour
 		break;
 	}
 
-	return success;
-	 
+	return success; 
 }
 
 // ----------------------------------------------------------------------

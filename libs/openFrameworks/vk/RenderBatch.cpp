@@ -100,8 +100,8 @@ void RenderBatch::begin(){
 		.setRenderPass( mSettings.renderPass)
 		.setAttachmentCount( mSettings.framebufferAttachments.size() )
 		.setPAttachments( mSettings.framebufferAttachments.data() )
-		.setWidth( mSettings.framebufferAttachmentWidth)
-		.setHeight( mSettings.framebufferAttachmentHeight )
+		.setWidth( mSettings.framebufferAttachmentsWidth )
+		.setHeight( mSettings.framebufferAttachmentsHeight )
 		.setLayers( 1 )
 		;
 
