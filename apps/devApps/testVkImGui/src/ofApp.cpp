@@ -160,8 +160,6 @@ void ofApp::draw(){
 		appLog.Draw("log", &appLogOpen);
 	}
 
-
-
 	// Fetch the default context. This context is automatically
 	// set up upon app initialisation to draw to the swapchain.
 	auto & context = renderer->getDefaultContext();
@@ -184,8 +182,8 @@ void ofApp::draw(){
 	of::vk::RenderBatch::Settings settings;
 	settings.clearValues = clearValues;
 	settings.context = context.get();
-	settings.framebufferAttachmentHeight = renderer->getSwapchain()->getHeight();
-	settings.framebufferAttachmentWidth  = renderer->getSwapchain()->getWidth();
+	settings.framebufferAttachmentsHeight = renderer->getSwapchain()->getHeight();
+	settings.framebufferAttachmentsWidth  = renderer->getSwapchain()->getWidth();
 	settings.renderArea = ::vk::Rect2D( {}, { uint32_t( renderer->getViewportWidth() ), uint32_t( renderer->getViewportHeight() ) } );
 	settings.renderPass = *renderer->getDefaultRenderpass();
 	settings.framebufferAttachments = {
