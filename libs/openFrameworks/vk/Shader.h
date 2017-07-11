@@ -103,14 +103,6 @@ public:
 		::vk::PipelineVertexInputStateCreateInfo vi;
 	};
 
-	const struct Settings
-	{
-		::vk::Device device;
-		std::map<::vk::ShaderStageFlagBits, std::string> sources;
-		std::shared_ptr<VertexInfo> vertexInfo; // set this if you want to override vertex info - and don't want to reflect it.
-		bool printDebugInfo = false;
-	} mSettings;
-
 	struct UboMemberSubrange
 	{
 		uint32_t setNumber;
@@ -123,8 +115,6 @@ public:
 			return lhs.offset < rhs.offset;
 		}
 	};
-
-	
 
 	struct UboRange
 	{
@@ -141,6 +131,72 @@ public:
 		UboRange                         uboRange;
 	};
 
+	class Source
+	{
+		// Shader source may be one of:
+		// + Vector of uint32_t binary spir-v code
+		// + A filesystem path from where to load glsl/spv source
+		// + A string of glsl code
+
+		std::vector<uint32_t>         spirvCode;
+		std::filesystem::path         filePath;
+		std::string                   glslSourceInline;
+
+		std::map<std::string, string> defines; // passed to GLSL compiler like: "-DNAME=VALUE"
+
+		enum class Type : uint8_t
+		{
+			eUndefined        = 0,
+			eCode             = 1,
+			eFilePath         = 2,
+			eGLSLSourceInline = 3,  // inline GLSL
+		} mType = Type::eUndefined;
+
+	public:
+
+		Source( std::vector<uint32_t> code_ )
+			: spirvCode( code_ )
+			, mType( Type::eCode ){};
+
+		Source( std::filesystem::path path_ )
+			: filePath( path_ )
+			, mType( Type::eFilePath ){};
+
+		Source( const char* filePath )
+			: filePath( filePath )
+			, mType( Type::eFilePath ){};
+
+		Source( const std::string& glslSourceInline )
+			: glslSourceInline( glslSourceInline )
+			, mType( Type::eGLSLSourceInline ){};
+
+		const std::string getName() const{
+			switch ( mType ){
+			case Source::Type::eCode:
+				return "Inline SPIRV";
+			case Source::Type::eFilePath:
+				return filePath.string();
+			case Source::Type::eGLSLSourceInline:
+				return "Inline GLSL";
+			default:
+				return "";
+			}
+		};
+
+		friend class Shader;
+	};
+
+	const struct Settings
+	{
+		bool                                        printDebugInfo = false;
+		::vk::Device                                device;
+		std::shared_ptr<VertexInfo>                 vertexInfo;              // Set this if you want to override vertex info generated through shader reflection
+		mutable std::map<::vk::ShaderStageFlagBits, Source> sources;         // specify source file for each shader stage - if file extension is '.spv' no compilation occurs, otherwise file is loaded and compiled using shaderc
+		
+		void setSource( ::vk::ShaderStageFlagBits shaderType_, Source&& src_ ){
+			sources.emplace( shaderType_, src_ );
+		};
+	} mSettings;
 
 private:
 
@@ -161,7 +217,7 @@ private:
 	std::vector<DescriptorSetLayoutInfo> mDescriptorSetsInfo;
 	
 	// attribute binding numbers, indexed by attribute name
-	std::unordered_map<std::string, size_t> mAttributeBindingNumbers;
+	std::map<std::string, size_t> mAttributeBindingNumbers;
 
 	// vector of just the descriptor set layout keys - this needs to be kept in sync 
 	// with mDescriptorSetsInfo
@@ -203,7 +259,7 @@ private:
 	void createVkPipelineLayout();
 
 	// based on file name ending, read either spirv or glsl file and fill vector of spirV words
-	bool getSpirV( const ::vk::ShaderStageFlagBits shaderType, const std::string & fileName, std::vector<uint32_t> &spirCode );
+	bool getSpirV( const ::vk::ShaderStageFlagBits shaderType, of::vk::Shader::Source& shaderSource );
 	
 	// find out if module is dirty
 	bool isSpirCodeDirty( const ::vk::ShaderStageFlagBits shaderStage, uint64_t spirvHash );
@@ -276,6 +332,8 @@ public:
 	const std::map<std::string, UniformId_t>& getUniformDictionary() const{
 		return mUniformDictionary;
 	}
+
+	static bool compileGLSLtoSpirV( const ::vk::ShaderStageFlagBits shaderStage, std::string & sourceText, std::string fileName, std::vector<uint32_t>& spirCode, const std::map<std::string, std::string>& defines_ = {});
 
 };
 

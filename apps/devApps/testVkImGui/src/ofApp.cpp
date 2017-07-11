@@ -84,8 +84,8 @@ void ofApp::setup(){
 
 		shaderSettings.device = renderer->getVkDevice();
 		shaderSettings.printDebugInfo = true;
-		shaderSettings.sources[::vk::ShaderStageFlagBits::eVertex  ] = "fullScreenQuad.vert";
-		shaderSettings.sources[::vk::ShaderStageFlagBits::eFragment] = "fullScreenQuad.frag";
+		shaderSettings.setSource(::vk::ShaderStageFlagBits::eVertex  ,std::filesystem::path("fullScreenQuad.vert"));
+		shaderSettings.setSource(::vk::ShaderStageFlagBits::eFragment,std::filesystem::path("fullScreenQuad.frag"));
 
 		mShaderFullscreen = std::make_shared<of::vk::Shader>( shaderSettings );
 

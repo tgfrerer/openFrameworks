@@ -12,7 +12,6 @@ namespace of{
 namespace utils{
 
 enum class ConsoleColor : uint32_t {
-#if defined( TARGET_WIN32 ) || defined ( TARGET_LINUX )
 	eDefault       = 39,
 	eBrightRed     = 91,
 	eBrightYellow  = 93,
@@ -20,12 +19,6 @@ enum class ConsoleColor : uint32_t {
 	eRed    = 31,
 	eYellow = 33,
 	eCyan   = 36,
-#else
-	eDefault,
-	eRed,
-	eYellow,
-	eTeal,
-#endif
 };
 
 // set console colour
@@ -67,6 +60,72 @@ std::string resetConsoleColor(){
 
 // ----------------------------------------------------------------------
 
+// Responder for file includes through shaderc
+class FileIncluder : public shaderc::CompileOptions::IncluderInterface
+{
+	std::unordered_set<std::string> mIncludedFiles; /// full set of included files
+
+	struct FileInfo
+	{
+		const std::string      pathAsString;
+		std::filesystem::path  path; /// path to file
+		std::vector<char>  contents; /// contents of file
+	};
+public:
+	// constructor
+	explicit FileIncluder(){};
+
+	// Handles shaderc_include_resolver_fn callbacks.
+	shaderc_include_result* GetInclude( const char* requested_source, shaderc_include_type type, const char* requesting_source, size_t include_depth ) override;
+
+	// Handles shaderc_include_result_release_fn callbacks.
+	void ReleaseInclude( shaderc_include_result* data ) override;
+
+};
+
+// ----------------------------------------------------------------------
+
+// helper method to return error via shaderc
+shaderc_include_result* shadercMakeErrorIncludeResult( const char* message ){
+	return new shaderc_include_result{ "", 0, message, strlen( message ) };
+}
+
+// ----------------------------------------------------------------------
+
+shaderc_include_result * FileIncluder::GetInclude( const char * requested_source, shaderc_include_type type, const char * requesting_source, size_t include_depth ){
+
+	std::filesystem::path path = ofToDataPath( requested_source, type == shaderc_include_type::shaderc_include_type_standard ? true : false );
+
+	FileInfo * newFileInfo = new FileInfo{ path.string(), std::move( path ), std::vector<char>() };
+
+	if ( false == std::filesystem::exists( newFileInfo->path ) ){
+		return shadercMakeErrorIncludeResult( "<include file not found>" );
+	}
+
+	auto includeFileBuf = ofBufferFromFile( newFileInfo->path, true );
+
+	std::vector<char> data;
+	data.resize( includeFileBuf.size() );
+	data.assign( includeFileBuf.begin(), includeFileBuf.end() );
+
+	newFileInfo->contents = std::move( data );
+
+	return new shaderc_include_result{
+		newFileInfo->pathAsString.data(), newFileInfo->pathAsString.length(),
+		newFileInfo->contents.data(), newFileInfo->contents.size(),
+		newFileInfo };
+}
+
+// ----------------------------------------------------------------------
+
+void FileIncluder::ReleaseInclude( shaderc_include_result * include_result ){
+	auto fileInfo = reinterpret_cast<FileInfo*>( include_result->user_data );
+	delete fileInfo;
+	delete include_result;
+}
+
+// ----------------------------------------------------------------------
+
 of::vk::Shader::Shader( const of::vk::Shader::Settings& settings_ )
 	: mSettings( settings_ )
 {
@@ -95,41 +154,38 @@ bool of::vk::Shader::compile(){
 	
 	for ( auto & source : mSettings.sources ){
 
-		const auto & shaderStage = source.first;
-		const auto & filename = source.second;
+		auto & shaderStage  = source.first;
+		auto & shaderSource = source.second;
 
-		if ( !ofFile( filename ).exists() ){
-			ofLogFatalError() << "Shader file not found: " << source.second;
-			ofExit(1);
-			return false;
-		}
-
-		std::vector<uint32_t> spirCode;
-		bool success = getSpirV( shaderStage, filename, spirCode );	/* load or compiles code into spirCode */
+		bool success = getSpirV( shaderStage, shaderSource);	/* load or compiles code into spirCode */
 
 		if ( !success){
 			if (!mShaderStages.empty()){
 				ofLogError() << "Aborting shader compile. Using previous version of shader instead";
 				return false;
 			} else{
-				// !TODO: should we use a default shader, then?
-				ofLogFatalError() << "Shader did not compile: " << filename;
+				// We must exit - there is no predictable way to recover from this.
+				//
+				// Using a default fail shader would be not without peril: 
+				// Inputs and outputs will most certainly not match whatever 
+				// the user specified for their original shader.
+				ofLogFatalError() << "Shader did not compile: " << shaderSource.getName();
 				ofExit( 1 );
 				return false;
 			}
 		} 
 
-		uint64_t spirvHash = SpookyHash::Hash64( reinterpret_cast<char*>( spirCode.data() ), spirCode.size() * sizeof( uint32_t ), 0 );
+		uint64_t spirvHash = SpookyHash::Hash64( reinterpret_cast<char*>( shaderSource.spirvCode.data() ), shaderSource.spirvCode.size() * sizeof( uint32_t ), 0 );
 
 		bool spirCodeDirty = isSpirCodeDirty( shaderStage, spirvHash );
 
 		if ( spirCodeDirty ){
-			ofLog() << "Building shader module: " << filename;
-			createVkShaderModule( shaderStage, spirCode );
+			ofLog() << "Building shader module: " << shaderSource.getName();
+			createVkShaderModule( shaderStage, shaderSource.spirvCode);
 			// store hash in map so it does not appear dirty
 			mSpvHash[shaderStage] = spirvHash;
-			// move the ir code buffer into the shader compiler
-			mSpvCrossCompilers[shaderStage] = make_shared<spirv_cross::Compiler>( std::move( spirCode ) );
+			// copy the ir code buffer into the shader compiler
+			mSpvCrossCompilers[shaderStage] = make_shared<spirv_cross::Compiler>( shaderSource.spirvCode );
 		}
 
 		shaderDirty |= spirCodeDirty;
@@ -163,222 +219,206 @@ bool of::vk::Shader::isSpirCodeDirty( const ::vk::ShaderStageFlagBits shaderStag
 
 // ----------------------------------------------------------------------
 
+inline bool of::vk::Shader::compileGLSLtoSpirV( const::vk::ShaderStageFlagBits shaderStage, std::string & sourceText, std::string fileName, std::vector<uint32_t>& spirCode, const std::map<std::string, string>& defines_){
 
-// Responder for file includes through shaderc
-class FileIncluder : public shaderc::CompileOptions::IncluderInterface
-{
-	std::unordered_set<std::string> mIncludedFiles; /// full set of included files
-	
-	struct FileInfo
-	{
-		const std::string      pathAsString;
-		std::filesystem::path  path; /// path to file
-		std::vector<char>  contents; /// contents of file
-	};
-public:
-	// constructor
-	explicit FileIncluder(){};
+	shaderc_shader_kind shaderType = shaderc_shader_kind::shaderc_glsl_infer_from_source;
 
-	// Handles shaderc_include_resolver_fn callbacks.
-	shaderc_include_result* GetInclude( const char* requested_source, shaderc_include_type type, const char* requesting_source, size_t include_depth ) override;
-
-	// Handles shaderc_include_result_release_fn callbacks.
-	void ReleaseInclude( shaderc_include_result* data ) override;
-
-};
-
-// ----------------------------------------------------------------------
-
-// helper method to return error via shaderc
-shaderc_include_result* shadercMakeErrorIncludeResult( const char* message ){
-	return new shaderc_include_result{ "", 0, message, strlen(message) };
-}
-
-// ----------------------------------------------------------------------
-
-shaderc_include_result * FileIncluder::GetInclude( const char * requested_source, shaderc_include_type type, const char * requesting_source, size_t include_depth ){
-	
-	std::filesystem::path path = ofToDataPath( requested_source, type == shaderc_include_type::shaderc_include_type_standard ? true : false );
-	
-	FileInfo * newFileInfo = new FileInfo{path.string(), std::move(path), std::vector<char>()};
-	
-	if ( false == std::filesystem::exists( newFileInfo->path) ){
-		return shadercMakeErrorIncludeResult( "<include file not found>" );
+	switch ( shaderStage ){
+	case ::vk::ShaderStageFlagBits::eVertex:
+		shaderType = shaderc_shader_kind::shaderc_glsl_default_vertex_shader;
+		break;
+	case ::vk::ShaderStageFlagBits::eTessellationControl:
+		shaderType = shaderc_shader_kind::shaderc_glsl_default_tess_control_shader;
+		break;
+	case ::vk::ShaderStageFlagBits::eTessellationEvaluation:
+		shaderType = shaderc_shader_kind::shaderc_glsl_default_tess_evaluation_shader;
+		break;
+	case ::vk::ShaderStageFlagBits::eFragment:
+		shaderType = shaderc_shader_kind::shaderc_glsl_default_fragment_shader;
+		break;
+	case ::vk::ShaderStageFlagBits::eCompute:
+		shaderType = shaderc_shader_kind::shaderc_glsl_default_compute_shader;
+		break;
+	case ::vk::ShaderStageFlagBits::eGeometry:
+		shaderType = shaderc_shader_kind::shaderc_glsl_geometry_shader;
+		break;
+	default:
+		break;
 	}
-	
-	auto includeFileBuf = ofBufferFromFile( newFileInfo->path, true );
-	
-	std::vector<char> data;
-	data.resize( includeFileBuf.size() );
-	data.assign( includeFileBuf.begin(), includeFileBuf.end() );
 
-	newFileInfo->contents = std::move(data);
+	bool success = true;
 
-	return new shaderc_include_result{
-		newFileInfo->pathAsString.data(), newFileInfo->pathAsString.length(),
-		newFileInfo->contents.data(), newFileInfo->contents.size(),
-		newFileInfo };
-}
+	shaderc::Compiler compiler;
+	shaderc::CompileOptions options;
 
-// ----------------------------------------------------------------------
+	// Set any #defines requested 
+	for ( auto& d : defines_ ){
+		options.AddMacroDefinition( d.first, d.second ); 		// Like -DMY_DEFINE=1
+	}
 
-void FileIncluder::ReleaseInclude( shaderc_include_result * include_result ){
-	auto fileInfo = reinterpret_cast<FileInfo*>( include_result->user_data );
-	delete fileInfo;
-	delete include_result;
-}
+	// Create a temporary callback object which deals with include preprocessor directives
+	std::unique_ptr<FileIncluder> includer( new FileIncluder );
+	options.SetIncluder( std::move( includer ) );
 
-// ----------------------------------------------------------------------
-
-bool of::vk::Shader::getSpirV( const ::vk::ShaderStageFlagBits shaderStage, const std::string & fileName, std::vector<uint32_t> &spirCode ){
-	
-	auto f = ofFile( fileName );
-	auto fExt = f.getExtension();
-
-	if ( fExt == "spv" ){
-		ofBuffer fileBuf = ofBufferFromFile( fileName, true );
-		ofLogNotice() << "Loading SPIR-V shader module: " << fileName;
-		auto a = fileBuf.getData();
-		spirCode.assign(
-			reinterpret_cast<uint32_t*>( fileBuf.getData() ),
-			reinterpret_cast<uint32_t*>( fileBuf.getData() ) + fileBuf.size() / sizeof( uint32_t )
-		);
-		return true;
-	} else {
-		shaderc_shader_kind shaderType = shaderc_shader_kind::shaderc_glsl_infer_from_source;
-
-		switch ( shaderStage ){
-		case ::vk::ShaderStageFlagBits::eVertex :
-			shaderType = shaderc_shader_kind::shaderc_glsl_default_vertex_shader;
-			break;
-		case ::vk::ShaderStageFlagBits::eFragment : 
-			shaderType = shaderc_shader_kind::shaderc_glsl_default_fragment_shader;
-			break;
-		case ::vk::ShaderStageFlagBits::eCompute:
-			shaderType = shaderc_shader_kind::shaderc_glsl_default_compute_shader;
-			break;
-		default:
-			break;
-		}
-
-		bool success = true;
-
-		ofBuffer fileBuf = ofBufferFromFile( fileName, true );
-		shaderc::Compiler compiler;
-		shaderc::CompileOptions options;
-
-		// options.AddMacroDefinition( "MY_DEFINE", "1" ); 		// Like -DMY_DEFINE=1
-
-		// Create a temporary callback object which deals with include preprocessor directives
-		std::unique_ptr<FileIncluder> includer(new FileIncluder);
-		options.SetIncluder( std::move(includer ));
-		
-		auto checkForLineNumberModifier = []( const std::string& line, uint32_t& lineNumber, std::string& currentFilename, std::string& lastFilename ) -> bool {
-			if ( line.find( "#line", 0 ) != 0 )
-				return false;
-			
-			// --------| invariant: current line is a line number marker
-			
-			istringstream is( line );
-			
-			// ignore until first whitespace, then parse linenumber, then parse filename
-			std::string quotedFileName;
-			is.ignore( numeric_limits<streamsize>::max(), ' ' ) >> lineNumber >> quotedFileName;
-			// decrease line number by one, as marker line is not counted
-			--lineNumber;
-			// store last filename when change occurs
-			std::swap( lastFilename, currentFilename );
-			// remove double quotes around filename, if any
-			currentFilename.assign( quotedFileName.begin() + quotedFileName.find_first_not_of('"'), quotedFileName.begin() + quotedFileName.find_last_not_of('"') + 1);
-			return true;
-		};
-
-		auto printError = [&](const std::string& errorMessage, std::vector<char>& sourceCode){
-
-			ofLogError() << "Shader compile failed for: " << fileName;
-
-			ofLogError() << of::utils::setConsoleColor(  of::utils::ConsoleColor::eBrightRed )
-			             << errorMessage
-			             << of::utils::resetConsoleColor();
-
-			std::string errorFileName(255,'\0');  // Will contain the name of the file which contains the error
-			uint32_t    lineNumber = 0;           // Will contain error line number after successful parse
-
-			// Error string will has the form:  "triangle.frag:28: error: '' :  syntax error"
-			auto scanResult = sscanf( errorMessage.c_str(), "%[^:]:%d:", errorFileName.data(), &lineNumber );
-			errorFileName.shrink_to_fit();
-			
-			ofBuffer::Lines lines(sourceCode.begin(), sourceCode.end());
-
-			if ( scanResult != std::char_traits<wchar_t>::eof() ){
-				auto lineIt = lines.begin();
-				
-				uint32_t    currentLine = 1; /* Line numbers start counting at 1 */
-				std::string currentFilename = fileName;
-				std::string lastFilename    = fileName;
-
-				while ( lineIt != lines.end() ){
-
-					// Check for lines inserted by the preprocessor which hold line numbers for included files
-					// Such lines have the pattern: '#line 21 "path/to/include.frag"' (without single quotation marks)
-					auto wasLineMarker = checkForLineNumberModifier( cref(lineIt.asString()), ref(currentLine), ref(currentFilename), ref(lastFilename) );
-
-					if ( 0 == strcmp(errorFileName.c_str(), currentFilename.c_str()) ){
-						if ( currentLine >= lineNumber - 3 ){
-							ostringstream sourceContext;
-							const auto shaderSourceCodeLine = wasLineMarker ? "#include \"" + lastFilename + "\"" : lineIt.asString();
-
-							if ( currentLine == lineNumber ) {
-								sourceContext << of::utils::setConsoleColor( of::utils::ConsoleColor::eBrightCyan );
-							}
-
-							sourceContext << std::right << std::setw( 4 ) << currentLine << " | " << shaderSourceCodeLine;
-
-							if ( currentLine == lineNumber ) {
-								sourceContext << of::utils::resetConsoleColor();
-							}
-
-							ofLogError() << sourceContext.str();
-						}
-
-						if ( currentLine >= lineNumber + 2 ){
-							ofLogError(); // add empty for better readability
-							break;
-						}
-					}
-					++lineIt;
-					++currentLine;
-				}
-			}
-		};
-
-
-		auto preprocessorResult = compiler.PreprocessGlsl( fileBuf.getText(), shaderType, fileName.c_str(), options );
-
-		std::vector<char> sourceCode( preprocessorResult.cbegin(), preprocessorResult.cend() );
-
-		if ( preprocessorResult.GetCompilationStatus() != shaderc_compilation_status_success ){
-			auto msg = preprocessorResult.GetErrorMessage();
-			printError( cref( msg ), sourceCode );
-			return  false;
-		}
-		
-		auto module = compiler.CompileGlslToSpv(sourceCode.data(),sourceCode.size(), shaderType,fileName.c_str(),"main", options);
-
-		if ( module.GetCompilationStatus() != shaderc_compilation_status_success ){
-			auto msg = module.GetErrorMessage();
-			printError( cref( msg ), sourceCode );
+	auto checkForLineNumberModifier = []( const std::string& line, uint32_t& lineNumber, std::string& currentFilename, std::string& lastFilename ) -> bool {
+		if ( line.find( "#line", 0 ) != 0 )
 			return false;
-		} else{
-			spirCode.clear();
-			spirCode.assign( module.cbegin(), module.cend() );
-			ofLogNotice() << "OK \tShader compile: " << fileName;
-			return true;
+
+		// --------| invariant: current line is a line number marker
+
+		istringstream is( line );
+
+		// ignore until first whitespace, then parse linenumber, then parse filename
+		std::string quotedFileName;
+		is.ignore( numeric_limits<streamsize>::max(), ' ' ) >> lineNumber >> quotedFileName;
+		// decrease line number by one, as marker line is not counted
+		--lineNumber;
+		// store last filename when change occurs
+		std::swap( lastFilename, currentFilename );
+		// remove double quotes around filename, if any
+		currentFilename.assign( quotedFileName.begin() + quotedFileName.find_first_not_of( '"' ), quotedFileName.begin() + quotedFileName.find_last_not_of( '"' ) + 1 );
+		return true;
+	};
+
+	auto printError = [&]( const std::string& errorMessage, std::vector<char>& sourceCode ){
+
+		ofLogError() << "Shader compile failed for: " << fileName;
+
+		ofLogError() << of::utils::setConsoleColor( of::utils::ConsoleColor::eBrightRed )
+			<< errorMessage
+			<< of::utils::resetConsoleColor();
+
+		std::string errorFileName( 255, '\0' );  // Will contain the name of the file which contains the error
+		uint32_t    lineNumber = 0;           // Will contain error line number after successful parse
+
+											  // Error string will has the form:  "triangle.frag:28: error: '' :  syntax error"
+		auto scanResult = sscanf( errorMessage.c_str(), "%[^:]:%d:", errorFileName.data(), &lineNumber );
+		errorFileName.shrink_to_fit();
+
+		ofBuffer::Lines lines( sourceCode.begin(), sourceCode.end() );
+
+		if ( scanResult != std::char_traits<wchar_t>::eof() ){
+			auto lineIt = lines.begin();
+
+			uint32_t    currentLine = 1; /* Line numbers start counting at 1 */
+			std::string currentFilename = fileName;
+			std::string lastFilename = fileName;
+
+			while ( lineIt != lines.end() ){
+
+				// Check for lines inserted by the preprocessor which hold line numbers for included files
+				// Such lines have the pattern: '#line 21 "path/to/include.frag"' (without single quotation marks)
+				auto wasLineMarker = checkForLineNumberModifier( cref( lineIt.asString() ), ref( currentLine ), ref( currentFilename ), ref( lastFilename ) );
+
+				if ( 0 == strcmp( errorFileName.c_str(), currentFilename.c_str() ) ){
+					if ( currentLine >= lineNumber - 3 ){
+						ostringstream sourceContext;
+						const auto shaderSourceCodeLine = wasLineMarker ? "#include \"" + lastFilename + "\"" : lineIt.asString();
+
+						if ( currentLine == lineNumber ){
+							sourceContext << of::utils::setConsoleColor( of::utils::ConsoleColor::eBrightCyan );
+						}
+
+						sourceContext << std::right << std::setw( 4 ) << currentLine << " | " << shaderSourceCodeLine;
+
+						if ( currentLine == lineNumber ){
+							sourceContext << of::utils::resetConsoleColor();
+						}
+
+						ofLogError() << sourceContext.str();
+					}
+
+					if ( currentLine >= lineNumber + 2 ){
+						ofLogError(); // add empty for better readability
+						break;
+					}
+				}
+				++lineIt;
+				++currentLine;
+			}
 		}
-		
-		assert( success );
+	};
+
+	auto preprocessorResult = compiler.PreprocessGlsl( sourceText, shaderType, fileName.c_str(), options );
+
+	std::vector<char> sourceCode( preprocessorResult.cbegin(), preprocessorResult.cend() );
+
+	if ( preprocessorResult.GetCompilationStatus() != shaderc_compilation_status_success ){
+		auto msg = preprocessorResult.GetErrorMessage();
+		printError( cref( msg ), sourceCode );
+		return  false;
 	}
-	return true;
+
+	auto module = compiler.CompileGlslToSpv( sourceCode.data(), sourceCode.size(), shaderType, fileName.c_str(), "main", options );
+
+	if ( module.GetCompilationStatus() != shaderc_compilation_status_success ){
+		auto msg = module.GetErrorMessage();
+		printError( cref( msg ), sourceCode );
+		return false;
+	} else{
+		spirCode.clear();
+		spirCode.assign( module.cbegin(), module.cend() );
+		ofLogNotice() << "OK \tShader compile: " << fileName;
+		return true;
+	}
+
+	assert( success );
+
+}
+// ----------------------------------------------------------------------
+
+bool of::vk::Shader::getSpirV( const ::vk::ShaderStageFlagBits shaderStage, Source& shaderSource ){
+	
+	bool success = true;
+
+	switch ( shaderSource.mType ){
+	case Source::Type::eCode:
+		// nothing to do 
+		break;
+	case Source::Type::eFilePath:
+	{
+		auto f = ofFile( shaderSource.filePath );
+
+		if ( !f.exists() ){
+			ofLogFatalError() << "Shader file not found: " << shaderSource.filePath;
+			success = false;
+			break;
+		} 
+
+		// ---------| invariant: File exists.
+
+		auto fExt = f.getExtension();
+		ofBuffer fileBuf = ofBufferFromFile( shaderSource.filePath, true );
+		
+		if ( fExt == "spv" ){
+			// File is precompiled SPIR-V file
+			ofLogNotice() << "Loading SPIR-V shader code: " << shaderSource.filePath;
+			auto a = fileBuf.getData();
+			shaderSource.spirvCode.assign(
+				reinterpret_cast<uint32_t*>( fileBuf.getData() ),
+				reinterpret_cast<uint32_t*>( fileBuf.getData() ) + fileBuf.size() / sizeof( uint32_t )
+			);
+			success = true;
+			break;
+		}
+
+		// ----------| invariant: File does not have ".spv" extension
+
+		success = compileGLSLtoSpirV( shaderStage, fileBuf.getText(), shaderSource.filePath.string(), shaderSource.spirvCode, shaderSource.defines);
+		break;
+	}
+	case Source::Type::eGLSLSourceInline:
+	{
+		std::string sourceText = shaderSource.glslSourceInline;
+		success = compileGLSLtoSpirV( shaderStage, sourceText, "<<Inline GLSL>>", shaderSource.spirvCode, shaderSource.defines);
+		break;
+	}
+	default:
+		break;
+	}
+
+	return success;
+	 
 }
 
 // ----------------------------------------------------------------------
@@ -490,7 +530,6 @@ void of::vk::Shader::reflect(
 			mUboMembers.insert( { uniformMemberPair.first ,uniformMemberPair.second } );
 		}
 	}
-
 
 }
 
@@ -607,7 +646,6 @@ bool of::vk::Shader::reflectStorageBuffers( const spirv_cross::Compiler & compil
 		Uniform_t tmpUniform;
 
 		tmpUniform.name = buffer.name;
-
 		tmpUniform.uboRange.storageSize = compiler.get_declared_struct_size( compiler.get_type( buffer.type_id ) );
 
 		if ( tmpUniform.uboRange.storageSize > maxRange ){

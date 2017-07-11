@@ -190,7 +190,7 @@ DrawCommand & DrawCommand::allocAndSetAttribute( const std::string & attrName_, 
 
 	ofLogWarning()
 		<< "Attribute '" << attrName_ << "' could not be found in shader: "
-		<< mPipelineState.getShader()->mSettings.sources.at( ::vk::ShaderStageFlagBits::eVertex );
+		<< mPipelineState.getShader()->mSettings.sources.at( ::vk::ShaderStageFlagBits::eVertex ).getName();
 
 	return *this;
 }
@@ -210,7 +210,7 @@ DrawCommand & DrawCommand::allocAndSetAttribute( const std::string & attrName_, 
 
 	ofLogWarning()
 		<< "Attribute '" << attrName_ << "' could not be found in shader: "
-		<< mPipelineState.getShader()->mSettings.sources.at( ::vk::ShaderStageFlagBits::eVertex );
+		<< mPipelineState.getShader()->mSettings.sources.at( ::vk::ShaderStageFlagBits::eVertex ).getName();
 
 	return *this;
 }

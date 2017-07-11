@@ -58,11 +58,12 @@ void ofApp::setupDrawCommands(){
 	
 
 		{
-		of::vk::Shader::Settings shaderSettings;
-		shaderSettings.device = renderer->getVkDevice();
-		shaderSettings.printDebugInfo = true;
-		shaderSettings.sources[::vk::ShaderStageFlagBits::eVertex]       = "shaders/flag.vert";
-			shaderSettings.sources[::vk::ShaderStageFlagBits::eFragment] = "shaders/flag.frag";
+			of::vk::Shader::Settings shaderSettings;
+			shaderSettings.device = renderer->getVkDevice();
+			shaderSettings.printDebugInfo = true;
+
+			shaderSettings.setSource( ::vk::ShaderStageFlagBits::eVertex, "shaders/flag.vert" );
+			shaderSettings.setSource( ::vk::ShaderStageFlagBits::eFragment, "shaders/flag.frag" );
 
 			// Initialise default shader with settings above
 			mFlagShader = std::make_shared<of::vk::Shader>( shaderSettings );
@@ -98,8 +99,8 @@ void ofApp::setupDrawCommands(){
 			shaderSettings.device = renderer->getVkDevice();
 			shaderSettings.printDebugInfo = true;
 
-			shaderSettings.sources[::vk::ShaderStageFlagBits::eVertex]   = "shaders/background.vert";
-			shaderSettings.sources[::vk::ShaderStageFlagBits::eFragment] = "shaders/background.frag";
+			shaderSettings.setSource( ::vk::ShaderStageFlagBits::eVertex, "shaders/background.vert" );
+			shaderSettings.setSource( ::vk::ShaderStageFlagBits::eFragment, "shaders/background.frag" );
 			mBgShader = std::make_shared<of::vk::Shader>( shaderSettings );
 
 			// Set up a Draw Command which draws a full screen quad.
@@ -136,8 +137,8 @@ void ofApp::setupDrawCommands(){
 
 			// Shader which draws using global color, and "lambert" shading
 
-			shaderSettings.sources[::vk::ShaderStageFlagBits::eVertex]   = "shaders/lambert.vert";
-			shaderSettings.sources[::vk::ShaderStageFlagBits::eFragment] = "shaders/lambert.frag";
+			shaderSettings.setSource( ::vk::ShaderStageFlagBits::eVertex, "shaders/lambert.vert" );
+			shaderSettings.setSource( ::vk::ShaderStageFlagBits::eFragment, "shaders/lambert.frag" );
 			mLambertShader = std::make_shared<of::vk::Shader>( shaderSettings );
 
 			of::vk::GraphicsPipelineState pipeline;
