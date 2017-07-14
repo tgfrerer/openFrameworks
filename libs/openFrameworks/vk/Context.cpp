@@ -492,9 +492,9 @@ std::shared_ptr<::vk::Image> Context::storeImageCmd( const ImageTransferSrcData&
 
 	// --------| invariant: target allocation successful
 
-	::vk::DeviceSize transientOffset = 0;
+	::vk::DeviceSize transientBufferOffset = 0;	// location where image data is stored temporarily in transient buffer
 	void * pData;
-	if ( mTransientMemory->allocate( data.numBytes, transientOffset )
+	if ( mTransientMemory->allocate( data.numBytes, transientBufferOffset )
 		&& mTransientMemory->map(pData)){
 		memcpy( pData, data.pData, data.numBytes );
 	} else{
@@ -513,7 +513,7 @@ std::shared_ptr<::vk::Image> Context::storeImageCmd( const ImageTransferSrcData&
 
 	::vk::BufferImageCopy bufferImageCopy;
 	bufferImageCopy
-		.setBufferOffset( transientOffset )          // must be a multiple of four 
+		.setBufferOffset( transientBufferOffset )          // must be a multiple of four 
 		.setBufferRowLength( data.extent.width )     // must be 0, or greater or equal to imageExtent.width 
 		.setBufferImageHeight( data.extent.height )
 		.setImageSubresource( subresourceLayers )
