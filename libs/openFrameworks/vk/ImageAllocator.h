@@ -39,6 +39,9 @@ public:
 			);
 
 		::vk::ImageTiling imageTiling = ::vk::ImageTiling::eOptimal;
+
+		// ----- convenience methods 
+
 		Settings & setSize( ::vk::DeviceSize size_ ){
 			AbstractAllocator::Settings::size = size_;
 			return *this;
@@ -96,16 +99,15 @@ public:
 
 	// jump to use next segment assigned to next virtual frame
 
-
 	const AbstractAllocator::Settings& getSettings() const override{
 		return mSettings;
 	}
 
 private:
 	const ImageAllocator::Settings     mSettings;
-	const ::vk::DeviceSize             mImageGranularity = (10 << 1UL);  // granularity is calculated on setup. must be power of two.
+	const ::vk::DeviceSize             mImageGranularity = (1UL << 10);  // granularity is calculated on setup. must be power of two.
 
-	::vk::DeviceSize                   mOffsetEnd;                // next free location for allocations
+	::vk::DeviceSize                   mOffsetEnd = 0;            // next free location for allocations
 	::vk::DeviceMemory                 mDeviceMemory = nullptr;	  // owning
 
 };
