@@ -70,6 +70,38 @@ struct ImageTransferSrcData
 	uint32_t                  mipLevels   { 1 };
 	uint32_t                  arrayLayers { 1 };
 	::vk::SampleCountFlagBits samples     { ::vk::SampleCountFlagBits::e1 };
+
+	// TODO: Add helper method which adapts ofPixels to ImageTransferSrcData
+	//
+	//void setFromOfPixels(const ofPixels& pix ) {
+	//	pData       = (void*)pix.getData();
+	//	numBytes    = pix.getTotalBytes();
+	//	arrayLayers = pix.getNumPlanes();
+	//	extent
+	//		.setWidth(pix.getWidth())
+	//		.setHeight(pix.getHeight())
+	//		;
+	//	
+	//	auto bpc = pix.getBitsPerChannel();
+	//	auto pixelFormat = pix.getPixelFormat();
+	//	switch (pixelFormat) {
+	//	case OF_PIXELS_GRAY:
+	//		if (bpc == 8)
+	//			format = ::vk::Format::eR8Unorm;
+	//		else if (bpc == 16)
+	//			format = ::vk::Format::eR16Sfloat;
+	//		else if (bpc == 32)
+	//			format = ::vk::Format::eR32Sfloat;
+	//		break;
+	//	case OF_PIXELS_GRAY_ALPHA:
+	//	case OF_PIXELS_RGB:
+	//	case OF_PIXELS_BGR:
+	//	case OF_PIXELS_RGBA:
+	//	case OF_PIXELS_BGRA:
+	//	case OF_PIXELS_RGB565:
+	//	}
+
+	//};
 };
 
 struct BufferRegion
