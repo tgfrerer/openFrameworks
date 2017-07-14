@@ -74,9 +74,9 @@ private:      /* transient data */
 
 	// Set data for upload to ubo - data is stored locally 
 	// until draw command is submitted
-	void commitUniforms( const std::unique_ptr<BufferAllocator>& alloc_ );
+	void commitUniforms( BufferAllocator& alloc_ );
 
-	void commitMeshAttributes( const std::unique_ptr<BufferAllocator>& alloc_ );
+	void commitMeshAttributes( BufferAllocator& alloc_ );
 
 public:
 
@@ -119,21 +119,21 @@ public:
 
 	// Allocate, and store attribute data in gpu memory
 	template <typename T>
-	of::vk::DrawCommand & allocAndSetAttribute( const std::string& attrName_, const std::vector<T> & vec, const std::unique_ptr<BufferAllocator>& alloc );
+	of::vk::DrawCommand & allocAndSetAttribute( const std::string& attrName_, const std::vector<T> & vec, BufferAllocator& alloc );
 
 	// Allocate, and store attribute data in gpu memory
 	template <typename T>
-	of::vk::DrawCommand & allocAndSetAttribute( const std::string& attrName_, const T* data, size_t numBytes, const std::unique_ptr<BufferAllocator>& alloc );
+	of::vk::DrawCommand & allocAndSetAttribute( const std::string& attrName_, const T* data, size_t numBytes, BufferAllocator& alloc );
 
 	// Allocate, and store attribute data in gpu memory
 	template <typename T>
-	of::vk::DrawCommand & allocAndSetAttribute( const size_t& attribLocation_, const std::vector<T> & vec, const std::unique_ptr<BufferAllocator>& alloc );
+	of::vk::DrawCommand & allocAndSetAttribute( const size_t& attribLocation_, const std::vector<T> & vec, BufferAllocator& alloc );
 
 	// Allocate, and store attribute data in gpu memory
-	of::vk::DrawCommand & allocAndSetAttribute( const size_t& attribLocation_, const void* data, size_t numBytes, const std::unique_ptr<BufferAllocator>& alloc );
+	of::vk::DrawCommand & allocAndSetAttribute( const size_t& attribLocation_, const void* data, size_t numBytes, BufferAllocator& alloc );
 
 	// Allocate, and store index data in gpu memory
-	of::vk::DrawCommand & allocAndSetIndices( const ofIndexType* data, size_t numBytes, const std::unique_ptr<BufferAllocator>& alloc );
+	of::vk::DrawCommand & allocAndSetIndices( const ofIndexType* data, size_t numBytes, BufferAllocator& alloc );
 
 
 	of::vk::DrawCommand & setAttribute( const std::string& name_, ::vk::Buffer buffer_, ::vk::DeviceSize offset_ );

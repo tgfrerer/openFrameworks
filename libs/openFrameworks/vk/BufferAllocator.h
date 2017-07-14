@@ -69,8 +69,9 @@ public:
 		}
 	};
 
-	BufferAllocator( const BufferAllocator::Settings& settings )
-		: mSettings( settings ){};
+	BufferAllocator()
+	: mSettings()
+	{};
 
 	~BufferAllocator(){
 		mSettings.device.waitIdle();
@@ -79,7 +80,7 @@ public:
 
 	/// @detail set up allocator based on Settings and pre-allocate 
 	///         a chunk of GPU memory, and attach a buffer to it 
-	void setup() override;
+	void setup(const BufferAllocator::Settings settings);
 
 	/// @brief  free GPU memory and de-initialise allocator
 	void reset() override;

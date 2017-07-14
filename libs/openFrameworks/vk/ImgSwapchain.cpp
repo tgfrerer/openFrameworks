@@ -37,12 +37,7 @@ void ImgSwapchain::setup(){
 	imageAllocatorSettings.size                           = ( mSettings.width * mSettings.height * 4 + mRendererProperties.physicalDeviceProperties.limits.bufferImageGranularity ) 
 	                                                        * mSettings.numSwapchainImages;
 	
-	mImageAllocator = decltype(mImageAllocator)( new ImageAllocator( imageAllocatorSettings ), [](ImageAllocator* lhs){
-		delete lhs;
-		lhs = nullptr;
-	} );
-	
-	mImageAllocator->setup();
+	mImageAllocator.setup(imageAllocatorSettings);
 	
 	// create buffer allocator
 
@@ -55,12 +50,7 @@ void ImgSwapchain::setup(){
 	bufferAllocatorSettings.size                           = mSettings.width * mSettings.height * 4 * mSettings.numSwapchainImages;
 	bufferAllocatorSettings.bufferUsageFlags               = ::vk::BufferUsageFlagBits::eTransferDst | ::vk::BufferUsageFlagBits::eTransferSrc;
 
-	mBufferAllocator = decltype( mBufferAllocator )( new BufferAllocator( bufferAllocatorSettings ), [](BufferAllocator * lhs){
-		delete lhs;
-		lhs = nullptr;
-	} );
-
-	mBufferAllocator->setup();
+	mBufferAllocator.setup(bufferAllocatorSettings);
 
 	// Create command pool for internal command buffers.
 	{
@@ -98,8 +88,8 @@ void ImgSwapchain::setup(){
 		// Allocate image memory via image allocator
 		{
 			::vk::DeviceSize offset = 0;
-			mImageAllocator->allocate( mSettings.width * mSettings.height * 4, offset );
-			mDevice.bindImageMemory( img, mImageAllocator->getDeviceMemory(), offset );
+			mImageAllocator.allocate( mSettings.width * mSettings.height * 4, offset );
+			mDevice.bindImageMemory( img, mImageAllocator.getDeviceMemory(), offset );
 		}
 
 		::vk::ImageSubresourceRange subresourceRange;
@@ -124,17 +114,17 @@ void ImgSwapchain::setup(){
 		// allocate host-visible buffer memory, and map buffer memory
 		{
 			::vk::DeviceSize offset = 0;
-			mBufferAllocator->allocate( mSettings.width * mSettings.height * 4, offset );
-			mTransferFrames[i].bufferRegion.buffer = mBufferAllocator->getBuffer();
+			mBufferAllocator.allocate( mSettings.width * mSettings.height * 4, offset );
+			mTransferFrames[i].bufferRegion.buffer = mBufferAllocator.getBuffer();
 			mTransferFrames[i].bufferRegion.offset = offset;
 			mTransferFrames[i].bufferRegion.range  = mSettings.width * mSettings.height * 4;
 			
 			// map the host-visible ram address for the buffer to the current frame
 			// so information can be read back.
-			mBufferAllocator->map( mTransferFrames[i].bufferReadAddress );
+			mBufferAllocator.map( mTransferFrames[i].bufferReadAddress );
 			// we swap the allocator since we use one frame per id
 			// and swap tells the allocator to go to the next virtual frame
-			mBufferAllocator->swap(); 
+			mBufferAllocator.swap(); 
 		}
 
 		mTransferFrames[i].frameFence = mDevice.createFence( { ::vk::FenceCreateFlagBits::eSignaled } );

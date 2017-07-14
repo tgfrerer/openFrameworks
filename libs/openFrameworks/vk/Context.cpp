@@ -11,10 +11,7 @@ Context::Context( const Settings & settings )
 		ofLogFatalError() << "You must specify a renderer for a context.";
 		ofExit();
 	}
-	mTransientMemory = std::make_unique<BufferAllocator>( settings.transientMemoryAllocatorSettings );
-	mVirtualFrames.resize( mSettings.transientMemoryAllocatorSettings.frameCount );
-	mDescriptorPoolSizes.fill( 0 );
-	mAvailableDescriptorCounts.fill( 0 );
+
 }
 
 // ------------------------------------------------------------
@@ -42,15 +39,20 @@ Context::~Context(){
 			}
 		}
 	}
-
-
 	mVirtualFrames.clear();
-	mTransientMemory->reset();
+	mTransientMemory.reset();
 }
   
 // ------------------------------------------------------------
 
 void Context::setup(){
+
+	mTransientMemory.setup(mSettings.transientMemoryAllocatorSettings);
+	mVirtualFrames.resize(mSettings.transientMemoryAllocatorSettings.frameCount);
+
+	mDescriptorPoolSizes.fill(0);
+	mAvailableDescriptorCounts.fill(0);
+
 	for ( auto &f : mVirtualFrames ){
 		if ( mSettings.renderToSwapChain ){
 			f.semaphoreWait = mDevice.createSemaphore( {} );  // this semaphore should be owned by the swapchain.
@@ -61,8 +63,7 @@ void Context::setup(){
 		f.fence = mDevice.createFence( { ::vk::FenceCreateFlagBits::eSignaled } );	/* Fence starts as "signaled" */
 		f.commandPool = mDevice.createCommandPool( { ::vk::CommandPoolCreateFlagBits::eTransient } );
 	}
-	mTransientMemory->setup();
-	
+
 	mCurrentVirtualFrame = mVirtualFrames.size() ^ 1;
 	
 	// self-dependency
@@ -116,7 +117,7 @@ void Context::begin(){
 	
 	mDevice.resetCommandPool( mVirtualFrames[mCurrentVirtualFrame].commandPool, ::vk::CommandPoolResetFlagBits::eReleaseResources );
 
-	mTransientMemory->free();
+	mTransientMemory.free();
 
 	// clear old frame buffer attachments
 	for ( auto & fb : mVirtualFrames[mCurrentVirtualFrame].frameBuffers ){
@@ -169,7 +170,7 @@ void Context::end(){
 
 void Context::swap(){
 	mCurrentVirtualFrame = ( mCurrentVirtualFrame + 1 ) % mSettings.transientMemoryAllocatorSettings.frameCount;
-	mTransientMemory->swap();
+	mTransientMemory.swap();
 }
 
 // ------------------------------------------------------------
@@ -367,13 +368,13 @@ void Context::updateDescriptorPool(){
 
 // ------------------------------------------------------------
 
-std::vector<BufferRegion> Context::storeBufferDataCmd( const std::vector<TransferSrcData>& dataVec, const unique_ptr<BufferAllocator>& targetAllocator ){
+std::vector<BufferRegion> Context::storeBufferDataCmd( const std::vector<TransferSrcData>& dataVec, BufferAllocator& targetAllocator ){
 	std::vector<BufferRegion> resultBuffers;
 
 	auto copyRegions = stageBufferData( dataVec, targetAllocator );
 	resultBuffers.reserve( copyRegions.size() );
 
-	const auto targetBuffer = targetAllocator->getBuffer();
+	const auto targetBuffer = targetAllocator.getBuffer();
 
 	for ( size_t i = 0; i != copyRegions.size(); ++i ){
 		const auto &region = copyRegions[i];
@@ -394,7 +395,7 @@ std::vector<BufferRegion> Context::storeBufferDataCmd( const std::vector<Transfe
 	cmd.begin( { ::vk::CommandBufferUsageFlagBits::eOneTimeSubmit } );
 	{
 
-		cmd.copyBuffer( getTransientAllocator()->getBuffer(), targetAllocator->getBuffer(), copyRegions );
+		cmd.copyBuffer( mTransientMemory.getBuffer(), targetAllocator.getBuffer(), copyRegions );
 
 		::vk::BufferMemoryBarrier bufferTransferBarrier;
 		bufferTransferBarrier
@@ -402,7 +403,7 @@ std::vector<BufferRegion> Context::storeBufferDataCmd( const std::vector<Transfe
 			.setDstAccessMask( ::vk::AccessFlagBits::eVertexAttributeRead )    // not sure if these are optimal.
 			.setSrcQueueFamilyIndex( VK_QUEUE_FAMILY_IGNORED )
 			.setDstQueueFamilyIndex( VK_QUEUE_FAMILY_IGNORED )
-			.setBuffer( targetAllocator->getBuffer() )
+			.setBuffer( targetAllocator.getBuffer() )
 			.setOffset( firstOffset )
 			.setSize( totalStaticRange )
 			;
@@ -430,7 +431,7 @@ std::vector<BufferRegion> Context::storeBufferDataCmd( const std::vector<Transfe
 
 // ------------------------------------------------------------
 
-std::shared_ptr<::vk::Image> Context::storeImageCmd( const ImageTransferSrcData& data, const unique_ptr<ImageAllocator>& targetImageAllocator ){
+std::shared_ptr<::vk::Image> Context::storeImageCmd( const ImageTransferSrcData& data, ImageAllocator& targetImageAllocator ){
 
 	/*
 	
@@ -482,8 +483,8 @@ std::shared_ptr<::vk::Image> Context::storeImageCmd( const ImageTransferSrcData&
 	::vk::DeviceSize numBytes = mDevice.getImageMemoryRequirements( *image ).size;
 	
 	::vk::DeviceSize dstOffset = 0;
-	if ( targetImageAllocator->allocate( numBytes, dstOffset ) ){
-		mDevice.bindImageMemory( *image, targetImageAllocator->getDeviceMemory(), dstOffset );
+	if ( targetImageAllocator.allocate( numBytes, dstOffset ) ){
+		mDevice.bindImageMemory( *image, targetImageAllocator.getDeviceMemory(), dstOffset );
 	} else{
 		ofLogError() << "Image Allocation failed.";
 		image.reset();
@@ -494,8 +495,8 @@ std::shared_ptr<::vk::Image> Context::storeImageCmd( const ImageTransferSrcData&
 
 	::vk::DeviceSize transientBufferOffset = 0;	// location where image data is stored temporarily in transient buffer
 	void * pData;
-	if ( mTransientMemory->allocate( data.numBytes, transientBufferOffset )
-		&& mTransientMemory->map(pData)){
+	if ( mTransientMemory.allocate( data.numBytes, transientBufferOffset )
+		&& mTransientMemory.map(pData)){
 		memcpy( pData, data.pData, data.numBytes );
 	} else{
 		ofLogError() << "Transient Image data allocation failed.";
@@ -536,7 +537,7 @@ std::shared_ptr<::vk::Image> Context::storeImageCmd( const ImageTransferSrcData&
 		.setDstAccessMask( ::vk::AccessFlagBits::eTransferRead )
 		.setSrcQueueFamilyIndex( VK_QUEUE_FAMILY_IGNORED )
 		.setDstQueueFamilyIndex( VK_QUEUE_FAMILY_IGNORED )
-		.setBuffer( mTransientMemory->getBuffer() )
+		.setBuffer( mTransientMemory.getBuffer() )
 		.setOffset( bufferImageCopy.bufferOffset )
 		.setSize( numBytes )
 		;
@@ -578,7 +579,7 @@ std::shared_ptr<::vk::Image> Context::storeImageCmd( const ImageTransferSrcData&
 		{ imageLayoutToTransferDstOptimal }
 	);
 	
-	cmd.copyBufferToImage( mTransientMemory->getBuffer(), *image, ::vk::ImageLayout::eTransferDstOptimal, bufferImageCopy );
+	cmd.copyBufferToImage( mTransientMemory.getBuffer(), *image, ::vk::ImageLayout::eTransferDstOptimal, bufferImageCopy );
 
 	cmd.pipelineBarrier(
 		::vk::PipelineStageFlagBits::eTransfer,

@@ -70,8 +70,8 @@ public:
 		}
 	};
 
-	ImageAllocator( const ImageAllocator::Settings& settings )
-		: mSettings( settings ){};
+	ImageAllocator(  )
+		: mSettings(){};
 
 	~ImageAllocator(){
 		mSettings.device.waitIdle();
@@ -80,7 +80,7 @@ public:
 
 	/// @detail set up allocator based on Settings and pre-allocate 
 	///         a chunk of GPU memory, and attach a buffer to it 
-	void setup() override;
+	void setup(const ImageAllocator::Settings& settings) ;
 
 	/// @brief  free GPU memory and de-initialise allocator
 	void reset() override;

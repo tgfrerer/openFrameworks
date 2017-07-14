@@ -39,7 +39,7 @@ public:
 
 	// set data for upload to ubo - data is stored locally 
 	// until command is submitted
-	void commitUniforms( const std::unique_ptr<BufferAllocator>& alloc_ );
+	void commitUniforms( BufferAllocator& alloc_ );
 
 	// store uniform values to staging cpu memory
 	template <class T>

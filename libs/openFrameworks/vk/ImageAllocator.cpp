@@ -5,8 +5,10 @@ using namespace of::vk;
 
 // ----------------------------------------------------------------------
 
-void ImageAllocator::setup(){
+void ImageAllocator::setup(const ImageAllocator::Settings& settings){
 	
+	const_cast<ImageAllocator::Settings&>(mSettings) = settings;
+
 	const_cast<::vk::DeviceSize&>( mImageGranularity ) = mSettings.physicalDeviceProperties.limits.bufferImageGranularity;
 
 	// make sure reserved memory is multiple of alignment (= ImageGranularity)

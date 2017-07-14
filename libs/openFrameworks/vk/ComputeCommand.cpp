@@ -24,7 +24,7 @@ void ComputeCommand::setup( const ComputePipelineState& pipelineState ){
 
 // ------------------------------------------------------------
 
-void ComputeCommand::commitUniforms( const std::unique_ptr<BufferAllocator>& alloc ){
+void ComputeCommand::commitUniforms( BufferAllocator& alloc ){
 
 	for ( auto & descriptorSetData : mDescriptorSetData ){
 
@@ -58,7 +58,7 @@ void ComputeCommand::commitUniforms( const std::unique_ptr<BufferAllocator>& all
 				break;
 			case ::vk::DescriptorType::eUniformBufferDynamic:
 			{
-				descriptor.buffer = alloc->getBuffer();
+				descriptor.buffer = alloc.getBuffer();
 				::vk::DeviceSize offset;
 				void * dataP = nullptr;
 
@@ -66,7 +66,7 @@ void ComputeCommand::commitUniforms( const std::unique_ptr<BufferAllocator>& all
 				const auto & dataRange = dataVec.size();
 
 				// allocate data on gpu
-				if ( alloc->allocate( dataRange, offset ) && alloc->map( dataP ) ){
+				if ( alloc.allocate( dataRange, offset ) && alloc.map( dataP ) ){
 
 					// copy data to gpu
 					memcpy( dataP, dataVec.data(), dataRange );
@@ -106,7 +106,7 @@ void ComputeCommand::commitUniforms( const std::unique_ptr<BufferAllocator>& all
 
 void ComputeCommand::submit( Context & context, const glm::uvec3& dims = {256,256,1} ){
 
-	commitUniforms( context.getTransientAllocator() );
+	commitUniforms( context.getAllocator() );
 
 	auto cmd = context.allocateCommandBuffer(::vk::CommandBufferLevel::ePrimary);
 

@@ -1,14 +1,13 @@
 #pragma once
 
 #include "vk/Swapchain.h"
+#include "vk/BufferAllocator.h"
+#include "vk/ImageAllocator.h"
 
 class ofVkRenderer; //ffdecl
 
 namespace of{
 namespace vk{
-
-class ImageAllocator; //ffdecl
-class BufferAllocator; //ffdecl
 
 // ----------------------------------------------------------------------
 
@@ -28,8 +27,8 @@ class ImgSwapchain : public Swapchain
 	const uint32_t      &mImageCount = mSettings.numSwapchainImages;
 	uint32_t            mImageIndex = 0;
 
-	std::unique_ptr<ImageAllocator , std::function<void( ImageAllocator*  )>> mImageAllocator;
-	std::unique_ptr<BufferAllocator, std::function<void( BufferAllocator* )>> mBufferAllocator;
+	ImageAllocator      mImageAllocator;
+	BufferAllocator     mBufferAllocator;
 
 	struct TransferFrame
 	{

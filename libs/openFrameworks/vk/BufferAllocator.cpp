@@ -5,8 +5,10 @@ using namespace of::vk;
 
 // ----------------------------------------------------------------------
 
-void BufferAllocator::setup(){
+void BufferAllocator::setup(const BufferAllocator::Settings settings){
 	
+	const_cast<BufferAllocator::Settings&>(mSettings) = settings;
+
 	if ( mSettings.frameCount < 1 ){
 		ofLogWarning() << "Allocator: Must have a minimum of 1 frame. Setting frames to 1.";
 		const_cast<uint32_t&>( mSettings.frameCount ) = 1;

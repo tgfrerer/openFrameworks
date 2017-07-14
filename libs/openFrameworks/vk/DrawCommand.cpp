@@ -42,7 +42,7 @@ void DrawCommand::setup( const GraphicsPipelineState& pipelineState ){
 
 // ------------------------------------------------------------
 
-void DrawCommand::commitUniforms( const std::unique_ptr<BufferAllocator>& alloc ){
+void DrawCommand::commitUniforms( BufferAllocator& alloc ){
 
 	for ( auto & descriptorSetData : mDescriptorSetData ){
 
@@ -76,7 +76,7 @@ void DrawCommand::commitUniforms( const std::unique_ptr<BufferAllocator>& alloc 
 				break;
 			case ::vk::DescriptorType::eUniformBufferDynamic:
 			{
-				descriptor.buffer = alloc->getBuffer();
+				descriptor.buffer = alloc.getBuffer();
 				::vk::DeviceSize offset;
 				void * dataP = nullptr;
 
@@ -84,7 +84,7 @@ void DrawCommand::commitUniforms( const std::unique_ptr<BufferAllocator>& alloc 
 				const auto & dataRange = dataVec.size();
 
 				// allocate memory on gpu
-				if ( alloc->allocate( dataRange, offset ) && alloc->map( dataP ) ){
+				if ( alloc.allocate( dataRange, offset ) && alloc.map( dataP ) ){
 
 					// copy data from draw command temp storage to gpu
 					memcpy( dataP, dataVec.data(), dataRange );
@@ -124,7 +124,7 @@ void DrawCommand::commitUniforms( const std::unique_ptr<BufferAllocator>& alloc 
 
 // ------------------------------------------------------------
 
-void DrawCommand::commitMeshAttributes( const std::unique_ptr<BufferAllocator>& alloc ){
+void DrawCommand::commitMeshAttributes( BufferAllocator& alloc ){
 	// check if current draw command has a mesh - if yes, upload mesh data to buffer memory.
 	if ( mMsh ){
 		auto &mesh = *mMsh;
@@ -154,9 +154,9 @@ void DrawCommand::commitMeshAttributes( const std::unique_ptr<BufferAllocator>& 
 			void * dataP = nullptr;
 			::vk::DeviceSize offset = 0;
 
-			if ( alloc->allocate( byteSize, offset ) && alloc->map( dataP ) ){
+			if ( alloc.allocate( byteSize, offset ) && alloc.map( dataP ) ){
 				memcpy( dataP, indices.data(), byteSize );
-				setIndices( alloc->getBuffer(), offset );
+				setIndices( alloc.getBuffer(), offset );
 				mNumIndices = uint32_t( indices.size() );
 			}
 
@@ -178,7 +178,7 @@ DrawCommand & DrawCommand::setMesh( const shared_ptr<ofMesh> & msh_ ){
 // ------------------------------------------------------------
 
 template<typename T>
-DrawCommand & DrawCommand::allocAndSetAttribute( const std::string & attrName_, const std::vector<T>& vec, const std::unique_ptr<BufferAllocator>& alloc ){
+DrawCommand & DrawCommand::allocAndSetAttribute( const std::string & attrName_, const std::vector<T>& vec, BufferAllocator& alloc ){
 	
 	size_t index = 0;
 	
@@ -198,7 +198,7 @@ DrawCommand & DrawCommand::allocAndSetAttribute( const std::string & attrName_, 
 // ------------------------------------------------------------
 
 template<typename T>
-DrawCommand & DrawCommand::allocAndSetAttribute( const std::string & attrName_, const T * data, size_t numBytes, const std::unique_ptr<BufferAllocator>& alloc ){
+DrawCommand & DrawCommand::allocAndSetAttribute( const std::string & attrName_, const T * data, size_t numBytes, BufferAllocator& alloc ){
 
 	size_t index = 0;
 
@@ -218,22 +218,22 @@ DrawCommand & DrawCommand::allocAndSetAttribute( const std::string & attrName_, 
 // ------------------------------------------------------------
 // upload vertex data to gpu memory
 template<typename T>
-DrawCommand & DrawCommand::allocAndSetAttribute( const size_t& attribLocation_, const std::vector<T>& vec, const std::unique_ptr<BufferAllocator>& alloc ){
+DrawCommand & DrawCommand::allocAndSetAttribute( const size_t& attribLocation_, const std::vector<T>& vec, BufferAllocator& alloc ){
 	const auto numBytes = sizeof( vec[0] ) * vec.size();
 	return allocAndSetAttribute(attribLocation_, vec.data(), numBytes, alloc);
 }
 
 // ------------------------------------------------------------
 // upload vertex data to gpu memory
-DrawCommand & DrawCommand::allocAndSetAttribute( const size_t& attribLocation_, const void * data, size_t numBytes, const std::unique_ptr<BufferAllocator>& alloc ){
+DrawCommand & DrawCommand::allocAndSetAttribute( const size_t& attribLocation_, const void * data, size_t numBytes, BufferAllocator& alloc ){
 	
 	void * dataP = nullptr;
 	::vk::DeviceSize offset = 0;
 	// allocate data on gpu
-	if ( alloc->allocate( numBytes, offset ) && alloc->map( dataP ) ){
-		alloc->map( dataP );
+	if ( alloc.allocate( numBytes, offset ) && alloc.map( dataP ) ){
+		alloc.map( dataP );
 		memcpy( dataP, data, numBytes );
-		return setAttribute( attribLocation_, alloc->getBuffer(), offset );
+		return setAttribute( attribLocation_, alloc.getBuffer(), offset );
 	}
 
 	ofLogWarning() << "Could not allocate memory for attribLocation: " << attribLocation_;
@@ -242,17 +242,17 @@ DrawCommand & DrawCommand::allocAndSetAttribute( const size_t& attribLocation_, 
 }
 // ------------------------------------------------------------
 
-DrawCommand & DrawCommand::allocAndSetIndices( const ofIndexType * data, size_t numBytes, const std::unique_ptr<BufferAllocator>& alloc ){
+DrawCommand & DrawCommand::allocAndSetIndices( const ofIndexType * data, size_t numBytes, BufferAllocator& alloc ){
 
 	void * dataP = nullptr;
 	::vk::DeviceSize offset = 0;
 	
 	// allocate data on gpu
 
-	if ( alloc->allocate( numBytes, offset ) && alloc->map( dataP ) ){
-		alloc->map( dataP );
+	if ( alloc.allocate( numBytes, offset ) && alloc.map( dataP ) ){
+		alloc.map( dataP );
 		memcpy( dataP, data, numBytes );
-		return setIndices( alloc->getBuffer(), offset );
+		return setIndices( alloc.getBuffer(), offset );
 	}
 
 	ofLogWarning() << "Could not allocate memory for indices. ";

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <vulkan/vulkan.hpp>
+#include <vector>
 
 namespace of{
 namespace vk{
@@ -13,6 +14,7 @@ public:
 	
 	struct Settings
 	{
+		~Settings() {} // force vtable;
 		::vk::PhysicalDeviceProperties       physicalDeviceProperties;
 		::vk::PhysicalDeviceMemoryProperties physicalDeviceMemoryProperties;
 		::vk::Device                         device     = nullptr;
@@ -21,8 +23,8 @@ public:
 		std::vector<uint32_t>                queueFamilyIndices;
 	};
 
+	virtual ~AbstractAllocator() {}; // force vtable
 
-	virtual void setup() = 0;
 	virtual void reset() = 0;
 	virtual bool allocate(::vk::DeviceSize byteCount_, ::vk::DeviceSize& offset) = 0;
 	virtual void swap() = 0;
