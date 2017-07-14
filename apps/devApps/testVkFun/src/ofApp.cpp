@@ -44,8 +44,7 @@ void ofApp::setupStaticAllocators(){
 			.setMemFlags( ::vk::MemoryPropertyFlagBits::eDeviceLocal )
 			.setBufferUsageFlags( allocatorSettings.bufferUsageFlags | ::vk::BufferUsageFlagBits::eStorageBuffer )
 			;
-		mStaticAllocator = std::make_unique<of::vk::BufferAllocator>( allocatorSettings );
-		mStaticAllocator->setup();
+		mStaticAllocator.setup(allocatorSettings);
 	}
 	{
 		of::vk::ImageAllocator::Settings allocatorSettings;
@@ -54,8 +53,7 @@ void ofApp::setupStaticAllocators(){
 			.setSize( 1 << 24UL ) // 16 MB
 			.setMemFlags( ::vk::MemoryPropertyFlagBits::eDeviceLocal )
 			;
-		mImageAllocator = std::make_unique<of::vk::ImageAllocator>( allocatorSettings );
-		mImageAllocator->setup();
+		mImageAllocator.setup(allocatorSettings);
 	}
 }
 
@@ -339,7 +337,7 @@ void ofApp::uploadStaticData( of::vk::Context & stagingContext ){
 
 	};
 
-	const auto & staticBuffer = mStaticAllocator->getBuffer();
+	const auto & staticBuffer = mStaticAllocator.getBuffer();
 
 	std::vector<of::vk::BufferRegion> bufferRegions = stagingContext.storeBufferDataCmd( srcDataVec, mStaticAllocator );
 

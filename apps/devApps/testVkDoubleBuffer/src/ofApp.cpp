@@ -115,7 +115,7 @@ void ofApp::setupPrepass(){
 		} );
 	}
 
-	// ---- Allocate imgages for context to render into
+	// ---- Allocate images for context to render into
 	{
 		// we allocate 2 images, so that we could ping-pong between
 		// rendertargets. In this example, we're not really 
@@ -133,8 +133,7 @@ void ofApp::setupPrepass(){
 			.setSize( mPrepassRect.extent.width * mPrepassRect.extent.height * 4 * numImages )
 			;
 
-		mImageAllocator = std::make_shared<of::vk::ImageAllocator>( allocatorSettings );
-		mImageAllocator->setup();
+		mImageAllocator.setup(allocatorSettings);
 
 		::vk::ImageCreateInfo imageCreateInfo;
 		imageCreateInfo
@@ -166,8 +165,8 @@ void ofApp::setupPrepass(){
 				;
 
 			::vk::DeviceSize offset;
-			mImageAllocator->allocate( mPrepassRect.extent.width * mPrepassRect.extent.height * 4, offset );
-			device.bindImageMemory( img, mImageAllocator->getDeviceMemory(), offset );
+			mImageAllocator.allocate( mPrepassRect.extent.width * mPrepassRect.extent.height * 4, offset );
+			device.bindImageMemory( img, mImageAllocator.getDeviceMemory(), offset );
 
 			auto view = device.createImageView( imageViewCreateInfo );
 
@@ -298,17 +297,14 @@ void ofApp::draw(){
 
 		// setup renderbatch for pre-pass
 		//
-		//std::vector<::vk::ClearValue> clearValues( 1 );
-		//clearValues[0].setColor( ( ::vk::ClearColorValue& )ofFloatColor::bisque );
-
 		of::vk::RenderBatch::Settings settings;
 		settings
 			.setContext(renderer->getDefaultContext().get())
 			.setFramebufferAttachmentsExtent(mPrepassRect.extent.width, mPrepassRect.extent.height)
 			.setRenderArea(mPrepassRect)
 			.setRenderPass(*mPrepassRenderPass)
-			.addFramebufferAttachment(mTargetImages[pingPong].view)               // << this image is where the result of our prepass will be stored
-			.addClearColorValue( (::vk::ClearColorValue& )ofFloatColor::bisque )  // add a clear value for the framebuffer attachment
+			.addFramebufferAttachment(mTargetImages[pingPong].view)   // << this image is where the result of our prepass will be stored
+			.addClearColorValue( ofFloatColor::bisque )               // add a clear value for the framebuffer attachment
 			;
 
 		of::vk::RenderBatch prepass{ settings };

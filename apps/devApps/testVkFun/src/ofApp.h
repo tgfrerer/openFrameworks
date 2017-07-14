@@ -24,8 +24,8 @@ class ofApp : public ofBaseApp{
 	std::shared_ptr<ofMesh> mMeshL;
 	std::shared_ptr<ofMesh> mMeshPly;
 
-	std::unique_ptr<of::vk::BufferAllocator> mStaticAllocator;
-	std::unique_ptr<of::vk::ImageAllocator>  mImageAllocator;
+	of::vk::BufferAllocator mStaticAllocator;
+	of::vk::ImageAllocator  mImageAllocator;
 
 	std::shared_ptr<::vk::Image>       mImage;
 	std::shared_ptr<of::vk::Texture>   mTexture;

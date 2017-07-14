@@ -21,8 +21,8 @@ void ofApp::setup(){
 
 		shaderSettings.device = renderer->getVkDevice();
 		shaderSettings.printDebugInfo = true;
-		shaderSettings.sources[::vk::ShaderStageFlagBits::eVertex  ] = "fullScreenQuad.vert";
-		shaderSettings.sources[::vk::ShaderStageFlagBits::eFragment] = "fullScreenQuad.frag";
+		shaderSettings.setSource(::vk::ShaderStageFlagBits::eVertex  ,"fullScreenQuad.vert");
+		shaderSettings.setSource(::vk::ShaderStageFlagBits::eFragment,"fullScreenQuad.frag");
 
 		mShaderFullscreen = std::make_shared<of::vk::Shader>( shaderSettings );
 
@@ -76,21 +76,18 @@ void ofApp::draw(){
 	
 	// setup the main pass renderbatch
 	//
-	std::vector<::vk::ClearValue> clearValues( 2 );
-	clearValues[0].setColor( ( ::vk::ClearColorValue& )ofFloatColor::blueSteel );
-	clearValues[1].setDepthStencil( { 1.f, 0 } );
-
 	of::vk::RenderBatch::Settings settings;
-	settings.clearValues = clearValues;
-	settings.context = context.get();
-	settings.framebufferAttachmentHeight = renderer->getSwapchain()->getHeight();
-	settings.framebufferAttachmentWidth  = renderer->getSwapchain()->getWidth();
-	settings.renderArea = ::vk::Rect2D( {}, { uint32_t( renderer->getViewportWidth() ), uint32_t( renderer->getViewportHeight() ) } );
-	settings.renderPass = *renderer->getDefaultRenderpass();
-	settings.framebufferAttachments = {
-		context->getSwapchainImageView(),
-		renderer->getDepthStencilImageView()
-	};
+
+	settings
+		.setContext(context.get())
+		.setFramebufferAttachmentsExtent(renderer->getSwapchain()->getWidth(), renderer->getSwapchain()->getHeight())
+		.setRenderAreaExtent(renderer->getViewportWidth(), renderer->getViewportHeight())
+		.setRenderPass(*renderer->getDefaultRenderpass())
+		.addFramebufferAttachment(context->getSwapchainImageView())
+		.addClearColorValue(ofFloatColor::blueSteel)
+		.addFramebufferAttachment(renderer->getDepthStencilImageView())
+		.addClearDepthStencilValue({ 1.f,0 })
+		;
 
 	of::vk::RenderBatch batch{ settings };
 

@@ -25,8 +25,8 @@ class ofApp : public ofBaseApp
 	void setupTextureData();
 	void setupDrawCommands();
 
-	std::unique_ptr<of::vk::BufferAllocator> mStaticAllocator;
-	std::unique_ptr<of::vk::ImageAllocator> mImageAllocator;
+	of::vk::BufferAllocator mStaticAllocator;
+	of::vk::ImageAllocator mImageAllocator;
 
 	of::vk::BufferRegion flagVertices;
 	of::vk::BufferRegion flagTexCoords;

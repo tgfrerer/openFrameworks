@@ -12,8 +12,9 @@ class ofApp : public ofBaseApp{
 	const of::vk::DrawCommand outlinesDraw;
 	const of::vk::DrawCommand drawTextured;
 
+	of::vk::ImageAllocator mImageAllocator;
+
 	std::shared_ptr<of::vk::Shader> mShaderFullscreen;
-	std::shared_ptr<of::vk::ImageAllocator> mImageAllocator;
 
 	struct ImageWithView
 	{

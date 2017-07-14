@@ -168,8 +168,7 @@ void ofApp::setupTextureData(){
 			.setMemFlags( ::vk::MemoryPropertyFlagBits::eDeviceLocal )
 			;
 
-		mImageAllocator = std::make_unique<of::vk::ImageAllocator>( allocatorSettings );
-		mImageAllocator->setup();
+		mImageAllocator.setup(allocatorSettings);
 	}
 
 	// Grab staging context to place pixel data there for upload to device local image memory
@@ -211,17 +210,16 @@ void ofApp::setupTextureData(){
 
 void ofApp::setupStaticGeometry(){
 
-	of::vk::BufferAllocator::Settings as;
-	as.device = renderer->getVkDevice();
-	as.frameCount = 1;
-	as.memFlags = ::vk::MemoryPropertyFlagBits::eDeviceLocal;
-	as.physicalDeviceProperties = renderer->getVkPhysicalDeviceProperties();
-	as.physicalDeviceMemoryProperties = renderer->getVkPhysicalDeviceMemoryProperties();
-	as.queueFamilyIndices = { renderer->getVkRendererProperties().graphicsFamilyIndex };
-	as.size = 1'000'000; // ~ 1 MB
+	of::vk::BufferAllocator::Settings allocatorSettings;
+	allocatorSettings.device = renderer->getVkDevice();
+	allocatorSettings.frameCount = 1;
+	allocatorSettings.memFlags = ::vk::MemoryPropertyFlagBits::eDeviceLocal;
+	allocatorSettings.physicalDeviceProperties = renderer->getVkPhysicalDeviceProperties();
+	allocatorSettings.physicalDeviceMemoryProperties = renderer->getVkPhysicalDeviceMemoryProperties();
+	allocatorSettings.queueFamilyIndices = { renderer->getVkRendererProperties().graphicsFamilyIndex };
+	allocatorSettings.size = 1'000'000; // ~ 1 MB
 
-	mStaticAllocator = std::make_unique<of::vk::BufferAllocator>(as);
-	mStaticAllocator->setup();
+	mStaticAllocator.setup(allocatorSettings);
 
 	std::vector<glm::vec3>   vertices;
 	std::vector<glm::vec2>   texCoords;
