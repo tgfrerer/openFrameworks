@@ -18,9 +18,11 @@ void ofApp::setup(){
 		of::vk::Shader::Settings shaderSettings;
 		shaderSettings.device = renderer->getVkDevice();
 		// Enable printing of verbose debug information at shader compilation
-		shaderSettings.printDebugInfo = true;
-		shaderSettings.sources[::vk::ShaderStageFlagBits::eVertex]   = "shaders/default.vert";
-		shaderSettings.sources[::vk::ShaderStageFlagBits::eFragment] = "shaders/default.frag";
+		shaderSettings
+			.setPrintDebugInfo(true)
+			.setSource(::vk::ShaderStageFlagBits::eVertex,   "shaders/default.vert")
+			.setSource(::vk::ShaderStageFlagBits::eFragment, "shaders/default.frag")
+			;
 
 		// Initialise default shader with settings above
 		defaultShader = std::make_shared<of::vk::Shader>( shaderSettings );
@@ -71,7 +73,7 @@ void ofApp::draw(){
 
 	auto viewMatrix = mCam.getModelViewMatrix();
 	auto projectionMatrix = clip * mCam.getProjectionMatrix( ofGetCurrentViewport() );
-	auto modelMatrix = glm::rotate( float( TWO_PI * (fmodf( ofGetElapsedTimef(), 8.f) * 0.125) ), glm::vec3( { 0.f, 0.f, 1.f } ) );
+	auto modelMatrix = glm::rotate( float( TWO_PI * (fmodf( ofGetElapsedTimef(), 8.f) * 0.125) ), glm::normalize(glm::vec3( { 0.f, 1.f, 1.f } )) );
 
 	auto & context = renderer->getDefaultContext();
 	
@@ -79,7 +81,7 @@ void ofApp::draw(){
 		.setUniform( "projectionMatrix", projectionMatrix )
 		.setUniform( "viewMatrix", viewMatrix )
 		.setUniform( "modelMatrix", modelMatrix )
-		.setUniform( "globalColor", ofFloatColor::bisque)
+		.setUniform( "globalColor", ofFloatColor::black)
 		.setDrawMethod( of::vk::DrawCommand::DrawMethod::eIndexed )
 		.setMesh( mMesh )
 		;
@@ -90,21 +92,17 @@ void ofApp::draw(){
 	// RenderBatch is a light-weight helper object which encapsulates
 	// a Vulkan Command Buffer with a Vulkan RenderPass. 
 	//
-	std::vector<::vk::ClearValue> clearValues( 2 );
-	clearValues[0].setColor( ( ::vk::ClearColorValue& )ofFloatColor::darkGray );
-	clearValues[1].setDepthStencil( { 1.f, 0 } );
-
 	of::vk::RenderBatch::Settings settings;
-	settings.clearValues = clearValues;
-	settings.context = context.get();
-	settings.framebufferAttachmentHeight = renderer->getSwapchain()->getHeight();
-	settings.framebufferAttachmentWidth = renderer->getSwapchain()->getWidth();
-	settings.renderArea = ::vk::Rect2D( {}, { uint32_t( renderer->getViewportWidth() ), uint32_t( renderer->getViewportHeight() ) } );
-	settings.renderPass = *renderer->getDefaultRenderpass();
-	settings.framebufferAttachments = {
-		context->getSwapchainImageView(),
-		renderer->getDepthStencilImageView()
-	};
+	settings
+		.setContext(context.get())
+		.setFramebufferAttachmentsExtent(renderer->getSwapchain()->getWidth(), renderer->getSwapchain()->getHeight())
+		.setRenderArea(::vk::Rect2D({}, { uint32_t(renderer->getViewportWidth()), uint32_t(renderer->getViewportHeight()) }))
+		.setRenderPass(*renderer->getDefaultRenderpass())
+		.addFramebufferAttachment(context->getSwapchainImageView())
+		.addClearColorValue(ofFloatColor::white)
+		.addFramebufferAttachment(renderer->getDepthStencilImageView())
+		.addClearDepthStencilValue({ 1.f,0 })
+		;
 
 	of::vk::RenderBatch batch{ settings };
 	{
