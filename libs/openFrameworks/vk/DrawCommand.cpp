@@ -147,7 +147,7 @@ void DrawCommand::commitMeshAttributes( BufferAllocator& alloc ){
 			allocAndSetAttribute( "inTexCoord", mesh.getTexCoords(), alloc );
 		}
 
-		if ( mesh.hasIndices() && mesh.usingIndices() ){
+		if ( mesh.hasIndices() && mesh.usingIndices() && mDrawMethod == DrawMethod::eIndexed){
 			const auto & indices = mesh.getIndices();
 			const auto byteSize = sizeof( indices[0] ) * indices.size();
 
@@ -231,7 +231,6 @@ DrawCommand & DrawCommand::allocAndSetAttribute( const size_t& attribLocation_, 
 	::vk::DeviceSize offset = 0;
 	// allocate data on gpu
 	if ( alloc.allocate( numBytes, offset ) && alloc.map( dataP ) ){
-		alloc.map( dataP );
 		memcpy( dataP, data, numBytes );
 		return setAttribute( attribLocation_, alloc.getBuffer(), offset );
 	}
@@ -250,7 +249,6 @@ DrawCommand & DrawCommand::allocAndSetIndices( const ofIndexType * data, size_t 
 	// allocate data on gpu
 
 	if ( alloc.allocate( numBytes, offset ) && alloc.map( dataP ) ){
-		alloc.map( dataP );
 		memcpy( dataP, data, numBytes );
 		return setIndices( alloc.getBuffer(), offset );
 	}
