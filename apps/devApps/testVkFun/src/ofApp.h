@@ -13,11 +13,11 @@ struct StaticMesh
 
 class ofApp : public ofBaseApp{
 
-	const of::vk::DrawCommand drawPhong;
-	const of::vk::DrawCommand drawFullScreenQuad;
-	const of::vk::DrawCommand drawTextured;
+	of::vk::DrawCommand drawPhong;
+	of::vk::DrawCommand drawFullScreenQuad;
+	of::vk::DrawCommand drawTextured;
 
-	const of::vk::ComputeCommand computeCmd;
+	of::vk::ComputeCommand computeCmd;
 
 	ofEasyCam mCam;
 

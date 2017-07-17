@@ -333,7 +333,7 @@ inline void of::vk::Shader::printError( const std::string& fileName, std::string
 
 inline bool of::vk::Shader::compileGLSLtoSpirV( 
 	const::vk::ShaderStageFlagBits shaderStage, 
-	std::string & sourceText, 
+	const std::string & sourceText, 
 	std::string fileName, 
 	std::vector<uint32_t>& spirCode, 
 	const std::map<std::string, string>& defines_

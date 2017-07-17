@@ -312,7 +312,7 @@ private:
 	static bool checkForLineNumberModifier( const std::string& line, uint32_t& lineNumber, std::string& currentFilename, std::string& lastFilename );
 	
 	// Utility method for printing errors when compiling using shaderc
-	static void of::vk::Shader::printError( const std::string& fileName, std::string& errorMessage, std::vector<char>& sourceCode );
+	static void printError( const std::string& fileName, std::string& errorMessage, std::vector<char>& sourceCode );
 
 public:
 
@@ -373,7 +373,7 @@ public:
 	}
 
 	// Compile source text and store result in vector of SPIR-V words 
-	static bool compileGLSLtoSpirV( const ::vk::ShaderStageFlagBits shaderStage, std::string & sourceText, std::string fileName, std::vector<uint32_t>& spirCode, const std::map<std::string, std::string>& defines_ = {});
+	static bool compileGLSLtoSpirV( const ::vk::ShaderStageFlagBits shaderStage, const std::string & sourceText, std::string fileName, std::vector<uint32_t>& spirCode, const std::map<std::string, std::string>& defines_ = {});
 
 	// shader name is debug name for shader
 	const std::string& getName();
