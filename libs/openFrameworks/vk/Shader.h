@@ -183,6 +183,16 @@ public:
 			}
 		};
 
+		// Default vertex shader forwards normals, and position in eye space,
+		// outputs transformed geometry to clip space
+		static const std::vector<uint32_t> defaultShaderVert;
+		
+		// Draw geometry using globalColor
+		static const std::vector<uint32_t> defaultShaderFragGlobalColor;  
+
+		// Draw geometry in color based on normals
+		static const std::vector<uint32_t> defaultShaderFragNormalColor; 
+
 		friend class Shader;
 	};
 

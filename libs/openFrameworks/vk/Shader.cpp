@@ -7,6 +7,18 @@
 #include <algorithm>
 
 // ----------------------------------------------------------------------
+ 
+const std::vector<uint32_t> of::vk::Shader::Source::defaultShaderVert {
+	#include "shaders/default.vert.spv"
+};
+const std::vector<uint32_t> of::vk::Shader::Source::defaultShaderFragGlobalColor {
+	#include "shaders/default_global_color.frag.spv"
+};
+const std::vector<uint32_t> of::vk::Shader::Source::defaultShaderFragNormalColor {
+	#include "shaders/default_normal_color.frag.spv"
+};
+
+// ----------------------------------------------------------------------
 
 namespace of{ 
 namespace utils{
@@ -54,8 +66,8 @@ std::string resetConsoleColor(){
 	return setConsoleColor(of::utils::ConsoleColor::eDefault);
 }
 
-} /*namespace utils*/ 
-} /*namespace of*/
+} // end namespace of::utils
+} // end namespace of
 
 
 // ----------------------------------------------------------------------
