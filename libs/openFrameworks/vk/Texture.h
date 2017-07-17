@@ -14,23 +14,53 @@ namespace vk{
 
 class Texture
 {
+public:
+	struct Settings {
+		::vk::Device              device = nullptr;
+		::vk::SamplerCreateInfo   samplerInfo;
+		::vk::ImageViewCreateInfo imageViewInfo;
+		
+		// Default constructor will initialise Settings with 
+		// sensible values for most createInfo fields.
+		Settings(); 
+
+		inline Settings& setDevice(const ::vk::Device& device_) {
+			device = device_;
+			return *this;
+		}
+
+		inline Settings& setImage(const ::vk::Image& img) {
+			imageViewInfo.setImage(img);
+			return *this;
+		}
+	};
+
 private:
-	void init( const ::vk::SamplerCreateInfo & samplerInfo_, const ::vk::ImageViewCreateInfo& imageViewInfo_ );
-	
-	const ::vk::Sampler     mSampler     = nullptr;
-	const ::vk::ImageView   mImageView   = nullptr;
-	const ::vk::ImageLayout mImageLayout = ::vk::ImageLayout::eShaderReadOnlyOptimal;
 
-	const ::vk::Device      mDevice;
+	Settings          mSettings;
 
-	Texture() = delete;
+	::vk::Device &    mDevice      = mSettings.device;
+	::vk::Sampler     mSampler     = nullptr;
+	::vk::ImageView   mImageView   = nullptr;
+	::vk::ImageLayout mImageLayout = ::vk::ImageLayout::eShaderReadOnlyOptimal;
 
 public:
 
-	Texture( const ::vk::Device& device_, const ::vk::Image & image_ );
-	Texture( const ::vk::Device& device_, const ::vk::SamplerCreateInfo& samplerInfo_, const ::vk::ImageViewCreateInfo& imageViewInfo_ );
-	
-	const ::vk::Sampler& getSampler() const{
+	void setup(const Settings& settings_);
+	void reset();
+
+	Texture() = default;
+	Texture(const Texture&) = delete;                   // no copy constructor please
+	Texture(const Texture&&) = delete;                  // no move constructor please
+	Texture& operator=(const Texture& rhs) & = delete;  // no copy assignment constructor please
+	Texture& operator=(const Texture&& rhs) & = delete; // no move assignment constructor please
+	~Texture();
+
+	const Settings & getSettings() {
+		return mSettings;
+	}
+
+	const ::vk::Sampler& getSampler() const {
 		return mSampler;
 	}
 
@@ -38,15 +68,10 @@ public:
 		return mImageView;
 	}
 
-	const ::vk::ImageLayout& getImageLayout() const{
+	const ::vk::ImageLayout& getImageLayout() const {
 		return mImageLayout;
 	}
 
-	~Texture();
-
-	// helper method
-	static ::vk::SamplerCreateInfo getDefaultSamplerCreateInfo();
-	static ::vk::ImageViewCreateInfo getDefaultImageViewCreateInfo( const ::vk::Image& image_ );
 };
 
 } /* namespace vk */
