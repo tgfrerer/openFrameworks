@@ -76,7 +76,7 @@ private:
 
 public:
 
-	const std::shared_ptr<Shader>          getShader() const;
+	const std::shared_ptr<Shader>&         getShader() const;
 	void                                   setShader( const std::shared_ptr<Shader> & shader );
 	void                                   touchShader() const;
 
@@ -118,7 +118,6 @@ public:	// these states can be set upfront
 	std::array<::vk::PipelineColorBlendAttachmentState,8>   blendAttachmentStates; // 8 == max color attachments.
 	
 	::vk::PipelineColorBlendStateCreateInfo                 colorBlendState;
-
 	::vk::PipelineDynamicStateCreateInfo                    dynamicState;
 
 private: // these states must be received through context
@@ -214,7 +213,7 @@ inline const std::shared_ptr<of::vk::Shader> of::vk::GraphicsPipelineState::getS
 	return mShader;
 }
 
-inline const std::shared_ptr<of::vk::Shader> of::vk::ComputePipelineState::getShader() const{
+inline const std::shared_ptr<of::vk::Shader>& of::vk::ComputePipelineState::getShader() const{
 	return mShader;
 }
 
