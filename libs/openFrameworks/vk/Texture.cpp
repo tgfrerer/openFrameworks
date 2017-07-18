@@ -68,6 +68,7 @@ void Texture::reset() {
 			mDevice.destroyImageView(mImageView);
 			mImageView = nullptr;
 		}
+		
 	}
 }
 
@@ -77,7 +78,6 @@ Texture::~Texture(){
 	// Todo: we must find a more elegant way of telling whether 
 	// the sampler or the image view are still in flight or can
 	// be deleted.
-	mDevice.waitIdle();
 	reset();
 }
 

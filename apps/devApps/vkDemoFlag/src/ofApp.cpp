@@ -26,7 +26,7 @@ void ofApp::setup(){
 		.setDrawMethod( of::vk::DrawCommand::DrawMethod::eIndexed )
 		.setNumIndices( flagIndices.numElements )
 		.setInstanceCount( 400 )
-		.setTexture( "tex_0", *mFlagTexture )
+		.setTexture( "tex_0", mFlagTexture )
 		;
 
 	backGroundDraw
@@ -201,8 +201,14 @@ void ofApp::setupTextureData(){
 	// device-only target memory ownded by mImageAllocator
 	mFlagImage = stagingContext->storeImageCmd( imgTransferData, mImageAllocator );
 
+	of::vk::Texture::Settings textureSettings;
+	textureSettings
+		.setDevice(renderer->getVkDevice())
+		.setImage(*mFlagImage)
+		;
+
 	// Create a Texture (which is a combination of ImageView+Sampler) using vk image
-	mFlagTexture = std::make_shared<of::vk::Texture>( renderer->getVkDevice(), *mFlagImage );
+	mFlagTexture.setup(textureSettings);
 
 }
 

@@ -28,7 +28,7 @@ class ofApp : public ofBaseApp{
 	of::vk::ImageAllocator  mImageAllocator;
 
 	std::shared_ptr<::vk::Image>       mImage;
-	std::shared_ptr<of::vk::Texture>   mTexture;
+	of::vk::Texture                    mTexture;
 
 	StaticMesh mStaticMesh;
 	StaticMesh mRectangleData;

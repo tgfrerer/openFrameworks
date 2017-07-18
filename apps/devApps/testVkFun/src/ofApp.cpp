@@ -212,7 +212,7 @@ void ofApp::draw(){
 		.setUniform( "projectionMatrix", projectionMatrix )
 		.setUniform( "viewMatrix", viewMatrix )
 		.setUniform( "modelMatrix", glm::mat4() )
-		.setTexture( "tex_0", *mTexture )
+		.setTexture( "tex_0", mTexture )
 		.setIndices( mRectangleData.indexBuffer )
 		.setNumIndices(mRectangleData.indexBuffer.numElements)
 		.setDrawMethod(of::vk::DrawCommand::DrawMethod::eIndexed)
@@ -365,7 +365,12 @@ void ofApp::uploadStaticData( of::vk::Context & stagingContext ){
 
 	mImage = stagingContext.storeImageCmd( imgData, mImageAllocator );
 
-	mTexture = std::make_shared<of::vk::Texture>( renderer->getVkDevice(), *mImage );
+	of::vk::Texture::Settings textureSettings;
+	textureSettings
+		.setDevice(renderer->getVkDevice())
+		.setImage(*mImage)
+		;
+	mTexture.setup(textureSettings);
 
 }
 

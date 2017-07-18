@@ -37,7 +37,7 @@ class ofApp : public ofBaseApp
 	of::vk::BufferRegion flagPoleIndices;
 
 	std::shared_ptr<::vk::Image> mFlagImage;
-	std::shared_ptr<of::vk::Texture> mFlagTexture;
+	of::vk::Texture mFlagTexture;
 
 public:
 	void setup();

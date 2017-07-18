@@ -173,7 +173,13 @@ void ofApp::setupPrepass(){
 			mTargetImages[i].image = img;
 			mTargetImages[i].view = view;
 
-			mTexture[i] = std::make_shared<of::vk::Texture>( device, img );
+			of::vk::Texture::Settings textureSettings;
+			textureSettings
+				.setDevice(device)
+				.setImage(img)
+				;
+
+			mTexture[i].setup(textureSettings);
 		}
 	}
 
@@ -360,7 +366,7 @@ void ofApp::draw(){
 			.setUniform( "projectionMatrix", projectionMatrix )
 			.setUniform( "viewMatrix", viewMatrix )
 			.setUniform( "modelMatrix", glm::mat4() )
-			.setTexture( "tex_0", *mTexture[(pingPong + 1 ) % 2] )
+			.setTexture( "tex_0", mTexture[(pingPong + 1 ) % 2] )
 			.setMesh( mMeshPlane )
 			.setDrawMethod( of::vk::DrawCommand::DrawMethod::eIndexed )
 			;
@@ -390,8 +396,12 @@ void ofApp::exit(){
 	device.waitIdle();
 
 	for ( auto& i : mTargetImages ){
-			device.destroyImageView( i.view );
-			device.destroyImage( i.image );
+		device.destroyImageView( i.view );
+		device.destroyImage( i.image );
+	}
+
+	for (auto &t : mTexture) {
+		t.reset();
 	}
 
 }

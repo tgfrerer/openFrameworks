@@ -23,7 +23,7 @@ class ofApp : public ofBaseApp{
 	};
 
 	std::array<ImageWithView, 2> mTargetImages;
-	std::array<std::shared_ptr<of::vk::Texture>, 2> mTexture;
+	std::array<of::vk::Texture, 2> mTexture;
 
 	ofEasyCam  mCam;
 	ofCamera   mCamPrepass;
