@@ -43,6 +43,9 @@
     <ClCompile Include="..\..\..\addons\ofxImGui\src\EngineVk.cpp">
       <Filter>addons\ofxImGui\src</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\addons\ofxImGui\src\ofxImGuiLoggerChannel.cpp">
+      <Filter>addons\ofxImGui\src</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="src">
@@ -117,6 +120,9 @@
       <Filter>addons\ofxImGui\libs\imgui\src</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\addons\ofxImGui\src\EngineVk.h">
+      <Filter>addons\ofxImGui\src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\addons\ofxImGui\src\ofxImGuiLoggerChannel.h">
       <Filter>addons\ofxImGui\src</Filter>
     </ClInclude>
   </ItemGroup>

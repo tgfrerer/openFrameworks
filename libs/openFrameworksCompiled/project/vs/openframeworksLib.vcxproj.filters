@@ -55,6 +55,9 @@
     <Filter Include="libs\openFrameworks\vk\spirv-cross">
       <UniqueIdentifier>{c893a6db-10ae-4449-b208-46c17e58c303}</UniqueIdentifier>
     </Filter>
+    <Filter Include="libs\openFrameworks\vk\shaders">
+      <UniqueIdentifier>{d704b22b-d3a3-4ea9-ad09-88e1a77a04ce}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\openFrameworks\ofMain.h">
@@ -621,6 +624,9 @@
     </None>
     <None Include="..\..\..\openFrameworks\vk\README.md">
       <Filter>libs\openFrameworks\vk</Filter>
+    </None>
+    <None Include="..\..\..\openFrameworks\vk\shaders\readme.md">
+      <Filter>libs\openFrameworks\vk\shaders</Filter>
     </None>
   </ItemGroup>
 </Project>
