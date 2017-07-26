@@ -89,8 +89,6 @@ void ofAppVkNoWindow::setup(const ofVkWindowSettings & settings){
 		vkRenderer->setSwapchain( std::make_shared<of::vk::ImgSwapchain>( swapchainSettings ) );
 	}
 
-	auto device = vkRenderer->getVkDevice();
-
 	vkRenderer->setup();
 
 	// Store renderer ptr

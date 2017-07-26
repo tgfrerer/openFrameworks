@@ -110,11 +110,12 @@ void ComputeCommand::submit( Context & context, const glm::uvec3& dims = {256,25
 
 	auto cmd = context.allocateCommandBuffer(::vk::CommandBufferLevel::ePrimary);
 
+	cmd.begin({ ::vk::CommandBufferUsageFlagBits::eOneTimeSubmit });
 
 	// current pipeline state for building command buffer - this is based on parsing the drawCommand list
 	std::unique_ptr<ComputePipelineState> boundPipelineState;
 
-		// find out pipeline state needed for this draw command
+	// find out pipeline state needed for this compute command
 
 	if ( !boundPipelineState || *boundPipelineState != mPipelineState ){
 		// look up pipeline in pipeline cache

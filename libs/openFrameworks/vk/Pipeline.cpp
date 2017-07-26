@@ -34,6 +34,9 @@ using namespace of::vk;
 		;
 
 	pipeline = device.createComputePipeline( *pipelineCache, createInfo, nullptr );
+	
+	mDirty = false;
+
 	return pipeline;
 }
 

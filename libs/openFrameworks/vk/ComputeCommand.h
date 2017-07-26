@@ -29,6 +29,10 @@ private:      /* transient data */
 	// Lookup table for uniform name-> desciptorSetData - retrieved from shader on setup
 	std::map<std::string, UniformId_t> mUniformDictionary;
 
+	// set data for upload to ubo - data is stored locally 
+	// until command is submitted
+	void commitUniforms( BufferAllocator& alloc_ );
+
 public:
 
 	void setup( const ComputePipelineState& pipelineState );
@@ -37,15 +41,11 @@ public:
 
 	const DescriptorSetData_t&           getDescriptorSetData( size_t setId_ ) const;
 
-	// set data for upload to ubo - data is stored locally 
-	// until command is submitted
-	void commitUniforms( BufferAllocator& alloc_ );
-
 	// store uniform values to staging cpu memory
-	template <class T>
+	template <typename T>
 	ComputeCommand & setUniform( const std::string& uniformName, const T& uniformValue_ );
 
-	ComputeCommand & setUniform( const std::string& uniformName, const of::vk::Texture& tex_ );
+	ComputeCommand & setTexture( const std::string& name, const of::vk::Texture& tex_ );
 	ComputeCommand & setStorageBuffer( const std::string& name, const of::vk::BufferRegion& buf_ );
 
 	void submit( of::vk::Context& rc_, const glm::uvec3& dims );
@@ -55,7 +55,7 @@ public:
 // ------------------------------------------------------------
 // Inline getters and setters
 
-template<class T>
+template<typename T>
 inline ComputeCommand& ComputeCommand::setUniform( const std::string & uniformName, const T & uniformValue_ ){
 
 	auto uniformInfoIt = mUniformDictionary.find( uniformName );
@@ -90,12 +90,12 @@ inline ComputeCommand& ComputeCommand::setUniform( const std::string & uniformNa
 
 // ------------------------------------------------------------
 
-inline ComputeCommand & ComputeCommand::setUniform( const std::string & uniformName, const Texture & tex_ ){
+inline ComputeCommand & ComputeCommand::setTexture( const std::string & name_, const Texture & tex_ ){
 
-	auto uniformInfoIt = mUniformDictionary.find( uniformName );
+	auto uniformInfoIt = mUniformDictionary.find( name_ );
 
 	if ( uniformInfoIt == mUniformDictionary.end() ){
-		ofLogWarning() << "Could not set Uniform '" << uniformName << "': Uniform name not found in shader";
+		ofLogWarning() << "Could not set Texture '" << name_ << "': Uniform name not found in shader";
 		return *this;
 	}
 
@@ -108,8 +108,7 @@ inline ComputeCommand & ComputeCommand::setUniform( const std::string & uniformN
 	imageAttachment.sampler     = tex_.getSampler();
 	imageAttachment.imageView   = tex_.getImageView();
 	imageAttachment.imageLayout = tex_.getImageLayout();
-
-
+ 
 	return *this;
 }
 
