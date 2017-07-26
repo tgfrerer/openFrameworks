@@ -137,10 +137,10 @@ void ofAppGLFWWindow::setup(const ofGLFWWindowSettings & _settings){
 			exit( 1 );
 		}
 
-		currentRenderer = shared_ptr<ofBaseRenderer>( new ofVkRenderer( this, _settings.rendererSettings) );
-		auto vkRenderer = dynamic_pointer_cast<ofVkRenderer>( currentRenderer );
+		auto vkRenderer = std::shared_ptr<ofVkRenderer>( new ofVkRenderer( this, _settings.rendererSettings) );
+		currentRenderer = vkRenderer; 
+		
 		// we have a renderer.
-
 		// Now we need to create a window surface
 		createVkSurface();
 		

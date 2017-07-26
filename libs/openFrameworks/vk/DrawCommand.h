@@ -144,7 +144,7 @@ public:
 	of::vk::DrawCommand & setIndices( const of::vk::BufferRegion& bufferRegion_ );
 
 	// Store uniform values to staging cpu memory
-	template <class T>
+	template <typename T>
 	of::vk::DrawCommand & setUniform( const std::string& uniformName, const T& uniformValue_ );
 
 	of::vk::DrawCommand & setTexture( const std::string& name, const of::vk::Texture& tex_ );
@@ -154,7 +154,7 @@ public:
 
 // ------------------------------------------------------------
 
-template<class T>
+template<typename T>
 inline DrawCommand& DrawCommand::setUniform( const std::string & uniformName, const T & uniformValue_ ){
 
 	auto uniformInfoIt = mUniformDictionary->find( uniformName );
