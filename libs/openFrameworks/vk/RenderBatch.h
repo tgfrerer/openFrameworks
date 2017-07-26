@@ -74,12 +74,10 @@ public:
 			framebufferAttachments.push_back( imageView );
 			return *this;
 		}
-		Settings& addClearColorValue( const ::vk::ClearColorValue& color_ ){
-			clearValues.emplace_back( color_ );
-			return *this;
-		}
-		Settings& addClearColorValue( const ofFloatColor& color_ ){
-			clearValues.emplace_back( reinterpret_cast<const ::vk::ClearColorValue&>( color_ ) );
+		template<typename ColorT>
+		Settings& addClearColorValue( const ColorT& color_ ){
+			static_assert(sizeof(ColorT) == sizeof(::vk::ClearColorValue), "Color type must be compatible with VkClearColorValue");
+			clearValues.emplace_back(reinterpret_cast<const ::vk::ClearColorValue&> (color_));
 			return *this;
 		}
 		Settings& addClearDepthStencilValue( const ::vk::ClearDepthStencilValue depthStencilValue_ ){
