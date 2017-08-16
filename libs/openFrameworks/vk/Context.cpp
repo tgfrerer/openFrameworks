@@ -399,8 +399,8 @@ std::vector<BufferRegion> Context::storeBufferDataCmd( const std::vector<Transfe
 
 		::vk::BufferMemoryBarrier bufferTransferBarrier;
 		bufferTransferBarrier
-			.setSrcAccessMask( ::vk::AccessFlagBits::eTransferWrite )  // not sure if these are optimal.
-			.setDstAccessMask( ::vk::AccessFlagBits::eVertexAttributeRead )    // not sure if these are optimal.
+			.setSrcAccessMask( ::vk::AccessFlagBits::eTransferWrite )
+			.setDstAccessMask( ::vk::AccessFlagBits::eShaderRead )
 			.setSrcQueueFamilyIndex( VK_QUEUE_FAMILY_IGNORED )
 			.setDstQueueFamilyIndex( VK_QUEUE_FAMILY_IGNORED )
 			.setBuffer( targetAllocator.getBuffer() )
@@ -413,7 +413,7 @@ std::vector<BufferRegion> Context::storeBufferDataCmd( const std::vector<Transfe
 
 		cmd.pipelineBarrier(
 			::vk::PipelineStageFlagBits::eTransfer,
-			::vk::PipelineStageFlagBits::eTopOfPipe, //<- not sure if this is optimal.
+			::vk::PipelineStageFlagBits::eVertexShader,
 			::vk::DependencyFlagBits(),
 			{}, /* no fence */
 			{ bufferTransferBarrier }, /* buffer barriers */
