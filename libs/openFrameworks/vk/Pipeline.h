@@ -138,6 +138,16 @@ private:
 
 public:
 	
+	// We define some blendmodes for convenience so that its less of a nightmare to 
+	// populate blendAttachmentStates.
+	enum class BlendMode: uint32_t {  
+		ePremultipliedAlpha,
+		eAlpha,
+		eScreen,
+	};
+
+	void setBlendMode( uint8_t attachmentIdx, BlendMode );
+
 	GraphicsPipelineState();
 
 	void reset();

@@ -159,7 +159,7 @@ void GraphicsPipelineState::reset()
 		.setBlendEnable( VK_FALSE )
 		.setColorBlendOp( ::vk::BlendOp::eAdd)
 		.setAlphaBlendOp( ::vk::BlendOp::eAdd)
-		.setSrcColorBlendFactor( ::vk::BlendFactor::eSrcAlpha)
+		.setSrcColorBlendFactor( ::vk::BlendFactor::eOne)              // eOne, because we require premultiplied alpha!
 		.setDstColorBlendFactor( ::vk::BlendFactor::eOneMinusSrcAlpha )
 		.setSrcAlphaBlendFactor( ::vk::BlendFactor::eOne)
 		.setDstAlphaBlendFactor( ::vk::BlendFactor::eZero )
@@ -177,7 +177,7 @@ void GraphicsPipelineState::reset()
 		.setLogicOp( ::vk::LogicOp::eClear )
 		.setAttachmentCount( 1 )
 		.setPAttachments   ( nullptr )
-		.setBlendConstants( {0.f,0.f,0.f,0.f} )
+		.setBlendConstants( {0.f, 0.f, 0.f, 0.f} )
 		;
 
 	dynamicStates = {
@@ -196,6 +196,53 @@ void GraphicsPipelineState::reset()
 	mBasePipelineIndex = -1;
 
 	mShader.reset();
+}
+
+// ----------------------------------------------------------------------
+void GraphicsPipelineState::setBlendMode( uint8_t attachmentIdx, GraphicsPipelineState::BlendMode mode){
+	if ( attachmentIdx >= blendAttachmentStates.size() ) {
+		ofLogError() << "Cannot set blendmode for attachment with index above 7. Given index: " << attachmentIdx;
+		return;
+	}
+	auto & attachmentState = blendAttachmentStates[attachmentIdx];
+
+	switch ( mode ) {
+	case BlendMode::ePremultipliedAlpha:
+		attachmentState
+			.setBlendEnable( VK_TRUE )
+			.setColorBlendOp( ::vk::BlendOp::eAdd )
+			.setAlphaBlendOp( ::vk::BlendOp::eAdd )
+			.setSrcColorBlendFactor( ::vk::BlendFactor::eOne )
+			.setDstColorBlendFactor( ::vk::BlendFactor::eOneMinusSrcAlpha )
+			.setSrcAlphaBlendFactor( ::vk::BlendFactor::eOne )
+			.setDstAlphaBlendFactor( ::vk::BlendFactor::eZero )
+			;
+		break;
+	case BlendMode::eAlpha:
+		attachmentState
+			.setBlendEnable( VK_TRUE )
+			.setColorBlendOp( ::vk::BlendOp::eAdd )
+			.setAlphaBlendOp( ::vk::BlendOp::eAdd )
+			.setSrcColorBlendFactor( ::vk::BlendFactor::eSrcAlpha )
+			.setDstColorBlendFactor( ::vk::BlendFactor::eOneMinusSrcAlpha )
+			.setSrcAlphaBlendFactor( ::vk::BlendFactor::eOne )
+			.setDstAlphaBlendFactor( ::vk::BlendFactor::eZero )
+			;
+		break;
+	case BlendMode::eScreen:
+		attachmentState
+			.setBlendEnable( VK_TRUE )
+			.setColorBlendOp( ::vk::BlendOp::eAdd )
+			.setAlphaBlendOp( ::vk::BlendOp::eAdd )
+			.setSrcColorBlendFactor( ::vk::BlendFactor::eOne )  //  fragment shader output assumed to be premultiplied alpha!
+			.setDstColorBlendFactor( ::vk::BlendFactor::eOne )  //
+			.setSrcAlphaBlendFactor( ::vk::BlendFactor::eZero ) //
+			.setDstAlphaBlendFactor( ::vk::BlendFactor::eZero ) //
+			;
+		break;
+	default:
+		break;
+	}
 }
 
 // ----------------------------------------------------------------------
