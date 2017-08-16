@@ -9,6 +9,10 @@ using namespace of::vk;
 RenderBatch::RenderBatch( RenderBatch::Settings& settings )
 	: mSettings( settings )
 {
+	auto & context = *mSettings.context;
+	// Allocate a new command buffer for this batch.
+	mVkCmd = context.allocateCommandBuffer( ::vk::CommandBufferLevel::ePrimary );
+	mVkCmd.begin( { ::vk::CommandBufferUsageFlagBits::eOneTimeSubmit } );
 }
 
 // ------------------------------------------------------------
@@ -89,42 +93,38 @@ void RenderBatch::begin(){
 
 	auto & context = *mSettings.context;
 
-	// Allocate a new command buffer for this batch.
-	mVkCmd = context.allocateCommandBuffer( ::vk::CommandBufferLevel::ePrimary );
-
-	// Create a new Framebuffer. The framebuffer connects RenderPass with
-	// ImageViews where results of this renderpass will be stored.
-	//
-	::vk::FramebufferCreateInfo framebufferCreateInfo;
-	framebufferCreateInfo
-		.setRenderPass( mSettings.renderPass)
-		.setAttachmentCount( mSettings.framebufferAttachments.size() )
-		.setPAttachments( mSettings.framebufferAttachments.data() )
-		.setWidth( mSettings.framebufferAttachmentsWidth )
-		.setHeight( mSettings.framebufferAttachmentsHeight )
-		.setLayers( 1 )
-		;
-
-	// Framebuffers in Vulkan are very light-weight objects, whose main purpose 
-	// is to connect RenderPasses to Image attachments. 
-	//
-	// Since the swapchain might have a different number of images than this context has virtual 
-	// frames, and the swapchain may even acquire images out-of-sequence, we must re-create the 
-	// framebuffer on each frame to make sure we're attaching the renderpass to the correct 
-	// attachments.
-	//
-	// We create framebuffers through the context, so that the context
-	// can free all old framebuffers once the frame has been processed.
-	mFramebuffer = context.createFramebuffer( framebufferCreateInfo );
-
-	mVkCmd.begin( { ::vk::CommandBufferUsageFlagBits::eOneTimeSubmit } );
-
 	if ( mSettings.renderPass ){	
+		
 		// Begin Renderpass - 
 		// This is only allowed if the context maps a primary renderpass!
 
 		// Note that secondary command buffers inherit the renderpass 
 		// from their primary.
+
+		// Create a new Framebuffer. The framebuffer connects RenderPass with
+		// ImageViews where results of this renderpass will be stored.
+		//
+		::vk::FramebufferCreateInfo framebufferCreateInfo;
+		framebufferCreateInfo
+			.setRenderPass( mSettings.renderPass )
+			.setAttachmentCount( mSettings.framebufferAttachments.size() )
+			.setPAttachments( mSettings.framebufferAttachments.data() )
+			.setWidth( mSettings.framebufferAttachmentsWidth )
+			.setHeight( mSettings.framebufferAttachmentsHeight )
+			.setLayers( 1 )
+			;
+
+		// Framebuffers in Vulkan are very light-weight objects, whose main purpose 
+		// is to connect RenderPasses to Image attachments. 
+		//
+		// Since the swapchain might have a different number of images than this context has virtual 
+		// frames, and the swapchain may even acquire images out-of-sequence, we must re-create the 
+		// framebuffer on each frame to make sure we're attaching the renderpass to the correct 
+		// attachments.
+		//
+		// We create framebuffers through the context, so that the context
+		// can free all old framebuffers once the frame has been processed.
+		mFramebuffer = context.createFramebuffer( framebufferCreateInfo );
 
 		::vk::RenderPassBeginInfo renderPassBeginInfo;
 		renderPassBeginInfo
@@ -141,7 +141,8 @@ void RenderBatch::begin(){
 	// Set dynamic viewport
 	// TODO: these dynamics may belong to the draw command
 	::vk::Viewport vp;
-	vp.setX( 0 )
+	vp
+		.setX( 0 )
 		.setY( 0 )
 		.setWidth(  mSettings.renderArea.extent.width )
 		.setHeight( mSettings.renderArea.extent.height )
@@ -267,7 +268,7 @@ void RenderBatch::processDrawCommands( ){
 
 		}
 
-		// Bind uniforms
+		// Bind resources
 
 		// Bind dc DescriptorSets to current pipeline descriptor sets
 		// make sure dynamic UBOs have the correct offsets
