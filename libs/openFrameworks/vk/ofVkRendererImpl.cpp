@@ -237,9 +237,14 @@ std::shared_ptr<::vk::RenderPass> ofVkRenderer::generateDefaultRenderPass(::vk::
 	vk::SubpassDescription subpassDescription;
 	subpassDescription
 		.setPipelineBindPoint       ( vk::PipelineBindPoint::eGraphics )
+		.setInputAttachmentCount    (0)
+		.setPInputAttachments       (nullptr)
 		.setColorAttachmentCount    ( 1 )
 		.setPColorAttachments       ( &colorReference )
+		.setPResolveAttachments     (nullptr)
 		.setPDepthStencilAttachment ( &depthReference )
+		.setPPreserveAttachments    (nullptr)
+		.setPreserveAttachmentCount (0)
 		;
 
 	// Define 2 self-dependencies for subpass 0

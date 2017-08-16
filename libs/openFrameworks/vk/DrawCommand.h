@@ -33,7 +33,11 @@ public :
 
 private:
 
-	// a draw command has everything needed to draw an object
+	// A draw command has everything needed to draw an object
+	//
+	// TODO: really, there's no need to keep this state here as data - better 
+	// store it in a common repository of all pipeline states, and index it by
+	// an ID, which can be compared against, instead of a hash.
 	GraphicsPipelineState mPipelineState;
 
 private:      /* transient data */

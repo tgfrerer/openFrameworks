@@ -1242,15 +1242,13 @@ void of::vk::Shader::createVkPipelineLayout() {
 		;
 
 
-	mPipelineLayout = std::shared_ptr<::vk::PipelineLayout>( new ::vk::PipelineLayout,
+	mPipelineLayout = std::shared_ptr<::vk::PipelineLayout>( new ::vk::PipelineLayout( mSettings.device.createPipelineLayout( pipelineInfo ) ),
 		[device = mSettings.device]( ::vk::PipelineLayout* lhs ){
 		if ( lhs ){
 			device.destroyPipelineLayout( *lhs );
 		}
 		delete lhs;
 	} );
-
-	*mPipelineLayout = mSettings.device.createPipelineLayout( pipelineInfo );
 
 }
 
