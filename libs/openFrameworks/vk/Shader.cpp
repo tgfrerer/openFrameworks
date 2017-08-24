@@ -235,7 +235,7 @@ bool of::vk::Shader::compile(){
 	if ( shaderDirty ){
 		reflect( mSpvCrossCompilers, mVertexInfo );
 		createSetLayouts();
-		createVkPipelineLayout();
+		mPipelineLayout.reset();
 		shaderDirty = false;
 		return true;
 	} 
@@ -473,8 +473,8 @@ void of::vk::Shader::createVkShaderModule( const ::vk::ShaderStageFlagBits shade
 
 	::vk::ShaderModule module = mSettings.device.createShaderModule( shaderModuleCreateInfo );
 
-	auto tmpShaderStage = std::shared_ptr<ShaderStage>( new ShaderStage, [d = mSettings.device](ShaderStage* lhs){
-		d.destroyShaderModule( lhs->module );
+	auto tmpShaderStage = std::shared_ptr<ShaderStage>( new ShaderStage, [device = mSettings.device](ShaderStage* lhs){
+		device.destroyShaderModule( lhs->module );
 		delete lhs;
 	} );
 
@@ -881,6 +881,7 @@ bool of::vk::Shader::createSetLayouts(){
 		
 		mDescriptorSetData.clear();
 		mUniformDictionary.clear();
+		mUniformBindings.clear();
 
 		size_t setLayoutIndex = 0;
 
@@ -897,6 +898,8 @@ bool of::vk::Shader::createSetLayouts(){
 			uniformId.setIndex        = setLayoutIndex;
 			uniformId.descriptorIndex = 0;
 			uniformId.auxDataIndex    = -1;
+
+			std::vector<UniformId_t> uniformsPerSet;
 
 			for ( auto & bindingsPair : setLayoutBindingsMap ){
 
@@ -968,12 +971,24 @@ bool of::vk::Shader::createSetLayouts(){
 
 					descriptors.emplace_back( std::move( descriptorData ) );
 
-					mUniformDictionary.insert( { uniform.name, uniformId } );
+					// FIXME: what uniform arrays need to have a name that makes it possible to look them 
+					// up - i fear with arrays of images for example, inserting with the same name will 
+					// overwrite previous entry with lower index.
+					if ( arrayIndex == 0 ) {
+						mUniformDictionary.insert( { uniform.name, uniformId } );
+					}
+
+					mUniformDictionary.insert( { uniform.name + "[" + ofToString(arrayIndex) + "]", uniformId} );
+
+					if ( arrayIndex == 0 ){
+						uniformsPerSet.push_back( uniformId );
+					}
 
 					uniformId.descriptorIndex++;
 				}
 			}
 
+			mUniformBindings.emplace_back( std::move( uniformsPerSet ) );
 			mDescriptorSetData.emplace_back( std::move( tmpDescriptorSetData ) );
 			++setLayoutIndex;
 		}
@@ -1124,11 +1139,13 @@ bool of::vk::Shader::createSetLayouts(){
 
 		// Create the auto-deleter
 		std::shared_ptr<::vk::DescriptorSetLayout> vkDescriptorSetLayout =
-			std::shared_ptr<::vk::DescriptorSetLayout>( new ::vk::DescriptorSetLayout, [d = mSettings.device]( ::vk::DescriptorSetLayout* lhs ){
-			if ( *lhs ){
-				d.destroyDescriptorSetLayout( *lhs );
+			std::shared_ptr<::vk::DescriptorSetLayout>( new ::vk::DescriptorSetLayout, [device = mSettings.device]( ::vk::DescriptorSetLayout* rhs ){
+			if ( *rhs ){
+				ofLog() << "destroy descriptorSetLayout: " << std::hex << *rhs;
+				// FIXME: THIS DOES CREATE SUBTLE BUGS, if deleter gets called whilst DescriptorSetLayout is still used by in-flight frame.
+				// device.destroyDescriptorSetLayout( *rhs );
 			}
-			delete lhs;
+			delete rhs;
 		} );
 		
 		// create new descriptorSetLayout
@@ -1243,11 +1260,14 @@ void of::vk::Shader::createVkPipelineLayout() {
 
 
 	mPipelineLayout = std::shared_ptr<::vk::PipelineLayout>( new ::vk::PipelineLayout( mSettings.device.createPipelineLayout( pipelineInfo ) ),
-		[device = mSettings.device]( ::vk::PipelineLayout* lhs ){
-		if ( lhs ){
-			device.destroyPipelineLayout( *lhs );
+		[device = mSettings.device]( ::vk::PipelineLayout* rhs ){
+		if ( rhs ){
+			// FIXME: THIS DOES CREATE SUBTLE BUGS, if deleter gets called whilst PipelineLayout is still used by in-flight frame.
+
+			ofLog() << "destroy pipelineLayout" << std::hex << *rhs;
+			// device.destroyPipelineLayout( *rhs );
 		}
-		delete lhs;
+		delete rhs;
 	} );
 
 }

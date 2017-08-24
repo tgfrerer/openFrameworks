@@ -246,6 +246,9 @@ private:
 	// default keys into descriptor set data.
 	std::map<std::string, UniformId_t> mUniformDictionary;
 
+	// keys for resources based on set-, binding number
+	std::vector<std::vector<UniformId_t>> mUniformBindings;
+
 	VertexInfo mVertexInfo;
 
 	// map from uniform name to uniform data
@@ -381,6 +384,10 @@ public:
 	const std::map<std::string, UniformId_t>& getUniformDictionary() const{
 		return mUniformDictionary;
 	}
+
+	const std::vector<std::vector<UniformId_t>>& getUniformBindings() const {
+		return mUniformBindings;
+	};
 
 	// Compile source text and store result in vector of SPIR-V words 
 	static bool compileGLSLtoSpirV( const ::vk::ShaderStageFlagBits shaderStage, const std::string & sourceText, std::string fileName, std::vector<uint32_t>& spirCode, const std::map<std::string, std::string>& defines_ = {});

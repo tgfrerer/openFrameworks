@@ -45,10 +45,13 @@ private:      /* transient data */
 	uint64_t mPipelineHash = 0;
 
 	// Bindings data for descriptorSets, (vector index == set number) - retrieved from shader on setup
-	std::vector<DescriptorSetData_t>   mDescriptorSetData;
+	std::vector<DescriptorSetData_t>             mDescriptorSetData;
 	
-	// Pointer to lookup table for uniform name-> desciptorSetData - retrieved from shader on setup
-	const std::map<std::string, UniformId_t>* mUniformDictionary;
+	// Pointer to lookup table for uniform name-> Uniform Key- retrieved from shader on setup
+	const std::map<std::string, UniformId_t>*    mUniformDictionary;
+
+	// Pointer to lookup table for set,binding -> Uniform Key - retrieved from shader on setup
+	const std::vector<std::vector<UniformId_t>>* mUniformBindings;
 
 	// Vector of buffers holding vertex attribute data
 	std::vector<::vk::Buffer> mVertexBuffers;
@@ -151,12 +154,50 @@ public:
 	template <typename T>
 	of::vk::DrawCommand & setUniform( const std::string& uniformName, const T& uniformValue_ );
 
+	// Store ubo to staging cpu memory
+	template <typename T>
+	of::vk::DrawCommand & setUbo( uint32_t setId, uint32_t bindingId, const T& struct_ );
+
 	of::vk::DrawCommand & setTexture( const std::string& name, const of::vk::Texture& tex_ );
 	of::vk::DrawCommand & setStorageBuffer( const std::string& name, const of::vk::BufferRegion& buf_ );
 
 };
 
 // ------------------------------------------------------------
+
+template<typename T>
+inline DrawCommand& DrawCommand::setUbo( uint32_t setId, uint32_t bindingId, const T& struct_ ) {
+
+	if ( mUniformBindings->size() <= setId || (*mUniformBindings)[setId].size() <= bindingId ) {
+		ofLogWarning() << "Could not find Ubo in set: '" << setId << "' at binding number: " << "'" << bindingId << "' index not found in shader.";
+		return *this;
+	}
+
+	// --------| invariant: uniform found
+
+	const auto& uniformInfo = (*mUniformBindings)[setId][bindingId];
+
+	if ( uniformInfo.dataRange < sizeof( T ) ) {
+		ofLogWarning() << "Could not set ubo : Data size does not match: "
+			<< " Expected: " << uniformInfo.dataRange << ", received: " << sizeof( T ) << ".";
+		return *this;
+	}
+
+	// --------| invariant: size match, we can copy data into our vector.
+
+	auto & dataVec = mDescriptorSetData[uniformInfo.setIndex].dynamicUboData[uniformInfo.auxDataIndex];
+
+	if ( uniformInfo.dataOffset + uniformInfo.dataRange <= dataVec.size() ) {
+		memcpy( dataVec.data() + uniformInfo.dataOffset, &struct_, uniformInfo.dataRange );
+	} else {
+		ofLogError() << "Not enough space in local uniform storage. Has this drawCommand been properly initialised?";
+	}
+
+	return *this;
+}
+
+// ------------------------------------------------------------
+
 
 template<typename T>
 inline DrawCommand& DrawCommand::setUniform( const std::string & uniformName, const T & uniformValue_ ){

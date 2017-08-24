@@ -28,6 +28,7 @@ void DrawCommand::setup( const GraphicsPipelineState& pipelineState ){
 
 	mDescriptorSetData = mPipelineState.getShader()->getDescriptorSetData();
 	mUniformDictionary = &mPipelineState.getShader()->getUniformDictionary();
+	mUniformBindings   = &mPipelineState.getShader()->getUniformBindings();
 
 	// parse shader info to find out how many buffers to reserve for vertex attributes.
 
@@ -46,10 +47,10 @@ void DrawCommand::commitUniforms( BufferAllocator& alloc ){
 
 	for ( auto & descriptorSetData : mDescriptorSetData ){
 
-		auto imgInfoIt = descriptorSetData.imageAttachment.begin();
-		auto bufferInfoIt = descriptorSetData.bufferAttachment.begin();
+		auto imgInfoIt        = descriptorSetData.imageAttachment.begin();
+		auto bufferInfoIt     = descriptorSetData.bufferAttachment.begin();
 		auto dynamicOffsetsIt = descriptorSetData.dynamicBindingOffsets.begin();
-		auto dataIt = descriptorSetData.dynamicUboData.begin();
+		auto dataIt           = descriptorSetData.dynamicUboData.begin();
 
 		for ( auto & descriptor : descriptorSetData.descriptors ){
 
