@@ -127,17 +127,19 @@ void ComputeCommand::submit( Context & context, const glm::uvec3& dims = {256,25
 
 		auto & currentPipeline = context.borrowPipeline( pipelineStateHash );
 
+		// TODO: check if something fishy is going on here - it may be
+		// that the pipeline gets destroyed, or leaked, while it is still in use.
+
 		if ( currentPipeline.get() == nullptr ){
 			currentPipeline =
-				std::shared_ptr<::vk::Pipeline>( ( new ::vk::Pipeline ),
+				std::shared_ptr<::vk::Pipeline>( new ::vk::Pipeline( boundPipelineState->createPipeline( context.mDevice, context.mSettings.pipelineCache ) ),
 					[device = context.mDevice]( ::vk::Pipeline*rhs ){
 				if ( rhs ){
+					ofLog() << "destroy pipeline" << std::hex << *rhs;
 					device.destroyPipeline( *rhs );
 				}
 				delete rhs;
 			} );
-
-			*currentPipeline = boundPipelineState->createPipeline( context.mDevice, context.mSettings.pipelineCache );
 		}
 
 		cmd.bindPipeline( ::vk::PipelineBindPoint::eCompute, *currentPipeline );
