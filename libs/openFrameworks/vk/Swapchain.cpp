@@ -152,13 +152,6 @@ void WsiSwapchain::setup()
 		
 		mImages[i].imageRef = swapchainImages[i];
 		
-		::vk::ComponentMapping componentMapping { 
-			::vk::ComponentSwizzle::eR,
-			::vk::ComponentSwizzle::eG,
-			::vk::ComponentSwizzle::eB,
-			::vk::ComponentSwizzle::eA
-		};
-	
 		::vk::ImageSubresourceRange subresourceRange;
 		subresourceRange
 			.setAspectMask       ( ::vk::ImageAspectFlagBits::eColor )
@@ -173,7 +166,7 @@ void WsiSwapchain::setup()
 			.setImage            ( mImages[i].imageRef )
 			.setViewType         ( ::vk::ImageViewType::e2D )
 			.setFormat           ( mWindowColorFormat.format )
-			.setComponents       ( componentMapping )
+			.setComponents       ( ::vk::ComponentMapping() )
 			.setSubresourceRange ( subresourceRange )
 			;
 		// create image view for color image
