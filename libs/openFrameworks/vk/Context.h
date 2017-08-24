@@ -1,11 +1,12 @@
 #pragma once
 
-#include <memory>
 #include <vulkan/vulkan.hpp>
 #include "ofLog.h"
 #include "vk/HelperTypes.h"
 #include "vk/BufferAllocator.h"
 #include "vk/ImageAllocator.h"
+#include <memory>
+#include <forward_list>
 
 /*
 
@@ -101,7 +102,7 @@ private:
 	// Bitfield indicating whether the descriptor pool for a virtual frame is dirty 
 	// Each bit represents a virtual frame index. 
 	// We're not expecting more than 64 virtual frames (more than 3 seldom make sense)
-	uint64_t mDescriptorPoolsDirty = 0; // -1 == all bits '1' == all dirty
+	uint64_t mDescriptorPoolsDirty = 0;
 
 	// Re-consolidate descriptor pools if necessary
 	void updateDescriptorPool();
@@ -150,8 +151,6 @@ public:
 	// Create and return command buffer. 
 	// Lifetime is limited to current frame. 
 	// It *must* be submitted to this context within the same frame, that is, before swap().
-	// command buffer will also begin renderpass, based on current framebuffer and render area,
-	// and clear the render area based on current clear values.
 	::vk::CommandBuffer allocateCommandBuffer(const ::vk::CommandBufferLevel & commandBufferLevel = ::vk::CommandBufferLevel::ePrimary ) const;
 
 	BufferAllocator & getAllocator() const;
