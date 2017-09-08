@@ -21,6 +21,23 @@
 
 #include "ofMainLoop.h"
 
+using namespace std;
+
+#if !defined( TARGET_OF_IOS ) & !defined(TARGET_ANDROID) & !defined(TARGET_EMSCRIPTEN) & !defined(TARGET_RASPBERRY_PI)
+	#include "ofAppGLFWWindow.h"
+	//special case so we preserve supplied settngs
+	//TODO: remove me when we remove the ofAppGLFWWindow setters.
+	//--------------------------------------
+	void ofSetupOpenGL(shared_ptr<ofAppGLFWWindow> windowPtr, int w, int h, ofWindowMode screenMode){
+		ofInit();
+		auto settings = windowPtr->getSettings();
+		settings.width = w;
+		settings.height = h;
+		settings.windowMode = screenMode;
+		ofGetMainLoop()->addWindow(windowPtr);
+		windowPtr->setup(settings);
+	}
+#endif
 
 #ifdef TARGET_LINUX
 #include "ofGstUtils.h"

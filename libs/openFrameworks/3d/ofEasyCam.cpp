@@ -2,6 +2,8 @@
 #include "ofMath.h"
 #include "ofUtils.h"
 
+using namespace std;
+
 // when an ofEasyCam is moving due to momentum, this keeps it
 // from moving forever by assuming small values are zero.
 static const float minDifference = 0.1e-5f;
@@ -176,7 +178,7 @@ void ofEasyCam::setEvents(ofCoreEvents & _events){
 
 	// we need a temporary copy of bMouseInputEnabled, since it will 
 	// get changed by disableMouseInput as a side-effect.
-	bool wasMouseInputEnabled = bMouseInputEnabled || !events;
+	bool wasMouseInputEnabled = bMouseInputEnabled;// || !events;
 	disableMouseInput();
 	events = &_events;
 	if (wasMouseInputEnabled) {

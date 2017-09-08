@@ -52,9 +52,9 @@ public:
 	int depthBits = 24;
 	int stencilBits = 0;
 	bool stereo = false;
+	bool multiMonitorFullScreen = false;
 	shared_ptr<ofAppBaseWindow> shareContextWith;
 #endif
-	bool multiMonitorFullScreen = false;
 	bool visible = true;
 	bool iconified = false;
 	bool decorated = true;
@@ -125,7 +125,7 @@ public:
 	int getWidth();
 
 	ofCoreEvents & events();
-	shared_ptr<ofBaseRenderer> & renderer();
+	std::shared_ptr<ofBaseRenderer> & renderer();
     
     GLFWwindow* getGLFWWindow();
     void * getWindowContext(){return getGLFWWindow();}
@@ -135,7 +135,7 @@ public:
 	glm::vec2	getScreenSize();
 	glm::vec2 	getWindowPosition();
 
-	void setWindowTitle(string title);
+	void setWindowTitle(std::string title);
 	void setWindowPosition(int x, int y);
 	void setWindowShape(int w, int h);
 
@@ -152,14 +152,14 @@ public:
 
 	void		setVerticalSync(bool bSync);
 
-    void        setClipboardString(const string& text);
-    string      getClipboardString();
+    void        setClipboardString(const std::string& text);
+    std::string      getClipboardString();
 
     int         getPixelScreenCoordScale();
 
 #ifndef OF_TARGET_API_VULKAN
-    void        makeCurrent();
-	void        swapBuffers();
+    void 		makeCurrent();
+	void swapBuffers();
 #endif
 
 	void startRender();
@@ -206,20 +206,21 @@ private:
 	static void 	keyboard_cb(GLFWwindow* windowP_, int key, int scancode, int action, int mods);
 	static void 	char_cb(GLFWwindow* windowP_, uint32_t key);
 	static void 	resize_cb(GLFWwindow* windowP_, int w, int h);
+	static void 	framebuffer_size_cb(GLFWwindow* windowP_, int w, int h);
 	static void 	exit_cb(GLFWwindow* windowP_);
 	static void		scroll_cb(GLFWwindow* windowP_, double x, double y);
 	static void 	drop_cb(GLFWwindow* windowP_, int numFiles, const char** dropString);
 	static void		error_cb(int errorCode, const char* errorDescription);
 
 #ifdef TARGET_LINUX
-	void setWindowIcon(const string & path);
+	void setWindowIcon(const std::string & path);
 	void setWindowIcon(const ofPixels & iconPixels);
 	XIM xim;
 	XIC xic;
 #endif
 
 	ofCoreEvents coreEvents;
-	shared_ptr<ofBaseRenderer> currentRenderer;
+	std::shared_ptr<ofBaseRenderer> currentRenderer;
 	ofGLFWWindowSettings settings;
 
 	ofWindowMode	windowMode;

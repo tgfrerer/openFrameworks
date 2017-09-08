@@ -10,6 +10,8 @@
 
 #include "ofGraphics.h"
 
+using namespace std;
+
 namespace{
 	template<typename Type>
 	typename std::enable_if<std::is_integral<Type>::value, Type>::type
@@ -806,3 +808,4 @@ template class ofxInputField<uint64_t>;
 template class ofxInputField<float>;
 template class ofxInputField<double>;
 template class ofxInputField<std::string>;
+template class ofxInputField<typename std::conditional<std::is_same<uint32_t, size_t>::value || std::is_same<uint64_t, size_t>::value, bool, size_t>::type>;
