@@ -142,7 +142,7 @@ public:
 		std::filesystem::path         filePath;
 		std::string                   glslSourceInline;
 
-		std::map<std::string, string> defines; // passed to GLSL compiler like: "-DNAME=VALUE"
+		std::map<std::string, std::string> defines; // passed to GLSL compiler like: "-DNAME=VALUE"
 
 		enum class Type : uint8_t
 		{

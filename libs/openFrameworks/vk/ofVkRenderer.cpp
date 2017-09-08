@@ -13,6 +13,8 @@
 
 #include <cstdint>
 
+using namespace std;
+
 const string ofVkRenderer::TYPE = "Vulkan";
 
 using InstanceP = shared_ptr<VkInstance>;

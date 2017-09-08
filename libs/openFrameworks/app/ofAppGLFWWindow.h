@@ -52,9 +52,9 @@ public:
 	int depthBits = 24;
 	int stencilBits = 0;
 	bool stereo = false;
-	bool multiMonitorFullScreen = false;
 	shared_ptr<ofAppBaseWindow> shareContextWith;
 #endif
+	bool multiMonitorFullScreen = false;
 	bool visible = true;
 	bool iconified = false;
 	bool decorated = true;

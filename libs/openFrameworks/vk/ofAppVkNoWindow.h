@@ -36,12 +36,12 @@ public:
 	int			getHeight();
 
 	ofCoreEvents & events();
-	shared_ptr<ofBaseRenderer> & renderer();
+	std::shared_ptr<ofBaseRenderer> & renderer();
 
 private:
 	int width, height;
 
     ofBaseApp *		ofAppPtr;
     ofCoreEvents coreEvents;
-    shared_ptr<ofBaseRenderer> currentRenderer;
+    std::shared_ptr<ofBaseRenderer> currentRenderer;
 };

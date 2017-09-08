@@ -4,6 +4,7 @@
 #include <mutex>
 #include "ofLog.h"
 
+using namespace std;
 using namespace of::vk;
 
 // ----------------------------------------------------------------------

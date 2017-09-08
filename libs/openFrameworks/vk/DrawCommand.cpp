@@ -2,6 +2,7 @@
 #include "vk/RenderBatch.h"
 #include "vk/Shader.h"
 
+using namespace std;
 using namespace of::vk;
 
 // setup all non-transient state for this draw object

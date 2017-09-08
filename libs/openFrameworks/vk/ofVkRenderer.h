@@ -19,7 +19,7 @@
 #include "ofBitmapFont.h"
 #include "ofPath.h"
 #include "ofMesh.h"
-
+#include <deque>
 
 #define RENDERER_FUN_NOT_IMPLEMENTED {                                   \
 	ofLogVerbose() << __FUNCTION__ << ": not implemented in VkRenderer.";\
@@ -46,14 +46,14 @@ class ofVkRenderer : public ofBaseRenderer
 	const ofBaseMaterial * currentMaterial;
 
 	ofStyle currentStyle;
-	deque <ofStyle> styleHistory;
+	std::deque <ofStyle> styleHistory;
 	of3dGraphics m3dGraphics;
 	ofBitmapFont bitmapFont;
 	ofPath mPath;
 	const ofAppBaseWindow * window;
 
 public:
-	static const string TYPE;
+	static const std::string TYPE;
 
 	const of::vk::RendererSettings mSettings;
 
@@ -62,7 +62,7 @@ public:
 	void setup();
 	virtual ~ofVkRenderer() override;
 
-	virtual const string & getType() override{
+	virtual const std::string & getType() override{
 		return TYPE;
 	};
 
@@ -189,8 +189,8 @@ public:
 	virtual void drawTriangle( float x1, float y1, float z1, float x2, float y2, float z2, float x3, float y3, float z3 ) const RENDERER_FUN_NOT_IMPLEMENTED;
 	virtual void drawCircle( float x, float y, float z, float radius ) const RENDERER_FUN_NOT_IMPLEMENTED;
 	virtual void drawEllipse( float x, float y, float z, float width, float height ) const RENDERER_FUN_NOT_IMPLEMENTED;
-	virtual void drawString( string text, float x, float y, float z ) const RENDERER_FUN_NOT_IMPLEMENTED;
-	virtual void drawString( const ofTrueTypeFont & font, string text, float x, float y ) const RENDERER_FUN_NOT_IMPLEMENTED;
+	virtual void drawString( std::string text, float x, float y, float z ) const RENDERER_FUN_NOT_IMPLEMENTED;
+	virtual void drawString( const ofTrueTypeFont & font, std::string text, float x, float y ) const RENDERER_FUN_NOT_IMPLEMENTED;
 
 	virtual ofPath & getPath() override;
 	virtual ofStyle getStyle() const;
@@ -275,7 +275,7 @@ private:
 	// vector of queues - the queue index is based on the index of the queue creation request
 	// it is assumed that queue 0 is graphics capable.
 	std::vector<::vk::Queue> mQueues;
-	std::vector<mutex>       mQueueMutex;
+	std::vector<std::mutex>  mQueueMutex;
 
 	// Depth buffer format
 	// Depth format is selected during Vulkan initialization, in createDevice()

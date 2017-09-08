@@ -122,7 +122,7 @@ public:
 	// meshes. The mesh will get uploaded to temporary GPU memory when the DrawCommand
 	// is queued up into a RenderBatch. Use setAttribute and setIndices to render static
 	// meshes, and for more control over how drawing behaves.
-	of::vk::DrawCommand & setMesh( const shared_ptr<ofMesh>& msh_ );
+	of::vk::DrawCommand & setMesh( const std::shared_ptr<ofMesh>& msh_ );
 
 	// Allocate, and store attribute data in gpu memory
 	template <typename T>

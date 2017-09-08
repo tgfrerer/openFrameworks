@@ -2,6 +2,7 @@
 #include "vk/TransferBatch.h"
 #include "vk/ofVkRenderer.h"
 
+using namespace std;
 using namespace of::vk;
 
 // ------------------------------------------------------------

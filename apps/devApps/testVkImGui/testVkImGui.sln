@@ -1,6 +1,8 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 14
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "testVkImGui", "testVkImGui.vcxproj", "{7FD42DF7-442E-479A-BA76-D0022F99702A}"
+# Visual Studio 15
+VisualStudioVersion = 15.0.26730.12
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "testVkImGui", "testVkImGui.vcxproj", "{AF9041FE-1D04-4D28-83A4-6FDCAA2BEC3E}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "openframeworksLib", "..\..\..\libs\openFrameworksCompiled\project\vs\openframeworksLib.vcxproj", "{5837595D-ACA9-485C-8E76-729040CE4B0B}"
 EndProject
@@ -12,14 +14,14 @@ Global
 		Release|x64 = Release|x64
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{7FD42DF7-442E-479A-BA76-D0022F99702A}.Debug|Win32.ActiveCfg = Debug|Win32
-		{7FD42DF7-442E-479A-BA76-D0022F99702A}.Debug|Win32.Build.0 = Debug|Win32
-		{7FD42DF7-442E-479A-BA76-D0022F99702A}.Debug|x64.ActiveCfg = Debug|x64
-		{7FD42DF7-442E-479A-BA76-D0022F99702A}.Debug|x64.Build.0 = Debug|x64
-		{7FD42DF7-442E-479A-BA76-D0022F99702A}.Release|Win32.ActiveCfg = Release|Win32
-		{7FD42DF7-442E-479A-BA76-D0022F99702A}.Release|Win32.Build.0 = Release|Win32
-		{7FD42DF7-442E-479A-BA76-D0022F99702A}.Release|x64.ActiveCfg = Release|x64
-		{7FD42DF7-442E-479A-BA76-D0022F99702A}.Release|x64.Build.0 = Release|x64
+		{AF9041FE-1D04-4D28-83A4-6FDCAA2BEC3E}.Debug|Win32.ActiveCfg = Debug|Win32
+		{AF9041FE-1D04-4D28-83A4-6FDCAA2BEC3E}.Debug|Win32.Build.0 = Debug|Win32
+		{AF9041FE-1D04-4D28-83A4-6FDCAA2BEC3E}.Debug|x64.ActiveCfg = Debug|x64
+		{AF9041FE-1D04-4D28-83A4-6FDCAA2BEC3E}.Debug|x64.Build.0 = Debug|x64
+		{AF9041FE-1D04-4D28-83A4-6FDCAA2BEC3E}.Release|Win32.ActiveCfg = Release|Win32
+		{AF9041FE-1D04-4D28-83A4-6FDCAA2BEC3E}.Release|Win32.Build.0 = Release|Win32
+		{AF9041FE-1D04-4D28-83A4-6FDCAA2BEC3E}.Release|x64.ActiveCfg = Release|x64
+		{AF9041FE-1D04-4D28-83A4-6FDCAA2BEC3E}.Release|x64.Build.0 = Release|x64
 		{5837595D-ACA9-485C-8E76-729040CE4B0B}.Debug|Win32.ActiveCfg = Debug|Win32
 		{5837595D-ACA9-485C-8E76-729040CE4B0B}.Debug|Win32.Build.0 = Debug|Win32
 		{5837595D-ACA9-485C-8E76-729040CE4B0B}.Debug|x64.ActiveCfg = Debug|x64
@@ -31,5 +33,8 @@ Global
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {D77C6550-0D55-4479-90F6-50433BA01B43}
 	EndGlobalSection
 EndGlobal

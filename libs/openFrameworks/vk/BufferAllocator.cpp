@@ -1,6 +1,7 @@
 #include "vk/BufferAllocator.h"
 #include "ofLog.h"
 
+using namespace std;
 using namespace of::vk;
 
 // ----------------------------------------------------------------------

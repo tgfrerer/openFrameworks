@@ -3,6 +3,7 @@
 #include "spooky/SpookyV2.h"
 #include <array>
 
+using namespace std;
 using namespace of::vk;
 
 // ----------------------------------------------------------------------

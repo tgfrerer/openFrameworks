@@ -5,6 +5,8 @@
 #include <algorithm>
 #include <array>
 
+using namespace std;
+
 // ----------------------------------------------------------------------
 
 void ofVkRenderer::setup(){

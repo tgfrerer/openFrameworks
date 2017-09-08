@@ -1,7 +1,9 @@
 #include "vk/ComputeCommand.h"
 #include "vk/spooky/SpookyV2.h"
 
+using namespace std;
 using namespace of::vk;
+
 // setup all non-transient state for this draw object
 
 // current ubo values are stored with draw command

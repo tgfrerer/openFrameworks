@@ -5,7 +5,7 @@
 #include "ofImage.h"
 #include "ofPixels.h"
 
-
+using namespace std;
 using namespace of::vk;
 
 // ----------------------------------------------------------------------

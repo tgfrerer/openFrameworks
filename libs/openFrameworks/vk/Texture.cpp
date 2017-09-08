@@ -1,6 +1,7 @@
 #include "vk/Texture.h"
 #include "ofVkRenderer.h"
 
+using namespace std;
 using namespace of::vk;
 
 Texture::Settings::Settings() {

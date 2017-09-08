@@ -3,6 +3,8 @@
 #include "ofVkRenderer.h"
 #include "ImgSwapchain.h"
 
+using namespace std;
+
 #if defined TARGET_OSX || defined TARGET_LINUX
 #include <stdlib.h>
 #include <string.h>

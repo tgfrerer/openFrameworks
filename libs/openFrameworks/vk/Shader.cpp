@@ -6,6 +6,8 @@
 #include "shaderc/shaderc.hpp"
 #include <algorithm>
 
+using namespace std;
+
 // ----------------------------------------------------------------------
  
 const std::vector<uint32_t> of::vk::Shader::Source::defaultShaderVert {

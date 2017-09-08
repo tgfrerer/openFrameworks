@@ -2,6 +2,7 @@
 #include "vk/spooky/SpookyV2.h"
 #include "vk/Shader.h"
 
+using namespace std;
 using namespace of::vk;
 
 // ------------------------------------------------------------
