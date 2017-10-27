@@ -241,7 +241,11 @@ vk::Result WsiSwapchain::queuePresent( ::vk::Queue queue, std::mutex & queueMute
 	::vk::Result result;
 	{
 		std::lock_guard<std::mutex> lock{ queueMutex };
-		result = queue.presentKHR( presentInfo );
+		try {
+			result = queue.presentKHR( presentInfo );
+		} catch (::vk::SystemError & e) {
+			ofLog() << "swapchain did throw: " << e.what();
+		}
 	}
 
 	// each command wich begins with vkQueue... is appended to the end of the 

@@ -120,7 +120,7 @@ static inline bool getMemoryAllocationInfo(
 	::vk::MemoryAllocateInfo& memInfo ) {
 	if ( !memReqs.size ){
 		memInfo.allocationSize = 0;
-		memInfo.memoryTypeIndex = ~0;
+		memInfo.memoryTypeIndex = ~0u;
 		return true;
 	}
 
@@ -230,7 +230,7 @@ struct UniformId_t
 	friend
 		inline bool operator < ( UniformId_t const & lhs, UniformId_t const & rhs ){
 		return lhs.id < rhs.id;
-	};
+	}
 };
 
 static_assert( sizeof( UniformId_t ) == sizeof( uint64_t ), "UniformId_t is not proper size." );
